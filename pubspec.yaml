@@ -1,0 +1,98 @@
+name: wimz_app
+description: WIM-Z Robotic Dog Trainer - Mobile Control App
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.2.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # ============ State Management ============
+  flutter_riverpod: ^2.4.9
+  riverpod_annotation: ^2.3.3
+
+  # ============ Code Generation ============
+  freezed_annotation: ^2.4.1
+  json_annotation: ^4.8.1
+
+  # ============ Networking ============
+  dio: ^5.4.0
+  web_socket_channel: ^2.4.0
+
+  # ============ Routing ============
+  go_router: ^13.0.0
+
+  # ============ Video Streaming ============
+  flutter_mjpeg: ^2.0.4
+  flutter_webrtc: ^0.10.0
+
+  # ============ Controls ============
+  flutter_joystick: ^0.2.0
+  sleek_circular_slider: ^2.0.1    # Premium circular controls
+
+  # ============ Premium UI Effects ============
+  glass_kit: ^4.0.1                # Glassmorphism effects
+  blur: ^3.1.0                     # Blur effects
+  shimmer: ^3.0.0                  # Loading shimmer effects
+
+  # ============ Animations ============
+  rive: ^0.13.0                    # Premium vector animations
+  lottie: ^3.0.0                   # JSON animations
+  flutter_animate: ^4.5.0          # Easy animation chains
+
+  # ============ Charts & Gauges ============
+  fl_chart: ^0.66.0                # Beautiful charts
+  syncfusion_flutter_gauges: ^24.1.41  # Circular gauges
+  percent_indicator: ^4.2.3        # Progress indicators
+
+  # ============ Icons ============
+  phosphor_flutter: ^2.0.1         # Modern icon set
+  flutter_svg: ^2.0.9              # SVG support
+
+  # ============ Storage ============
+  shared_preferences: ^2.2.2
+
+  # ============ Utilities ============
+  logger: ^2.0.2+1
+  equatable: ^2.0.5
+  intl: ^0.19.0                    # Date/number formatting
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^3.0.1
+  build_runner: ^2.4.8
+  freezed: ^2.4.6
+  json_serializable: ^6.7.1
+  riverpod_generator: ^2.3.9
+
+flutter:
+  uses-material-design: true
+
+  assets:
+    - assets/images/
+    - assets/icons/
+    - assets/animations/    # For Rive/Lottie files
+    - assets/fonts/
+
+  # fonts:
+  #   - family: SpaceMono
+  #     fonts:
+  #       - asset: assets/fonts/SpaceMono-Regular.ttf
+  #       - asset: assets/fonts/SpaceMono-Bold.ttf
+  #         weight: 700
+  #   - family: Inter
+  #     fonts:
+  #       - asset: assets/fonts/Inter-Regular.ttf
+  #       - asset: assets/fonts/Inter-Medium.ttf
+  #         weight: 500
+  #       - asset: assets/fonts/Inter-SemiBold.ttf
+  #         weight: 600
+  #       - asset: assets/fonts/Inter-Bold.ttf
+  #         weight: 700
+  #   - family: WimzIcons
+  #     fonts:
+  #       - asset: assets/fonts/wimz_icons.ttf
