@@ -27,7 +27,7 @@ dependencies:
 
   # ============ Video Streaming ============
   flutter_mjpeg: ^2.0.4
-  flutter_webrtc: ^0.10.0
+  flutter_webrtc: ^1.2.1
 
   # ============ Controls ============
   flutter_joystick: ^0.2.0
