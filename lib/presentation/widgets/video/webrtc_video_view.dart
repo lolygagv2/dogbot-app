@@ -2,65 +2,87 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_webrtc/flutter_webrtc.dart';
 
-import '../../../data/services/webrtc_service.dart';
 import '../../../domain/providers/webrtc_provider.dart';
 import '../../theme/app_theme.dart';
 
+/// Default device ID for WIM-Z robot
+const String kDefaultDeviceId = 'wimz_robot_01';
+
 /// WebRTC video view widget for displaying live video from robot via relay
 class WebRTCVideoView extends ConsumerStatefulWidget {
-  final String deviceId;
+  final String? deviceId;
 
-  const WebRTCVideoView({super.key, required this.deviceId});
+  const WebRTCVideoView({super.key, this.deviceId});
 
   @override
   ConsumerState<WebRTCVideoView> createState() => _WebRTCVideoViewState();
 }
 
 class _WebRTCVideoViewState extends ConsumerState<WebRTCVideoView> {
-  WebRTCService? _service;
-  bool _initialized = false;
+  bool _requestSent = false;
 
   @override
   void initState() {
     super.initState();
-    _initializeWebRTC();
+    // Request video on next frame to ensure provider is ready
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _requestVideo();
+    });
   }
 
-  Future<void> _initializeWebRTC() async {
-    _service = ref.read(webrtcServiceProvider);
-    if (_service != null) {
-      await _service!.initialize();
-      setState(() => _initialized = true);
+  void _requestVideo() {
+    if (_requestSent) return;
+    _requestSent = true;
 
-      // Request video stream from the device
-      _service!.requestVideoStream(widget.deviceId);
-    }
+    final deviceId = widget.deviceId ?? kDefaultDeviceId;
+    ref.read(webrtcProvider.notifier).requestVideoStream(deviceId);
   }
 
   @override
   void dispose() {
-    _service?.close();
+    // Don't close connection on dispose - let the provider manage lifecycle
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    final webrtcState = ref.watch(webrtcStateProvider);
+    final webrtcState = ref.watch(webrtcProvider);
 
-    if (!_initialized || _service == null) {
-      return _buildLoading('Initializing...');
-    }
-
-    switch (webrtcState) {
+    switch (webrtcState.state) {
       case WebRTCState.disconnected:
-        return _buildLoading('Disconnected');
+        return _buildPlaceholder('Tap to connect', Icons.videocam_off, () {
+          _requestSent = false;
+          _requestVideo();
+        });
       case WebRTCState.connecting:
-        return _buildLoading('Connecting...');
+        return _buildLoading('Connecting video...');
       case WebRTCState.error:
-        return _buildError();
+        return _buildError(webrtcState.errorMessage);
       case WebRTCState.connected:
-        return _buildVideo();
+        return _buildVideo(webrtcState.renderer);
     }
+  }
+
+  Widget _buildPlaceholder(String message, IconData icon, VoidCallback onTap) {
+    return Container(
+      color: Colors.black,
+      child: InkWell(
+        onTap: onTap,
+        child: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(icon, color: AppTheme.textSecondary, size: 48),
+              const SizedBox(height: 16),
+              Text(
+                message,
+                style: const TextStyle(color: AppTheme.textSecondary),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
   Widget _buildLoading(String message) {
@@ -82,7 +104,7 @@ class _WebRTCVideoViewState extends ConsumerState<WebRTCVideoView> {
     );
   }
 
-  Widget _buildError() {
+  Widget _buildError(String? errorMessage) {
     return Container(
       color: Colors.black,
       child: Center(
@@ -91,13 +113,17 @@ class _WebRTCVideoViewState extends ConsumerState<WebRTCVideoView> {
           children: [
             const Icon(Icons.error_outline, color: AppTheme.error, size: 48),
             const SizedBox(height: 16),
-            const Text(
-              'Video connection failed',
-              style: TextStyle(color: AppTheme.textSecondary),
+            Text(
+              errorMessage ?? 'Video connection failed',
+              style: const TextStyle(color: AppTheme.textSecondary),
+              textAlign: TextAlign.center,
             ),
             const SizedBox(height: 16),
             ElevatedButton(
-              onPressed: () => _service?.requestVideoStream(widget.deviceId),
+              onPressed: () {
+                _requestSent = false;
+                _requestVideo();
+              },
               child: const Text('Retry'),
             ),
           ],
@@ -106,11 +132,15 @@ class _WebRTCVideoViewState extends ConsumerState<WebRTCVideoView> {
     );
   }
 
-  Widget _buildVideo() {
+  Widget _buildVideo(RTCVideoRenderer? renderer) {
+    if (renderer == null) {
+      return _buildLoading('Initializing renderer...');
+    }
+
     return Container(
       color: Colors.black,
       child: RTCVideoView(
-        _service!.remoteRenderer,
+        renderer,
         objectFit: RTCVideoViewObjectFit.RTCVideoViewObjectFitContain,
       ),
     );

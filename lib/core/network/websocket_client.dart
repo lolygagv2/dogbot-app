@@ -142,20 +142,34 @@ class WebSocketClient {
         // Robot events - forward to event stream
         case 'telemetry':
         case 'status':
+        case 'robot_status':
+        case 'device_status':
+        case 'detection':
+        case 'battery':
+        case 'mode':
+        case 'treat':
           final event = WsEvent.fromJson(json);
           _eventController.add(event);
           break;
 
-        // Error messages
+        // Error messages - only log critical ones
         case 'error':
-          print('WebSocket error from server: ${json['message']} (${json['code']})');
+          final code = json['code'] as String?;
+          // Ignore transient errors that don't affect operation
+          if (code != 'NOT_AUTHORIZED' && code != 'NO_DEVICE') {
+            print('WebSocket error: ${json['message']} ($code)');
+          }
+          // Still forward to event stream for UI handling if needed
           final event = WsEvent.fromJson(json);
           _eventController.add(event);
           break;
 
-        // Ignore ping/pong and acknowledgment messages
+        // Command acknowledgments and responses
         case 'pong':
         case 'ack':
+        case 'command_ack':
+        case 'response':
+          // Commands acknowledged - good, no need to log
           break;
 
         default:
@@ -229,7 +243,9 @@ class WebSocketClient {
     }
 
     try {
-      _channel?.sink.add(jsonEncode(data));
+      final json = jsonEncode(data);
+      print('WS SEND: $json');
+      _channel?.sink.add(json);
     } catch (e) {
       print('WebSocket send error: $e');
     }

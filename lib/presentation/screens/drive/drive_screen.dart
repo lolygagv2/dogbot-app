@@ -38,7 +38,7 @@ class DriveScreen extends ConsumerWidget {
             child: Container(
               color: Colors.black,
               // Use WebRTC for video streaming via relay
-              child: WebRTCVideoView(deviceId: connection.deviceId ?? 'robot'),
+              child: const WebRTCVideoView(),
             ),
           ),
           Expanded(

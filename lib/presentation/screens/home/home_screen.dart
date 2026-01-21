@@ -5,7 +5,6 @@ import 'package:go_router/go_router.dart';
 import '../../../domain/providers/connection_provider.dart';
 import '../../../domain/providers/telemetry_provider.dart';
 import '../../../domain/providers/control_provider.dart';
-import '../../../domain/providers/webrtc_handler.dart';
 import '../../widgets/video/webrtc_video_view.dart';
 import '../../widgets/status/battery_indicator.dart';
 import '../../widgets/status/connection_badge.dart';
@@ -20,9 +19,6 @@ class HomeScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final connection = ref.watch(connectionProvider);
     final telemetry = ref.watch(telemetryProvider);
-
-    // Initialize WebRTC handler for video streaming
-    ref.watch(webrtcHandlerProvider);
 
     // Redirect if disconnected
     if (!connection.isConnected) {
@@ -52,7 +48,7 @@ class HomeScreen extends ConsumerWidget {
                 fit: StackFit.expand,
                 children: [
                   // Use WebRTC for video streaming via relay
-                  WebRTCVideoView(deviceId: connection.deviceId ?? 'robot'),
+                  const WebRTCVideoView(),
 
                   // Detection overlay
                   if (telemetry.dogDetected)
