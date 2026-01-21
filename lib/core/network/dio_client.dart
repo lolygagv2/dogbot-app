@@ -1,6 +1,7 @@
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../config/environment.dart';
 import '../constants/app_constants.dart';
 
 /// Provider for the Dio HTTP client
@@ -14,6 +15,8 @@ class DioClient {
 
   static final Dio instance = Dio(
     BaseOptions(
+      // Initialize with production base URL by default
+      baseUrl: AppConfig.baseUrl(AppConfig.defaultHost),
       connectTimeout: AppConstants.connectionTimeout,
       receiveTimeout: AppConstants.receiveTimeout,
       headers: {

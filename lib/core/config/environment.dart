@@ -2,7 +2,10 @@
 enum Environment { dev, prod }
 
 class AppConfig {
-  static Environment env = Environment.dev;
+  /// Current environment - set to dev for local robot testing
+  /// Production: https://api.wimzai.com, wss://api.wimzai.com/ws/app
+  /// Dev: http://<local-ip>:8000, ws://<local-ip>:8000/ws
+  static Environment env = Environment.prod;
 
   /// Default server host based on environment
   static String get defaultHost {
@@ -10,7 +13,7 @@ class AppConfig {
       case Environment.dev:
         return '192.168.1.50'; // Local WIM-Z IP - change to your robot's IP
       case Environment.prod:
-        return 'api.wimz.io'; // Future cloud endpoint
+        return 'api.wimzai.com'; // Production cloud endpoint
     }
   }
 
@@ -36,7 +39,7 @@ class AppConfig {
   static String wsUrl(String host, [int? port]) {
     final p = port ?? defaultPort;
     if (env == Environment.prod) {
-      return '$wsScheme://$host/ws';
+      return '$wsScheme://$host/ws/app';
     }
     return '$wsScheme://$host:$p/ws';
   }
