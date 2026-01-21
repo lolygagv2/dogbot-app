@@ -65,7 +65,8 @@ class TelemetryNotifier extends StateNotifier<Telemetry> {
   }
 
   void _handleWsEvent(WsEvent event) {
-    switch (event.event) {
+    switch (event.type) {
+      case 'telemetry':
       case 'status':
         // Full status update
         state = Telemetry.fromApiResponse(event.data);

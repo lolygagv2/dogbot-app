@@ -2,13 +2,21 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/config/environment.dart';
 import '../../../core/constants/app_constants.dart';
 import '../../../domain/providers/connection_provider.dart';
 import '../../theme/app_theme.dart';
 
-/// Initial connection screen - enter WIM-Z IP address
+/// Connection screen - connects to WIM-Z after authentication
 class ConnectScreen extends ConsumerStatefulWidget {
-  const ConnectScreen({super.key});
+  final String? initialHost;
+  final int? initialPort;
+
+  const ConnectScreen({
+    super.key,
+    this.initialHost,
+    this.initialPort,
+  });
 
   @override
   ConsumerState<ConnectScreen> createState() => _ConnectScreenState();
@@ -18,6 +26,7 @@ class _ConnectScreenState extends ConsumerState<ConnectScreen> {
   final _hostController = TextEditingController();
   final _portController = TextEditingController();
   final _formKey = GlobalKey<FormState>();
+  bool _autoConnecting = false;
 
   @override
   void initState() {
@@ -26,10 +35,22 @@ class _ConnectScreenState extends ConsumerState<ConnectScreen> {
   }
 
   void _loadDefaults() {
+    // Use passed parameters first, then saved connection, then defaults
     final connection = ref.read(connectionProvider);
-    _hostController.text = connection.host ?? AppConstants.defaultHost;
-    _portController.text =
-        (connection.port ?? AppConstants.defaultPort).toString();
+    _hostController.text = widget.initialHost ??
+        connection.host ??
+        AppConstants.defaultHost;
+    _portController.text = (widget.initialPort ??
+        connection.port ??
+        AppConstants.defaultPort).toString();
+
+    // Auto-connect if we have initial host/port from login
+    if (widget.initialHost != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _connect();
+      });
+      _autoConnecting = true;
+    }
   }
 
   @override
@@ -98,19 +119,17 @@ class _ConnectScreenState extends ConsumerState<ConnectScreen> {
                   TextFormField(
                     controller: _hostController,
                     decoration: const InputDecoration(
-                      labelText: 'IP Address',
-                      hintText: '192.168.1.50',
-                      prefixIcon: Icon(Icons.router),
+                      labelText: 'Server Address',
+                      hintText: 'api.wimzai.com or 192.168.1.50',
+                      prefixIcon: Icon(Icons.dns),
                     ),
-                    keyboardType: TextInputType.number,
+                    keyboardType: TextInputType.url,
                     validator: (value) {
                       if (value == null || value.isEmpty) {
-                        return 'Please enter IP address';
+                        return 'Please enter server address';
                       }
-                      // Basic IP validation
-                      final parts = value.split('.');
-                      if (parts.length != 4) {
-                        return 'Invalid IP address format';
+                      if (!AppConfig.isValidHost(value)) {
+                        return 'Invalid server address';
                       }
                       return null;
                     },
@@ -183,33 +202,23 @@ class _ConnectScreenState extends ConsumerState<ConnectScreen> {
 
                   // Help text
                   Text(
-                    'Make sure your phone is on the same\nWiFi network as WIM-Z',
+                    'Connecting to your WIM-Z robot...',
                     textAlign: TextAlign.center,
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
                           color: Theme.of(context)
                               .colorScheme
                               .onSurface
-                              .withOpacity(0.5),
+                              .withValues(alpha: 0.5),
                         ),
                   ),
                   const SizedBox(height: 32),
 
-                  // Demo mode button
+                  // Back to login button
                   TextButton(
                     onPressed: () {
-                      ref.read(connectionProvider.notifier).enableDemoMode();
-                      context.go('/home');
+                      context.go('/login');
                     },
-                    child: const Text('Enter Demo Mode'),
-                  ),
-                  Text(
-                    'Preview the app without a robot',
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: Theme.of(context)
-                              .colorScheme
-                              .onSurface
-                              .withOpacity(0.4),
-                        ),
+                    child: const Text('Back to Login'),
                   ),
                 ],
               ),

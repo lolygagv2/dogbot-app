@@ -8,6 +8,7 @@ import '../../core/constants/app_constants.dart';
 import '../../core/network/dio_client.dart';
 import '../../core/network/websocket_client.dart';
 import '../../data/datasources/robot_api.dart';
+import 'auth_provider.dart';
 
 /// Connection state enum
 enum ConnectionStatus {
@@ -124,9 +125,17 @@ class ConnectionNotifier extends StateNotifier<ConnectionState> {
         return false;
       }
 
-      // Connect WebSocket
+      // Get auth token for WebSocket connection (optional)
+      final authState = _ref.read(authProvider);
+      final token = authState.token;
+
+      // Connect WebSocket - with token if available, without if not
       final ws = _ref.read(websocketClientProvider);
-      await ws.connect(AppConfig.wsUrl(host, port));
+      final wsUrl = token != null
+          ? AppConfig.wsUrlWithToken(host, token, port)
+          : AppConfig.wsUrl(host, port);
+      print('Connecting WebSocket to: $wsUrl');
+      await ws.connect(wsUrl);
 
       // Listen for WebSocket state changes
       _wsSubscription?.cancel();

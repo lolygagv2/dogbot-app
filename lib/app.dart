@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import 'domain/providers/connection_provider.dart';
 import 'domain/providers/notifications_provider.dart';
+import 'presentation/screens/auth/login_screen.dart';
 import 'presentation/screens/connect/connect_screen.dart';
 import 'presentation/screens/home/home_screen.dart';
 import 'presentation/screens/drive/drive_screen.dart';
@@ -28,12 +30,30 @@ final _shellNavigatorKey = GlobalKey<NavigatorState>();
 
 final _router = GoRouter(
   navigatorKey: _rootNavigatorKey,
-  initialLocation: '/connect',
+  initialLocation: '/login',
   routes: [
-    // Connect screen (no bottom nav)
+    // Login screen (no bottom nav)
+    GoRoute(
+      path: '/login',
+      builder: (context, state) => const LoginScreen(),
+    ),
+
+    // Connect screen (no bottom nav) - receives host/port from login
     GoRoute(
       path: '/connect',
-      builder: (context, state) => const ConnectScreen(),
+      builder: (context, state) {
+        final extra = state.extra as Map<String, dynamic>?;
+        return ConnectScreen(
+          initialHost: extra?['host'] as String?,
+          initialPort: extra?['port'] as int?,
+        );
+      },
+    ),
+
+    // Demo mode entry point
+    GoRoute(
+      path: '/demo',
+      builder: (context, state) => const _DemoModeEntry(),
     ),
 
     // Main app shell with bottom navigation
@@ -309,6 +329,26 @@ class _VideoGalleryPlaceholder extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+/// Demo mode entry - enables demo mode and navigates to home
+class _DemoModeEntry extends ConsumerWidget {
+  const _DemoModeEntry();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    // Enable demo mode and navigate to home
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.read(connectionProvider.notifier).enableDemoMode();
+      context.go('/home');
+    });
+
+    return const Scaffold(
+      body: Center(
+        child: CircularProgressIndicator(),
       ),
     );
   }

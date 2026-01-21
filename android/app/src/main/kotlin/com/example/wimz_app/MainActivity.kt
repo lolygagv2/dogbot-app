@@ -1,4 +1,4 @@
-package com.example.wimz_app
+package com.wimzai.app
 
 import io.flutter.embedding.android.FlutterActivity
 

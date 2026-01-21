@@ -20,28 +20,59 @@ class AppConfig {
   /// Default server port
   static int get defaultPort => 8000;
 
-  /// WebSocket scheme (ws for dev, wss for prod)
-  static String get wsScheme => env == Environment.prod ? 'wss' : 'ws';
-
-  /// HTTP scheme (http for dev, https for prod)
-  static String get httpScheme => env == Environment.prod ? 'https' : 'http';
-
-  /// Build full base URL
-  static String baseUrl(String host, [int? port]) {
-    final p = port ?? defaultPort;
-    if (env == Environment.prod) {
-      return '$httpScheme://$host';
-    }
-    return '$httpScheme://$host:$p';
+  /// Check if host is an IP address
+  static bool isIpAddress(String host) {
+    final ipv4Pattern = RegExp(r'^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$');
+    return ipv4Pattern.hasMatch(host);
   }
 
-  /// Build WebSocket URL
+  /// Check if host is a valid domain name
+  static bool isDomainName(String host) {
+    // Simple domain validation - allows localhost, subdomains, TLDs
+    final domainPattern = RegExp(r'^[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?(\.[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?)*$');
+    return domainPattern.hasMatch(host) || host == 'localhost';
+  }
+
+  /// Validate host (IP or domain)
+  static bool isValidHost(String host) {
+    return isIpAddress(host) || isDomainName(host);
+  }
+
+  /// Build full base URL
+  /// IP addresses: http:// with port
+  /// Domain names: https:// without port (or with port if specified)
+  static String baseUrl(String host, [int? port]) {
+    final p = port ?? defaultPort;
+    if (isIpAddress(host)) {
+      // IP addresses use http with port
+      return 'http://$host:$p';
+    }
+    // Domain names use https (port 443 is implicit)
+    if (p == 443 || p == 8000) {
+      return 'https://$host';
+    }
+    return 'https://$host:$p';
+  }
+
+  /// Build WebSocket URL (without token - add token separately)
+  /// IP addresses: ws:// with port, /ws/app path
+  /// Domain names: wss://, /ws/app path
   static String wsUrl(String host, [int? port]) {
     final p = port ?? defaultPort;
-    if (env == Environment.prod) {
-      return '$wsScheme://$host/ws/app';
+    if (isIpAddress(host)) {
+      // IP addresses use ws with port
+      return 'ws://$host:$p/ws/app';
     }
-    return '$wsScheme://$host:$p/ws';
+    // Domain names use wss
+    if (p == 443 || p == 8000) {
+      return 'wss://$host/ws/app';
+    }
+    return 'wss://$host:$p/ws/app';
+  }
+
+  /// Build WebSocket URL with auth token
+  static String wsUrlWithToken(String host, String token, [int? port]) {
+    return '${wsUrl(host, port)}?token=$token';
   }
 
   /// Build video stream URL

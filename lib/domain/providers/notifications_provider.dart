@@ -61,7 +61,7 @@ class NotificationsNotifier extends StateNotifier<List<NotificationEvent>> {
     // Convert WebSocket events to notifications
     NotificationEvent? notification;
 
-    switch (event.event) {
+    switch (event.type) {
       case 'detection':
         final behavior = event.data['behavior'] as String?;
         if (behavior != null) {

@@ -17,14 +17,16 @@ enum WsConnectionState {
 
 /// WebSocket event from the robot
 class WsEvent {
-  final String event;
+  final String type;
   final Map<String, dynamic> data;
 
-  WsEvent({required this.event, required this.data});
+  WsEvent({required this.type, required this.data});
 
   factory WsEvent.fromJson(Map<String, dynamic> json) {
+    // Use 'type' as primary, fall back to 'event' for backward compatibility
+    final messageType = json['type'] as String? ?? json['event'] as String?;
     return WsEvent(
-      event: json['event'] as String,
+      type: messageType ?? 'unknown',
       data: json['data'] as Map<String, dynamic>? ?? {},
     );
   }
@@ -120,21 +122,50 @@ class WebSocketClient {
   void _onMessage(dynamic message) {
     try {
       final json = jsonDecode(message as String) as Map<String, dynamic>;
-      final msgType = json['type'] as String?;
+      final msgType = json['type'] as String? ?? json['event'] as String?;
 
-      // Handle WebRTC signaling messages
-      if (msgType == 'webrtc_credentials') {
-        _webrtcCredentialsController.add(json);
-      } else if (msgType == 'webrtc_offer') {
-        _webrtcOfferController.add(json);
-      } else if (msgType == 'webrtc_ice') {
-        _webrtcIceController.add(json);
-      } else if (msgType == 'webrtc_close') {
-        _webrtcCloseController.add(json);
-      } else {
-        // Existing event handling
-        final event = WsEvent.fromJson(json);
-        _eventController.add(event);
+      switch (msgType) {
+        // WebRTC signaling messages
+        case 'webrtc_credentials':
+          _webrtcCredentialsController.add(json);
+          break;
+        case 'webrtc_offer':
+          _webrtcOfferController.add(json);
+          break;
+        case 'webrtc_ice':
+          _webrtcIceController.add(json);
+          break;
+        case 'webrtc_close':
+          _webrtcCloseController.add(json);
+          break;
+
+        // Robot events - forward to event stream
+        case 'telemetry':
+        case 'status':
+          final event = WsEvent.fromJson(json);
+          _eventController.add(event);
+          break;
+
+        // Error messages
+        case 'error':
+          print('WebSocket error from server: ${json['message']} (${json['code']})');
+          final event = WsEvent.fromJson(json);
+          _eventController.add(event);
+          break;
+
+        // Ignore ping/pong and acknowledgment messages
+        case 'pong':
+        case 'ack':
+          break;
+
+        default:
+          // Forward any other typed messages to event stream
+          if (msgType != null) {
+            final event = WsEvent.fromJson(json);
+            _eventController.add(event);
+          } else {
+            print('WebSocket received untyped message: $json');
+          }
       }
     } catch (e) {
       print('WebSocket message parse error: $e');
