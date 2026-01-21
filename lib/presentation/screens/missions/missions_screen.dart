@@ -2,13 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../../data/datasources/robot_api.dart';
 import '../../../data/models/mission.dart';
 import '../../../domain/providers/connection_provider.dart';
 
+// TODO: Missions will be managed via WebSocket when implemented on relay
 final missionsProvider = FutureProvider<List<Mission>>((ref) async {
   if (!ref.watch(connectionProvider).isConnected) return [];
-  return ref.read(robotApiProvider).getMissions();
+  // Missions feature not yet available via relay
+  return [];
 });
 
 class MissionsScreen extends ConsumerWidget {

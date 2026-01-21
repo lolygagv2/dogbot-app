@@ -6,7 +6,7 @@ import '../../../core/constants/app_constants.dart';
 import '../../../domain/providers/connection_provider.dart';
 import '../../../domain/providers/control_provider.dart';
 import '../../../domain/providers/telemetry_provider.dart';
-import '../../widgets/video/mjpeg_viewer.dart';
+import '../../widgets/video/webrtc_video_view.dart';
 import '../../widgets/controls/pan_tilt_control.dart';
 import '../../theme/app_theme.dart';
 
@@ -37,7 +37,8 @@ class DriveScreen extends ConsumerWidget {
             flex: 2,
             child: Container(
               color: Colors.black,
-              child: MjpegViewer(streamUrl: connection.streamUrl),
+              // Use WebRTC for video streaming via relay
+              child: WebRTCVideoView(deviceId: connection.deviceId ?? 'robot'),
             ),
           ),
           Expanded(

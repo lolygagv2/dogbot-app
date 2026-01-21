@@ -76,7 +76,7 @@ flutter:
     - assets/images/
     - assets/icons/
     - assets/animations/    # For Rive/Lottie files
-    - assets/fonts/
+    # - assets/fonts/
 
   # fonts:
   #   - family: SpaceMono

@@ -6,7 +6,6 @@ import '../../../domain/providers/connection_provider.dart';
 import '../../../domain/providers/telemetry_provider.dart';
 import '../../../domain/providers/control_provider.dart';
 import '../../../domain/providers/webrtc_handler.dart';
-import '../../widgets/video/mjpeg_viewer.dart';
 import '../../widgets/video/webrtc_video_view.dart';
 import '../../widgets/status/battery_indicator.dart';
 import '../../widgets/status/connection_badge.dart';
@@ -22,11 +21,8 @@ class HomeScreen extends ConsumerWidget {
     final connection = ref.watch(connectionProvider);
     final telemetry = ref.watch(telemetryProvider);
 
-    // Initialize WebRTC handler when in cloud mode
-    final isCloudMode = connection.host?.contains('wimz.io') ?? false;
-    if (isCloudMode) {
-      ref.watch(webrtcHandlerProvider);
-    }
+    // Initialize WebRTC handler for video streaming
+    ref.watch(webrtcHandlerProvider);
 
     // Redirect if disconnected
     if (!connection.isConnected) {
@@ -55,11 +51,8 @@ class HomeScreen extends ConsumerWidget {
               child: Stack(
                 fit: StackFit.expand,
                 children: [
-                  // Use WebRTC for cloud mode, MJPEG for local
-                  if (isCloudMode)
-                    WebRTCVideoView(deviceId: connection.deviceId ?? '')
-                  else
-                    MjpegViewer(streamUrl: connection.streamUrl),
+                  // Use WebRTC for video streaming via relay
+                  WebRTCVideoView(deviceId: connection.deviceId ?? 'robot'),
 
                   // Detection overlay
                   if (telemetry.dogDetected)

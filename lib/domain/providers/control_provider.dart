@@ -4,7 +4,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/constants/app_constants.dart';
 import '../../core/network/websocket_client.dart';
-import '../../data/datasources/robot_api.dart';
 import 'connection_provider.dart';
 
 /// Motor control state
@@ -66,16 +65,12 @@ class MotorControlNotifier extends StateNotifier<MotorState> {
   }
 
   /// Emergency stop
-  Future<void> emergencyStop() async {
+  void emergencyStop() {
     state = const MotorState(left: 0, right: 0, isMoving: false);
     _sendTimer?.cancel();
 
     if (_ref.read(connectionProvider).isConnected) {
-      try {
-        await _ref.read(robotApiProvider).emergencyStop();
-      } catch (e) {
-        print('Emergency stop error: $e');
-      }
+      _ref.read(websocketClientProvider).sendEmergencyStop();
     }
   }
 
@@ -156,15 +151,11 @@ class ServoControlNotifier extends StateNotifier<ServoState> {
   }
 
   /// Center camera
-  Future<void> center() async {
+  void center() {
     state = const ServoState(pan: 0, tilt: 0);
 
     if (_ref.read(connectionProvider).isConnected) {
-      try {
-        await _ref.read(robotApiProvider).centerCamera();
-      } catch (e) {
-        print('Center camera error: $e');
-      }
+      _ref.read(websocketClientProvider).sendServoCenter();
     }
   }
 
@@ -211,14 +202,9 @@ class TreatControl {
   }
 
   /// Rotate carousel (for refilling)
-  Future<void> rotateCarousel() async {
+  void rotateCarousel() {
     if (!_ref.read(connectionProvider).isConnected) return;
-
-    try {
-      await _ref.read(robotApiProvider).rotateCarousel();
-    } catch (e) {
-      print('Rotate carousel error: $e');
-    }
+    _ref.read(websocketClientProvider).sendCarouselRotate();
   }
 }
 
@@ -234,31 +220,21 @@ class LedControl {
   LedControl(this._ref);
 
   /// Set LED pattern
-  Future<void> setPattern(String pattern) async {
+  void setPattern(String pattern) {
     if (!_ref.read(connectionProvider).isConnected) return;
     _ref.read(websocketClientProvider).sendLedCommand(pattern);
   }
 
   /// Set LED color
-  Future<void> setColor(int r, int g, int b) async {
+  void setColor(int r, int g, int b) {
     if (!_ref.read(connectionProvider).isConnected) return;
-
-    try {
-      await _ref.read(robotApiProvider).setLedColor(r, g, b);
-    } catch (e) {
-      print('Set LED color error: $e');
-    }
+    _ref.read(websocketClientProvider).sendLedColor(r, g, b);
   }
 
   /// Turn off LEDs
-  Future<void> off() async {
+  void off() {
     if (!_ref.read(connectionProvider).isConnected) return;
-
-    try {
-      await _ref.read(robotApiProvider).turnOffLeds();
-    } catch (e) {
-      print('LED off error: $e');
-    }
+    _ref.read(websocketClientProvider).sendLedOff();
   }
 }
 
@@ -274,30 +250,20 @@ class AudioControl {
   AudioControl(this._ref);
 
   /// Play audio file
-  Future<void> play(String filename) async {
+  void play(String filename) {
     if (!_ref.read(connectionProvider).isConnected) return;
     _ref.read(websocketClientProvider).sendAudioCommand(filename);
   }
 
   /// Stop playback
-  Future<void> stop() async {
+  void stop() {
     if (!_ref.read(connectionProvider).isConnected) return;
-
-    try {
-      await _ref.read(robotApiProvider).stopAudio();
-    } catch (e) {
-      print('Stop audio error: $e');
-    }
+    _ref.read(websocketClientProvider).sendAudioStop();
   }
 
   /// Set volume
-  Future<void> setVolume(int level) async {
+  void setVolume(int level) {
     if (!_ref.read(connectionProvider).isConnected) return;
-
-    try {
-      await _ref.read(robotApiProvider).setVolume(level);
-    } catch (e) {
-      print('Set volume error: $e');
-    }
+    _ref.read(websocketClientProvider).sendAudioVolume(level);
   }
 }

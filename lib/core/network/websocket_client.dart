@@ -235,43 +235,89 @@ class WebSocketClient {
     }
   }
 
+  /// Send a command to the robot via relay
+  /// Format: {"type": "command", "command": "<cmd>", "data": {...}}
+  void sendCommand(String command, [Map<String, dynamic>? data]) {
+    send({
+      'type': 'command',
+      'command': command,
+      'data': data ?? {},
+    });
+  }
+
   /// Send motor command
   void sendMotorCommand(double left, double right) {
-    send({
-      'command': 'motor',
-      'left': left,
-      'right': right,
-    });
+    sendCommand('motor', {'left': left, 'right': right});
+  }
+
+  /// Send emergency stop
+  void sendEmergencyStop() {
+    sendCommand('emergency_stop');
   }
 
   /// Send servo command
   void sendServoCommand(double pan, double tilt) {
-    send({
-      'command': 'servo',
-      'pan': pan,
-      'tilt': tilt,
-    });
+    sendCommand('servo', {'pan': pan, 'tilt': tilt});
+  }
+
+  /// Center camera servos
+  void sendServoCenter() {
+    sendCommand('servo_center');
   }
 
   /// Send treat command
   void sendTreatCommand() {
-    send({'command': 'treat'});
+    sendCommand('treat');
+  }
+
+  /// Rotate treat carousel
+  void sendCarouselRotate() {
+    sendCommand('carousel_rotate');
   }
 
   /// Send LED pattern command
   void sendLedCommand(String pattern) {
-    send({
-      'command': 'led',
-      'pattern': pattern,
-    });
+    sendCommand('led', {'pattern': pattern});
+  }
+
+  /// Send LED color command
+  void sendLedColor(int r, int g, int b) {
+    sendCommand('led_color', {'r': r, 'g': g, 'b': b});
+  }
+
+  /// Turn off LEDs
+  void sendLedOff() {
+    sendCommand('led_off');
   }
 
   /// Send audio play command
   void sendAudioCommand(String file) {
-    send({
-      'command': 'audio',
-      'file': file,
-    });
+    sendCommand('audio', {'file': file});
+  }
+
+  /// Stop audio playback
+  void sendAudioStop() {
+    sendCommand('audio_stop');
+  }
+
+  /// Set audio volume
+  void sendAudioVolume(int level) {
+    sendCommand('audio_volume', {'level': level});
+  }
+
+  /// Request WebRTC video stream
+  void requestVideoStream() {
+    send({'type': 'webrtc_request'});
+  }
+
+  /// Send WebRTC answer
+  void sendWebrtcAnswer(Map<String, dynamic> answer) {
+    send({'type': 'webrtc_answer', ...answer});
+  }
+
+  /// Send WebRTC ICE candidate
+  void sendWebrtcIce(Map<String, dynamic> candidate) {
+    send({'type': 'webrtc_ice', ...candidate});
   }
 
   /// Disconnect from WebSocket server

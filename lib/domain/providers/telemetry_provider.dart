@@ -2,10 +2,7 @@ import 'dart:async';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../core/config/environment.dart';
-import '../../core/constants/app_constants.dart';
 import '../../core/network/websocket_client.dart';
-import '../../data/datasources/robot_api.dart';
 import '../../data/models/telemetry.dart';
 import 'connection_provider.dart';
 
@@ -15,10 +12,10 @@ final telemetryProvider =
   return TelemetryNotifier(ref);
 });
 
-/// Telemetry state notifier - combines polling + WebSocket updates
+/// Telemetry state notifier - receives updates via WebSocket only
+/// All telemetry comes from the relay server via WebSocket events
 class TelemetryNotifier extends StateNotifier<Telemetry> {
   final Ref _ref;
-  Timer? _pollTimer;
   StreamSubscription? _wsSubscription;
 
   TelemetryNotifier(this._ref) : super(const Telemetry()) {
@@ -38,29 +35,14 @@ class TelemetryNotifier extends StateNotifier<Telemetry> {
   }
 
   void _startListening() {
-    // WebSocket events for real-time updates (used in both modes)
+    // All telemetry comes via WebSocket events from relay
     _wsSubscription?.cancel();
     _wsSubscription =
         _ref.read(websocketClientProvider).eventStream.listen(_handleWsEvent);
-
-    // In cloud/production mode, rely only on WebSocket events from relay
-    // No direct REST polling to robot
-    if (AppConfig.env == Environment.prod) {
-      print('Cloud mode: telemetry via WebSocket only');
-      return;
-    }
-
-    // Dev mode: also use REST polling for direct robot connection
-    refresh();
-    _pollTimer?.cancel();
-    _pollTimer = Timer.periodic(
-      AppConstants.telemetryRefreshInterval,
-      (_) => refresh(),
-    );
+    print('Telemetry: listening via WebSocket');
   }
 
   void _stopListening() {
-    _pollTimer?.cancel();
     _wsSubscription?.cancel();
   }
 
@@ -104,23 +86,6 @@ class TelemetryNotifier extends StateNotifier<Telemetry> {
           mode: event.data['mode'] as String? ?? state.mode,
         );
         break;
-    }
-  }
-
-  /// Manually refresh telemetry from API (dev mode only)
-  /// In cloud mode, telemetry comes via WebSocket events
-  Future<void> refresh() async {
-    // Skip REST polling in cloud mode - telemetry comes via WebSocket
-    if (AppConfig.env == Environment.prod) return;
-
-    if (!_ref.read(connectionProvider).isConnected) return;
-
-    try {
-      final api = _ref.read(robotApiProvider);
-      final telemetry = await api.getTelemetry();
-      state = telemetry;
-    } catch (e) {
-      print('Telemetry refresh error: $e');
     }
   }
 
