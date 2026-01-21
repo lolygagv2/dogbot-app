@@ -6,8 +6,6 @@ build/
 .flutter-plugins-dependencies
 
 # Generated files
-*.freezed.dart
-*.g.dart
 
 # IDE
 .idea/
