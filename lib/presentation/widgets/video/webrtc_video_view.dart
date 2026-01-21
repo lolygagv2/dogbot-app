@@ -137,11 +137,19 @@ class _WebRTCVideoViewState extends ConsumerState<WebRTCVideoView> {
       return _buildLoading('Initializing renderer...');
     }
 
+    // Debug: log renderer state
+    print('WebRTC Widget: renderer srcObject=${renderer.srcObject != null}, size=${renderer.videoWidth}x${renderer.videoHeight}');
+
+    if (renderer.srcObject == null) {
+      return _buildLoading('Waiting for video stream...');
+    }
+
     return Container(
       color: Colors.black,
       child: RTCVideoView(
         renderer,
         objectFit: RTCVideoViewObjectFit.RTCVideoViewObjectFitContain,
+        mirror: false,  // Don't mirror remote video
       ),
     );
   }

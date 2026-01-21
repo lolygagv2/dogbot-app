@@ -47,11 +47,21 @@ class TelemetryNotifier extends StateNotifier<Telemetry> {
   }
 
   void _handleWsEvent(WsEvent event) {
+    // Debug: log all events to trace battery data
+    print('Telemetry event: type=${event.type}, data=${event.data}');
+
     switch (event.type) {
       case 'telemetry':
       case 'status':
-        // Full status update
+      case 'robot_status':
+        // Full status update - may include battery
         state = Telemetry.fromApiResponse(event.data);
+        print('Telemetry updated: battery=${state.battery}, charging=${state.isCharging}');
+        break;
+
+      case 'device_status':
+        // Device status may include battery info
+        _handleDeviceStatus(event.data);
         break;
 
       case 'detection':
@@ -73,11 +83,16 @@ class TelemetryNotifier extends StateNotifier<Telemetry> {
         break;
 
       case 'battery':
-        // Battery update
-        state = state.copyWith(
-          battery: (event.data['level'] as num?)?.toDouble() ?? state.battery,
-          isCharging: event.data['charging'] as bool? ?? state.isCharging,
-        );
+        // Battery update - {'level': 95, 'charging': true, 'voltage': 16.6}
+        final level = (event.data['level'] as num?)?.toDouble();
+        final charging = event.data['charging'] as bool?;
+        print('Battery event: level=$level, charging=$charging');
+        if (level != null) {
+          state = state.copyWith(
+            battery: level,
+            isCharging: charging ?? state.isCharging,
+          );
+        }
         break;
 
       case 'mode':
@@ -86,6 +101,30 @@ class TelemetryNotifier extends StateNotifier<Telemetry> {
           mode: event.data['mode'] as String? ?? state.mode,
         );
         break;
+    }
+  }
+
+  void _handleDeviceStatus(Map<String, dynamic> data) {
+    // Device status may include nested battery data
+    final batteryData = data['battery'];
+    if (batteryData is Map) {
+      final level = (batteryData['level'] as num?)?.toDouble();
+      final charging = batteryData['charging'] as bool?;
+      print('Device status battery: level=$level, charging=$charging');
+      if (level != null) {
+        state = state.copyWith(
+          battery: level,
+          isCharging: charging ?? state.isCharging,
+        );
+      }
+    } else if (batteryData is num) {
+      state = state.copyWith(battery: batteryData.toDouble());
+    }
+
+    // Also check for mode
+    final mode = data['mode'] as String?;
+    if (mode != null) {
+      state = state.copyWith(mode: mode);
     }
   }
 

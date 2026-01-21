@@ -181,9 +181,26 @@ class WebRTCNotifier extends StateNotifier<WebRTCConnectionState> {
       _peerConnection!.onTrack = (RTCTrackEvent event) {
         print('WebRTC: Received track: ${event.track.kind}');
         if (event.track.kind == 'video' && event.streams.isNotEmpty) {
-          _renderer?.srcObject = event.streams[0];
-          state = state.copyWith(state: WebRTCState.connected);
-          print('WebRTC: Video connected');
+          final stream = event.streams[0];
+          print('WebRTC: Setting srcObject with stream id=${stream.id}, tracks=${stream.getVideoTracks().length}');
+
+          if (_renderer != null) {
+            _renderer!.srcObject = stream;
+
+            // Log video dimensions after a short delay to let the stream initialize
+            Future.delayed(const Duration(milliseconds: 500), () {
+              if (_renderer != null) {
+                print('WebRTC: Video renderer size: ${_renderer!.videoWidth}x${_renderer!.videoHeight}');
+              }
+            });
+          }
+
+          // Update state with renderer reference to trigger UI rebuild
+          state = state.copyWith(
+            state: WebRTCState.connected,
+            renderer: _renderer,
+          );
+          print('WebRTC: Video connected, state updated');
         }
       };
 
@@ -388,24 +405,35 @@ class WebRTCNotifier extends StateNotifier<WebRTCConnectionState> {
     }
 
     // Close data channel with null check and error handling
-    if (_dataChannel != null) {
-      try {
-        _dataChannel!.close();
-      } catch (e) {
-        print('WebRTC: Error closing data channel: $e');
-      }
-      _dataChannel = null;
-    }
+    // Must close data channel BEFORE peer connection
+    final dc = _dataChannel;
+    _dataChannel = null;
     _dataChannelOpen = false;
 
-    // Close peer connection with null check and error handling
-    if (_peerConnection != null) {
+    if (dc != null) {
       try {
-        await _peerConnection!.close();
+        // Only close if not already closed
+        if (dc.state != RTCDataChannelState.RTCDataChannelClosed &&
+            dc.state != RTCDataChannelState.RTCDataChannelClosing) {
+          dc.close();
+        }
       } catch (e) {
-        print('WebRTC: Error closing peer connection: $e');
+        // Ignore errors - channel may already be closed
+        print('WebRTC: Data channel close (ignored): $e');
       }
-      _peerConnection = null;
+    }
+
+    // Close peer connection with null check and error handling
+    final pc = _peerConnection;
+    _peerConnection = null;
+
+    if (pc != null) {
+      try {
+        await pc.close();
+      } catch (e) {
+        // Ignore errors - connection may already be closed
+        print('WebRTC: Peer connection close (ignored): $e');
+      }
     }
 
     _renderer?.srcObject = null;
