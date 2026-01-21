@@ -136,27 +136,35 @@ class ServoControlNotifier extends StateNotifier<ServoState> {
   final Ref _ref;
   Timer? _sendTimer;
   bool _hasPendingCommand = false;
-  bool _isActive = false;  // Track if joystick is being actively moved
+  bool _isDragging = false;  // Track if user is actively dragging
 
   ServoControlNotifier(this._ref) : super(const ServoState());
 
-  /// Set pan/tilt from control input (only sends while active)
+  /// Set pan/tilt from control input (only sends while dragging)
   void setPosition(double pan, double tilt) {
+    // Ignore (0, 0) positions - this is the joystick springing back on release
+    // The center button uses center() method instead
+    if (pan == 0 && tilt == 0) {
+      return;
+    }
+
+    // User is actively dragging
+    _isDragging = true;
+
     state = ServoState(
       pan: pan.clamp(-AppConstants.maxPanAngle, AppConstants.maxPanAngle),
       tilt: tilt.clamp(-AppConstants.maxTiltAngle, AppConstants.maxTiltAngle),
     );
 
-    _isActive = true;
     _hasPendingCommand = true;
     _ensureSendTimer();
   }
 
   /// Stop sending commands (joystick released)
   void stopTracking() {
-    _isActive = false;
+    _isDragging = false;
     _hasPendingCommand = false;
-    // Don't send anything on release - position stays where it was
+    // Don't send anything on release - servo stays where it was
   }
 
   /// Adjust pan by delta
@@ -182,7 +190,7 @@ class ServoControlNotifier extends StateNotifier<ServoState> {
     if (_sendTimer != null) return;
 
     _sendTimer = Timer.periodic(AppConstants.joystickSendInterval, (_) {
-      if (_hasPendingCommand && _isActive) {
+      if (_hasPendingCommand && _isDragging) {
         _sendCommand();
         _hasPendingCommand = false;
       }

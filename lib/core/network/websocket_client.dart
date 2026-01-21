@@ -144,6 +144,11 @@ class WebSocketClient {
       final json = jsonDecode(message as String) as Map<String, dynamic>;
       final msgType = json['type'] as String? ?? json['event'] as String?;
 
+      // Debug: log battery-related messages
+      if (msgType == 'battery' || msgType == 'telemetry' || msgType == 'status') {
+        print('WS RAW [$msgType]: $json');
+      }
+
       switch (msgType) {
         // WebRTC signaling messages
         case 'webrtc_credentials':

@@ -19,8 +19,11 @@ class TelemetryNotifier extends StateNotifier<Telemetry> {
   StreamSubscription? _wsSubscription;
 
   TelemetryNotifier(this._ref) : super(const Telemetry()) {
+    print('TelemetryNotifier: Created');
+
     // Watch connection state
     _ref.listen<ConnectionState>(connectionProvider, (prev, next) {
+      print('TelemetryNotifier: Connection changed - isConnected=${next.isConnected}');
       if (next.isConnected && prev?.isConnected != true) {
         _startListening();
       } else if (!next.isConnected) {
@@ -29,7 +32,9 @@ class TelemetryNotifier extends StateNotifier<Telemetry> {
     });
 
     // Start if already connected
-    if (_ref.read(connectionProvider).isConnected) {
+    final isConnected = _ref.read(connectionProvider).isConnected;
+    print('TelemetryNotifier: Initial connection state - isConnected=$isConnected');
+    if (isConnected) {
       _startListening();
     }
   }
@@ -86,12 +91,13 @@ class TelemetryNotifier extends StateNotifier<Telemetry> {
         // Battery update - {'level': 95, 'charging': true, 'voltage': 16.6}
         final level = (event.data['level'] as num?)?.toDouble();
         final charging = event.data['charging'] as bool?;
-        print('Battery event: level=$level, charging=$charging');
+        print('BATTERY EVENT RECEIVED: level=$level, charging=$charging, raw=${event.data}');
         if (level != null) {
           state = state.copyWith(
             battery: level,
             isCharging: charging ?? state.isCharging,
           );
+          print('BATTERY STATE UPDATED: battery=${state.battery}, isCharging=${state.isCharging}');
         }
         break;
 
