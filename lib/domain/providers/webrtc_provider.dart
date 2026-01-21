@@ -190,18 +190,12 @@ class WebRTCNotifier extends StateNotifier<WebRTCConnectionState> {
         print('WebRTC: ICE state: $iceState');
       };
 
-      // Handle incoming data channel from robot
+      // Handle incoming data channel from robot (use this one for sending)
       _peerConnection!.onDataChannel = (RTCDataChannel channel) {
-        print('WebRTC: Received data channel: ${channel.label}');
+        print('WebRTC: Received data channel from robot: ${channel.label}');
+        _dataChannel = channel;  // Store the robot's channel
         _setupDataChannel(channel);
       };
-
-      // Create our own data channel for sending commands
-      final channelInit = RTCDataChannelInit()
-        ..ordered = false  // UDP-like, low latency
-        ..maxRetransmits = 0;  // No retries for real-time control
-      _dataChannel = await _peerConnection!.createDataChannel('control', channelInit);
-      _setupDataChannel(_dataChannel!);
 
       print('WebRTC: Peer connection created, waiting for offer');
     } catch (e) {
@@ -276,12 +270,14 @@ class WebRTCNotifier extends StateNotifier<WebRTCConnectionState> {
   /// Setup data channel event handlers
   void _setupDataChannel(RTCDataChannel channel) {
     channel.onDataChannelState = (RTCDataChannelState dcState) {
-      print('WebRTC: Data channel state: $dcState');
+      print('WebRTC: Data channel "${channel.label}" state: $dcState');
       _dataChannelOpen = dcState == RTCDataChannelState.RTCDataChannelOpen;
+      if (_dataChannelOpen) {
+        print('WebRTC: Data channel READY for motor commands');
+      }
     };
 
     channel.onMessage = (RTCDataChannelMessage message) {
-      // Handle incoming messages from robot if needed
       print('WebRTC: Data channel message: ${message.text}');
     };
   }
@@ -289,6 +285,7 @@ class WebRTCNotifier extends StateNotifier<WebRTCConnectionState> {
   /// Send motor command via WebRTC data channel (low latency)
   void sendMotorCommand(double left, double right) {
     if (!_dataChannelOpen || _dataChannel == null) {
+      print('WebRTC: Cannot send motor - channel not open (open=$_dataChannelOpen, channel=${_dataChannel != null})');
       return;
     }
 
@@ -297,6 +294,7 @@ class WebRTCNotifier extends StateNotifier<WebRTCConnectionState> {
       'left': left,
       'right': right,
     });
+    print('WebRTC DATA SEND: $json');
     _dataChannel!.send(RTCDataChannelMessage(json));
   }
 
