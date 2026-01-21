@@ -14,7 +14,7 @@ build/
 
 # macOS
 .DS_Store
-*.plist
+#*.plist
 
 # Android
 **/android/**/gradle-wrapper.jar
