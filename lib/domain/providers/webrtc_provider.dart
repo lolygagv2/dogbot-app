@@ -1,9 +1,9 @@
 import 'dart:async';
+import 'dart:convert';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_webrtc/flutter_webrtc.dart';
 
 import '../../core/network/websocket_client.dart';
-import 'connection_provider.dart';
 
 /// WebRTC connection state
 enum WebRTCState { disconnected, connecting, connected, error }
@@ -55,8 +55,13 @@ class WebRTCNotifier extends StateNotifier<WebRTCConnectionState> {
   final Ref _ref;
   RTCPeerConnection? _peerConnection;
   RTCVideoRenderer? _renderer;
+  RTCDataChannel? _dataChannel;
   final List<StreamSubscription> _subscriptions = [];
   bool _rendererInitialized = false;
+  bool _dataChannelOpen = false;
+
+  /// Whether the data channel is ready for sending
+  bool get isDataChannelOpen => _dataChannelOpen;
 
   WebRTCNotifier(this._ref) : super(const WebRTCConnectionState()) {
     _setupWebSocketListeners();
@@ -185,6 +190,19 @@ class WebRTCNotifier extends StateNotifier<WebRTCConnectionState> {
         print('WebRTC: ICE state: $iceState');
       };
 
+      // Handle incoming data channel from robot
+      _peerConnection!.onDataChannel = (RTCDataChannel channel) {
+        print('WebRTC: Received data channel: ${channel.label}');
+        _setupDataChannel(channel);
+      };
+
+      // Create our own data channel for sending commands
+      final channelInit = RTCDataChannelInit()
+        ..ordered = false  // UDP-like, low latency
+        ..maxRetransmits = 0;  // No retries for real-time control
+      _dataChannel = await _peerConnection!.createDataChannel('control', channelInit);
+      _setupDataChannel(_dataChannel!);
+
       print('WebRTC: Peer connection created, waiting for offer');
     } catch (e) {
       print('WebRTC: Error creating peer connection: $e');
@@ -255,6 +273,43 @@ class WebRTCNotifier extends StateNotifier<WebRTCConnectionState> {
     }
   }
 
+  /// Setup data channel event handlers
+  void _setupDataChannel(RTCDataChannel channel) {
+    channel.onDataChannelState = (RTCDataChannelState dcState) {
+      print('WebRTC: Data channel state: $dcState');
+      _dataChannelOpen = dcState == RTCDataChannelState.RTCDataChannelOpen;
+    };
+
+    channel.onMessage = (RTCDataChannelMessage message) {
+      // Handle incoming messages from robot if needed
+      print('WebRTC: Data channel message: ${message.text}');
+    };
+  }
+
+  /// Send motor command via WebRTC data channel (low latency)
+  void sendMotorCommand(double left, double right) {
+    if (!_dataChannelOpen || _dataChannel == null) {
+      return;
+    }
+
+    final json = jsonEncode({
+      'command': 'motor',
+      'left': left,
+      'right': right,
+    });
+    _dataChannel!.send(RTCDataChannelMessage(json));
+  }
+
+  /// Send emergency stop via data channel
+  void sendEmergencyStop() {
+    if (!_dataChannelOpen || _dataChannel == null) {
+      return;
+    }
+
+    final json = jsonEncode({'command': 'emergency_stop'});
+    _dataChannel!.send(RTCDataChannelMessage(json));
+  }
+
   /// Close the WebRTC connection
   Future<void> close() async {
     if (state.sessionId != null) {
@@ -264,6 +319,10 @@ class WebRTCNotifier extends StateNotifier<WebRTCConnectionState> {
         'session_id': state.sessionId,
       });
     }
+
+    _dataChannel?.close();
+    _dataChannel = null;
+    _dataChannelOpen = false;
 
     await _peerConnection?.close();
     _peerConnection = null;

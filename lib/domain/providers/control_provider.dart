@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/constants/app_constants.dart';
 import '../../core/network/websocket_client.dart';
 import 'connection_provider.dart';
+import 'webrtc_provider.dart';
 
 /// Motor control state
 class MotorState {
@@ -70,7 +71,13 @@ class MotorControlNotifier extends StateNotifier<MotorState> {
     _sendTimer?.cancel();
 
     if (_ref.read(connectionProvider).isConnected) {
-      _ref.read(websocketClientProvider).sendEmergencyStop();
+      // Send via WebRTC for lowest latency, fallback to WebSocket
+      final webrtc = _ref.read(webrtcProvider.notifier);
+      if (webrtc.isDataChannelOpen) {
+        webrtc.sendEmergencyStop();
+      } else {
+        _ref.read(websocketClientProvider).sendEmergencyStop();
+      }
     }
   }
 
@@ -89,8 +96,11 @@ class MotorControlNotifier extends StateNotifier<MotorState> {
   void _sendCommand() {
     if (!_ref.read(connectionProvider).isConnected) return;
 
-    // Use WebSocket for lowest latency
-    _ref.read(websocketClientProvider).sendMotorCommand(state.left, state.right);
+    // Use WebRTC data channel for lowest latency (direct to robot)
+    final webrtc = _ref.read(webrtcProvider.notifier);
+    if (webrtc.isDataChannelOpen) {
+      webrtc.sendMotorCommand(state.left, state.right);
+    }
   }
 
   @override
@@ -126,18 +136,27 @@ class ServoControlNotifier extends StateNotifier<ServoState> {
   final Ref _ref;
   Timer? _sendTimer;
   bool _hasPendingCommand = false;
+  bool _isActive = false;  // Track if joystick is being actively moved
 
   ServoControlNotifier(this._ref) : super(const ServoState());
 
-  /// Set pan/tilt from control input
+  /// Set pan/tilt from control input (only sends while active)
   void setPosition(double pan, double tilt) {
     state = ServoState(
       pan: pan.clamp(-AppConstants.maxPanAngle, AppConstants.maxPanAngle),
       tilt: tilt.clamp(-AppConstants.maxTiltAngle, AppConstants.maxTiltAngle),
     );
 
+    _isActive = true;
     _hasPendingCommand = true;
     _ensureSendTimer();
+  }
+
+  /// Stop sending commands (joystick released)
+  void stopTracking() {
+    _isActive = false;
+    _hasPendingCommand = false;
+    // Don't send anything on release - position stays where it was
   }
 
   /// Adjust pan by delta
@@ -150,7 +169,7 @@ class ServoControlNotifier extends StateNotifier<ServoState> {
     setPosition(state.pan, state.tilt + delta);
   }
 
-  /// Center camera
+  /// Center camera (explicit button press)
   void center() {
     state = const ServoState(pan: 0, tilt: 0);
 
@@ -163,7 +182,7 @@ class ServoControlNotifier extends StateNotifier<ServoState> {
     if (_sendTimer != null) return;
 
     _sendTimer = Timer.periodic(AppConstants.joystickSendInterval, (_) {
-      if (_hasPendingCommand) {
+      if (_hasPendingCommand && _isActive) {
         _sendCommand();
         _hasPendingCommand = false;
       }

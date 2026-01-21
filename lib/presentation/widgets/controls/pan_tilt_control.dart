@@ -38,6 +38,7 @@ class PanTiltControl extends ConsumerWidget {
             final tilt = -details.y * AppConstants.maxTiltAngle;
             servoControl.setPosition(pan, tilt);
           },
+          onStickDragEnd: () => servoControl.stopTracking(),
         ),
         const SizedBox(height: 8),
         Row(
