@@ -112,6 +112,24 @@ class WebRTCNotifier extends StateNotifier<WebRTCConnectionState> {
         _scheduleReconnect();
       }),
     );
+
+    // Listen for device status changes - auto-request video when device comes online
+    _subscriptions.add(
+      wsClient.deviceStatusStream.listen((message) {
+        final status = message['status'] as String? ?? message['online'] as String?;
+        final isOnline = status == 'online' || message['online'] == true;
+        final deviceId = message['device_id'] as String?;
+
+        print('WebRTC: Device status - online=$isOnline, deviceId=$deviceId');
+
+        // If device came online and we have a stored device ID, auto-reconnect
+        if (isOnline && _lastDeviceId != null && state.state != WebRTCState.connected) {
+          print('WebRTC: Device came online, requesting video stream');
+          _reconnectAttempts = 0;  // Reset attempts for fresh connection
+          requestVideoStream(_lastDeviceId!);
+        }
+      }),
+    );
   }
 
   /// Get the video renderer (initialize if needed)
@@ -358,19 +376,38 @@ class WebRTCNotifier extends StateNotifier<WebRTCConnectionState> {
   /// Internal close without clearing device ID (for reconnect)
   Future<void> _closeInternal() async {
     if (state.sessionId != null) {
-      final wsClient = _ref.read(websocketClientProvider);
-      wsClient.send({
-        'type': 'webrtc_close',
-        'session_id': state.sessionId,
-      });
+      try {
+        final wsClient = _ref.read(websocketClientProvider);
+        wsClient.send({
+          'type': 'webrtc_close',
+          'session_id': state.sessionId,
+        });
+      } catch (e) {
+        print('WebRTC: Error sending close message: $e');
+      }
     }
 
-    _dataChannel?.close();
-    _dataChannel = null;
+    // Close data channel with null check and error handling
+    if (_dataChannel != null) {
+      try {
+        _dataChannel!.close();
+      } catch (e) {
+        print('WebRTC: Error closing data channel: $e');
+      }
+      _dataChannel = null;
+    }
     _dataChannelOpen = false;
 
-    await _peerConnection?.close();
-    _peerConnection = null;
+    // Close peer connection with null check and error handling
+    if (_peerConnection != null) {
+      try {
+        await _peerConnection!.close();
+      } catch (e) {
+        print('WebRTC: Error closing peer connection: $e');
+      }
+      _peerConnection = null;
+    }
+
     _renderer?.srcObject = null;
 
     state = state.copyWith(

@@ -25,9 +25,23 @@ class WsEvent {
   factory WsEvent.fromJson(Map<String, dynamic> json) {
     // Use 'type' as primary, fall back to 'event' for backward compatibility
     final messageType = json['type'] as String? ?? json['event'] as String?;
+
+    // Data can be nested in 'data' field OR at top level
+    // Robot sends: {"type": "battery", "level": 95, "charging": true}
+    // Or relay sends: {"type": "battery", "data": {"level": 95, "charging": true}}
+    Map<String, dynamic> eventData;
+    if (json.containsKey('data') && json['data'] is Map) {
+      eventData = json['data'] as Map<String, dynamic>;
+    } else {
+      // Use entire message as data (excluding type/event fields)
+      eventData = Map<String, dynamic>.from(json)
+        ..remove('type')
+        ..remove('event');
+    }
+
     return WsEvent(
       type: messageType ?? 'unknown',
-      data: json['data'] as Map<String, dynamic>? ?? {},
+      data: eventData,
     );
   }
 }
@@ -67,6 +81,10 @@ class WebSocketClient {
   final _webrtcCloseController =
       StreamController<Map<String, dynamic>>.broadcast();
 
+  // Device status stream (for auto-reconnect when device comes online)
+  final _deviceStatusController =
+      StreamController<Map<String, dynamic>>.broadcast();
+
   Stream<Map<String, dynamic>> get webrtcCredentialsStream =>
       _webrtcCredentialsController.stream;
   Stream<Map<String, dynamic>> get webrtcOfferStream =>
@@ -75,6 +93,8 @@ class WebSocketClient {
       _webrtcIceController.stream;
   Stream<Map<String, dynamic>> get webrtcCloseStream =>
       _webrtcCloseController.stream;
+  Stream<Map<String, dynamic>> get deviceStatusStream =>
+      _deviceStatusController.stream;
 
   /// Connect to WebSocket server
   Future<void> connect(String url) async {
@@ -139,17 +159,23 @@ class WebSocketClient {
           _webrtcCloseController.add(json);
           break;
 
+        // Device status - emit to dedicated stream AND event stream
+        case 'device_status':
+          _deviceStatusController.add(json);
+          final event = WsEvent.fromJson(json);
+          _eventController.add(event);
+          break;
+
         // Robot events - forward to event stream
         case 'telemetry':
         case 'status':
         case 'robot_status':
-        case 'device_status':
         case 'detection':
         case 'battery':
         case 'mode':
         case 'treat':
-          final event = WsEvent.fromJson(json);
-          _eventController.add(event);
+          final statusEvent = WsEvent.fromJson(json);
+          _eventController.add(statusEvent);
           break;
 
         // Error messages - only log critical ones
@@ -358,5 +384,6 @@ class WebSocketClient {
     _webrtcOfferController.close();
     _webrtcIceController.close();
     _webrtcCloseController.close();
+    _deviceStatusController.close();
   }
 }

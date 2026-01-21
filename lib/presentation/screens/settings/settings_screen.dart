@@ -37,14 +37,19 @@ class SettingsScreen extends ConsumerWidget {
           
           _SectionHeader('Robot Status'),
           ListTile(
-            leading: const Icon(Icons.battery_full),
+            leading: Icon(
+              telemetry.isCharging ? Icons.battery_charging_full : Icons.battery_full,
+              color: telemetry.battery > 20 ? Colors.green : Colors.red,
+            ),
             title: const Text('Battery'),
-            trailing: Text('${telemetry.battery.toInt()}%'),
+            trailing: Text(
+              '${telemetry.battery.toInt()}%${telemetry.isCharging ? ' ⚡' : ''}',
+            ),
           ),
           ListTile(
             leading: const Icon(Icons.thermostat),
             title: const Text('Temperature'),
-            trailing: Text('${telemetry.temperature.toInt()}C'),
+            trailing: Text(telemetry.temperature > 0 ? '${telemetry.temperature.toInt()}°C' : 'N/A'),
           ),
           ListTile(
             leading: const Icon(Icons.cookie),
