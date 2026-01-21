@@ -20,6 +20,8 @@ class WebRTCVideoView extends ConsumerStatefulWidget {
 
 class _WebRTCVideoViewState extends ConsumerState<WebRTCVideoView> {
   bool _requestSent = false;
+  RTCVideoRenderer? _currentRenderer;
+  bool _hasFirstFrame = false;
 
   @override
   void initState() {
@@ -38,9 +40,42 @@ class _WebRTCVideoViewState extends ConsumerState<WebRTCVideoView> {
     ref.read(webrtcProvider.notifier).requestVideoStream(deviceId);
   }
 
+  void _setupRendererListener(RTCVideoRenderer renderer) {
+    if (_currentRenderer == renderer) return;
+
+    // Remove old listener
+    _currentRenderer?.removeListener(_onRendererChanged);
+
+    // Add new listener
+    _currentRenderer = renderer;
+    _hasFirstFrame = false;
+    renderer.addListener(_onRendererChanged);
+
+    // Also set up onFirstFrameRendered callback
+    renderer.onFirstFrameRendered = () {
+      print('WebRTC Widget: First frame rendered!');
+      _hasFirstFrame = true;
+      if (mounted) setState(() {});
+    };
+  }
+
+  void _onRendererChanged() {
+    // Renderer notifies when video dimensions change
+    if (mounted && _currentRenderer != null) {
+      final w = _currentRenderer!.videoWidth;
+      final h = _currentRenderer!.videoHeight;
+      print('WebRTC Widget: Renderer changed, size=${w}x$h');
+      if (w > 0 && h > 0) {
+        setState(() {
+          _hasFirstFrame = true;
+        });
+      }
+    }
+  }
+
   @override
   void dispose() {
-    // Don't close connection on dispose - let the provider manage lifecycle
+    _currentRenderer?.removeListener(_onRendererChanged);
     super.dispose();
   }
 
@@ -137,19 +172,61 @@ class _WebRTCVideoViewState extends ConsumerState<WebRTCVideoView> {
       return _buildLoading('Initializing renderer...');
     }
 
+    // Set up listener for dimension changes
+    _setupRendererListener(renderer);
+
+    final w = renderer.videoWidth;
+    final h = renderer.videoHeight;
+
     // Debug: log renderer state
-    print('WebRTC Widget: renderer srcObject=${renderer.srcObject != null}, size=${renderer.videoWidth}x${renderer.videoHeight}');
+    print('WebRTC Widget: srcObject=${renderer.srcObject != null}, size=${w}x$h, hasFirstFrame=$_hasFirstFrame');
 
     if (renderer.srcObject == null) {
       return _buildLoading('Waiting for video stream...');
     }
 
+    // Show loading until we have valid dimensions
+    if (w == 0 || h == 0) {
+      return Stack(
+        children: [
+          // Keep RTCVideoView in tree so it can receive frames
+          Positioned.fill(
+            child: RTCVideoView(
+              renderer,
+              objectFit: RTCVideoViewObjectFit.RTCVideoViewObjectFitContain,
+              mirror: false,
+            ),
+          ),
+          // Overlay loading indicator
+          Container(
+            color: Colors.black87,
+            child: const Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  CircularProgressIndicator(color: AppTheme.primary),
+                  SizedBox(height: 16),
+                  Text(
+                    'Receiving video...',
+                    style: TextStyle(color: AppTheme.textSecondary),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      );
+    }
+
+    // Video is ready - display it with proper sizing
     return Container(
       color: Colors.black,
-      child: RTCVideoView(
-        renderer,
-        objectFit: RTCVideoViewObjectFit.RTCVideoViewObjectFitContain,
-        mirror: false,  // Don't mirror remote video
+      child: SizedBox.expand(
+        child: RTCVideoView(
+          renderer,
+          objectFit: RTCVideoViewObjectFit.RTCVideoViewObjectFitContain,
+          mirror: false,
+        ),
       ),
     );
   }
