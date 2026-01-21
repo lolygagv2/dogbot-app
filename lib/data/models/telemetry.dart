@@ -25,8 +25,21 @@ class Telemetry with _$Telemetry {
 
   /// Create from API response which may have nested structure
   factory Telemetry.fromApiResponse(Map<String, dynamic> json) {
+    // Handle battery as either a number or nested object {'level': 95, 'charging': false, 'voltage': 16.6}
+    double batteryLevel = 0.0;
+    bool isCharging = false;
+    final batteryData = json['battery'];
+    if (batteryData is num) {
+      batteryLevel = batteryData.toDouble();
+    } else if (batteryData is Map) {
+      batteryLevel = (batteryData['level'] as num?)?.toDouble() ?? 0.0;
+      isCharging = batteryData['charging'] as bool? ?? false;
+    }
+    // Also check top-level charging flag
+    isCharging = isCharging || (json['is_charging'] as bool? ?? json['charging'] as bool? ?? false);
+
     return Telemetry(
-      battery: (json['battery'] as num?)?.toDouble() ?? 0.0,
+      battery: batteryLevel,
       temperature: (json['temperature'] as num?)?.toDouble() ??
           (json['temp'] as num?)?.toDouble() ??
           0.0,
@@ -37,7 +50,7 @@ class Telemetry with _$Telemetry {
       currentBehavior:
           json['current_behavior'] as String? ?? json['behavior'] as String?,
       confidence: (json['confidence'] as num?)?.toDouble(),
-      isCharging: json['is_charging'] as bool? ?? json['charging'] as bool? ?? false,
+      isCharging: isCharging,
       treatsRemaining: json['treats_remaining'] as int? ??
           json['treatsRemaining'] as int? ??
           0,

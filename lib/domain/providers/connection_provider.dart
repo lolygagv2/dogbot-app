@@ -73,6 +73,10 @@ final connectionProvider =
 class ConnectionNotifier extends StateNotifier<ConnectionState> {
   final Ref _ref;
   StreamSubscription? _wsSubscription;
+  Timer? _reconnectTimer;
+  int _reconnectAttempts = 0;
+  static const int _maxReconnectAttempts = 10;
+  static const Duration _reconnectDelay = Duration(seconds: 3);
 
   ConnectionNotifier(this._ref) : super(const ConnectionState()) {
     _loadSavedConnection();
@@ -137,16 +141,31 @@ class ConnectionNotifier extends StateNotifier<ConnectionState> {
       print('Connecting WebSocket to: $wsUrl');
       await ws.connect(wsUrl);
 
-      // Listen for WebSocket state changes
+      // Listen for WebSocket state changes and auto-reconnect
       _wsSubscription?.cancel();
       _wsSubscription = ws.stateStream.listen((wsState) {
-        if (wsState == WsConnectionState.error ||
+        if (wsState == WsConnectionState.connected) {
+          // Reset reconnect attempts on successful connection
+          _reconnectAttempts = 0;
+          _reconnectTimer?.cancel();
+          if (state.status != ConnectionStatus.connected) {
+            state = state.copyWith(
+              status: ConnectionStatus.connected,
+              errorMessage: null,
+            );
+          }
+        } else if (wsState == WsConnectionState.reconnecting) {
+          // WebSocket is auto-reconnecting internally
+          print('Connection: WebSocket reconnecting...');
+        } else if (wsState == WsConnectionState.error ||
             wsState == WsConnectionState.disconnected) {
           if (state.status == ConnectionStatus.connected) {
+            print('Connection: Lost connection, will auto-reconnect');
             state = state.copyWith(
               status: ConnectionStatus.error,
-              errorMessage: 'WebSocket disconnected',
+              errorMessage: 'Lost connection to device',
             );
+            _scheduleReconnect();
           }
         }
       });
@@ -167,6 +186,8 @@ class ConnectionNotifier extends StateNotifier<ConnectionState> {
 
   /// Disconnect from robot
   Future<void> disconnect() async {
+    _reconnectTimer?.cancel();
+    _reconnectAttempts = 0;
     _wsSubscription?.cancel();
     await _ref.read(websocketClientProvider).disconnect();
     state = state.copyWith(
@@ -183,6 +204,29 @@ class ConnectionNotifier extends StateNotifier<ConnectionState> {
     return false;
   }
 
+  /// Schedule auto-reconnect with exponential backoff
+  void _scheduleReconnect() {
+    if (_reconnectAttempts >= _maxReconnectAttempts) {
+      print('Connection: Max reconnect attempts reached');
+      return;
+    }
+
+    _reconnectTimer?.cancel();
+    _reconnectAttempts++;
+
+    final delay = Duration(
+      milliseconds: _reconnectDelay.inMilliseconds * _reconnectAttempts,
+    );
+
+    print('Connection: Reconnecting in ${delay.inSeconds}s (attempt $_reconnectAttempts/$_maxReconnectAttempts)');
+
+    _reconnectTimer = Timer(delay, () async {
+      if (state.host != null && state.status != ConnectionStatus.connected) {
+        await reconnect();
+      }
+    });
+  }
+
   /// Enable demo mode - simulate connected state without real robot
   void enableDemoMode() {
     state = state.copyWith(
@@ -197,6 +241,7 @@ class ConnectionNotifier extends StateNotifier<ConnectionState> {
   @override
   void dispose() {
     _wsSubscription?.cancel();
+    _reconnectTimer?.cancel();
     super.dispose();
   }
 }

@@ -59,6 +59,11 @@ class WebRTCNotifier extends StateNotifier<WebRTCConnectionState> {
   final List<StreamSubscription> _subscriptions = [];
   bool _rendererInitialized = false;
   bool _dataChannelOpen = false;
+  String? _lastDeviceId;  // Store for auto-reconnect
+  Timer? _reconnectTimer;
+  int _reconnectAttempts = 0;
+  static const int _maxReconnectAttempts = 5;
+  static const Duration _reconnectDelay = Duration(seconds: 3);
 
   /// Whether the data channel is ready for sending
   bool get isDataChannelOpen => _dataChannelOpen;
@@ -99,10 +104,12 @@ class WebRTCNotifier extends StateNotifier<WebRTCConnectionState> {
       }),
     );
 
-    // Listen for close messages
+    // Listen for close messages (robot disconnected) - auto-reconnect
     _subscriptions.add(
-      wsClient.webrtcCloseStream.listen((message) {
-        close();
+      wsClient.webrtcCloseStream.listen((message) async {
+        print('WebRTC: Received close from relay, will auto-reconnect');
+        await _closeInternal();
+        _scheduleReconnect();
       }),
     );
   }
@@ -120,6 +127,10 @@ class WebRTCNotifier extends StateNotifier<WebRTCConnectionState> {
 
   /// Request video stream from robot
   Future<void> requestVideoStream(String deviceId) async {
+    _lastDeviceId = deviceId;  // Store for auto-reconnect
+    _reconnectAttempts = 0;
+    _reconnectTimer?.cancel();
+
     state = state.copyWith(state: WebRTCState.connecting, errorMessage: null);
 
     // Ensure renderer is initialized
@@ -172,7 +183,7 @@ class WebRTCNotifier extends StateNotifier<WebRTCConnectionState> {
         });
       };
 
-      // Handle connection state changes
+      // Handle connection state changes and auto-reconnect
       _peerConnection!.onConnectionState = (RTCPeerConnectionState connState) {
         print('WebRTC: Connection state: $connState');
         if (connState == RTCPeerConnectionState.RTCPeerConnectionStateFailed ||
@@ -182,6 +193,12 @@ class WebRTCNotifier extends StateNotifier<WebRTCConnectionState> {
             state: WebRTCState.error,
             errorMessage: 'Connection failed',
           );
+          // Auto-reconnect if we have a device ID
+          _scheduleReconnect();
+        } else if (connState == RTCPeerConnectionState.RTCPeerConnectionStateConnected) {
+          // Reset reconnect attempts on successful connection
+          _reconnectAttempts = 0;
+          _reconnectTimer?.cancel();
         }
       };
 
@@ -308,8 +325,38 @@ class WebRTCNotifier extends StateNotifier<WebRTCConnectionState> {
     _dataChannel!.send(RTCDataChannelMessage(json));
   }
 
-  /// Close the WebRTC connection
-  Future<void> close() async {
+  /// Schedule auto-reconnect with exponential backoff
+  void _scheduleReconnect() {
+    if (_lastDeviceId == null) {
+      print('WebRTC: No device ID for reconnect');
+      return;
+    }
+    if (_reconnectAttempts >= _maxReconnectAttempts) {
+      print('WebRTC: Max reconnect attempts reached');
+      return;
+    }
+
+    _reconnectTimer?.cancel();
+    _reconnectAttempts++;
+
+    final delay = Duration(
+      milliseconds: _reconnectDelay.inMilliseconds * _reconnectAttempts,
+    );
+
+    print('WebRTC: Auto-reconnecting in ${delay.inSeconds}s (attempt $_reconnectAttempts/$_maxReconnectAttempts)');
+
+    _reconnectTimer = Timer(delay, () async {
+      if (_lastDeviceId != null && state.state != WebRTCState.connected) {
+        // Close existing connection cleanly
+        await _closeInternal();
+        // Request new session
+        await requestVideoStream(_lastDeviceId!);
+      }
+    });
+  }
+
+  /// Internal close without clearing device ID (for reconnect)
+  Future<void> _closeInternal() async {
     if (state.sessionId != null) {
       final wsClient = _ref.read(websocketClientProvider);
       wsClient.send({
@@ -332,8 +379,17 @@ class WebRTCNotifier extends StateNotifier<WebRTCConnectionState> {
     );
   }
 
+  /// Close the WebRTC connection (manual close - stops auto-reconnect)
+  Future<void> close() async {
+    _reconnectTimer?.cancel();
+    _reconnectAttempts = 0;
+    _lastDeviceId = null;  // Clear to prevent auto-reconnect
+    await _closeInternal();
+  }
+
   @override
   void dispose() {
+    _reconnectTimer?.cancel();
     for (final sub in _subscriptions) {
       sub.cancel();
     }
