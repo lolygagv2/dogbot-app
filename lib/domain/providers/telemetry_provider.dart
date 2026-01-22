@@ -41,8 +41,21 @@ class TelemetryNotifier extends StateNotifier<Telemetry> {
       case 'telemetry':
       case 'status':
       case 'robot_status':
-        // Full status update - may include battery
-        state = Telemetry.fromApiResponse(event.data);
+        // Full status update - parse but preserve existing battery if not in this event
+        final parsed = Telemetry.fromApiResponse(event.data);
+        state = state.copyWith(
+          // Only update battery if parsed value is non-zero (was actually in the data)
+          battery: parsed.battery > 0 ? parsed.battery : state.battery,
+          temperature: parsed.temperature > 0 ? parsed.temperature : state.temperature,
+          mode: parsed.mode,
+          dogDetected: parsed.dogDetected,
+          currentBehavior: parsed.currentBehavior,
+          confidence: parsed.confidence,
+          isCharging: parsed.battery > 0 ? parsed.isCharging : state.isCharging,
+          treatsRemaining: parsed.treatsRemaining > 0 ? parsed.treatsRemaining : state.treatsRemaining,
+          activeMissionId: parsed.activeMissionId,
+          rawData: parsed.rawData,
+        );
         print('Telemetry updated: battery=${state.battery}, charging=${state.isCharging}');
         break;
 
