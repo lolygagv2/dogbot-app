@@ -30,6 +30,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     super.initState();
     _hostController.text = AppConstants.defaultHost;
     _portController.text = AppConstants.defaultPort.toString();
+    // Default test credentials
+    _emailController.text = 'test@wimz.com';
+    _passwordController.text = 'test1234';
   }
 
   @override

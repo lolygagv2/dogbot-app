@@ -14,7 +14,7 @@ class AppConstants {
 
   // Default server config
   static const int defaultPort = 8000;
-  static const String defaultHost = '192.168.1.50';
+  static const String defaultHost = 'api.wimzai.com';
 
   // UI constants
   static const double joystickSize = 200.0;
