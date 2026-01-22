@@ -145,6 +145,14 @@ class WebRTCNotifier extends StateNotifier<WebRTCConnectionState> {
 
   /// Request video stream from robot
   Future<void> requestVideoStream(String deviceId) async {
+    // Skip if already connected (prevents duplicate requests from multiple widgets)
+    if (_peerConnection != null &&
+        _peerConnection!.connectionState ==
+            RTCPeerConnectionState.RTCPeerConnectionStateConnected) {
+      print('WebRTC: Already connected, skipping request');
+      return;
+    }
+
     _lastDeviceId = deviceId;  // Store for auto-reconnect
     _reconnectAttempts = 0;
     _reconnectTimer?.cancel();
