@@ -404,36 +404,25 @@ class WebRTCNotifier extends StateNotifier<WebRTCConnectionState> {
       }
     }
 
-    // Close data channel with null check and error handling
-    // Must close data channel BEFORE peer connection
-    final dc = _dataChannel;
-    _dataChannel = null;
+    // Close data channel first (before peer connection)
+    if (_dataChannel != null) {
+      try {
+        await _dataChannel!.close();
+      } catch (_) {
+        // Ignore - already closed or peer connection null
+      }
+      _dataChannel = null;
+    }
     _dataChannelOpen = false;
 
-    if (dc != null) {
+    // Close peer connection
+    if (_peerConnection != null) {
       try {
-        // Only close if not already closed
-        if (dc.state != RTCDataChannelState.RTCDataChannelClosed &&
-            dc.state != RTCDataChannelState.RTCDataChannelClosing) {
-          dc.close();
-        }
-      } catch (e) {
-        // Ignore errors - channel may already be closed
-        print('WebRTC: Data channel close (ignored): $e');
+        await _peerConnection!.close();
+      } catch (_) {
+        // Ignore - already closed
       }
-    }
-
-    // Close peer connection with null check and error handling
-    final pc = _peerConnection;
-    _peerConnection = null;
-
-    if (pc != null) {
-      try {
-        await pc.close();
-      } catch (e) {
-        // Ignore errors - connection may already be closed
-        print('WebRTC: Peer connection close (ignored): $e');
-      }
+      _peerConnection = null;
     }
 
     _renderer?.srcObject = null;
