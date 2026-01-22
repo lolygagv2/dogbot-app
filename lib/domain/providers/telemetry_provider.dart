@@ -83,16 +83,20 @@ class TelemetryNotifier extends StateNotifier<Telemetry> {
         break;
 
       case 'battery':
-        // Battery update - {'level': 95, 'charging': true, 'voltage': 16.6}
+        // Battery update - {'level': 95, 'charging': true, 'voltage': 16.6, 'temperature': 73.25, 'treats_today': 0}
         final level = (event.data['level'] as num?)?.toDouble();
         final charging = event.data['charging'] as bool?;
-        print('BATTERY EVENT RECEIVED: level=$level, charging=$charging, raw=${event.data}');
+        final temp = (event.data['temperature'] as num?)?.toDouble();
+        final treats = event.data['treats_today'] as int?;
+        print('BATTERY EVENT RECEIVED: level=$level, charging=$charging, temp=$temp, treats=$treats');
         if (level != null) {
           state = state.copyWith(
             battery: level,
             isCharging: charging ?? state.isCharging,
+            temperature: temp ?? state.temperature,
+            treatsRemaining: treats ?? state.treatsRemaining,
           );
-          print('BATTERY STATE UPDATED: battery=${state.battery}, isCharging=${state.isCharging}');
+          print('STATE UPDATED: battery=${state.battery}, temp=${state.temperature}, treats=${state.treatsRemaining}');
         }
         break;
 
@@ -109,17 +113,21 @@ class TelemetryNotifier extends StateNotifier<Telemetry> {
     }
   }
 
-  /// Extract battery data from any event - robot sends it in various formats
+  /// Extract telemetry data from any event - robot sends it in various formats
   void _extractBatteryFromAnyEvent(Map<String, dynamic> data) {
-    // Format 1: {'level': 96, 'charging': true, 'voltage': 16.6}
+    // Format 1: {'level': 96, 'charging': true, 'voltage': 16.6, 'temperature': 73.25, 'treats_today': 0}
     if (data.containsKey('level')) {
       final level = (data['level'] as num?)?.toDouble();
       final charging = data['charging'] as bool?;
+      final temp = (data['temperature'] as num?)?.toDouble();
+      final treats = data['treats_today'] as int?;
       if (level != null) {
-        print('BATTERY EXTRACTED (level key): level=$level, charging=$charging');
+        print('TELEMETRY EXTRACTED (level key): level=$level, charging=$charging, temp=$temp, treats=$treats');
         state = state.copyWith(
           battery: level,
           isCharging: charging ?? state.isCharging,
+          temperature: temp ?? state.temperature,
+          treatsRemaining: treats ?? state.treatsRemaining,
         );
       }
       return;
@@ -130,11 +138,15 @@ class TelemetryNotifier extends StateNotifier<Telemetry> {
     if (batteryData is Map) {
       final level = (batteryData['level'] as num?)?.toDouble();
       final charging = batteryData['charging'] as bool?;
+      final temp = (batteryData['temperature'] as num?)?.toDouble();
+      final treats = batteryData['treats_today'] as int?;
       if (level != null) {
-        print('BATTERY EXTRACTED (nested): level=$level, charging=$charging');
+        print('TELEMETRY EXTRACTED (nested): level=$level, temp=$temp');
         state = state.copyWith(
           battery: level,
           isCharging: charging ?? state.isCharging,
+          temperature: temp ?? state.temperature,
+          treatsRemaining: treats ?? state.treatsRemaining,
         );
       }
       return;
