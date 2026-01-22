@@ -4,7 +4,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/network/websocket_client.dart';
 import '../../data/models/telemetry.dart';
-import 'connection_provider.dart';
 
 /// Provider for current telemetry data
 final telemetryProvider =
@@ -19,32 +18,12 @@ class TelemetryNotifier extends StateNotifier<Telemetry> {
   StreamSubscription? _wsSubscription;
 
   TelemetryNotifier(this._ref) : super(const Telemetry()) {
-    print('TelemetryNotifier: Created');
+    print('TelemetryNotifier: Created, subscribing to events immediately');
 
-    // Watch connection state
-    _ref.listen<ConnectionState>(connectionProvider, (prev, next) {
-      print('TelemetryNotifier: Connection changed - isConnected=${next.isConnected}');
-      if (next.isConnected && prev?.isConnected != true) {
-        _startListening();
-      } else if (!next.isConnected) {
-        _stopListening();
-      }
-    });
-
-    // Start if already connected
-    final isConnected = _ref.read(connectionProvider).isConnected;
-    print('TelemetryNotifier: Initial connection state - isConnected=$isConnected');
-    if (isConnected) {
-      _startListening();
-    }
-  }
-
-  void _startListening() {
-    // All telemetry comes via WebSocket events from relay
-    _wsSubscription?.cancel();
-    _wsSubscription =
-        _ref.read(websocketClientProvider).eventStream.listen(_handleWsEvent);
-    print('Telemetry: listening via WebSocket');
+    // Always subscribe to WebSocket events - process them when they arrive
+    final wsClient = _ref.read(websocketClientProvider);
+    _wsSubscription = wsClient.eventStream.listen(_handleWsEvent);
+    print('TelemetryNotifier: Subscribed to eventStream');
   }
 
   void _stopListening() {
@@ -107,6 +86,10 @@ class TelemetryNotifier extends StateNotifier<Telemetry> {
           mode: event.data['mode'] as String? ?? state.mode,
         );
         break;
+
+      default:
+        // Log unhandled event types to help debugging
+        print('Telemetry: Unhandled event type: ${event.type}');
     }
   }
 
