@@ -211,6 +211,10 @@ class WebSocketClient {
           if (msgType != null) {
             final event = WsEvent.fromJson(json);
             _eventController.add(event);
+          } else if (json.containsKey('level')) {
+            // Untyped message with 'level' key = battery data from robot
+            final event = WsEvent(type: 'battery', data: json);
+            _eventController.add(event);
           } else {
             print('WebSocket received untyped message: $json');
           }
