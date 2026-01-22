@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../domain/providers/connection_provider.dart';
 import '../../../domain/providers/device_provider.dart';
+import '../../../domain/providers/mode_provider.dart';
 import '../../../domain/providers/telemetry_provider.dart';
 import '../../../domain/providers/control_provider.dart';
 import '../../widgets/video/webrtc_video_view.dart';
@@ -75,11 +76,16 @@ class HomeScreen extends ConsumerWidget {
                       ),
                     ),
 
-                  // Mode indicator
+                  // Mode selector
                   Positioned(
                     top: 16,
                     right: 16,
-                    child: _ModeChip(mode: telemetry.mode),
+                    child: _ModeSelector(
+                      currentMode: telemetry.mode,
+                      onModeSelected: (mode) {
+                        ref.read(modeControlProvider).setMode(mode);
+                      },
+                    ),
                   ),
                 ],
               ),
@@ -183,29 +189,91 @@ class _DetectionChip extends StatelessWidget {
   }
 }
 
-/// Mode indicator chip
-class _ModeChip extends StatelessWidget {
-  final String mode;
+/// Mode selector with dropdown
+class _ModeSelector extends StatelessWidget {
+  final String currentMode;
+  final void Function(RobotMode) onModeSelected;
 
-  const _ModeChip({required this.mode});
+  const _ModeSelector({
+    required this.currentMode,
+    required this.onModeSelected,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-      decoration: BoxDecoration(
-        color: Colors.black54,
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Text(
-        mode.toUpperCase(),
-        style: const TextStyle(
-          color: Colors.white,
-          fontWeight: FontWeight.w500,
-          fontSize: 12,
+    final current = RobotMode.fromString(currentMode);
+
+    return PopupMenuButton<RobotMode>(
+      initialValue: current,
+      onSelected: onModeSelected,
+      offset: const Offset(0, 40),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        decoration: BoxDecoration(
+          color: _getModeColor(current).withOpacity(0.9),
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(_getModeIcon(current), color: Colors.white, size: 16),
+            const SizedBox(width: 6),
+            Text(
+              current.label.toUpperCase(),
+              style: const TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.w500,
+                fontSize: 12,
+              ),
+            ),
+            const SizedBox(width: 4),
+            const Icon(Icons.arrow_drop_down, color: Colors.white, size: 16),
+          ],
         ),
       ),
+      itemBuilder: (context) => RobotMode.values.map((mode) {
+        return PopupMenuItem<RobotMode>(
+          value: mode,
+          child: Row(
+            children: [
+              Icon(_getModeIcon(mode), size: 20),
+              const SizedBox(width: 12),
+              Text(mode.label),
+              if (mode == current) ...[
+                const Spacer(),
+                const Icon(Icons.check, size: 20),
+              ],
+            ],
+          ),
+        );
+      }).toList(),
     );
+  }
+
+  Color _getModeColor(RobotMode mode) {
+    switch (mode) {
+      case RobotMode.manual:
+        return Colors.blue;
+      case RobotMode.silentGuardian:
+        return Colors.purple;
+      case RobotMode.coach:
+        return Colors.orange;
+      case RobotMode.mission:
+        return Colors.green;
+    }
+  }
+
+  IconData _getModeIcon(RobotMode mode) {
+    switch (mode) {
+      case RobotMode.manual:
+        return Icons.gamepad;
+      case RobotMode.silentGuardian:
+        return Icons.visibility;
+      case RobotMode.coach:
+        return Icons.school;
+      case RobotMode.mission:
+        return Icons.flag;
+    }
   }
 }
 

@@ -174,6 +174,10 @@ class ConnectionNotifier extends StateNotifier<ConnectionState> {
       await _saveConnection(host, port);
 
       state = state.copyWith(status: ConnectionStatus.connected);
+
+      // Set default mode to manual on connect
+      ws.sendModeCommand('manual');
+
       return true;
     } catch (e) {
       state = state.copyWith(

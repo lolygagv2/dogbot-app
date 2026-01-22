@@ -309,6 +309,16 @@ class WebSocketClient {
     sendCommand('emergency_stop');
   }
 
+  /// Send mode change command
+  /// Format: {"type": "command", "command": "set_mode", "mode": "<mode>"}
+  void sendModeCommand(String mode) {
+    send({
+      'type': 'command',
+      'command': 'set_mode',
+      'mode': mode,
+    });
+  }
+
   /// Send servo command
   void sendServoCommand(double pan, double tilt) {
     sendCommand('servo', {'pan': pan, 'tilt': tilt});
