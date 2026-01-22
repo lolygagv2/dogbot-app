@@ -142,9 +142,10 @@ class ServoControlNotifier extends StateNotifier<ServoState> {
 
   /// Set pan/tilt from control input (only sends while dragging)
   void setPosition(double pan, double tilt) {
-    // Ignore (0, 0) positions - this is the joystick springing back on release
+    // Ignore near-zero positions (deadzone) - joystick springs back on release
     // The center button uses center() method instead
-    if (pan == 0 && tilt == 0) {
+    const deadzone = 2.0;  // Ignore positions within 2 degrees of center
+    if (pan.abs() < deadzone && tilt.abs() < deadzone) {
       return;
     }
 

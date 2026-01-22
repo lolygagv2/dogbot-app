@@ -144,9 +144,12 @@ class WebSocketClient {
       final json = jsonDecode(message as String) as Map<String, dynamic>;
       final msgType = json['type'] as String? ?? json['event'] as String?;
 
-      // Debug: log battery-related messages
-      if (msgType == 'battery' || msgType == 'telemetry' || msgType == 'status') {
-        print('WS RAW [$msgType]: $json');
+      // Debug: log ALL messages to find battery data
+      print('WS MSG [$msgType]: $json');
+
+      // Check if message contains battery data regardless of type
+      if (json.containsKey('level') || json.containsKey('battery')) {
+        print('WS BATTERY FOUND in message: $json');
       }
 
       switch (msgType) {

@@ -25,15 +25,26 @@ class Telemetry with _$Telemetry {
 
   /// Create from API response which may have nested structure
   factory Telemetry.fromApiResponse(Map<String, dynamic> json) {
-    // Handle battery as either a number or nested object {'level': 95, 'charging': false, 'voltage': 16.6}
+    // Handle battery in multiple formats:
+    // 1. Top-level number: {'battery': 95}
+    // 2. Nested object: {'battery': {'level': 95, 'charging': true}}
+    // 3. Top-level level key: {'level': 95, 'charging': true} (from battery events)
     double batteryLevel = 0.0;
     bool isCharging = false;
-    final batteryData = json['battery'];
-    if (batteryData is num) {
-      batteryLevel = batteryData.toDouble();
-    } else if (batteryData is Map) {
-      batteryLevel = (batteryData['level'] as num?)?.toDouble() ?? 0.0;
-      isCharging = batteryData['charging'] as bool? ?? false;
+
+    // Format 3: Top-level 'level' key (battery event format)
+    if (json.containsKey('level')) {
+      batteryLevel = (json['level'] as num?)?.toDouble() ?? 0.0;
+      isCharging = json['charging'] as bool? ?? false;
+    } else {
+      // Format 1 & 2: Check 'battery' key
+      final batteryData = json['battery'];
+      if (batteryData is num) {
+        batteryLevel = batteryData.toDouble();
+      } else if (batteryData is Map) {
+        batteryLevel = (batteryData['level'] as num?)?.toDouble() ?? 0.0;
+        isCharging = batteryData['charging'] as bool? ?? false;
+      }
     }
     // Also check top-level charging flag
     isCharging = isCharging || (json['is_charging'] as bool? ?? json['charging'] as bool? ?? false);

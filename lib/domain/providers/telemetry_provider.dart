@@ -34,6 +34,9 @@ class TelemetryNotifier extends StateNotifier<Telemetry> {
     // Debug: log all events to trace battery data
     print('Telemetry event: type=${event.type}, data=${event.data}');
 
+    // Check for battery data in ANY event (robot might send it in various formats)
+    _extractBatteryFromAnyEvent(event.data);
+
     switch (event.type) {
       case 'telemetry':
       case 'status':
@@ -90,6 +93,44 @@ class TelemetryNotifier extends StateNotifier<Telemetry> {
       default:
         // Log unhandled event types to help debugging
         print('Telemetry: Unhandled event type: ${event.type}');
+    }
+  }
+
+  /// Extract battery data from any event - robot sends it in various formats
+  void _extractBatteryFromAnyEvent(Map<String, dynamic> data) {
+    // Format 1: {'level': 96, 'charging': true, 'voltage': 16.6}
+    if (data.containsKey('level')) {
+      final level = (data['level'] as num?)?.toDouble();
+      final charging = data['charging'] as bool?;
+      if (level != null) {
+        print('BATTERY EXTRACTED (level key): level=$level, charging=$charging');
+        state = state.copyWith(
+          battery: level,
+          isCharging: charging ?? state.isCharging,
+        );
+      }
+      return;
+    }
+
+    // Format 2: {'battery': {'level': 96, 'charging': true}}
+    final batteryData = data['battery'];
+    if (batteryData is Map) {
+      final level = (batteryData['level'] as num?)?.toDouble();
+      final charging = batteryData['charging'] as bool?;
+      if (level != null) {
+        print('BATTERY EXTRACTED (nested): level=$level, charging=$charging');
+        state = state.copyWith(
+          battery: level,
+          isCharging: charging ?? state.isCharging,
+        );
+      }
+      return;
+    }
+
+    // Format 3: {'battery': 96} (just a number)
+    if (batteryData is num) {
+      print('BATTERY EXTRACTED (number): level=$batteryData');
+      state = state.copyWith(battery: batteryData.toDouble());
     }
   }
 
