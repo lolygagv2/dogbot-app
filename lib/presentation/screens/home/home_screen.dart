@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../domain/providers/connection_provider.dart';
+import '../../../domain/providers/device_provider.dart';
 import '../../../domain/providers/telemetry_provider.dart';
 import '../../../domain/providers/control_provider.dart';
 import '../../widgets/video/webrtc_video_view.dart';
@@ -19,6 +20,7 @@ class HomeScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final connection = ref.watch(connectionProvider);
     final telemetry = ref.watch(telemetryProvider);
+    final deviceId = ref.watch(deviceIdProvider);
 
     // Redirect if disconnected
     if (!connection.isConnected) {
@@ -29,7 +31,19 @@ class HomeScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('WIM-Z'),
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('WIM-Z'),
+            Text(
+              deviceId,
+              style: TextStyle(
+                fontSize: 12,
+                color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+              ),
+            ),
+          ],
+        ),
         actions: [
           const ConnectionBadge(),
           const SizedBox(width: 8),

@@ -32,4 +32,8 @@ class AppConstants {
   static const String keyServerPort = 'server_port';
   static const String keyLastConnected = 'last_connected';
   static const String keyDarkMode = 'dark_mode';
+  static const String keyDeviceId = 'paired_device_id';
+
+  // Default device
+  static const String defaultDeviceId = 'wimz_robot_01';
 }

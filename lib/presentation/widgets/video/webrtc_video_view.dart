@@ -2,11 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_webrtc/flutter_webrtc.dart';
 
+import '../../../domain/providers/device_provider.dart';
 import '../../../domain/providers/webrtc_provider.dart';
 import '../../theme/app_theme.dart';
-
-/// Default device ID for WIM-Z robot
-const String kDefaultDeviceId = 'wimz_robot_01';
 
 /// WebRTC video view widget for displaying live video from robot via relay
 class WebRTCVideoView extends ConsumerStatefulWidget {
@@ -36,7 +34,13 @@ class _WebRTCVideoViewState extends ConsumerState<WebRTCVideoView> {
     if (_requestSent) return;
     _requestSent = true;
 
-    final deviceId = widget.deviceId ?? kDefaultDeviceId;
+    // Use widget deviceId if provided, otherwise use stored device ID from provider
+    final String deviceId;
+    if (widget.deviceId != null && widget.deviceId!.isNotEmpty) {
+      deviceId = widget.deviceId!;
+    } else {
+      deviceId = ref.read(deviceIdProvider);
+    }
     ref.read(webrtcProvider.notifier).requestVideoStream(deviceId);
   }
 

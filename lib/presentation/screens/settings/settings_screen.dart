@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../domain/providers/connection_provider.dart';
+import '../../../domain/providers/device_provider.dart';
 import '../../../domain/providers/telemetry_provider.dart';
 
 class SettingsScreen extends ConsumerWidget {
@@ -12,11 +13,24 @@ class SettingsScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final connection = ref.watch(connectionProvider);
     final telemetry = ref.watch(telemetryProvider);
+    final deviceId = ref.watch(deviceIdProvider);
 
     return Scaffold(
       appBar: AppBar(title: const Text('Settings')),
       body: ListView(
         children: [
+          _SectionHeader('Device Pairing'),
+          ListTile(
+            leading: const Icon(Icons.smart_toy),
+            title: const Text('Paired Robot'),
+            subtitle: Text(deviceId),
+            trailing: IconButton(
+              icon: const Icon(Icons.edit),
+              onPressed: () => _showDeviceIdDialog(context, ref, deviceId),
+            ),
+          ),
+          const Divider(),
+
           _SectionHeader('Connection'),
           ListTile(
             leading: Icon(
@@ -99,4 +113,40 @@ class _SectionHeader extends StatelessWidget {
       ),
     );
   }
+}
+
+void _showDeviceIdDialog(BuildContext context, WidgetRef ref, String currentId) {
+  final controller = TextEditingController(text: currentId);
+
+  showDialog(
+    context: context,
+    builder: (context) => AlertDialog(
+      title: const Text('Pair Robot'),
+      content: TextField(
+        controller: controller,
+        decoration: const InputDecoration(
+          labelText: 'Robot ID',
+          hintText: 'e.g., wimz_robot_01',
+          border: OutlineInputBorder(),
+        ),
+        autofocus: true,
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Cancel'),
+        ),
+        FilledButton(
+          onPressed: () {
+            final newId = controller.text.trim();
+            if (newId.isNotEmpty) {
+              ref.read(deviceIdProvider.notifier).setDeviceId(newId);
+            }
+            Navigator.pop(context);
+          },
+          child: const Text('Save'),
+        ),
+      ],
+    ),
+  );
 }
