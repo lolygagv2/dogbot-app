@@ -49,5 +49,9 @@
 	<string>Camera access is needed for video streaming</string>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>Microphone access is needed for audio features</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>WIM-Z needs access to your photo library to save photos of your dog.</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>WIM-Z needs permission to save photos to your library.</string>
 </dict>
 </plist>
