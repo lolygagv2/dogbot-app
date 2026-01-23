@@ -11,6 +11,7 @@ import 'presentation/screens/drive/drive_screen.dart';
 import 'presentation/screens/missions/missions_screen.dart';
 import 'presentation/screens/missions/mission_detail_screen.dart';
 import 'presentation/screens/settings/settings_screen.dart';
+import 'presentation/screens/settings/device_pairing_screen.dart';
 import 'presentation/screens/notifications/notifications_screen.dart';
 import 'presentation/screens/dog_profile/dog_profile_screen.dart';
 import 'presentation/screens/dog_profile/add_dog_screen.dart';
@@ -146,6 +147,12 @@ final _router = GoRouter(
     GoRoute(
       path: '/settings',
       builder: (context, state) => const SettingsScreen(),
+    ),
+
+    // Device pairing screen
+    GoRoute(
+      path: '/device-pairing',
+      builder: (context, state) => const DevicePairingScreen(),
     ),
 
     // Voice commands setup (standalone route from settings)

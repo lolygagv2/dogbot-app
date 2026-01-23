@@ -44,6 +44,11 @@ class ApiEndpoints {
   static String missionStart(String id) => '/missions/$id/start';
   static String missionStop(String id) => '/missions/$id/stop';
   static const String missionActive = '/missions/active';
+
+  // Device pairing
+  static const String userDevices = '/api/user/devices';
+  static const String pairDevice = '/api/user/pair-device';
+  static const String unpairDevice = '/api/user/unpair-device';
 }
 
 /// LED pattern names

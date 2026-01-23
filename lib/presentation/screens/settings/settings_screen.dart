@@ -23,12 +23,17 @@ class SettingsScreen extends ConsumerWidget {
           _SectionHeader('Device Pairing'),
           ListTile(
             leading: const Icon(Icons.smart_toy),
-            title: const Text('Paired Robot'),
+            title: const Text('Active Robot'),
             subtitle: Text(deviceId),
-            trailing: IconButton(
-              icon: const Icon(Icons.edit),
-              onPressed: () => _showDeviceIdDialog(context, ref, deviceId),
-            ),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => context.push('/device-pairing'),
+          ),
+          ListTile(
+            leading: const Icon(Icons.devices),
+            title: const Text('Manage Devices'),
+            subtitle: const Text('Pair, unpair, and switch between robots'),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => context.push('/device-pairing'),
           ),
           const Divider(),
 
