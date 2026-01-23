@@ -3,7 +3,7 @@ import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:flutter/foundation.dart';
-import 'package:image_gallery_saver/image_gallery_saver.dart';
+import 'package:gal/gal.dart';
 import 'package:path_provider/path_provider.dart';
 
 /// Model for a captured photo
@@ -99,13 +99,9 @@ class PhotoService {
     bool savedToGallery = false;
     if (saveToGallery) {
       try {
-        final result = await ImageGallerySaver.saveImage(
-          Uint8List.fromList(bytes),
-          name: 'WIMZ_$id',
-          quality: 100,
-        );
-        savedToGallery = result['isSuccess'] == true;
-        print('PhotoService: Gallery save result: $result');
+        await Gal.putImageBytes(Uint8List.fromList(bytes), album: 'WIMZ');
+        savedToGallery = true;
+        print('PhotoService: Saved to gallery');
       } catch (e) {
         print('PhotoService: Failed to save to gallery: $e');
       }
