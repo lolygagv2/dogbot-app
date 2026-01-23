@@ -2,10 +2,9 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io' show File, Platform;
 
-import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_sound/flutter_sound.dart';
 import 'package:path_provider/path_provider.dart';
-import 'package:record/record.dart';
 
 import '../../core/network/websocket_client.dart';
 
@@ -59,17 +58,36 @@ final pushToTalkProvider =
 
 /// Push-to-talk notifier
 class PushToTalkNotifier extends StateNotifier<PttStateData> {
-  final AudioRecorder _recorder = AudioRecorder();
-  final AudioPlayer _player = AudioPlayer();
+  FlutterSoundRecorder? _recorder;
+  FlutterSoundPlayer? _player;
   Timer? _progressTimer;
   Timer? _maxDurationTimer;
   DateTime? _recordingStartTime;
   StreamSubscription? _audioMessageSubscription;
+  String? _currentRecordingPath;
+  bool _isInitialized = false;
 
   static const _maxRecordingDuration = Duration(seconds: 10);
   static const _audioFormat = 'aac';
 
   PushToTalkNotifier() : super(const PttStateData()) {
+    _init();
+  }
+
+  Future<void> _init() async {
+    if (Platform.isLinux) return;
+
+    _recorder = FlutterSoundRecorder();
+    _player = FlutterSoundPlayer();
+
+    try {
+      await _recorder!.openRecorder();
+      await _player!.openPlayer();
+      _isInitialized = true;
+    } catch (e) {
+      print('PushToTalk: Failed to initialize: $e');
+    }
+
     _setupAudioListener();
   }
 
@@ -80,13 +98,6 @@ class PushToTalkNotifier extends StateNotifier<PttStateData> {
         _handleIncomingAudio(event.data);
       }
     });
-
-    // Listen for player completion
-    _player.onPlayerComplete.listen((_) {
-      if (state.state == PttState.playing) {
-        state = state.copyWith(state: PttState.idle);
-      }
-    });
   }
 
   @override
@@ -94,20 +105,15 @@ class PushToTalkNotifier extends StateNotifier<PttStateData> {
     _progressTimer?.cancel();
     _maxDurationTimer?.cancel();
     _audioMessageSubscription?.cancel();
-    _recorder.dispose();
-    _player.dispose();
+    _recorder?.closeRecorder();
+    _player?.closePlayer();
     super.dispose();
-  }
-
-  /// Check if microphone permission is granted
-  Future<bool> hasPermission() async {
-    return await _recorder.hasPermission();
   }
 
   /// Get temp file path for recording
   Future<String> _getTempRecordingPath() async {
     final tempDir = await getTemporaryDirectory();
-    return '${tempDir.path}/ptt_recording_${DateTime.now().millisecondsSinceEpoch}.m4a';
+    return '${tempDir.path}/ptt_recording_${DateTime.now().millisecondsSinceEpoch}.aac';
   }
 
   /// Start recording (called on button press)
@@ -117,24 +123,21 @@ class PushToTalkNotifier extends StateNotifier<PttStateData> {
       return false;
     }
 
-    if (state.isBusy) return false;
-
-    if (!await hasPermission()) {
-      state = state.copyWith(error: 'Microphone permission denied');
+    if (!_isInitialized || _recorder == null) {
+      state = state.copyWith(error: 'Recorder not initialized');
       return false;
     }
 
-    try {
-      final path = await _getTempRecordingPath();
+    if (state.isBusy) return false;
 
-      await _recorder.start(
-        const RecordConfig(
-          encoder: AudioEncoder.aacLc,
-          bitRate: 64000, // Lower bitrate for voice
-          sampleRate: 16000, // 16kHz mono for voice
-          numChannels: 1,
-        ),
-        path: path,
+    try {
+      _currentRecordingPath = await _getTempRecordingPath();
+
+      await _recorder!.startRecorder(
+        toFile: _currentRecordingPath,
+        codec: Codec.aacADTS,
+        sampleRate: 16000,
+        numChannels: 1,
       );
 
       _recordingStartTime = DateTime.now();
@@ -177,8 +180,9 @@ class PushToTalkNotifier extends StateNotifier<PttStateData> {
     _maxDurationTimer?.cancel();
 
     try {
-      final path = await _recorder.stop();
+      await _recorder?.stopRecorder();
       final durationMs = state.recordingDurationMs;
+      final path = _currentRecordingPath;
 
       if (path == null) {
         state = state.copyWith(state: PttState.idle, error: 'Recording failed');
@@ -188,7 +192,6 @@ class PushToTalkNotifier extends StateNotifier<PttStateData> {
       // Minimum recording length (300ms)
       if (durationMs < 300) {
         state = state.copyWith(state: PttState.idle);
-        // Delete the file
         try {
           await File(path).delete();
         } catch (_) {}
@@ -226,10 +229,10 @@ class PushToTalkNotifier extends StateNotifier<PttStateData> {
     _maxDurationTimer?.cancel();
 
     try {
-      final path = await _recorder.stop();
-      if (path != null) {
+      await _recorder?.stopRecorder();
+      if (_currentRecordingPath != null) {
         try {
-          await File(path).delete();
+          await File(_currentRecordingPath!).delete();
         } catch (_) {}
       }
     } catch (_) {}
@@ -254,6 +257,8 @@ class PushToTalkNotifier extends StateNotifier<PttStateData> {
 
   /// Handle incoming audio from robot
   Future<void> _handleIncomingAudio(Map<String, dynamic> data) async {
+    if (Platform.isLinux || _player == null) return;
+
     try {
       final base64Data = data['data'] as String?;
       if (base64Data == null || base64Data.isEmpty) return;
@@ -263,19 +268,22 @@ class PushToTalkNotifier extends StateNotifier<PttStateData> {
       // Decode and save to temp file
       final bytes = base64Decode(base64Data);
       final tempDir = await getTemporaryDirectory();
-      final path = '${tempDir.path}/ptt_incoming_${DateTime.now().millisecondsSinceEpoch}.m4a';
+      final path = '${tempDir.path}/ptt_incoming_${DateTime.now().millisecondsSinceEpoch}.aac';
 
       await File(path).writeAsBytes(bytes);
 
       // Play the audio
-      await _player.play(DeviceFileSource(path));
-
-      // Clean up after playback (with delay)
-      Future.delayed(const Duration(seconds: 10), () {
-        try {
-          File(path).delete();
-        } catch (_) {}
-      });
+      await _player!.startPlayer(
+        fromURI: path,
+        codec: Codec.aacADTS,
+        whenFinished: () {
+          state = state.copyWith(state: PttState.idle);
+          // Clean up
+          try {
+            File(path).delete();
+          } catch (_) {}
+        },
+      );
     } catch (e) {
       state = state.copyWith(state: PttState.idle, error: 'Playback failed: $e');
     }
@@ -284,7 +292,7 @@ class PushToTalkNotifier extends StateNotifier<PttStateData> {
   /// Stop any ongoing playback
   Future<void> stopPlayback() async {
     if (state.state == PttState.playing) {
-      await _player.stop();
+      await _player?.stopPlayer();
       state = state.copyWith(state: PttState.idle);
     }
   }

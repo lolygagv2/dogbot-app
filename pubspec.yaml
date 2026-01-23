@@ -60,8 +60,7 @@ dependencies:
   image_picker: ^1.0.7
 
   # ============ Audio ============
-  record: ^5.1.0                   # Audio recording
-  audioplayers: ^5.2.1             # Audio playback
+  flutter_sound: ^9.2.13           # Audio recording & playback
 
   # ============ Utilities ============
   logger: ^2.0.2+1

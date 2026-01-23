@@ -1,8 +1,9 @@
 import 'dart:async';
+import 'dart:io' show Platform;
 
-import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_sound/flutter_sound.dart';
 
 import '../../../data/models/dog_profile.dart';
 import '../../../data/models/voice_command.dart';
@@ -21,9 +22,21 @@ class VoiceSetupScreen extends ConsumerStatefulWidget {
 }
 
 class _VoiceSetupScreenState extends ConsumerState<VoiceSetupScreen> {
-  final AudioPlayer _audioPlayer = AudioPlayer();
+  FlutterSoundPlayer? _audioPlayer;
   String? _playingCommand;
   bool _isSyncing = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _initPlayer();
+  }
+
+  Future<void> _initPlayer() async {
+    if (Platform.isLinux) return;
+    _audioPlayer = FlutterSoundPlayer();
+    await _audioPlayer!.openPlayer();
+  }
 
   DogProfile? get _dog {
     if (widget.dogId != null) {
@@ -34,7 +47,7 @@ class _VoiceSetupScreenState extends ConsumerState<VoiceSetupScreen> {
 
   @override
   void dispose() {
-    _audioPlayer.dispose();
+    _audioPlayer?.closePlayer();
     super.dispose();
   }
 
@@ -205,20 +218,29 @@ class _VoiceSetupScreenState extends ConsumerState<VoiceSetupScreen> {
   }
 
   Future<void> _playCommand(String path) async {
+    if (Platform.isLinux || _audioPlayer == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Playback not supported on desktop')),
+      );
+      return;
+    }
+
     try {
       if (_playingCommand != null) {
-        await _audioPlayer.stop();
+        await _audioPlayer!.stopPlayer();
       }
 
       setState(() => _playingCommand = path);
 
-      await _audioPlayer.play(DeviceFileSource(path));
-
-      _audioPlayer.onPlayerComplete.listen((_) {
-        if (mounted) {
-          setState(() => _playingCommand = null);
-        }
-      });
+      await _audioPlayer!.startPlayer(
+        fromURI: path,
+        codec: Codec.aacADTS,
+        whenFinished: () {
+          if (mounted) {
+            setState(() => _playingCommand = null);
+          }
+        },
+      );
     } catch (e) {
       setState(() => _playingCommand = null);
       if (mounted) {
@@ -416,16 +438,28 @@ class _RecordDialogState extends ConsumerState<_RecordDialog> {
   Timer? _progressTimer;
   Timer? _maxDurationTimer;
   VoiceCommand? _recordedCommand;
-  final AudioPlayer _previewPlayer = AudioPlayer();
+  FlutterSoundPlayer? _previewPlayer;
   bool _isPlaying = false;
 
   static const _maxDuration = Duration(seconds: 3);
 
   @override
+  void initState() {
+    super.initState();
+    _initPlayer();
+  }
+
+  Future<void> _initPlayer() async {
+    if (Platform.isLinux) return;
+    _previewPlayer = FlutterSoundPlayer();
+    await _previewPlayer!.openPlayer();
+  }
+
+  @override
   void dispose() {
     _progressTimer?.cancel();
     _maxDurationTimer?.cancel();
-    _previewPlayer.dispose();
+    _previewPlayer?.closePlayer();
     super.dispose();
   }
 
@@ -603,21 +637,30 @@ class _RecordDialogState extends ConsumerState<_RecordDialog> {
   Future<void> _playPreview() async {
     if (_recordedCommand?.localPath == null) return;
 
+    if (Platform.isLinux || _previewPlayer == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Playback not supported on desktop')),
+      );
+      return;
+    }
+
     if (_isPlaying) {
-      await _previewPlayer.stop();
+      await _previewPlayer!.stopPlayer();
       setState(() => _isPlaying = false);
       return;
     }
 
     try {
       setState(() => _isPlaying = true);
-      await _previewPlayer.play(DeviceFileSource(_recordedCommand!.localPath!));
-
-      _previewPlayer.onPlayerComplete.listen((_) {
-        if (mounted) {
-          setState(() => _isPlaying = false);
-        }
-      });
+      await _previewPlayer!.startPlayer(
+        fromURI: _recordedCommand!.localPath!,
+        codec: Codec.aacADTS,
+        whenFinished: () {
+          if (mounted) {
+            setState(() => _isPlaying = false);
+          }
+        },
+      );
     } catch (e) {
       setState(() => _isPlaying = false);
       if (mounted) {

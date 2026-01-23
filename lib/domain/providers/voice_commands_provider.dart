@@ -2,8 +2,8 @@ import 'dart:convert';
 import 'dart:io' show File, Directory, Platform;
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_sound/flutter_sound.dart';
 import 'package:path_provider/path_provider.dart';
-import 'package:record/record.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../data/models/voice_command.dart';
@@ -28,16 +28,31 @@ class VoiceCommandsNotifier extends StateNotifier<DogVoiceCommands> {
   final String dogId;
   final Ref _ref;
   SharedPreferences? _prefs;
-  final AudioRecorder _recorder = AudioRecorder();
+  FlutterSoundRecorder? _recorder;
+  bool _isInitialized = false;
 
   VoiceCommandsNotifier(this.dogId, this._ref)
       : super(DogVoiceCommands(dogId: dogId)) {
+    _init();
+  }
+
+  Future<void> _init() async {
     _loadCommands();
+
+    if (Platform.isLinux) return;
+
+    _recorder = FlutterSoundRecorder();
+    try {
+      await _recorder!.openRecorder();
+      _isInitialized = true;
+    } catch (e) {
+      print('VoiceCommands: Failed to initialize recorder: $e');
+    }
   }
 
   @override
   void dispose() {
-    _recorder.dispose();
+    _recorder?.closeRecorder();
     super.dispose();
   }
 
@@ -82,12 +97,14 @@ class VoiceCommandsNotifier extends StateNotifier<DogVoiceCommands> {
     if (!voiceDir.existsSync()) {
       voiceDir.createSync(recursive: true);
     }
-    return '${voiceDir.path}/${dogId}_$commandId.m4a';
+    return '${voiceDir.path}/${dogId}_$commandId.aac';
   }
 
   /// Check if microphone permission is granted
   Future<bool> hasPermission() async {
-    return await _recorder.hasPermission();
+    if (Platform.isLinux) return false;
+    // flutter_sound handles permissions internally
+    return _isInitialized;
   }
 
   /// Start recording a command
@@ -97,8 +114,8 @@ class VoiceCommandsNotifier extends StateNotifier<DogVoiceCommands> {
       return false;
     }
 
-    if (!await hasPermission()) {
-      print('VoiceCommands: No microphone permission');
+    if (!_isInitialized || _recorder == null) {
+      print('VoiceCommands: Recorder not initialized');
       return false;
     }
 
@@ -109,13 +126,11 @@ class VoiceCommandsNotifier extends StateNotifier<DogVoiceCommands> {
     try {
       final path = await _getRecordingPath(commandId);
 
-      await _recorder.start(
-        const RecordConfig(
-          encoder: AudioEncoder.aacLc,
-          bitRate: 128000,
-          sampleRate: 44100,
-        ),
-        path: path,
+      await _recorder!.startRecorder(
+        toFile: path,
+        codec: Codec.aacADTS,
+        sampleRate: 44100,
+        numChannels: 1,
       );
 
       state = state.copyWith(
@@ -139,7 +154,7 @@ class VoiceCommandsNotifier extends StateNotifier<DogVoiceCommands> {
     }
 
     try {
-      final path = await _recorder.stop();
+      final path = await _recorder?.stopRecorder();
       final commandId = state.currentRecordingCommand!;
 
       state = state.copyWith(
@@ -191,7 +206,7 @@ class VoiceCommandsNotifier extends StateNotifier<DogVoiceCommands> {
   /// Cancel current recording without saving
   Future<void> cancelRecording() async {
     if (state.isRecording) {
-      await _recorder.stop();
+      await _recorder?.stopRecorder();
       state = state.copyWith(
         isRecording: false,
         currentRecordingCommand: null,
