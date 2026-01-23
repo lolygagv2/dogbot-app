@@ -9,6 +9,7 @@ import '../../core/network/dio_client.dart';
 import '../../core/network/websocket_client.dart';
 import '../../data/datasources/robot_api.dart';
 import 'auth_provider.dart';
+import 'device_provider.dart';
 
 /// Connection state enum
 enum ConnectionStatus {
@@ -140,6 +141,11 @@ class ConnectionNotifier extends StateNotifier<ConnectionState> {
           : AppConfig.wsUrl(host, port);
       print('Connecting WebSocket to: $wsUrl');
       await ws.connect(wsUrl);
+
+      // Set target device ID for all commands
+      final deviceId = _ref.read(deviceIdProvider);
+      ws.setTargetDevice(deviceId);
+      print('Connection: Target device set to $deviceId');
 
       // Listen for WebSocket state changes and auto-reconnect
       _wsSubscription?.cancel();

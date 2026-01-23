@@ -65,6 +65,7 @@ class WebSocketClient {
   Timer? _reconnectTimer;
 
   String? _currentUrl;
+  String? _targetDeviceId;
   int _reconnectAttempts = 0;
   static const int _maxReconnectAttempts = 5;
 
@@ -107,6 +108,15 @@ class WebSocketClient {
       _deviceStatusController.stream;
   Stream<Map<String, dynamic>> get photoStream =>
       _photoController.stream;
+
+  /// Get the current target device ID
+  String? get targetDeviceId => _targetDeviceId;
+
+  /// Set the target device ID for all commands
+  void setTargetDevice(String deviceId) {
+    _targetDeviceId = deviceId;
+    print('WebSocket: Target device set to $deviceId');
+  }
 
   /// Connect to WebSocket server
   Future<void> connect(String url) async {
@@ -323,10 +333,15 @@ class WebSocketClient {
   }
 
   /// Send a command to the robot via relay
-  /// Format: {"type": "command", "command": "<cmd>", "data": {...}}
+  /// Format: {"type": "command", "device_id": "<id>", "command": "<cmd>", "data": {...}}
   void sendCommand(String command, [Map<String, dynamic>? data]) {
+    if (_targetDeviceId == null) {
+      print('WebSocket: Cannot send command - no target device set');
+      return;
+    }
     send({
       'type': 'command',
+      'device_id': _targetDeviceId,
       'command': command,
       'data': data ?? {},
     });
@@ -343,13 +358,9 @@ class WebSocketClient {
   }
 
   /// Send mode change command
-  /// Format: {"type": "command", "command": "set_mode", "mode": "<mode>"}
+  /// Format: {"type": "command", "device_id": "<id>", "command": "set_mode", "data": {"mode": "<mode>"}}
   void sendModeCommand(String mode) {
-    send({
-      'type': 'command',
-      'command': 'set_mode',
-      'mode': mode,
-    });
+    sendCommand('set_mode', {'mode': mode});
   }
 
   /// Send servo command
@@ -421,13 +432,8 @@ class WebSocketClient {
   }
 
   /// Take a photo with optional HUD overlay
-  /// Format: {"type":"command","command":"take_photo","with_hud":true}
   void sendTakePhoto({bool withHud = true}) {
-    send({
-      'type': 'command',
-      'command': 'take_photo',
-      'with_hud': withHud,
-    });
+    sendCommand('take_photo', {'with_hud': withHud});
   }
 
   /// Upload a voice command recording to the robot

@@ -2,16 +2,19 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../core/constants/app_constants.dart';
+import '../../core/network/websocket_client.dart';
 
 /// Provider for paired device ID
 final deviceIdProvider =
     StateNotifierProvider<DeviceIdNotifier, String>((ref) {
-  return DeviceIdNotifier();
+  return DeviceIdNotifier(ref);
 });
 
 /// Device ID state notifier - manages paired robot ID
 class DeviceIdNotifier extends StateNotifier<String> {
-  DeviceIdNotifier() : super(AppConstants.defaultDeviceId) {
+  final Ref _ref;
+
+  DeviceIdNotifier(this._ref) : super(AppConstants.defaultDeviceId) {
     _loadDeviceId();
   }
 
@@ -20,6 +23,8 @@ class DeviceIdNotifier extends StateNotifier<String> {
     final savedId = prefs.getString(AppConstants.keyDeviceId);
     if (savedId != null && savedId.isNotEmpty) {
       state = savedId;
+      // Update WebSocket client with loaded device ID
+      _ref.read(websocketClientProvider).setTargetDevice(savedId);
     }
   }
 
@@ -29,11 +34,16 @@ class DeviceIdNotifier extends StateNotifier<String> {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(AppConstants.keyDeviceId, deviceId);
     state = deviceId;
+
+    // Update WebSocket client immediately
+    _ref.read(websocketClientProvider).setTargetDevice(deviceId);
   }
 
   Future<void> clearDeviceId() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(AppConstants.keyDeviceId);
     state = AppConstants.defaultDeviceId;
+    // Reset WebSocket client to default
+    _ref.read(websocketClientProvider).setTargetDevice(AppConstants.defaultDeviceId);
   }
 }
