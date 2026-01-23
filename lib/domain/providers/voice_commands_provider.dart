@@ -1,5 +1,5 @@
 import 'dart:convert';
-import 'dart:io';
+import 'dart:io' show File, Directory, Platform;
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:path_provider/path_provider.dart';
@@ -92,6 +92,11 @@ class VoiceCommandsNotifier extends StateNotifier<DogVoiceCommands> {
 
   /// Start recording a command
   Future<bool> startRecording(String commandId) async {
+    if (Platform.isLinux) {
+      print('VoiceCommands: Recording not supported on Linux');
+      return false;
+    }
+
     if (!await hasPermission()) {
       print('VoiceCommands: No microphone permission');
       return false;

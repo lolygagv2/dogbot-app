@@ -1,6 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
-import 'dart:io';
+import 'dart:io' show File, Platform;
 
 import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -112,6 +112,11 @@ class PushToTalkNotifier extends StateNotifier<PttStateData> {
 
   /// Start recording (called on button press)
   Future<bool> startRecording() async {
+    if (Platform.isLinux) {
+      state = state.copyWith(error: 'Recording not supported on desktop');
+      return false;
+    }
+
     if (state.isBusy) return false;
 
     if (!await hasPermission()) {
