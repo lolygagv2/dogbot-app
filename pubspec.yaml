@@ -59,9 +59,6 @@ dependencies:
   share_plus: ^7.2.2
   image_picker: ^1.0.7
 
-  # ============ Audio ============
-  flutter_sound: ^9.2.13           # Audio recording & playback
-
   # ============ Utilities ============
   logger: ^2.0.2+1
   equatable: ^2.0.5

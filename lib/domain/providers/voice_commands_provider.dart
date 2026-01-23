@@ -1,8 +1,7 @@
 import 'dart:convert';
-import 'dart:io' show File, Directory, Platform;
+import 'dart:io' show File, Directory;
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter_sound/flutter_sound.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -23,37 +22,15 @@ final isRecordingProvider = StateProvider<bool>((ref) => false);
 /// Provider for current playback command
 final playingCommandProvider = StateProvider<String?>((ref) => null);
 
-/// Voice commands notifier with persistence and recording
+/// Voice commands notifier - STUBBED (recording only works on mobile builds)
 class VoiceCommandsNotifier extends StateNotifier<DogVoiceCommands> {
   final String dogId;
   final Ref _ref;
   SharedPreferences? _prefs;
-  FlutterSoundRecorder? _recorder;
-  bool _isInitialized = false;
 
   VoiceCommandsNotifier(this.dogId, this._ref)
       : super(DogVoiceCommands(dogId: dogId)) {
-    _init();
-  }
-
-  Future<void> _init() async {
     _loadCommands();
-
-    if (Platform.isLinux) return;
-
-    _recorder = FlutterSoundRecorder();
-    try {
-      await _recorder!.openRecorder();
-      _isInitialized = true;
-    } catch (e) {
-      print('VoiceCommands: Failed to initialize recorder: $e');
-    }
-  }
-
-  @override
-  void dispose() {
-    _recorder?.closeRecorder();
-    super.dispose();
   }
 
   Future<void> _loadCommands() async {
@@ -90,129 +67,29 @@ class VoiceCommandsNotifier extends StateNotifier<DogVoiceCommands> {
     print('VoiceCommands: Saved ${state.commands.length} commands');
   }
 
-  /// Get the file path for a command recording
-  Future<String> _getRecordingPath(String commandId) async {
-    final appDir = await getApplicationDocumentsDirectory();
-    final voiceDir = Directory('${appDir.path}/voice_commands');
-    if (!voiceDir.existsSync()) {
-      voiceDir.createSync(recursive: true);
-    }
-    return '${voiceDir.path}/${dogId}_$commandId.aac';
-  }
-
-  /// Check if microphone permission is granted
+  /// Check if recording is available - STUBBED
   Future<bool> hasPermission() async {
-    if (Platform.isLinux) return false;
-    // flutter_sound handles permissions internally
-    return _isInitialized;
+    return false; // Recording stubbed out
   }
 
-  /// Start recording a command
+  /// Start recording - STUBBED
   Future<bool> startRecording(String commandId) async {
-    if (Platform.isLinux) {
-      print('VoiceCommands: Recording not supported on Linux');
-      return false;
-    }
-
-    if (!_isInitialized || _recorder == null) {
-      print('VoiceCommands: Recorder not initialized');
-      return false;
-    }
-
-    if (state.isRecording) {
-      await stopRecording();
-    }
-
-    try {
-      final path = await _getRecordingPath(commandId);
-
-      await _recorder!.startRecorder(
-        toFile: path,
-        codec: Codec.aacADTS,
-        sampleRate: 44100,
-        numChannels: 1,
-      );
-
-      state = state.copyWith(
-        isRecording: true,
-        currentRecordingCommand: commandId,
-      );
-      _ref.read(isRecordingProvider.notifier).state = true;
-
-      print('VoiceCommands: Started recording $commandId');
-      return true;
-    } catch (e) {
-      print('VoiceCommands: Failed to start recording: $e');
-      return false;
-    }
+    print('VoiceCommands: Recording stubbed - requires mobile app');
+    return false;
   }
 
-  /// Stop recording and save the command
+  /// Stop recording - STUBBED
   Future<VoiceCommand?> stopRecording() async {
-    if (!state.isRecording || state.currentRecordingCommand == null) {
-      return null;
-    }
-
-    try {
-      final path = await _recorder?.stopRecorder();
-      final commandId = state.currentRecordingCommand!;
-
-      state = state.copyWith(
-        isRecording: false,
-        currentRecordingCommand: null,
-      );
-      _ref.read(isRecordingProvider.notifier).state = false;
-
-      if (path == null) {
-        print('VoiceCommands: Recording returned null path');
-        return null;
-      }
-
-      // Get file info for duration estimation
-      final file = File(path);
-      final fileSize = await file.length();
-      // Rough estimate: ~16KB per second at 128kbps
-      final estimatedDurationMs = (fileSize / 16000 * 1000).toInt();
-
-      final command = VoiceCommand(
-        dogId: dogId,
-        commandId: commandId,
-        localPath: path,
-        recordedAt: DateTime.now(),
-        isSynced: false,
-        durationMs: estimatedDurationMs,
-      );
-
-      // Update state
-      final newCommands = Map<String, VoiceCommand>.from(state.commands);
-      newCommands[commandId] = command;
-      state = state.copyWith(commands: newCommands);
-
-      await _saveCommands();
-      print('VoiceCommands: Saved recording $commandId at $path');
-
-      return command;
-    } catch (e) {
-      print('VoiceCommands: Failed to stop recording: $e');
-      state = state.copyWith(
-        isRecording: false,
-        currentRecordingCommand: null,
-      );
-      _ref.read(isRecordingProvider.notifier).state = false;
-      return null;
-    }
+    return null;
   }
 
-  /// Cancel current recording without saving
+  /// Cancel recording - STUBBED
   Future<void> cancelRecording() async {
-    if (state.isRecording) {
-      await _recorder?.stopRecorder();
-      state = state.copyWith(
-        isRecording: false,
-        currentRecordingCommand: null,
-      );
-      _ref.read(isRecordingProvider.notifier).state = false;
-    }
+    state = state.copyWith(
+      isRecording: false,
+      currentRecordingCommand: null,
+    );
+    _ref.read(isRecordingProvider.notifier).state = false;
   }
 
   /// Delete a recorded command
@@ -248,10 +125,8 @@ class VoiceCommandsNotifier extends StateNotifier<DogVoiceCommands> {
       final bytes = await file.readAsBytes();
       final base64Data = base64Encode(bytes);
 
-      // Send via WebSocket
       WebSocketClient.instance.sendVoiceCommand(commandId, base64Data);
 
-      // Update sync status
       final updatedCommand = command.copyWith(
         isSynced: true,
         syncedAt: DateTime.now(),
@@ -270,7 +145,7 @@ class VoiceCommandsNotifier extends StateNotifier<DogVoiceCommands> {
     }
   }
 
-  /// Sync all recorded commands to the robot
+  /// Sync all recorded commands
   Future<int> syncAll() async {
     int syncedCount = 0;
 
@@ -286,24 +161,18 @@ class VoiceCommandsNotifier extends StateNotifier<DogVoiceCommands> {
     return syncedCount;
   }
 
-  /// Get recording progress as a fraction (0-1)
   bool isCommandRecorded(String commandId) {
     return state.commands[commandId]?.localPath != null;
   }
 
-  /// Get sync status for a command
   bool isCommandSynced(String commandId) {
     return state.commands[commandId]?.isSynced ?? false;
   }
 
-  /// Get the number of recorded commands
   int get recordedCount {
-    return state.commands.values
-        .where((c) => c.localPath != null)
-        .length;
+    return state.commands.values.where((c) => c.localPath != null).length;
   }
 
-  /// Get the number of synced commands
   int get syncedCount {
     return state.commands.values.where((c) => c.isSynced).length;
   }

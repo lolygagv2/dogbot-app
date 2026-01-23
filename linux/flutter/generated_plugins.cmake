@@ -4,7 +4,6 @@
 
 list(APPEND FLUTTER_PLUGIN_LIST
   file_selector_linux
-  flutter_sound
   flutter_webrtc
   rive_common
   url_launcher_linux
