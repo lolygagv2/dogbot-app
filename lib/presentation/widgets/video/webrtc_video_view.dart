@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_webrtc/flutter_webrtc.dart';
 
 import '../../../domain/providers/device_provider.dart';
+import '../../../domain/providers/photo_provider.dart';
 import '../../../domain/providers/webrtc_provider.dart';
 import '../../theme/app_theme.dart';
 
@@ -223,13 +224,106 @@ class _WebRTCVideoViewState extends ConsumerState<WebRTCVideoView> {
     }
 
     // Video is ready - display it with proper sizing
-    return Container(
-      color: Colors.black,
-      child: SizedBox.expand(
-        child: RTCVideoView(
-          renderer,
-          objectFit: RTCVideoViewObjectFit.RTCVideoViewObjectFitContain,
-          mirror: false,
+    return Stack(
+      children: [
+        Container(
+          color: Colors.black,
+          child: SizedBox.expand(
+            child: RTCVideoView(
+              renderer,
+              objectFit: RTCVideoViewObjectFit.RTCVideoViewObjectFitContain,
+              mirror: false,
+            ),
+          ),
+        ),
+
+        // Camera button overlay
+        Positioned(
+          bottom: 16,
+          right: 16,
+          child: _CameraButton(),
+        ),
+      ],
+    );
+  }
+}
+
+/// Camera button widget for taking photos
+class _CameraButton extends ConsumerWidget {
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final photoState = ref.watch(photoProvider);
+    final isCapturing = photoState.isCapturing;
+
+    // Show toast when photo is captured
+    ref.listen<PhotoState>(photoProvider, (previous, next) {
+      if (next.lastCaptured != null &&
+          previous?.lastCaptured?.id != next.lastCaptured?.id) {
+        ScaffoldMessenger.of(context).hideCurrentSnackBar();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                Icon(
+                  next.lastCaptured!.savedToGallery
+                      ? Icons.check_circle
+                      : Icons.photo,
+                  color: Colors.white,
+                  size: 20,
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  next.lastCaptured!.savedToGallery
+                      ? 'Photo saved to gallery!'
+                      : 'Photo saved!',
+                ),
+              ],
+            ),
+            duration: const Duration(seconds: 2),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+        ref.read(photoProvider.notifier).clearLastCaptured();
+      }
+
+      // Show error if any
+      if (next.error != null && previous?.error != next.error) {
+        ScaffoldMessenger.of(context).hideCurrentSnackBar();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(next.error!),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 3),
+          ),
+        );
+        ref.read(photoProvider.notifier).clearError();
+      }
+    });
+
+    return Material(
+      color: Colors.black54,
+      borderRadius: BorderRadius.circular(24),
+      child: InkWell(
+        onTap: isCapturing
+            ? null
+            : () => ref.read(photoProvider.notifier).takePhoto(),
+        borderRadius: BorderRadius.circular(24),
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: isCapturing
+              ? const SizedBox(
+                  width: 24,
+                  height: 24,
+                  child: CircularProgressIndicator(
+                    color: Colors.white,
+                    strokeWidth: 2,
+                  ),
+                )
+              : const Icon(
+                  Icons.camera_alt,
+                  color: Colors.white,
+                  size: 24,
+                ),
         ),
       ),
     );

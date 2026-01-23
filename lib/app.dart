@@ -13,6 +13,9 @@ import 'presentation/screens/missions/mission_detail_screen.dart';
 import 'presentation/screens/settings/settings_screen.dart';
 import 'presentation/screens/notifications/notifications_screen.dart';
 import 'presentation/screens/dog_profile/dog_profile_screen.dart';
+import 'presentation/screens/dog_profile/add_dog_screen.dart';
+import 'presentation/screens/gallery/photo_gallery_screen.dart';
+import 'presentation/screens/voice/voice_setup_screen.dart';
 import 'presentation/theme/app_theme.dart';
 
 /// Navigation tab enum
@@ -76,11 +79,25 @@ final _router = GoRouter(
             child: DogsListScreen(),
           ),
           routes: [
+            // Add dog route - must be before :id to avoid conflict
+            GoRoute(
+              path: 'add',
+              builder: (context, state) => const AddDogScreen(),
+            ),
             GoRoute(
               path: ':id',
               builder: (context, state) => DogProfileScreen(
                 dogId: state.pathParameters['id'],
               ),
+              routes: [
+                // Voice setup for this dog
+                GoRoute(
+                  path: 'voice',
+                  builder: (context, state) => VoiceSetupScreen(
+                    dogId: state.pathParameters['id'],
+                  ),
+                ),
+              ],
             ),
           ],
         ),
@@ -101,11 +118,11 @@ final _router = GoRouter(
           ],
         ),
 
-        // Gallery tab (placeholder for now)
+        // Photo Gallery tab
         GoRoute(
           path: '/gallery',
           pageBuilder: (context, state) => const NoTransitionPage(
-            child: _VideoGalleryPlaceholder(),
+            child: PhotoGalleryScreen(),
           ),
         ),
 
@@ -192,8 +209,8 @@ class MainShell extends ConsumerWidget {
                   onTap: () => context.go('/missions'),
                 ),
                 _NavBarItem(
-                  icon: Icons.video_library,
-                  label: 'Gallery',
+                  icon: Icons.photo_library,
+                  label: 'Photos',
                   isSelected: currentIndex == 3,
                   onTap: () => context.go('/gallery'),
                 ),
@@ -285,46 +302,6 @@ class _NavBarItem extends StatelessWidget {
                 color: color,
                 fontSize: 10,
                 fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-/// Placeholder for video gallery screen
-class _VideoGalleryPlaceholder extends StatelessWidget {
-  const _VideoGalleryPlaceholder();
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('Video Gallery')),
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              Icons.video_library,
-              size: 64,
-              color: AppTheme.textTertiary,
-            ),
-            const SizedBox(height: 16),
-            Text(
-              'Video Gallery',
-              style: TextStyle(
-                color: AppTheme.textSecondary,
-                fontSize: 16,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Coming soon',
-              style: TextStyle(
-                color: AppTheme.textTertiary,
-                fontSize: 14,
               ),
             ),
           ],

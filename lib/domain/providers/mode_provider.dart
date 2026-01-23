@@ -5,6 +5,7 @@ import 'connection_provider.dart';
 
 /// Available robot modes
 enum RobotMode {
+  idle('idle', 'Idle'),
   manual('manual', 'Manual'),
   silentGuardian('silent_guardian', 'Silent Guardian'),
   coach('coach', 'Coach'),
@@ -17,7 +18,7 @@ enum RobotMode {
   static RobotMode fromString(String value) {
     return RobotMode.values.firstWhere(
       (mode) => mode.value == value.toLowerCase(),
-      orElse: () => RobotMode.manual,
+      orElse: () => RobotMode.idle,
     );
   }
 }

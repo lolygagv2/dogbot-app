@@ -55,7 +55,12 @@ class LedPatterns {
   static const String celebration = 'celebration';
   static const String searching = 'searching';
   static const String alert = 'alert';
+  static const String warning = 'warning';
   static const String idle = 'idle';
+  static const String pulse = 'pulse';
+  static const String solid = 'solid';
+  static const String chase = 'chase';
+  static const String off = 'off';
 
   static const List<String> all = [
     breathing,
@@ -63,7 +68,21 @@ class LedPatterns {
     celebration,
     searching,
     alert,
+    warning,
     idle,
+    pulse,
+    solid,
+    chase,
+    off,
+  ];
+
+  /// Patterns for cycling through in the Lighting button
+  static const List<String> lightingCycle = [
+    rainbow,
+    pulse,
+    solid,
+    chase,
+    off,
   ];
 }
 

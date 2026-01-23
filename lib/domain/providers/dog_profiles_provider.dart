@@ -1,6 +1,13 @@
+import 'dart:convert';
+import 'dart:ui' show Color;
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../data/models/dog_profile.dart';
+
+const String _dogsKey = 'dog_profiles';
+const String _selectedDogKey = 'selected_dog_id';
 
 /// Provider for list of dog profiles
 final dogProfilesProvider =
@@ -9,9 +16,10 @@ final dogProfilesProvider =
 });
 
 /// Provider for currently selected dog
-final selectedDogProvider = StateProvider<DogProfile?>((ref) {
+final selectedDogProvider =
+    StateNotifierProvider<SelectedDogNotifier, DogProfile?>((ref) {
   final profiles = ref.watch(dogProfilesProvider);
-  return profiles.isNotEmpty ? profiles.first : null;
+  return SelectedDogNotifier(profiles);
 });
 
 /// Provider for a specific dog by ID
@@ -41,63 +49,99 @@ final dogDailySummaryProvider =
   );
 });
 
-/// Dog profiles state notifier
+/// Dog profiles state notifier with persistence
 class DogProfilesNotifier extends StateNotifier<List<DogProfile>> {
-  DogProfilesNotifier() : super(_generateMockProfiles());
+  SharedPreferences? _prefs;
+
+  DogProfilesNotifier() : super([]) {
+    _loadProfiles();
+  }
+
+  Future<void> _loadProfiles() async {
+    _prefs = await SharedPreferences.getInstance();
+    final json = _prefs?.getString(_dogsKey);
+
+    if (json != null && json.isNotEmpty) {
+      try {
+        final List<dynamic> list = jsonDecode(json);
+        state = list.map((e) => DogProfile.fromJson(e as Map<String, dynamic>)).toList();
+        print('DogProfiles: Loaded ${state.length} profiles from storage');
+      } catch (e) {
+        print('DogProfiles: Failed to load profiles: $e');
+        state = [];
+      }
+    }
+  }
+
+  Future<void> _saveProfiles() async {
+    _prefs ??= await SharedPreferences.getInstance();
+    final json = jsonEncode(state.map((p) => p.toJson()).toList());
+    await _prefs?.setString(_dogsKey, json);
+    print('DogProfiles: Saved ${state.length} profiles');
+  }
 
   /// Add a new dog profile
-  void addProfile(DogProfile profile) {
+  Future<void> addProfile(DogProfile profile) async {
     state = [...state, profile];
+    await _saveProfiles();
   }
 
   /// Update an existing dog profile
-  void updateProfile(DogProfile profile) {
+  Future<void> updateProfile(DogProfile profile) async {
     state = state.map((p) {
       if (p.id == profile.id) return profile;
       return p;
     }).toList();
+    await _saveProfiles();
   }
 
   /// Remove a dog profile
-  void removeProfile(String id) {
+  Future<void> removeProfile(String id) async {
     state = state.where((p) => p.id != id).toList();
+    await _saveProfiles();
   }
 
-  /// Refresh profiles (would fetch from API in real implementation)
-  Future<void> refresh() async {
-    // In a real implementation, fetch from API
-    // For now, just use mock data
+  /// Update profile photo path
+  Future<void> updateProfilePhoto(String dogId, String photoPath) async {
+    state = state.map((p) {
+      if (p.id == dogId) {
+        return p.copyWith(localPhotoPath: photoPath);
+      }
+      return p;
+    }).toList();
+    await _saveProfiles();
   }
 }
 
-/// Generate mock dog profiles for testing
-List<DogProfile> _generateMockProfiles() {
-  return [
-    DogProfile(
-      id: 'dog_1',
-      name: 'Max',
-      breed: 'Golden Retriever',
-      photoUrl: null,
-      birthDate: DateTime(2022, 3, 15),
-      weight: 32.5,
-      notes: 'Loves treats and belly rubs',
-      goals: ['goal_1', 'goal_2'],
-      lastMissionId: 'mission_sit_training',
-      createdAt: DateTime(2024, 1, 10),
-    ),
-    DogProfile(
-      id: 'dog_2',
-      name: 'Luna',
-      breed: 'Border Collie',
-      photoUrl: null,
-      birthDate: DateTime(2021, 7, 22),
-      weight: 18.0,
-      notes: 'Very energetic, needs lots of exercise',
-      goals: ['goal_3'],
-      lastMissionId: 'mission_quiet_training',
-      createdAt: DateTime(2024, 2, 5),
-    ),
-  ];
+/// Selected dog notifier with persistence
+class SelectedDogNotifier extends StateNotifier<DogProfile?> {
+  final List<DogProfile> _profiles;
+  SharedPreferences? _prefs;
+
+  SelectedDogNotifier(this._profiles) : super(null) {
+    _loadSelectedDog();
+  }
+
+  Future<void> _loadSelectedDog() async {
+    _prefs = await SharedPreferences.getInstance();
+    final selectedId = _prefs?.getString(_selectedDogKey);
+
+    if (selectedId != null && _profiles.isNotEmpty) {
+      try {
+        state = _profiles.firstWhere((d) => d.id == selectedId);
+      } catch (_) {
+        state = _profiles.isNotEmpty ? _profiles.first : null;
+      }
+    } else if (_profiles.isNotEmpty) {
+      state = _profiles.first;
+    }
+  }
+
+  Future<void> selectDog(DogProfile dog) async {
+    state = dog;
+    _prefs ??= await SharedPreferences.getInstance();
+    await _prefs?.setString(_selectedDogKey, dog.id);
+  }
 }
 
 /// Extension to calculate dog age from birth date
@@ -143,5 +187,21 @@ extension DogProfileExtension on DogProfile {
       return '$months ${months == 1 ? 'month' : 'months'}';
     }
     return '$years ${years == 1 ? 'year' : 'years'}';
+  }
+
+  /// Get color for display
+  Color get displayColor {
+    switch (color) {
+      case DogColor.black:
+        return const Color(0xFF333333);
+      case DogColor.yellow:
+        return const Color(0xFFD4A574);
+      case DogColor.brown:
+        return const Color(0xFF8B4513);
+      case DogColor.white:
+        return const Color(0xFFF5F5F5);
+      case DogColor.mixed:
+        return const Color(0xFF888888);
+    }
   }
 }

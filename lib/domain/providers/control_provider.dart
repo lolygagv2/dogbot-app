@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/constants/app_constants.dart';
 import '../../core/network/websocket_client.dart';
 import 'connection_provider.dart';
+import 'settings_provider.dart';
 import 'webrtc_provider.dart';
 
 /// Motor control state
@@ -96,10 +97,16 @@ class MotorControlNotifier extends StateNotifier<MotorState> {
   void _sendCommand() {
     if (!_ref.read(connectionProvider).isConnected) return;
 
+    // Apply motor trim to right motor
+    // Positive trim slows right motor (fixes left drift)
+    // Negative trim speeds up right motor (fixes right drift)
+    final trim = _ref.read(motorTrimProvider);
+    final adjustedRight = (state.right * (1 - trim)).clamp(-1.0, 1.0);
+
     // Use WebRTC data channel for lowest latency (direct to robot)
     final webrtc = _ref.read(webrtcProvider.notifier);
     if (webrtc.isDataChannelOpen) {
-      webrtc.sendMotorCommand(state.left, state.right);
+      webrtc.sendMotorCommand(state.left, adjustedRight);
     }
   }
 
@@ -293,5 +300,23 @@ class AudioControl {
   void setVolume(int level) {
     if (!_ref.read(connectionProvider).isConnected) return;
     _ref.read(websocketClientProvider).sendAudioVolume(level);
+  }
+
+  /// Play next track
+  void next() {
+    if (!_ref.read(connectionProvider).isConnected) return;
+    _ref.read(websocketClientProvider).sendAudioNext();
+  }
+
+  /// Play previous track
+  void prev() {
+    if (!_ref.read(connectionProvider).isConnected) return;
+    _ref.read(websocketClientProvider).sendAudioPrev();
+  }
+
+  /// Toggle play/pause
+  void toggle() {
+    if (!_ref.read(connectionProvider).isConnected) return;
+    _ref.read(websocketClientProvider).sendAudioToggle();
   }
 }

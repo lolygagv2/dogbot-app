@@ -53,6 +53,12 @@ final websocketClientProvider = Provider<WebSocketClient>((ref) {
 
 /// WebSocket client for real-time communication with WIM-Z
 class WebSocketClient {
+  // Singleton instance
+  static final WebSocketClient _instance = WebSocketClient._internal();
+  static WebSocketClient get instance => _instance;
+  factory WebSocketClient() => _instance;
+  WebSocketClient._internal();
+
   WebSocketChannel? _channel;
   StreamSubscription? _subscription;
   Timer? _pingTimer;
@@ -85,6 +91,10 @@ class WebSocketClient {
   final _deviceStatusController =
       StreamController<Map<String, dynamic>>.broadcast();
 
+  // Photo capture stream
+  final _photoController =
+      StreamController<Map<String, dynamic>>.broadcast();
+
   Stream<Map<String, dynamic>> get webrtcCredentialsStream =>
       _webrtcCredentialsController.stream;
   Stream<Map<String, dynamic>> get webrtcOfferStream =>
@@ -95,6 +105,8 @@ class WebSocketClient {
       _webrtcCloseController.stream;
   Stream<Map<String, dynamic>> get deviceStatusStream =>
       _deviceStatusController.stream;
+  Stream<Map<String, dynamic>> get photoStream =>
+      _photoController.stream;
 
   /// Connect to WebSocket server
   Future<void> connect(String url) async {
@@ -165,6 +177,11 @@ class WebSocketClient {
           break;
         case 'webrtc_close':
           _webrtcCloseController.add(json);
+          break;
+
+        // Photo capture response
+        case 'photo':
+          _photoController.add(json);
           break;
 
         // Device status - emit to dedicated stream AND event stream
@@ -369,6 +386,52 @@ class WebSocketClient {
     sendCommand('audio_volume', {'level': level});
   }
 
+  /// Play next audio track
+  void sendAudioNext() {
+    sendCommand('audio_next');
+  }
+
+  /// Play previous audio track
+  void sendAudioPrev() {
+    sendCommand('audio_prev');
+  }
+
+  /// Toggle audio play/pause
+  void sendAudioToggle() {
+    sendCommand('audio_toggle');
+  }
+
+  /// Take a photo with optional HUD overlay
+  void sendTakePhoto({bool withHud = true}) {
+    sendCommand('take_photo', {'with_hud': withHud});
+  }
+
+  /// Upload a voice command recording to the robot
+  void sendVoiceCommand(String commandId, String base64Data) {
+    sendCommand('upload_voice', {
+      'name': commandId,
+      'data': base64Data,
+    });
+  }
+
+  /// Send audio message to robot (push-to-talk)
+  void sendAudioMessage(String base64Data, String format, int durationMs) {
+    send({
+      'type': 'audio_message',
+      'data': base64Data,
+      'format': format,
+      'duration_ms': durationMs,
+    });
+  }
+
+  /// Request audio from robot (listen)
+  void requestAudioFromRobot(int durationSeconds) {
+    send({
+      'type': 'audio_request',
+      'duration': durationSeconds,
+    });
+  }
+
   /// Request WebRTC video stream
   void requestVideoStream() {
     send({'type': 'webrtc_request'});
@@ -407,5 +470,6 @@ class WebSocketClient {
     _webrtcIceController.close();
     _webrtcCloseController.close();
     _deviceStatusController.close();
+    _photoController.close();
   }
 }

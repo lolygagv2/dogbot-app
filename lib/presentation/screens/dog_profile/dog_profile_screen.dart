@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -95,15 +97,7 @@ class _DogHeader extends StatelessWidget {
               border: Border.all(color: AppTheme.primary, width: 3),
               boxShadow: AppTheme.glowShadow(AppTheme.primary, blur: 15),
             ),
-            child: profile.photoUrl != null
-                ? ClipOval(
-                    child: Image.network(
-                      profile.photoUrl!,
-                      fit: BoxFit.cover,
-                      errorBuilder: (_, __, ___) => _buildPlaceholder(),
-                    ),
-                  )
-                : _buildPlaceholder(),
+            child: _buildPhoto(),
           ),
         ),
         const SizedBox(height: 12),
@@ -129,6 +123,34 @@ class _DogHeader extends StatelessWidget {
         ),
       ],
     );
+  }
+
+  Widget _buildPhoto() {
+    // Try local photo first, then URL
+    if (profile.localPhotoPath != null) {
+      final file = File(profile.localPhotoPath!);
+      if (file.existsSync()) {
+        return ClipOval(
+          child: Image.file(
+            file,
+            fit: BoxFit.cover,
+            width: 100,
+            height: 100,
+            errorBuilder: (_, __, ___) => _buildPlaceholder(),
+          ),
+        );
+      }
+    }
+    if (profile.photoUrl != null) {
+      return ClipOval(
+        child: Image.network(
+          profile.photoUrl!,
+          fit: BoxFit.cover,
+          errorBuilder: (_, __, ___) => _buildPlaceholder(),
+        ),
+      );
+    }
+    return _buildPlaceholder();
   }
 
   Widget _buildPlaceholder() {
@@ -376,6 +398,16 @@ class _QuickActionsGrid extends StatelessWidget {
           children: [
             Expanded(
               child: _ActionButton(
+                icon: Icons.mic,
+                label: 'Voice',
+                onTap: () {
+                  context.push('/dogs/$dogId/voice');
+                },
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: _ActionButton(
                 icon: Icons.bar_chart,
                 label: 'Stats',
                 onTap: () {
@@ -390,16 +422,6 @@ class _QuickActionsGrid extends StatelessWidget {
                 label: 'Goals',
                 onTap: () {
                   // TODO: Navigate to goals
-                },
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: _ActionButton(
-                icon: Icons.video_library,
-                label: 'Videos',
-                onTap: () {
-                  // TODO: Navigate to video gallery
                 },
               ),
             ),
@@ -613,9 +635,7 @@ class DogsListScreen extends ConsumerWidget {
         actions: [
           IconButton(
             icon: const Icon(Icons.add),
-            onPressed: () {
-              // TODO: Add new dog
-            },
+            onPressed: () => context.push('/dogs/add'),
           ),
         ],
       ),
@@ -628,7 +648,7 @@ class DogsListScreen extends ConsumerWidget {
                 return _DogListTile(
                   profile: profiles[index],
                   onTap: () {
-                    ref.read(selectedDogProvider.notifier).state = profiles[index];
+                    ref.read(selectedDogProvider.notifier).selectDog(profiles[index]);
                     context.push('/dog/${profiles[index].id}');
                   },
                 );
@@ -657,9 +677,7 @@ class DogsListScreen extends ConsumerWidget {
           ),
           const SizedBox(height: 8),
           ElevatedButton.icon(
-            onPressed: () {
-              // TODO: Add new dog
-            },
+            onPressed: () => context.push('/dogs/add'),
             icon: const Icon(Icons.add),
             label: const Text('Add Dog'),
           ),
@@ -699,15 +717,7 @@ class _DogListTile extends StatelessWidget {
                   color: AppTheme.surfaceLighter,
                   border: Border.all(color: AppTheme.primary, width: 2),
                 ),
-                child: profile.photoUrl != null
-                    ? ClipOval(
-                        child: Image.network(
-                          profile.photoUrl!,
-                          fit: BoxFit.cover,
-                          errorBuilder: (_, __, ___) => _buildAvatar(),
-                        ),
-                      )
-                    : _buildAvatar(),
+                child: _buildPhoto(),
               ),
               const SizedBox(width: 16),
 
@@ -746,6 +756,34 @@ class _DogListTile extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  Widget _buildPhoto() {
+    // Try local photo first, then URL
+    if (profile.localPhotoPath != null) {
+      final file = File(profile.localPhotoPath!);
+      if (file.existsSync()) {
+        return ClipOval(
+          child: Image.file(
+            file,
+            fit: BoxFit.cover,
+            width: 56,
+            height: 56,
+            errorBuilder: (_, __, ___) => _buildAvatar(),
+          ),
+        );
+      }
+    }
+    if (profile.photoUrl != null) {
+      return ClipOval(
+        child: Image.network(
+          profile.photoUrl!,
+          fit: BoxFit.cover,
+          errorBuilder: (_, __, ___) => _buildAvatar(),
+        ),
+      );
+    }
+    return _buildAvatar();
   }
 
   Widget _buildAvatar() {

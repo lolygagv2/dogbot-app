@@ -33,8 +33,9 @@ class PanTiltControl extends ConsumerWidget {
             ),
           ),
           listener: (details) {
-            // Negate pan so joystick left = camera left
-            final pan = -details.x * AppConstants.maxPanAngle;
+            // Positive x = right, positive pan = right
+            final pan = details.x * AppConstants.maxPanAngle;
+            // Negative y = up (joystick), positive tilt = up (camera)
             final tilt = -details.y * AppConstants.maxTiltAngle;
             servoControl.setPosition(pan, tilt);
           },

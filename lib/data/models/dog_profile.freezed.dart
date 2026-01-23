@@ -24,9 +24,12 @@ mixin _$DogProfile {
   String get name => throw _privateConstructorUsedError;
   String? get breed => throw _privateConstructorUsedError;
   String? get photoUrl => throw _privateConstructorUsedError;
+  String? get localPhotoPath => throw _privateConstructorUsedError;
   DateTime? get birthDate => throw _privateConstructorUsedError;
   double? get weight => throw _privateConstructorUsedError;
   String? get notes => throw _privateConstructorUsedError;
+  DogColor get color => throw _privateConstructorUsedError;
+  int? get arucoMarkerId => throw _privateConstructorUsedError;
   List<String> get goals => throw _privateConstructorUsedError;
   String? get lastMissionId => throw _privateConstructorUsedError;
   DateTime? get createdAt => throw _privateConstructorUsedError;
@@ -52,9 +55,12 @@ abstract class $DogProfileCopyWith<$Res> {
       String name,
       String? breed,
       String? photoUrl,
+      String? localPhotoPath,
       DateTime? birthDate,
       double? weight,
       String? notes,
+      DogColor color,
+      int? arucoMarkerId,
       List<String> goals,
       String? lastMissionId,
       DateTime? createdAt});
@@ -79,9 +85,12 @@ class _$DogProfileCopyWithImpl<$Res, $Val extends DogProfile>
     Object? name = null,
     Object? breed = freezed,
     Object? photoUrl = freezed,
+    Object? localPhotoPath = freezed,
     Object? birthDate = freezed,
     Object? weight = freezed,
     Object? notes = freezed,
+    Object? color = null,
+    Object? arucoMarkerId = freezed,
     Object? goals = null,
     Object? lastMissionId = freezed,
     Object? createdAt = freezed,
@@ -103,6 +112,10 @@ class _$DogProfileCopyWithImpl<$Res, $Val extends DogProfile>
           ? _value.photoUrl
           : photoUrl // ignore: cast_nullable_to_non_nullable
               as String?,
+      localPhotoPath: freezed == localPhotoPath
+          ? _value.localPhotoPath
+          : localPhotoPath // ignore: cast_nullable_to_non_nullable
+              as String?,
       birthDate: freezed == birthDate
           ? _value.birthDate
           : birthDate // ignore: cast_nullable_to_non_nullable
@@ -115,6 +128,14 @@ class _$DogProfileCopyWithImpl<$Res, $Val extends DogProfile>
           ? _value.notes
           : notes // ignore: cast_nullable_to_non_nullable
               as String?,
+      color: null == color
+          ? _value.color
+          : color // ignore: cast_nullable_to_non_nullable
+              as DogColor,
+      arucoMarkerId: freezed == arucoMarkerId
+          ? _value.arucoMarkerId
+          : arucoMarkerId // ignore: cast_nullable_to_non_nullable
+              as int?,
       goals: null == goals
           ? _value.goals
           : goals // ignore: cast_nullable_to_non_nullable
@@ -144,9 +165,12 @@ abstract class _$$DogProfileImplCopyWith<$Res>
       String name,
       String? breed,
       String? photoUrl,
+      String? localPhotoPath,
       DateTime? birthDate,
       double? weight,
       String? notes,
+      DogColor color,
+      int? arucoMarkerId,
       List<String> goals,
       String? lastMissionId,
       DateTime? createdAt});
@@ -169,9 +193,12 @@ class __$$DogProfileImplCopyWithImpl<$Res>
     Object? name = null,
     Object? breed = freezed,
     Object? photoUrl = freezed,
+    Object? localPhotoPath = freezed,
     Object? birthDate = freezed,
     Object? weight = freezed,
     Object? notes = freezed,
+    Object? color = null,
+    Object? arucoMarkerId = freezed,
     Object? goals = null,
     Object? lastMissionId = freezed,
     Object? createdAt = freezed,
@@ -193,6 +220,10 @@ class __$$DogProfileImplCopyWithImpl<$Res>
           ? _value.photoUrl
           : photoUrl // ignore: cast_nullable_to_non_nullable
               as String?,
+      localPhotoPath: freezed == localPhotoPath
+          ? _value.localPhotoPath
+          : localPhotoPath // ignore: cast_nullable_to_non_nullable
+              as String?,
       birthDate: freezed == birthDate
           ? _value.birthDate
           : birthDate // ignore: cast_nullable_to_non_nullable
@@ -205,6 +236,14 @@ class __$$DogProfileImplCopyWithImpl<$Res>
           ? _value.notes
           : notes // ignore: cast_nullable_to_non_nullable
               as String?,
+      color: null == color
+          ? _value.color
+          : color // ignore: cast_nullable_to_non_nullable
+              as DogColor,
+      arucoMarkerId: freezed == arucoMarkerId
+          ? _value.arucoMarkerId
+          : arucoMarkerId // ignore: cast_nullable_to_non_nullable
+              as int?,
       goals: null == goals
           ? _value._goals
           : goals // ignore: cast_nullable_to_non_nullable
@@ -229,9 +268,12 @@ class _$DogProfileImpl implements _DogProfile {
       required this.name,
       this.breed,
       this.photoUrl,
+      this.localPhotoPath,
       this.birthDate,
       this.weight,
       this.notes,
+      this.color = DogColor.mixed,
+      this.arucoMarkerId,
       final List<String> goals = const [],
       this.lastMissionId,
       this.createdAt})
@@ -249,11 +291,18 @@ class _$DogProfileImpl implements _DogProfile {
   @override
   final String? photoUrl;
   @override
+  final String? localPhotoPath;
+  @override
   final DateTime? birthDate;
   @override
   final double? weight;
   @override
   final String? notes;
+  @override
+  @JsonKey()
+  final DogColor color;
+  @override
+  final int? arucoMarkerId;
   final List<String> _goals;
   @override
   @JsonKey()
@@ -270,7 +319,7 @@ class _$DogProfileImpl implements _DogProfile {
 
   @override
   String toString() {
-    return 'DogProfile(id: $id, name: $name, breed: $breed, photoUrl: $photoUrl, birthDate: $birthDate, weight: $weight, notes: $notes, goals: $goals, lastMissionId: $lastMissionId, createdAt: $createdAt)';
+    return 'DogProfile(id: $id, name: $name, breed: $breed, photoUrl: $photoUrl, localPhotoPath: $localPhotoPath, birthDate: $birthDate, weight: $weight, notes: $notes, color: $color, arucoMarkerId: $arucoMarkerId, goals: $goals, lastMissionId: $lastMissionId, createdAt: $createdAt)';
   }
 
   @override
@@ -283,10 +332,15 @@ class _$DogProfileImpl implements _DogProfile {
             (identical(other.breed, breed) || other.breed == breed) &&
             (identical(other.photoUrl, photoUrl) ||
                 other.photoUrl == photoUrl) &&
+            (identical(other.localPhotoPath, localPhotoPath) ||
+                other.localPhotoPath == localPhotoPath) &&
             (identical(other.birthDate, birthDate) ||
                 other.birthDate == birthDate) &&
             (identical(other.weight, weight) || other.weight == weight) &&
             (identical(other.notes, notes) || other.notes == notes) &&
+            (identical(other.color, color) || other.color == color) &&
+            (identical(other.arucoMarkerId, arucoMarkerId) ||
+                other.arucoMarkerId == arucoMarkerId) &&
             const DeepCollectionEquality().equals(other._goals, _goals) &&
             (identical(other.lastMissionId, lastMissionId) ||
                 other.lastMissionId == lastMissionId) &&
@@ -302,9 +356,12 @@ class _$DogProfileImpl implements _DogProfile {
       name,
       breed,
       photoUrl,
+      localPhotoPath,
       birthDate,
       weight,
       notes,
+      color,
+      arucoMarkerId,
       const DeepCollectionEquality().hash(_goals),
       lastMissionId,
       createdAt);
@@ -331,9 +388,12 @@ abstract class _DogProfile implements DogProfile {
       required final String name,
       final String? breed,
       final String? photoUrl,
+      final String? localPhotoPath,
       final DateTime? birthDate,
       final double? weight,
       final String? notes,
+      final DogColor color,
+      final int? arucoMarkerId,
       final List<String> goals,
       final String? lastMissionId,
       final DateTime? createdAt}) = _$DogProfileImpl;
@@ -350,11 +410,17 @@ abstract class _DogProfile implements DogProfile {
   @override
   String? get photoUrl;
   @override
+  String? get localPhotoPath;
+  @override
   DateTime? get birthDate;
   @override
   double? get weight;
   @override
   String? get notes;
+  @override
+  DogColor get color;
+  @override
+  int? get arucoMarkerId;
   @override
   List<String> get goals;
   @override

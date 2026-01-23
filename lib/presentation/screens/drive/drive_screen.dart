@@ -8,6 +8,7 @@ import '../../../domain/providers/control_provider.dart';
 import '../../../domain/providers/telemetry_provider.dart';
 import '../../widgets/video/webrtc_video_view.dart';
 import '../../widgets/controls/pan_tilt_control.dart';
+import '../../widgets/controls/push_to_talk.dart';
 import '../../theme/app_theme.dart';
 
 class DriveScreen extends ConsumerWidget {
@@ -119,20 +120,29 @@ class DriveScreen extends ConsumerWidget {
                   onStickEnd: () => motorControl.stop(),
                 ),
 
-                // Center button - treat dispense
+                // Center controls - treat, center, and push-to-talk
                 Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    _OverlayButton(
-                      icon: Icons.cookie,
-                      label: 'TREAT',
-                      onTap: () => ref.read(treatControlProvider).dispense(),
-                    ),
-                    const SizedBox(height: 12),
-                    _OverlayButton(
-                      icon: Icons.center_focus_strong,
-                      label: 'CENTER',
-                      onTap: () => ref.read(servoControlProvider.notifier).center(),
+                    // Push-to-talk controls
+                    const PushToTalkControls(compact: true),
+                    const SizedBox(height: 16),
+                    // Action buttons
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        _OverlayButton(
+                          icon: Icons.cookie,
+                          label: 'TREAT',
+                          onTap: () => ref.read(treatControlProvider).dispense(),
+                        ),
+                        const SizedBox(width: 12),
+                        _OverlayButton(
+                          icon: Icons.center_focus_strong,
+                          label: 'CENTER',
+                          onTap: () => ref.read(servoControlProvider.notifier).center(),
+                        ),
+                      ],
                     ),
                   ],
                 ),
