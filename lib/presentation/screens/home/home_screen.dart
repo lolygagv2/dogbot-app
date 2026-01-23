@@ -29,8 +29,10 @@ class HomeScreen extends ConsumerWidget {
     final telemetry = ref.watch(telemetryProvider);
     final deviceId = ref.watch(deviceIdProvider);
 
-    // Redirect if disconnected
-    if (!connection.isConnected) {
+    // Redirect only if completely disconnected from relay
+    // Allow staying on home screen while waiting for robot
+    if (connection.status == ConnectionStatus.disconnected ||
+        connection.status == ConnectionStatus.error) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         context.go('/connect');
       });

@@ -3,6 +3,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../core/constants/app_constants.dart';
 import '../../core/network/websocket_client.dart';
+import 'connection_provider.dart';
 
 /// Provider for paired device ID
 final deviceIdProvider =
@@ -37,6 +38,9 @@ class DeviceIdNotifier extends StateNotifier<String> {
 
     // Update WebSocket client immediately
     _ref.read(websocketClientProvider).setTargetDevice(deviceId);
+
+    // Notify connection provider to re-check robot status
+    _ref.read(connectionProvider.notifier).onDeviceIdChanged(deviceId);
   }
 
   Future<void> clearDeviceId() async {

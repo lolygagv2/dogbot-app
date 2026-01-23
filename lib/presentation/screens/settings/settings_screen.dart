@@ -38,21 +38,7 @@ class SettingsScreen extends ConsumerWidget {
           const Divider(),
 
           _SectionHeader('Connection'),
-          ListTile(
-            leading: Icon(
-              connection.isConnected ? Icons.wifi : Icons.wifi_off,
-              color: connection.isConnected ? Colors.green : Colors.red,
-            ),
-            title: Text(connection.isConnected ? 'Connected' : 'Disconnected'),
-            subtitle: Text('${connection.host}:${connection.port}'),
-            trailing: TextButton(
-              onPressed: () async {
-                await ref.read(connectionProvider.notifier).disconnect();
-                if (context.mounted) context.go('/connect');
-              },
-              child: const Text('Disconnect'),
-            ),
-          ),
+          _ConnectionStatusTile(),
           const Divider(),
 
           // WiFi Setup Help
@@ -396,6 +382,116 @@ class _LedIndicator extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+/// Connection status tile with 3-tier state
+class _ConnectionStatusTile extends ConsumerWidget {
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final connection = ref.watch(connectionProvider);
+
+    // Determine icon and color based on status
+    IconData icon;
+    Color color;
+
+    switch (connection.status) {
+      case ConnectionStatus.disconnected:
+        icon = Icons.cloud_off;
+        color = Colors.grey;
+        break;
+      case ConnectionStatus.connecting:
+        icon = Icons.cloud_sync;
+        color = Colors.orange;
+        break;
+      case ConnectionStatus.relayConnected:
+        icon = Icons.cloud_done;
+        color = connection.isNotPaired ? Colors.orange : Colors.blue;
+        break;
+      case ConnectionStatus.robotOnline:
+        icon = Icons.smart_toy;
+        color = Colors.green;
+        break;
+      case ConnectionStatus.error:
+        icon = Icons.error_outline;
+        color = Colors.red;
+        break;
+    }
+
+    return Column(
+      children: [
+        ListTile(
+          leading: Icon(icon, color: color),
+          title: Text(connection.statusMessage),
+          subtitle: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('Device: ${connection.deviceId ?? 'Not set'}'),
+              if (connection.host != null)
+                Text(
+                  'Server: ${connection.host}',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: Theme.of(context).colorScheme.onSurface.withOpacity(0.5),
+                  ),
+                ),
+            ],
+          ),
+          trailing: connection.status == ConnectionStatus.connecting
+              ? const SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : TextButton(
+                  onPressed: () async {
+                    await ref.read(connectionProvider.notifier).disconnect();
+                    if (context.mounted) context.go('/connect');
+                  },
+                  child: const Text('Disconnect'),
+                ),
+        ),
+        // Show error message if present
+        if (connection.errorMessage != null)
+          Container(
+            margin: const EdgeInsets.symmetric(horizontal: 16),
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Colors.red.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Row(
+              children: [
+                const Icon(Icons.warning, color: Colors.red, size: 18),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    connection.errorMessage!,
+                    style: const TextStyle(color: Colors.red, fontSize: 13),
+                  ),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.close, size: 16),
+                  onPressed: () =>
+                      ref.read(connectionProvider.notifier).clearError(),
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(),
+                ),
+              ],
+            ),
+          ),
+        // Show pairing hint if not paired
+        if (connection.isNotPaired)
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            child: OutlinedButton.icon(
+              onPressed: () => context.push('/device-pairing'),
+              icon: const Icon(Icons.link),
+              label: const Text('Pair Device'),
+            ),
+          ),
+      ],
     );
   }
 }
