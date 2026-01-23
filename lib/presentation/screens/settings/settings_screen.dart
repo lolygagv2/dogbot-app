@@ -86,6 +86,16 @@ class SettingsScreen extends ConsumerWidget {
           _MotorTrimSlider(),
           const Divider(),
 
+          _SectionHeader('Training'),
+          ListTile(
+            leading: const Icon(Icons.mic),
+            title: const Text('Voice Commands'),
+            subtitle: const Text('Record custom voice commands for your dog'),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => context.push('/voice-setup'),
+          ),
+          const Divider(),
+
           _SectionHeader('About'),
           const ListTile(
             leading: Icon(Icons.info),

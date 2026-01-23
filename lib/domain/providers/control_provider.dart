@@ -40,15 +40,51 @@ class MotorControlNotifier extends StateNotifier<MotorState> {
   final Ref _ref;
   Timer? _sendTimer;
   bool _hasPendingCommand = false;
+  double _lastSentLeft = 0.0;
+  double _lastSentRight = 0.0;
 
   MotorControlNotifier(this._ref) : super(const MotorState());
 
-  /// Set motor speeds from joystick input
+  /// Set motor speeds directly (for D-pad control)
+  /// left/right: -1.0 to 1.0
+  void setMotorSpeeds(double left, double right) {
+    state = MotorState(
+      left: left.clamp(-1.0, 1.0),
+      right: right.clamp(-1.0, 1.0),
+      isMoving: left.abs() > 0.05 || right.abs() > 0.05,
+    );
+    _sendCommandImmediate();
+  }
+
+  /// Send motor command immediately (bypasses timer for D-pad)
+  void _sendCommandImmediate() {
+    if (!_ref.read(connectionProvider).isConnected) return;
+
+    final trim = _ref.read(motorTrimProvider);
+    final adjustedRight = (state.right * (1 - trim)).clamp(-1.0, 1.0);
+
+    _lastSentLeft = state.left;
+    _lastSentRight = state.right;
+
+    final webrtc = _ref.read(webrtcProvider.notifier);
+    if (webrtc.isDataChannelOpen) {
+      webrtc.sendMotorCommand(state.left, adjustedRight);
+    }
+  }
+
+  /// Set motor speeds from joystick input (legacy - kept for compatibility)
   /// x: left/right (-1 to 1), y: forward/backward (-1 to 1)
   void setFromJoystick(double x, double y) {
     // Convert to differential drive
     final left = (y + x).clamp(-1.0, 1.0);
     final right = (y - x).clamp(-1.0, 1.0);
+
+    // Only update state if values changed significantly (reduces jitter)
+    const threshold = 0.02;
+    final leftChanged = (left - state.left).abs() > threshold;
+    final rightChanged = (right - state.right).abs() > threshold;
+
+    if (!leftChanged && !rightChanged) return;
 
     state = MotorState(
       left: left,
@@ -56,7 +92,11 @@ class MotorControlNotifier extends StateNotifier<MotorState> {
       isMoving: left.abs() > 0.05 || right.abs() > 0.05,
     );
 
-    _hasPendingCommand = true;
+    // Only mark pending if values differ from last sent values
+    if ((left - _lastSentLeft).abs() > threshold ||
+        (right - _lastSentRight).abs() > threshold) {
+      _hasPendingCommand = true;
+    }
     _ensureSendTimer();
   }
 
@@ -102,6 +142,10 @@ class MotorControlNotifier extends StateNotifier<MotorState> {
     // Negative trim speeds up right motor (fixes right drift)
     final trim = _ref.read(motorTrimProvider);
     final adjustedRight = (state.right * (1 - trim)).clamp(-1.0, 1.0);
+
+    // Track last sent values to avoid redundant sends
+    _lastSentLeft = state.left;
+    _lastSentRight = state.right;
 
     // Use WebRTC data channel for lowest latency (direct to robot)
     final webrtc = _ref.read(webrtcProvider.notifier);
@@ -175,14 +219,24 @@ class ServoControlNotifier extends StateNotifier<ServoState> {
     // Don't send anything on release - servo stays where it was
   }
 
-  /// Adjust pan by delta
+  /// Adjust pan by delta (D-pad style - immediate send)
   void adjustPan(double delta) {
-    setPosition(state.pan + delta, state.tilt);
+    final newPan = (state.pan + delta).clamp(-AppConstants.maxPanAngle, AppConstants.maxPanAngle);
+    state = ServoState(pan: newPan, tilt: state.tilt);
+    _sendCommandImmediate();
   }
 
-  /// Adjust tilt by delta
+  /// Adjust tilt by delta (D-pad style - immediate send)
   void adjustTilt(double delta) {
-    setPosition(state.pan, state.tilt + delta);
+    final newTilt = (state.tilt + delta).clamp(-AppConstants.maxTiltAngle, AppConstants.maxTiltAngle);
+    state = ServoState(pan: state.pan, tilt: newTilt);
+    _sendCommandImmediate();
+  }
+
+  /// Send command immediately (for D-pad taps)
+  void _sendCommandImmediate() {
+    if (!_ref.read(connectionProvider).isConnected) return;
+    _ref.read(websocketClientProvider).sendServoCommand(state.pan, state.tilt);
   }
 
   /// Center camera (explicit button press)

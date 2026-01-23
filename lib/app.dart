@@ -148,6 +148,12 @@ final _router = GoRouter(
       builder: (context, state) => const SettingsScreen(),
     ),
 
+    // Voice commands setup (standalone route from settings)
+    GoRoute(
+      path: '/voice-setup',
+      builder: (context, state) => const VoiceSetupScreen(),
+    ),
+
     // Dog profile detail (can also be accessed directly)
     GoRoute(
       path: '/dog/:id',

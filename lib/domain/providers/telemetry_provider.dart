@@ -41,13 +41,16 @@ class TelemetryNotifier extends StateNotifier<Telemetry> {
       case 'telemetry':
       case 'status':
       case 'robot_status':
-        // Full status update - parse but preserve existing battery if not in this event
+        // Full status update - parse but preserve existing values if not in this event
         final parsed = Telemetry.fromApiResponse(event.data);
+        // Only update mode if it was actually in the event data (not defaulted to 'idle')
+        final hasMode = event.data.containsKey('mode') && event.data['mode'] != null;
         state = state.copyWith(
           // Only update battery if parsed value is non-zero (was actually in the data)
           battery: parsed.battery > 0 ? parsed.battery : state.battery,
           temperature: parsed.temperature > 0 ? parsed.temperature : state.temperature,
-          mode: parsed.mode,
+          // Preserve existing mode if not in this event
+          mode: hasMode ? parsed.mode : state.mode,
           dogDetected: parsed.dogDetected,
           currentBehavior: parsed.currentBehavior,
           confidence: parsed.confidence,
@@ -56,7 +59,7 @@ class TelemetryNotifier extends StateNotifier<Telemetry> {
           activeMissionId: parsed.activeMissionId,
           rawData: parsed.rawData,
         );
-        print('Telemetry updated: battery=${state.battery}, charging=${state.isCharging}');
+        print('Telemetry updated: battery=${state.battery}, mode=${state.mode}, hasMode=$hasMode');
         break;
 
       case 'device_status':
@@ -83,21 +86,28 @@ class TelemetryNotifier extends StateNotifier<Telemetry> {
         break;
 
       case 'battery':
-        // Battery update - {'level': 95, 'charging': true, 'voltage': 16.6, 'temperature': 73.25, 'treats_today': 0}
+        // Battery update - {'level': 95, 'charging': true, 'voltage': 16.6, 'temperature': 73.25, 'treats_today': 0, 'mode': 'idle'}
         final level = (event.data['level'] as num?)?.toDouble();
         final charging = event.data['charging'] as bool?;
         final temp = (event.data['temperature'] as num?)?.toDouble();
         final treats = event.data['treats_today'] as int?;
-        print('BATTERY EVENT RECEIVED: level=$level, charging=$charging, temp=$temp, treats=$treats');
+        final mode = event.data['mode'] as String?;
+        print('BATTERY EVENT RECEIVED: level=$level, charging=$charging, temp=$temp, treats=$treats, mode=$mode');
         if (level != null) {
           state = state.copyWith(
             battery: level,
             isCharging: charging ?? state.isCharging,
             temperature: temp ?? state.temperature,
             treatsRemaining: treats ?? state.treatsRemaining,
+            mode: mode ?? state.mode,
           );
-          print('STATE UPDATED: battery=${state.battery}, temp=${state.temperature}, treats=${state.treatsRemaining}');
+          print('STATE UPDATED: battery=${state.battery}, temp=${state.temperature}, treats=${state.treatsRemaining}, mode=${state.mode}');
         }
+        break;
+
+      case 'bark':
+        // Bark detected - handled silently here, guardian_events_provider picks it up
+        // from the websocket eventStream directly
         break;
 
       case 'mode':

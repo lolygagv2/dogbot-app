@@ -125,7 +125,7 @@ class HomeScreen extends ConsumerWidget {
                       // Compact quick actions
                       const Expanded(child: QuickActions()),
                       const SizedBox(width: 16),
-                      // Navigation icons
+                      // Navigation icons - Drive hidden in silent_guardian
                       _CompactNavButton(
                         icon: Icons.gamepad,
                         label: 'Drive',
@@ -158,7 +158,7 @@ class HomeScreen extends ConsumerWidget {
                         const QuickActions(),
                         const SizedBox(height: 16),
 
-                        // Navigation buttons
+                        // Navigation buttons - Drive available in manual/idle/coach/mission
                         Row(
                           children: [
                             Expanded(
@@ -198,49 +198,91 @@ class HomeScreen extends ConsumerWidget {
   }
 }
 
-/// Detection status chip
-class _DetectionChip extends StatelessWidget {
+/// Detection status chip with auto-dismiss after 3 seconds
+class _DetectionChip extends StatefulWidget {
   final String? behavior;
   final double? confidence;
 
   const _DetectionChip({this.behavior, this.confidence});
 
   @override
-  Widget build(BuildContext context) {
-    final color = AppTheme.getBehaviorColor(behavior);
-    final confidenceText =
-        confidence != null ? '${(confidence! * 100).toInt()}%' : '';
+  State<_DetectionChip> createState() => _DetectionChipState();
+}
 
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-      decoration: BoxDecoration(
-        color: color.withOpacity(0.9),
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const Icon(Icons.pets, color: Colors.white, size: 16),
-          const SizedBox(width: 6),
-          Text(
-            behavior?.toUpperCase() ?? 'DETECTED',
-            style: const TextStyle(
-              color: Colors.white,
-              fontWeight: FontWeight.bold,
-              fontSize: 12,
-            ),
-          ),
-          if (confidenceText.isNotEmpty) ...[
+class _DetectionChipState extends State<_DetectionChip> {
+  bool _isVisible = true;
+  DateTime _lastUpdate = DateTime.now();
+
+  @override
+  void initState() {
+    super.initState();
+    _startDismissTimer();
+  }
+
+  @override
+  void didUpdateWidget(_DetectionChip oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // Reset visibility and timer when detection updates
+    if (oldWidget.behavior != widget.behavior ||
+        oldWidget.confidence != widget.confidence) {
+      _lastUpdate = DateTime.now();
+      if (!_isVisible) {
+        setState(() => _isVisible = true);
+      }
+      _startDismissTimer();
+    }
+  }
+
+  void _startDismissTimer() {
+    Future.delayed(const Duration(seconds: 3), () {
+      if (mounted && DateTime.now().difference(_lastUpdate).inSeconds >= 3) {
+        setState(() => _isVisible = false);
+      }
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (!_isVisible) return const SizedBox.shrink();
+
+    final color = AppTheme.getBehaviorColor(widget.behavior);
+    final confidenceText =
+        widget.confidence != null ? '${(widget.confidence! * 100).toInt()}%' : '';
+
+    return AnimatedOpacity(
+      opacity: _isVisible ? 1.0 : 0.0,
+      duration: const Duration(milliseconds: 300),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        decoration: BoxDecoration(
+          color: color.withOpacity(0.9),
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.pets, color: Colors.white, size: 16),
             const SizedBox(width: 6),
             Text(
-              confidenceText,
+              widget.behavior?.toUpperCase() ?? 'DETECTED',
               style: const TextStyle(
-                color: Colors.white70,
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
                 fontSize: 12,
               ),
             ),
+            if (confidenceText.isNotEmpty) ...[
+              const SizedBox(width: 6),
+              Text(
+                confidenceText,
+                style: const TextStyle(
+                  color: Colors.white70,
+                  fontSize: 12,
+                ),
+              ),
+            ],
           ],
-        ],
+        ),
       ),
     );
   }

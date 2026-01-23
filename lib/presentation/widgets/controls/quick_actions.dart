@@ -25,18 +25,37 @@ class QuickActions extends ConsumerWidget {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        // Main action buttons row
+        // Main action buttons row - [Good] [Give Treat] [Want Treat?] [No]
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceEvenly,
           children: [
-            // Treat? button - plays audio + dispenses treat
+            // Good button - plays good_dog.mp3
             _ActionButton(
-              icon: Icons.card_giftcard,
-              label: 'Treat?',
-              color: AppTheme.accent,
+              icon: Icons.thumb_up,
+              label: 'Good',
+              color: Colors.green,
               onPressed: () {
                 audioControl.play('good_dog.mp3');
+              },
+            ),
+
+            // Give Treat button - dispenses treat only
+            _ActionButton(
+              icon: Icons.pets,
+              label: 'Give Treat',
+              color: AppTheme.accent,
+              onPressed: () {
                 treatControl.dispense();
+              },
+            ),
+
+            // Want Treat? button - plays treat.mp3 audio
+            _ActionButton(
+              icon: Icons.restaurant,
+              label: 'Want Treat?',
+              color: Colors.amber,
+              onPressed: () {
+                audioControl.play('treat.mp3');
               },
             ),
 
@@ -50,7 +69,15 @@ class QuickActions extends ConsumerWidget {
                 audioControl.play('no.mp3');
               },
             ),
+          ],
+        ),
 
+        const SizedBox(height: 12),
+
+        // Secondary row - Lighting and Music controls
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
             // Lighting button - cycles through patterns
             _LightingButton(
               currentIndex: lightingIndex,
@@ -72,24 +99,28 @@ class QuickActions extends ConsumerWidget {
                 );
               },
             ),
+
+            const SizedBox(width: 24),
+
+            // Music controls row
+            // Prev/Next load songs but don't auto-play
+            // Play/Pause toggles playback state
+            _MusicControls(
+              isPlaying: isPlaying,
+              onPrev: () {
+                audioControl.prev();
+                // Prev loads song but doesn't play - keep current state
+              },
+              onToggle: () {
+                audioControl.toggle();
+                ref.read(_isPlayingProvider.notifier).state = !isPlaying;
+              },
+              onNext: () {
+                audioControl.next();
+                // Next loads song but doesn't play - keep current state
+              },
+            ),
           ],
-        ),
-
-        const SizedBox(height: 12),
-
-        // Music controls row
-        _MusicControls(
-          isPlaying: isPlaying,
-          onPrev: () => audioControl.prev(),
-          onToggle: () {
-            if (isPlaying) {
-              audioControl.stop();
-            } else {
-              audioControl.toggle();
-            }
-            ref.read(_isPlayingProvider.notifier).state = !isPlaying;
-          },
-          onNext: () => audioControl.next(),
         ),
       ],
     );
@@ -99,12 +130,14 @@ class QuickActions extends ConsumerWidget {
     switch (pattern) {
       case LedPatterns.rainbow:
         return 'Rainbow';
-      case LedPatterns.pulse:
-        return 'Pulse';
-      case LedPatterns.solid:
-        return 'Solid';
+      case LedPatterns.fire:
+        return 'Fire';
+      case LedPatterns.solidBlue:
+        return 'Blue';
       case LedPatterns.chase:
         return 'Chase';
+      case LedPatterns.ambient:
+        return 'Ambient';
       case LedPatterns.off:
         return 'Off';
       default:

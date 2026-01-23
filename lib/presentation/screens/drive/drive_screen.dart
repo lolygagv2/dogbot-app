@@ -1,13 +1,11 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter_joystick/flutter_joystick.dart';
 
-import '../../../core/constants/app_constants.dart';
-import '../../../domain/providers/connection_provider.dart';
 import '../../../domain/providers/control_provider.dart';
 import '../../../domain/providers/telemetry_provider.dart';
 import '../../widgets/video/webrtc_video_view.dart';
-import '../../widgets/controls/pan_tilt_control.dart';
 import '../../widgets/controls/push_to_talk.dart';
 import '../../theme/app_theme.dart';
 
@@ -111,14 +109,8 @@ class DriveScreen extends ConsumerWidget {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
-                // Drive joystick (left)
-                _OverlayJoystick(
-                  label: 'DRIVE',
-                  onStickMove: (x, y) {
-                    motorControl.setFromJoystick(x, -y);
-                  },
-                  onStickEnd: () => motorControl.stop(),
-                ),
+                // Drive D-pad (left) - press and hold to accelerate
+                const _MotorDpad(),
 
                 // Center controls - treat, center, and push-to-talk
                 Column(
@@ -234,26 +226,102 @@ class _SpeedBar extends StatelessWidget {
   }
 }
 
-/// Semi-transparent joystick overlay
-class _OverlayJoystick extends StatelessWidget {
-  final String label;
-  final void Function(double x, double y) onStickMove;
-  final VoidCallback onStickEnd;
+/// Motor D-pad control with acceleration on hold
+/// Layout:     [↑]
+///        [←] [■] [→]
+///            [↓]
+class _MotorDpad extends ConsumerStatefulWidget {
+  const _MotorDpad();
 
-  const _OverlayJoystick({
-    required this.label,
-    required this.onStickMove,
-    required this.onStickEnd,
-  });
+  @override
+  ConsumerState<_MotorDpad> createState() => _MotorDpadState();
+}
+
+class _MotorDpadState extends ConsumerState<_MotorDpad> {
+  Timer? _accelerationTimer;
+  double _currentSpeed = 0.0;
+  _MotorDirection? _activeDirection;
+
+  // Speed ramp: 20% -> 40% -> 60% -> 80% -> 100% over 1.5 seconds (100ms intervals = 15 steps)
+  static const double _startSpeed = 0.2;
+  static const double _maxSpeed = 1.0;
+  static const double _speedIncrement = (_maxSpeed - _startSpeed) / 15; // ~0.053 per step
+  static const Duration _updateInterval = Duration(milliseconds: 100);
+
+  @override
+  void dispose() {
+    _accelerationTimer?.cancel();
+    super.dispose();
+  }
+
+  void _onDirectionStart(_MotorDirection direction) {
+    _activeDirection = direction;
+    _currentSpeed = _startSpeed;
+    _sendMotorCommand();
+
+    // Start acceleration timer
+    _accelerationTimer?.cancel();
+    _accelerationTimer = Timer.periodic(_updateInterval, (_) {
+      if (_currentSpeed < _maxSpeed) {
+        _currentSpeed = (_currentSpeed + _speedIncrement).clamp(0.0, _maxSpeed);
+      }
+      _sendMotorCommand();
+    });
+  }
+
+  void _onDirectionEnd() {
+    _accelerationTimer?.cancel();
+    _accelerationTimer = null;
+    _activeDirection = null;
+    _currentSpeed = 0.0;
+
+    // Send one stop command
+    ref.read(motorControlProvider.notifier).setMotorSpeeds(0, 0);
+  }
+
+  void _sendMotorCommand() {
+    if (_activeDirection == null) return;
+
+    final motorControl = ref.read(motorControlProvider.notifier);
+    final speed = _currentSpeed;
+
+    switch (_activeDirection!) {
+      case _MotorDirection.forward:
+        motorControl.setMotorSpeeds(speed, speed);
+        break;
+      case _MotorDirection.backward:
+        motorControl.setMotorSpeeds(-speed, -speed);
+        break;
+      case _MotorDirection.left:
+        // Turn left: left motor slow/reverse, right motor forward
+        motorControl.setMotorSpeeds(-speed, speed);
+        break;
+      case _MotorDirection.right:
+        // Turn right: left motor forward, right motor slow/reverse
+        motorControl.setMotorSpeeds(speed, -speed);
+        break;
+    }
+  }
+
+  void _emergencyStop() {
+    _accelerationTimer?.cancel();
+    _accelerationTimer = null;
+    _activeDirection = null;
+    _currentSpeed = 0.0;
+    ref.read(motorControlProvider.notifier).emergencyStop();
+  }
 
   @override
   Widget build(BuildContext context) {
+    final motorState = ref.watch(motorControlProvider);
+    final speedPercent = (_currentSpeed * 100).round();
+
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Text(
-          label,
-          style: const TextStyle(
+        const Text(
+          'DRIVE',
+          style: TextStyle(
             color: Colors.white70,
             fontSize: 10,
             fontWeight: FontWeight.bold,
@@ -262,32 +330,86 @@ class _OverlayJoystick extends StatelessWidget {
         ),
         const SizedBox(height: 4),
         Container(
+          width: 140,
+          height: 140,
           decoration: BoxDecoration(
             color: Colors.black38,
             borderRadius: BorderRadius.circular(75),
           ),
-          child: Joystick(
-            mode: JoystickMode.all,
-            period: AppConstants.joystickSendInterval,
-            base: JoystickBase(
-              size: 140,
-              decoration: JoystickBaseDecoration(
-                color: Colors.white.withOpacity(0.1),
-                drawOuterCircle: false,
-                drawInnerCircle: false,
-                drawMiddleCircle: false,
+          child: Stack(
+            alignment: Alignment.center,
+            children: [
+              // Up button (forward)
+              Positioned(
+                top: 8,
+                child: _MotorDpadButton(
+                  icon: Icons.keyboard_arrow_up,
+                  isActive: _activeDirection == _MotorDirection.forward,
+                  onPressStart: () => _onDirectionStart(_MotorDirection.forward),
+                  onPressEnd: _onDirectionEnd,
+                ),
               ),
-            ),
-            stick: JoystickStick(
-              size: 50,
-              decoration: JoystickStickDecoration(
-                color: AppTheme.primary.withOpacity(0.8),
+              // Down button (backward)
+              Positioned(
+                bottom: 8,
+                child: _MotorDpadButton(
+                  icon: Icons.keyboard_arrow_down,
+                  isActive: _activeDirection == _MotorDirection.backward,
+                  onPressStart: () => _onDirectionStart(_MotorDirection.backward),
+                  onPressEnd: _onDirectionEnd,
+                ),
               ),
-            ),
-            listener: (details) {
-              onStickMove(details.x, details.y);
-            },
-            onStickDragEnd: onStickEnd,
+              // Left button (turn left)
+              Positioned(
+                left: 8,
+                child: _MotorDpadButton(
+                  icon: Icons.keyboard_arrow_left,
+                  isActive: _activeDirection == _MotorDirection.left,
+                  onPressStart: () => _onDirectionStart(_MotorDirection.left),
+                  onPressEnd: _onDirectionEnd,
+                ),
+              ),
+              // Right button (turn right)
+              Positioned(
+                right: 8,
+                child: _MotorDpadButton(
+                  icon: Icons.keyboard_arrow_right,
+                  isActive: _activeDirection == _MotorDirection.right,
+                  onPressStart: () => _onDirectionStart(_MotorDirection.right),
+                  onPressEnd: _onDirectionEnd,
+                ),
+              ),
+              // Center button (emergency stop)
+              GestureDetector(
+                onTap: _emergencyStop,
+                child: Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: motorState.isMoving
+                        ? Colors.red.withOpacity(0.8)
+                        : AppTheme.primary.withOpacity(0.3),
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color: motorState.isMoving ? Colors.red : AppTheme.primary,
+                      width: 2,
+                    ),
+                  ),
+                  child: Center(
+                    child: motorState.isMoving
+                        ? Text(
+                            '$speedPercent%',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          )
+                        : const Icon(Icons.stop, color: Colors.white, size: 20),
+                  ),
+                ),
+              ),
+            ],
           ),
         ),
       ],
@@ -295,13 +417,57 @@ class _OverlayJoystick extends StatelessWidget {
   }
 }
 
-/// Camera pan/tilt control overlay
+enum _MotorDirection { forward, backward, left, right }
+
+/// D-pad button for motor control with press/release detection
+class _MotorDpadButton extends StatelessWidget {
+  final IconData icon;
+  final bool isActive;
+  final VoidCallback onPressStart;
+  final VoidCallback onPressEnd;
+
+  const _MotorDpadButton({
+    required this.icon,
+    required this.isActive,
+    required this.onPressStart,
+    required this.onPressEnd,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTapDown: (_) => onPressStart(),
+      onTapUp: (_) => onPressEnd(),
+      onTapCancel: onPressEnd,
+      child: Container(
+        width: 40,
+        height: 40,
+        decoration: BoxDecoration(
+          color: isActive
+              ? AppTheme.primary
+              : AppTheme.primary.withOpacity(0.7),
+          shape: BoxShape.circle,
+          boxShadow: isActive
+              ? [BoxShadow(color: AppTheme.primary.withOpacity(0.5), blurRadius: 8)]
+              : null,
+        ),
+        child: Icon(icon, color: Colors.white, size: 28),
+      ),
+    );
+  }
+}
+
+/// Camera pan/tilt D-pad control overlay
+/// Each tap sends ONE command with fixed 10-degree increment
 class _OverlayCameraControl extends ConsumerWidget {
   const _OverlayCameraControl();
+
+  static const double _increment = 10.0;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final servoControl = ref.watch(servoControlProvider.notifier);
+    final servoState = ref.watch(servoControlProvider);
 
     return Column(
       mainAxisSize: MainAxisSize.min,
@@ -317,38 +483,98 @@ class _OverlayCameraControl extends ConsumerWidget {
         ),
         const SizedBox(height: 4),
         Container(
+          width: 140,
+          height: 140,
           decoration: BoxDecoration(
             color: Colors.black38,
             borderRadius: BorderRadius.circular(75),
           ),
-          child: Joystick(
-            mode: JoystickMode.all,
-            period: AppConstants.joystickSendInterval,
-            base: JoystickBase(
-              size: 140,
-              decoration: JoystickBaseDecoration(
-                color: Colors.white.withOpacity(0.1),
-                drawOuterCircle: false,
-                drawInnerCircle: false,
-                drawMiddleCircle: false,
+          child: Stack(
+            alignment: Alignment.center,
+            children: [
+              // Up button (tilt up)
+              Positioned(
+                top: 8,
+                child: _DpadButton(
+                  icon: Icons.keyboard_arrow_up,
+                  onTap: () => servoControl.adjustTilt(_increment),
+                ),
               ),
-            ),
-            stick: JoystickStick(
-              size: 50,
-              decoration: JoystickStickDecoration(
-                color: Colors.orange.withOpacity(0.8),
+              // Down button (tilt down)
+              Positioned(
+                bottom: 8,
+                child: _DpadButton(
+                  icon: Icons.keyboard_arrow_down,
+                  onTap: () => servoControl.adjustTilt(-_increment),
+                ),
               ),
-            ),
-            listener: (details) {
-              // Convert joystick to pan/tilt angles
-              final pan = details.x * AppConstants.maxPanAngle;
-              final tilt = -details.y * AppConstants.maxTiltAngle;
-              servoControl.setPosition(pan, tilt);
-            },
-            onStickDragEnd: () => servoControl.stopTracking(),
+              // Left button (pan left) - positive increment moves camera left
+              Positioned(
+                left: 8,
+                child: _DpadButton(
+                  icon: Icons.keyboard_arrow_left,
+                  onTap: () => servoControl.adjustPan(_increment),
+                ),
+              ),
+              // Right button (pan right) - negative increment moves camera right
+              Positioned(
+                right: 8,
+                child: _DpadButton(
+                  icon: Icons.keyboard_arrow_right,
+                  onTap: () => servoControl.adjustPan(-_increment),
+                ),
+              ),
+              // Center indicator showing current position
+              Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                  color: Colors.orange.withOpacity(0.3),
+                  shape: BoxShape.circle,
+                  border: Border.all(color: Colors.orange, width: 2),
+                ),
+                child: Center(
+                  child: Text(
+                    '${servoState.pan.round()}°',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 9,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ),
+            ],
           ),
         ),
       ],
+    );
+  }
+}
+
+/// D-pad button for camera control
+class _DpadButton extends StatelessWidget {
+  final IconData icon;
+  final VoidCallback onTap;
+
+  const _DpadButton({
+    required this.icon,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: 40,
+        height: 40,
+        decoration: BoxDecoration(
+          color: Colors.orange.withOpacity(0.7),
+          shape: BoxShape.circle,
+        ),
+        child: Icon(icon, color: Colors.white, size: 28),
+      ),
     );
   }
 }

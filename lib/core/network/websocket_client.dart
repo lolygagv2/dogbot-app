@@ -203,6 +203,22 @@ class WebSocketClient {
           _eventController.add(statusEvent);
           break;
 
+        // Bark event - forward as guardian event for event feed
+        case 'bark':
+          final barkEvent = WsEvent(
+            type: 'event',
+            data: {
+              'event_type': 'barking',
+              'timestamp': DateTime.now().toIso8601String(),
+              'details': json['details'] ?? json['message'] ?? 'Bark detected',
+              ...json,
+            },
+          );
+          _eventController.add(barkEvent);
+          // Also forward original for telemetry provider
+          _eventController.add(WsEvent.fromJson(json));
+          break;
+
         // Error messages - only log critical ones
         case 'error':
           final code = json['code'] as String?;
@@ -347,8 +363,9 @@ class WebSocketClient {
   }
 
   /// Send treat command
+  /// Format: {"type":"command","command":"dispense_treat"}
   void sendTreatCommand() {
-    sendCommand('treat');
+    sendCommand('dispense_treat');
   }
 
   /// Rotate treat carousel
@@ -386,24 +403,31 @@ class WebSocketClient {
     sendCommand('audio_volume', {'level': level});
   }
 
-  /// Play next audio track
+  /// Load next audio track (does NOT auto-play)
   void sendAudioNext() {
     sendCommand('audio_next');
   }
 
-  /// Play previous audio track
+  /// Load previous audio track (does NOT auto-play)
   void sendAudioPrev() {
     sendCommand('audio_prev');
   }
 
   /// Toggle audio play/pause
+  /// If stopped: starts playback
+  /// If playing: pauses playback
   void sendAudioToggle() {
     sendCommand('audio_toggle');
   }
 
   /// Take a photo with optional HUD overlay
+  /// Format: {"type":"command","command":"take_photo","with_hud":true}
   void sendTakePhoto({bool withHud = true}) {
-    sendCommand('take_photo', {'with_hud': withHud});
+    send({
+      'type': 'command',
+      'command': 'take_photo',
+      'with_hud': withHud,
+    });
   }
 
   /// Upload a voice command recording to the robot

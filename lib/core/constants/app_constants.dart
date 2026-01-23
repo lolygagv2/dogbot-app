@@ -9,7 +9,7 @@ class AppConstants {
   static const Duration websocketPingInterval = Duration(seconds: 30);
 
   // Control rates
-  static const Duration joystickSendInterval = Duration(milliseconds: 50); // 20Hz
+  static const Duration joystickSendInterval = Duration(milliseconds: 100); // 10Hz (reduced from 20Hz)
   static const Duration telemetryRefreshInterval = Duration(seconds: 2);
 
   // Default server config
