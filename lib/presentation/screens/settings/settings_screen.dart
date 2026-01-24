@@ -391,6 +391,7 @@ class _ConnectionStatusTile extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final connection = ref.watch(connectionProvider);
+    final deviceId = ref.watch(deviceIdProvider); // Single source of truth
 
     // Determine icon and color based on status
     IconData icon;
@@ -427,7 +428,7 @@ class _ConnectionStatusTile extends ConsumerWidget {
           subtitle: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('Device: ${connection.deviceId ?? 'Not set'}'),
+              Text('Device: $deviceId'),
               if (connection.host != null)
                 Text(
                   'Server: ${connection.host}',
