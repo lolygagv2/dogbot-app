@@ -4,9 +4,9 @@ import 'dart:io' show File, Platform;
 
 import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_sound/flutter_sound.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
-import 'package:record/record.dart';
 
 import '../../core/network/websocket_client.dart';
 
@@ -72,10 +72,11 @@ class PushToTalkNotifier extends StateNotifier<PttStateData> {
   StreamSubscription? _audioMessageSubscription;
 
   // Recording
-  AudioRecorder? _recorder;
+  FlutterSoundRecorder? _recorder;
   String? _currentRecordingPath;
   DateTime? _recordingStartTime;
   Timer? _progressTimer;
+  bool _isRecorderInitialized = false;
 
   // Playback
   AudioPlayer? _audioPlayer;
@@ -92,8 +93,15 @@ class PushToTalkNotifier extends StateNotifier<PttStateData> {
   }
 
   Future<void> _initRecorder() async {
-    _recorder = AudioRecorder();
-    print('PushToTalk: Recorder initialized');
+    _recorder = FlutterSoundRecorder();
+    try {
+      await _recorder!.openRecorder();
+      _isRecorderInitialized = true;
+      print('PushToTalk: Recorder initialized');
+    } catch (e) {
+      print('PushToTalk: Failed to initialize recorder: $e');
+      _isRecorderInitialized = false;
+    }
   }
 
   Future<void> _initPlayer() async {
@@ -141,7 +149,7 @@ class PushToTalkNotifier extends StateNotifier<PttStateData> {
       // Save to temp file
       final tempDir = await getTemporaryDirectory();
       final timestamp = DateTime.now().millisecondsSinceEpoch;
-      final extension = format == 'wav' ? 'wav' : 'm4a';
+      final extension = format == 'wav' ? 'wav' : 'aac';
       final filePath = '${tempDir.path}/robot_audio_$timestamp.$extension';
 
       final file = File(filePath);
@@ -184,7 +192,9 @@ class PushToTalkNotifier extends StateNotifier<PttStateData> {
   void dispose() {
     _audioMessageSubscription?.cancel();
     _progressTimer?.cancel();
-    _recorder?.dispose();
+    if (_recorder != null && _isRecorderInitialized) {
+      _recorder!.closeRecorder();
+    }
     _audioPlayer?.dispose();
     super.dispose();
   }
@@ -235,34 +245,27 @@ class PushToTalkNotifier extends StateNotifier<PttStateData> {
     }
 
     // Ensure recorder is initialized
-    if (_recorder == null) {
+    if (_recorder == null || !_isRecorderInitialized) {
       await _initRecorder();
-    }
-
-    // Check if recorder is available
-    final hasRecorder = await _recorder!.hasPermission();
-    if (!hasRecorder) {
-      state = state.copyWith(error: 'Recorder not available');
-      print('PushToTalk: Recorder not available');
-      return false;
+      if (!_isRecorderInitialized) {
+        state = state.copyWith(error: 'Recorder not available');
+        print('PushToTalk: Recorder not available');
+        return false;
+      }
     }
 
     try {
       // Get temp directory for recording
       final tempDir = await getTemporaryDirectory();
       final timestamp = DateTime.now().millisecondsSinceEpoch;
-      _currentRecordingPath = '${tempDir.path}/ptt_$timestamp.m4a';
+      _currentRecordingPath = '${tempDir.path}/ptt_$timestamp.aac';
 
-      // Configure and start recording
-      // AAC format, 16kHz sample rate, mono channel
-      await _recorder!.start(
-        const RecordConfig(
-          encoder: AudioEncoder.aacLc,
-          sampleRate: 16000,
-          numChannels: 1,
-          bitRate: 64000,
-        ),
-        path: _currentRecordingPath!,
+      // Start recording - AAC format, 16kHz sample rate, mono channel
+      await _recorder!.startRecorder(
+        toFile: _currentRecordingPath,
+        codec: Codec.aacADTS,
+        sampleRate: 16000,
+        numChannels: 1,
       );
 
       _recordingStartTime = DateTime.now();
@@ -319,7 +322,7 @@ class PushToTalkNotifier extends StateNotifier<PttStateData> {
 
     try {
       // Stop recording
-      final path = await _recorder!.stop();
+      final path = await _recorder!.stopRecorder();
 
       if (path == null || path.isEmpty) {
         print('PushToTalk: Recording returned null path');
@@ -395,7 +398,7 @@ class PushToTalkNotifier extends StateNotifier<PttStateData> {
 
     if (_recorder != null && state.isRecording) {
       try {
-        await _recorder!.stop();
+        await _recorder!.stopRecorder();
       } catch (e) {
         print('PushToTalk: Error stopping recorder: $e');
       }

@@ -3,9 +3,9 @@ import 'dart:convert';
 import 'dart:io' show Directory, File, Platform;
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_sound/flutter_sound.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
-import 'package:record/record.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../data/models/voice_command.dart';
@@ -41,9 +41,10 @@ class VoiceCommandsNotifier extends StateNotifier<DogVoiceCommands> {
   SharedPreferences? _prefs;
 
   // Recording
-  AudioRecorder? _recorder;
+  FlutterSoundRecorder? _recorder;
   String? _currentRecordingPath;
   DateTime? _recordingStartTime;
+  bool _isRecorderInitialized = false;
 
   VoiceCommandsNotifier(this.dogId, this._ref)
       : super(DogVoiceCommands(dogId: dogId)) {
@@ -54,13 +55,22 @@ class VoiceCommandsNotifier extends StateNotifier<DogVoiceCommands> {
   }
 
   Future<void> _initRecorder() async {
-    _recorder = AudioRecorder();
-    print('VoiceCommands: Recorder initialized');
+    _recorder = FlutterSoundRecorder();
+    try {
+      await _recorder!.openRecorder();
+      _isRecorderInitialized = true;
+      print('VoiceCommands: Recorder initialized');
+    } catch (e) {
+      print('VoiceCommands: Failed to initialize recorder: $e');
+      _isRecorderInitialized = false;
+    }
   }
 
   @override
   void dispose() {
-    _recorder?.dispose();
+    if (_recorder != null && _isRecorderInitialized) {
+      _recorder!.closeRecorder();
+    }
     super.dispose();
   }
 
@@ -146,33 +156,26 @@ class VoiceCommandsNotifier extends StateNotifier<DogVoiceCommands> {
     }
 
     // Ensure recorder is initialized
-    if (_recorder == null) {
+    if (_recorder == null || !_isRecorderInitialized) {
       await _initRecorder();
-    }
-
-    // Check if recorder is available
-    final hasRecorder = await _recorder!.hasPermission();
-    if (!hasRecorder) {
-      print('VoiceCommands: Recorder not available');
-      return false;
+      if (!_isRecorderInitialized) {
+        print('VoiceCommands: Recorder not available');
+        return false;
+      }
     }
 
     try {
       // Get temp directory for recording
       final tempDir = await getTemporaryDirectory();
       final timestamp = DateTime.now().millisecondsSinceEpoch;
-      _currentRecordingPath = '${tempDir.path}/voice_${dogId}_${commandId}_$timestamp.m4a';
+      _currentRecordingPath = '${tempDir.path}/voice_${dogId}_${commandId}_$timestamp.aac';
 
-      // Configure and start recording
-      // AAC format, 16kHz sample rate, mono channel
-      await _recorder!.start(
-        const RecordConfig(
-          encoder: AudioEncoder.aacLc,
-          sampleRate: 16000,
-          numChannels: 1,
-          bitRate: 64000,
-        ),
-        path: _currentRecordingPath!,
+      // Start recording - AAC format, 16kHz sample rate, mono channel
+      await _recorder!.startRecorder(
+        toFile: _currentRecordingPath,
+        codec: Codec.aacADTS,
+        sampleRate: 16000,
+        numChannels: 1,
       );
 
       _recordingStartTime = DateTime.now();
@@ -207,7 +210,7 @@ class VoiceCommandsNotifier extends StateNotifier<DogVoiceCommands> {
 
     try {
       // Stop recording
-      final path = await _recorder!.stop();
+      final path = await _recorder!.stopRecorder();
 
       if (path == null || path.isEmpty) {
         print('VoiceCommands: Recording returned null path');
@@ -236,7 +239,7 @@ class VoiceCommandsNotifier extends StateNotifier<DogVoiceCommands> {
       final permanentDir = '${appDir.path}/voice_commands';
       await Directory(permanentDir).create(recursive: true);
 
-      final permanentPath = '$permanentDir/${dogId}_$commandId.m4a';
+      final permanentPath = '$permanentDir/${dogId}_$commandId.aac';
 
       // Delete existing file if present
       final existingFile = File(permanentPath);
@@ -288,7 +291,7 @@ class VoiceCommandsNotifier extends StateNotifier<DogVoiceCommands> {
   Future<void> cancelRecording() async {
     if (_recorder != null && state.isRecording) {
       try {
-        await _recorder!.stop();
+        await _recorder!.stopRecorder();
       } catch (e) {
         print('VoiceCommands: Error stopping recorder: $e');
       }
