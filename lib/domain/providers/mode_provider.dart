@@ -82,7 +82,7 @@ class ModeStateNotifier extends StateNotifier<ModeState> {
   Timer? _timeoutTimer;
   Timer? _errorDismissTimer;
   StreamSubscription? _wsSubscription;
-  static const Duration _confirmationTimeout = Duration(seconds: 5);
+  static const Duration _confirmationTimeout = Duration(seconds: 10);
 
   ModeStateNotifier(this._ref) : super(const ModeState()) {
     _listenToModeEvents();

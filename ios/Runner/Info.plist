@@ -48,7 +48,7 @@
 	<key>NSCameraUsageDescription</key>
 	<string>Camera access is needed for video streaming</string>
 	<key>NSMicrophoneUsageDescription</key>
-	<string>Microphone access is needed for audio features</string>
+	<string>WIM-Z needs microphone access to record voice commands for your dog</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>WIM-Z needs access to your photo library to save photos of your dog.</string>
 	<key>NSPhotoLibraryAddUsageDescription</key>

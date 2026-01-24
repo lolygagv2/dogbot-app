@@ -109,7 +109,8 @@ class QuickActions extends ConsumerWidget {
               isPlaying: isPlaying,
               onPrev: () {
                 audioControl.prev();
-                // Prev loads song but doesn't play - keep current state
+                audioControl.toggle(); // Auto-play after loading
+                ref.read(_isPlayingProvider.notifier).state = true;
               },
               onToggle: () {
                 audioControl.toggle();
@@ -117,7 +118,8 @@ class QuickActions extends ConsumerWidget {
               },
               onNext: () {
                 audioControl.next();
-                // Next loads song but doesn't play - keep current state
+                audioControl.toggle(); // Auto-play after loading
+                ref.read(_isPlayingProvider.notifier).state = true;
               },
             ),
           ],

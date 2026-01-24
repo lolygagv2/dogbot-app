@@ -6,16 +6,49 @@ import '../../../domain/providers/push_to_talk_provider.dart';
 import '../../theme/app_theme.dart';
 
 /// Push-to-talk controls widget with mic and listen buttons
-class PushToTalkControls extends ConsumerWidget {
+class PushToTalkControls extends ConsumerStatefulWidget {
   final bool compact;
 
   const PushToTalkControls({super.key, this.compact = false});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<PushToTalkControls> createState() => _PushToTalkControlsState();
+}
+
+class _PushToTalkControlsState extends ConsumerState<PushToTalkControls> {
+  String? _lastShownError;
+
+  @override
+  Widget build(BuildContext context) {
     final pttState = ref.watch(pushToTalkProvider);
 
-    if (compact) {
+    // Show error snackbar when error changes
+    if (pttState.error != null && pttState.error != _lastShownError) {
+      _lastShownError = pttState.error;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(pttState.error!),
+              backgroundColor: Colors.red.shade700,
+              behavior: SnackBarBehavior.floating,
+              duration: const Duration(seconds: 3),
+              action: SnackBarAction(
+                label: 'Dismiss',
+                textColor: Colors.white,
+                onPressed: () {
+                  ref.read(pushToTalkProvider.notifier).clearError();
+                },
+              ),
+            ),
+          );
+        }
+      });
+    } else if (pttState.error == null) {
+      _lastShownError = null;
+    }
+
+    if (widget.compact) {
       return Row(
         mainAxisSize: MainAxisSize.min,
         children: [

@@ -1,8 +1,11 @@
+import 'dart:async';
 import 'dart:convert';
-import 'dart:io' show File, Directory;
+import 'dart:io' show Directory, File, Platform;
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:permission_handler/permission_handler.dart';
+import 'package:record/record.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../data/models/voice_command.dart';
@@ -22,15 +25,43 @@ final isRecordingProvider = StateProvider<bool>((ref) => false);
 /// Provider for current playback command
 final playingCommandProvider = StateProvider<String?>((ref) => null);
 
-/// Voice commands notifier - STUBBED (recording only works on mobile builds)
+/// Check if we're on a mobile platform
+bool get _isMobilePlatform {
+  try {
+    return Platform.isIOS || Platform.isAndroid;
+  } catch (e) {
+    return false; // Web platform
+  }
+}
+
+/// Voice commands notifier - Full implementation for mobile, stubbed for desktop
 class VoiceCommandsNotifier extends StateNotifier<DogVoiceCommands> {
   final String dogId;
   final Ref _ref;
   SharedPreferences? _prefs;
 
+  // Recording
+  AudioRecorder? _recorder;
+  String? _currentRecordingPath;
+  DateTime? _recordingStartTime;
+
   VoiceCommandsNotifier(this.dogId, this._ref)
       : super(DogVoiceCommands(dogId: dogId)) {
     _loadCommands();
+    if (_isMobilePlatform) {
+      _initRecorder();
+    }
+  }
+
+  Future<void> _initRecorder() async {
+    _recorder = AudioRecorder();
+    print('VoiceCommands: Recorder initialized');
+  }
+
+  @override
+  void dispose() {
+    _recorder?.dispose();
+    super.dispose();
   }
 
   Future<void> _loadCommands() async {
@@ -67,29 +98,224 @@ class VoiceCommandsNotifier extends StateNotifier<DogVoiceCommands> {
     print('VoiceCommands: Saved ${state.commands.length} commands');
   }
 
-  /// Check if recording is available - STUBBED
+  /// Check if recording is available
   Future<bool> hasPermission() async {
-    return false; // Recording stubbed out
+    if (!_isMobilePlatform) {
+      print('VoiceCommands: Recording only available on mobile platforms');
+      return false;
+    }
+
+    final status = await Permission.microphone.status;
+    print('VoiceCommands: Microphone permission status: $status');
+    return status.isGranted;
   }
 
-  /// Start recording - STUBBED
+  /// Request microphone permission
+  Future<bool> requestPermission() async {
+    if (!_isMobilePlatform) {
+      return false;
+    }
+
+    print('VoiceCommands: Requesting microphone permission...');
+    final status = await Permission.microphone.request();
+    print('VoiceCommands: Permission result: $status');
+
+    if (status.isPermanentlyDenied) {
+      print('VoiceCommands: Permission permanently denied - user must enable in settings');
+      return false;
+    }
+
+    return status.isGranted;
+  }
+
+  /// Start recording a voice command
   Future<bool> startRecording(String commandId) async {
-    print('VoiceCommands: Recording stubbed - requires mobile app');
-    return false;
+    // Platform check
+    if (!_isMobilePlatform) {
+      print('VoiceCommands: Recording only available on mobile (iOS/Android)');
+      return false;
+    }
+
+    // Permission check
+    if (!await hasPermission()) {
+      final granted = await requestPermission();
+      if (!granted) {
+        print('VoiceCommands: Microphone permission denied');
+        return false;
+      }
+    }
+
+    // Ensure recorder is initialized
+    if (_recorder == null) {
+      await _initRecorder();
+    }
+
+    // Check if recorder is available
+    final hasRecorder = await _recorder!.hasPermission();
+    if (!hasRecorder) {
+      print('VoiceCommands: Recorder not available');
+      return false;
+    }
+
+    try {
+      // Get temp directory for recording
+      final tempDir = await getTemporaryDirectory();
+      final timestamp = DateTime.now().millisecondsSinceEpoch;
+      _currentRecordingPath = '${tempDir.path}/voice_${dogId}_${commandId}_$timestamp.m4a';
+
+      // Configure and start recording
+      // AAC format, 16kHz sample rate, mono channel
+      await _recorder!.start(
+        const RecordConfig(
+          encoder: AudioEncoder.aacLc,
+          sampleRate: 16000,
+          numChannels: 1,
+          bitRate: 64000,
+        ),
+        path: _currentRecordingPath!,
+      );
+
+      _recordingStartTime = DateTime.now();
+
+      state = state.copyWith(
+        isRecording: true,
+        currentRecordingCommand: commandId,
+      );
+      _ref.read(isRecordingProvider.notifier).state = true;
+
+      print('VoiceCommands: Started recording for $commandId at $_currentRecordingPath');
+      return true;
+    } catch (e) {
+      print('VoiceCommands: Failed to start recording: $e');
+      _currentRecordingPath = null;
+      _recordingStartTime = null;
+      return false;
+    }
   }
 
-  /// Stop recording - STUBBED
+  /// Stop recording and save the voice command
   Future<VoiceCommand?> stopRecording() async {
-    return null;
+    if (!state.isRecording || _recorder == null) {
+      return null;
+    }
+
+    final commandId = state.currentRecordingCommand;
+    if (commandId == null) {
+      await cancelRecording();
+      return null;
+    }
+
+    try {
+      // Stop recording
+      final path = await _recorder!.stop();
+
+      if (path == null || path.isEmpty) {
+        print('VoiceCommands: Recording returned null path');
+        await cancelRecording();
+        return null;
+      }
+
+      // Calculate duration
+      final durationMs = _recordingStartTime != null
+          ? DateTime.now().difference(_recordingStartTime!).inMilliseconds
+          : 0;
+
+      // Verify file exists
+      final file = File(path);
+      if (!await file.exists()) {
+        print('VoiceCommands: Recording file does not exist at $path');
+        await cancelRecording();
+        return null;
+      }
+
+      final fileSize = await file.length();
+      print('VoiceCommands: Recording saved: $path ($fileSize bytes, ${durationMs}ms)');
+
+      // Move to permanent location
+      final appDir = await getApplicationDocumentsDirectory();
+      final permanentDir = '${appDir.path}/voice_commands';
+      await Directory(permanentDir).create(recursive: true);
+
+      final permanentPath = '$permanentDir/${dogId}_$commandId.m4a';
+
+      // Delete existing file if present
+      final existingFile = File(permanentPath);
+      if (await existingFile.exists()) {
+        await existingFile.delete();
+      }
+
+      // Move file
+      await file.copy(permanentPath);
+      await file.delete();
+
+      // Create voice command
+      final command = VoiceCommand(
+        dogId: dogId,
+        commandId: commandId,
+        localPath: permanentPath,
+        recordedAt: DateTime.now(),
+        isSynced: false,
+        durationMs: durationMs,
+      );
+
+      // Update state
+      final newCommands = Map<String, VoiceCommand>.from(state.commands);
+      newCommands[commandId] = command;
+
+      state = state.copyWith(
+        commands: newCommands,
+        isRecording: false,
+        currentRecordingCommand: null,
+      );
+      _ref.read(isRecordingProvider.notifier).state = false;
+
+      _currentRecordingPath = null;
+      _recordingStartTime = null;
+
+      // Save to persistent storage
+      await _saveCommands();
+
+      print('VoiceCommands: Successfully recorded $commandId');
+      return command;
+    } catch (e) {
+      print('VoiceCommands: Failed to stop recording: $e');
+      await cancelRecording();
+      return null;
+    }
   }
 
-  /// Cancel recording - STUBBED
+  /// Cancel recording without saving
   Future<void> cancelRecording() async {
+    if (_recorder != null && state.isRecording) {
+      try {
+        await _recorder!.stop();
+      } catch (e) {
+        print('VoiceCommands: Error stopping recorder: $e');
+      }
+    }
+
+    // Clean up temp file if exists
+    if (_currentRecordingPath != null) {
+      try {
+        final file = File(_currentRecordingPath!);
+        if (await file.exists()) {
+          await file.delete();
+        }
+      } catch (e) {
+        print('VoiceCommands: Error deleting temp file: $e');
+      }
+    }
+
     state = state.copyWith(
       isRecording: false,
       currentRecordingCommand: null,
     );
     _ref.read(isRecordingProvider.notifier).state = false;
+
+    _currentRecordingPath = null;
+    _recordingStartTime = null;
+
+    print('VoiceCommands: Recording cancelled');
   }
 
   /// Delete a recorded command
