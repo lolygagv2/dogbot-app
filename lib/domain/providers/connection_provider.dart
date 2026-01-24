@@ -270,16 +270,21 @@ class ConnectionNotifier extends StateNotifier<ConnectionState> {
     final currentDeviceId = _ref.read(deviceIdProvider);
 
     // Only process status for our current device
-    if (deviceId != currentDeviceId) return;
+    if (deviceId != null && deviceId != currentDeviceId) {
+      print('Connection: Ignoring status for $deviceId (current: $currentDeviceId)');
+      return;
+    }
 
-    final isOnline = status['online'] as bool? ??
+    // Handle robot_online field from relay status_response
+    final isOnline = status['robot_online'] as bool? ??
+                     status['online'] as bool? ??
                      status['is_online'] as bool? ??
                      false;
     final isPaired = status['device_paired'] as bool? ??
                      status['paired'] as bool? ??
                      true; // Assume paired if not specified
 
-    print('Connection: Device $deviceId - online=$isOnline, paired=$isPaired');
+    print('Connection: Device ${deviceId ?? currentDeviceId} - robot_online=$isOnline, device_paired=$isPaired');
 
     if (!isPaired) {
       state = state.copyWith(
