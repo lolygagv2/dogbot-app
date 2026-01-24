@@ -88,11 +88,13 @@ class _ConnectScreenState extends ConsumerState<ConnectScreen> {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  // Logo/Icon
-                  Icon(
-                    Icons.pets,
-                    size: 80,
-                    color: Theme.of(context).colorScheme.primary,
+                  // Logo - use WHITE for dark theme, BLACK for light theme
+                  Image.asset(
+                    Theme.of(context).brightness == Brightness.dark
+                        ? 'assets/images/WHITE_WZ.png'
+                        : 'assets/images/BLACK_WZ.png',
+                    width: 120,
+                    height: 120,
                   ),
                   const SizedBox(height: 16),
 
