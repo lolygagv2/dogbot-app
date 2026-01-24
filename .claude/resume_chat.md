@@ -1,5 +1,74 @@
 # WIM-Z Resume Chat Log
 
+## Session: 2026-01-24
+**Goal:** Fix device switching, add optimistic mode UI, consolidate settings
+**Status:** Complete
+
+### Problems Solved This Session:
+
+1. **Optimistic Mode Changes**
+   - Created `ModeState` class with `currentMode`, `pendingMode`, `isChanging`, `error`
+   - Implemented 5-second timeout that reverts to previous mode on failure
+   - Mode selector shows loading spinner while changing
+   - Error snackbar displayed on timeout/failure
+   - Listens to `status_update`, `battery`, `mode` events for confirmation
+
+2. **status_update Event Handler**
+   - Added `status_update` case to `websocket_client.dart:213-219`
+   - Added `status_update` case to `telemetry_provider.dart:44`
+   - Mode provider listens for mode in status_update, battery, telemetry events
+
+3. **Settings UI Consolidation**
+   - Rewrote settings_screen.dart with 2 main sections:
+     - Connection Status: "Connected to X" or "Not connected" with disconnect
+     - Manage Devices: Inline list with online indicators, swipe-to-unpair, tap to connect
+   - Removed redundant connection details
+   - Added WiFi setup help expandable section
+
+4. **Command Audit for device_id**
+   - Verified all `ws.send()` calls include `device_id` where needed
+   - WebRTC signaling uses session-based routing (correct)
+   - All device-routed commands properly include device_id
+
+5. **Debug Logging for Device Selection**
+   - Added logging to `paired_devices_provider.dart` for device selection flow
+   - Logs device ID, online status map, and completion
+
+### Key Code Changes Made:
+
+#### Modified Files:
+- `lib/domain/providers/mode_provider.dart` - Complete rewrite with optimistic updates
+  - New: ModeState, ModeStateNotifier, displayModeProvider, modeErrorProvider
+  - 5-second timeout with revert on failure
+  - WebSocket event listener for confirmations
+- `lib/core/network/websocket_client.dart` - Added status_update handler
+- `lib/domain/providers/telemetry_provider.dart` - Added status_update case
+- `lib/domain/providers/paired_devices_provider.dart` - Added debug logging
+- `lib/presentation/screens/home/home_screen.dart` - Updated _ModeSelector for optimistic UI
+- `lib/presentation/screens/settings/settings_screen.dart` - Complete UI consolidation
+
+### Commits This Session:
+- `15afac8` - feat: Optimistic mode UI, status_update handler, settings consolidation
+
+### Working Features:
+- Optimistic mode changes with timeout/revert
+- status_update event processing
+- Consolidated settings with device management
+- Device switching with proper video reconnection
+- 3-tier connection status (disconnected/relayConnected/robotOnline)
+
+### Architecture Notes:
+- `displayModeProvider` returns pending mode for immediate UI feedback
+- `modeErrorProvider` for toast display (auto-clears after 5 seconds)
+- Legacy `modeControlProvider` delegates to new `modeStateProvider.notifier`
+
+### Next Session:
+1. Test optimistic mode on physical device
+2. Verify status_update events from robot trigger confirmations
+3. Debug any remaining robot offline display issues
+
+---
+
 ## Session: 2026-01-21
 **Goal:** Fix WebRTC video streaming and debug robot communication
 **Status:** Partial - App side complete, robot-side issues remain
@@ -72,7 +141,7 @@
 
 ## Session: 2026-01-20
 **Goal:** Update relay connection URLs to production server
-**Status:** ✅ Complete
+**Status:** Complete
 
 ### Problems Solved This Session:
 
