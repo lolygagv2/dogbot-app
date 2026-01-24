@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_webrtc/flutter_webrtc.dart';
 
 import '../../core/network/websocket_client.dart';
+import 'device_provider.dart';
 
 /// WebRTC connection state
 enum WebRTCState { disconnected, connecting, connected, error }
@@ -70,6 +71,55 @@ class WebRTCNotifier extends StateNotifier<WebRTCConnectionState> {
 
   WebRTCNotifier(this._ref) : super(const WebRTCConnectionState()) {
     _setupWebSocketListeners();
+    _setupDeviceIdListener();
+  }
+
+  /// Listen for device ID changes and switch video stream accordingly
+  void _setupDeviceIdListener() {
+    _ref.listen<String>(deviceIdProvider, (previous, current) {
+      if (previous != null && previous != current) {
+        print('WebRTC: Device changed from $previous to $current');
+        _handleDeviceSwitch(current);
+      }
+    });
+  }
+
+  /// Handle device switch - tear down old connection and establish new one
+  Future<void> _handleDeviceSwitch(String newDeviceId) async {
+    // Only switch if we have an active or pending connection
+    if (_lastDeviceId == null && state.state == WebRTCState.disconnected) {
+      print('WebRTC: No active connection, just updating device ID');
+      _lastDeviceId = newDeviceId;
+      return;
+    }
+
+    print('WebRTC: Switching video from $_lastDeviceId to $newDeviceId');
+
+    // Cancel any pending reconnect
+    _reconnectTimer?.cancel();
+    _reconnectAttempts = 0;
+
+    // Send close for old session if we have one
+    if (state.sessionId != null) {
+      final wsClient = _ref.read(websocketClientProvider);
+      wsClient.send({
+        'type': 'webrtc_close',
+        'session_id': state.sessionId,
+        'device_id': _lastDeviceId,
+      });
+      print('WebRTC: Sent close for old session ${state.sessionId}');
+    }
+
+    // Tear down existing connection
+    await _closeInternal();
+
+    // Update device ID
+    _lastDeviceId = newDeviceId;
+
+    // Request new video stream for new device
+    // Small delay to ensure close is processed
+    await Future.delayed(const Duration(milliseconds: 200));
+    await requestVideoStream(newDeviceId);
   }
 
   void _setupWebSocketListeners() {
