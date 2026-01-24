@@ -4,41 +4,44 @@ import 'package:go_router/go_router.dart';
 
 import '../../../domain/providers/connection_provider.dart';
 import '../../../domain/providers/device_provider.dart';
+import '../../../domain/providers/paired_devices_provider.dart';
 import '../../../domain/providers/settings_provider.dart';
 import '../../../domain/providers/telemetry_provider.dart';
+import '../../theme/app_theme.dart';
 
-class SettingsScreen extends ConsumerWidget {
+class SettingsScreen extends ConsumerStatefulWidget {
   const SettingsScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final connection = ref.watch(connectionProvider);
+  ConsumerState<SettingsScreen> createState() => _SettingsScreenState();
+}
+
+class _SettingsScreenState extends ConsumerState<SettingsScreen> {
+  @override
+  void initState() {
+    super.initState();
+    // Load paired devices on screen open
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.read(pairedDevicesProvider.notifier).loadDevices();
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final telemetry = ref.watch(telemetryProvider);
-    final deviceId = ref.watch(deviceIdProvider);
 
     return Scaffold(
       appBar: AppBar(title: const Text('Settings')),
       body: ListView(
         children: [
-          _SectionHeader('Device Pairing'),
-          ListTile(
-            leading: const Icon(Icons.smart_toy),
-            title: const Text('Active Robot'),
-            subtitle: Text(deviceId),
-            trailing: const Icon(Icons.chevron_right),
-            onTap: () => context.push('/device-pairing'),
-          ),
-          ListTile(
-            leading: const Icon(Icons.devices),
-            title: const Text('Manage Devices'),
-            subtitle: const Text('Pair, unpair, and switch between robots'),
-            trailing: const Icon(Icons.chevron_right),
-            onTap: () => context.push('/device-pairing'),
-          ),
+          // Section 1: Connection Status (simplified)
+          _SectionHeader('Connection Status'),
+          const _SimpleConnectionTile(),
           const Divider(),
 
-          _SectionHeader('Connection'),
-          _ConnectionStatusTile(),
+          // Section 2: Manage Devices (inline list)
+          _SectionHeader('Manage Devices'),
+          const _InlineDeviceList(),
           const Divider(),
 
           // WiFi Setup Help
@@ -125,6 +128,204 @@ class _SectionHeader extends StatelessWidget {
   }
 }
 
+/// Simplified connection tile - just shows connected/not connected
+class _SimpleConnectionTile extends ConsumerWidget {
+  const _SimpleConnectionTile();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final connection = ref.watch(connectionProvider);
+    final deviceId = ref.watch(deviceIdProvider);
+
+    final isRobotOnline = connection.status == ConnectionStatus.robotOnline;
+
+    return ListTile(
+      leading: Icon(
+        isRobotOnline ? Icons.smart_toy : Icons.cloud_off,
+        color: isRobotOnline ? AppTheme.accent : AppTheme.textTertiary,
+        size: 32,
+      ),
+      title: Text(
+        isRobotOnline ? 'Connected to $deviceId' : 'Not connected',
+        style: TextStyle(
+          fontWeight: FontWeight.bold,
+          color: isRobotOnline ? AppTheme.accent : null,
+        ),
+      ),
+      subtitle: isRobotOnline
+          ? null
+          : Text(
+              connection.status == ConnectionStatus.connecting
+                  ? 'Connecting...'
+                  : 'Tap a device below to connect',
+              style: TextStyle(color: AppTheme.textTertiary),
+            ),
+      trailing: isRobotOnline
+          ? TextButton(
+              onPressed: () async {
+                await ref.read(connectionProvider.notifier).disconnect();
+                if (context.mounted) context.go('/connect');
+              },
+              child: const Text('Disconnect'),
+            )
+          : null,
+    );
+  }
+}
+
+/// Inline device list with online/offline indicators
+class _InlineDeviceList extends ConsumerWidget {
+  const _InlineDeviceList();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final pairedDevices = ref.watch(pairedDevicesProvider);
+    final activeDeviceId = ref.watch(deviceIdProvider);
+
+    if (pairedDevices.isLoading && pairedDevices.devices.isEmpty) {
+      return const Padding(
+        padding: EdgeInsets.all(16),
+        child: Center(child: CircularProgressIndicator()),
+      );
+    }
+
+    if (pairedDevices.devices.isEmpty) {
+      return Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          children: [
+            Icon(Icons.devices, size: 48, color: AppTheme.textTertiary),
+            const SizedBox(height: 8),
+            Text(
+              'No paired devices',
+              style: TextStyle(color: AppTheme.textTertiary),
+            ),
+            const SizedBox(height: 16),
+            OutlinedButton.icon(
+              onPressed: () => context.push('/device-pairing'),
+              icon: const Icon(Icons.add),
+              label: const Text('Add Device'),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return Column(
+      children: [
+        ...pairedDevices.devices.map((device) {
+          final isActive = device.deviceId == activeDeviceId;
+          final isOnline = pairedDevices.isDeviceOnline(device.deviceId);
+
+          return Dismissible(
+            key: Key(device.deviceId),
+            direction: DismissDirection.endToStart,
+            background: Container(
+              color: AppTheme.error,
+              alignment: Alignment.centerRight,
+              padding: const EdgeInsets.only(right: 16),
+              child: const Icon(Icons.delete, color: Colors.white),
+            ),
+            confirmDismiss: (direction) async {
+              return await showDialog<bool>(
+                context: context,
+                builder: (context) => AlertDialog(
+                  title: const Text('Unpair Device'),
+                  content: Text('Unpair ${device.deviceId}?'),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(context, false),
+                      child: const Text('Cancel'),
+                    ),
+                    FilledButton(
+                      onPressed: () => Navigator.pop(context, true),
+                      style: FilledButton.styleFrom(backgroundColor: AppTheme.error),
+                      child: const Text('Unpair'),
+                    ),
+                  ],
+                ),
+              );
+            },
+            onDismissed: (_) {
+              ref.read(pairedDevicesProvider.notifier).unpairDevice(device.deviceId);
+            },
+            child: ListTile(
+              leading: Stack(
+                children: [
+                  Icon(
+                    Icons.smart_toy,
+                    color: isOnline ? AppTheme.accent : AppTheme.textTertiary,
+                  ),
+                  Positioned(
+                    right: 0,
+                    bottom: 0,
+                    child: Container(
+                      width: 10,
+                      height: 10,
+                      decoration: BoxDecoration(
+                        color: isOnline ? AppTheme.accent : AppTheme.textTertiary,
+                        shape: BoxShape.circle,
+                        border: Border.all(color: AppTheme.surface, width: 2),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              title: Row(
+                children: [
+                  Text(device.name ?? device.deviceId),
+                  if (isActive) ...[
+                    const SizedBox(width: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: AppTheme.primary,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: const Text(
+                        'ACTIVE',
+                        style: TextStyle(fontSize: 9, color: Colors.white, fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+              subtitle: Text(
+                isOnline ? 'Online' : 'Offline',
+                style: TextStyle(
+                  color: isOnline ? AppTheme.accent : AppTheme.textTertiary,
+                  fontSize: 12,
+                ),
+              ),
+              trailing: isOnline && !isActive
+                  ? TextButton(
+                      onPressed: () {
+                        print('Settings: User tapped to select device ${device.deviceId}');
+                        ref.read(pairedDevicesProvider.notifier).selectDevice(device.deviceId);
+                      },
+                      child: const Text('Connect'),
+                    )
+                  : const Icon(Icons.chevron_right, color: AppTheme.textTertiary),
+              onTap: () {
+                print('Settings: User tapped device ${device.deviceId} (online=$isOnline, active=$isActive)');
+                if (isOnline && !isActive) {
+                  ref.read(pairedDevicesProvider.notifier).selectDevice(device.deviceId);
+                }
+              },
+            ),
+          );
+        }),
+        // Add device button
+        ListTile(
+          leading: const Icon(Icons.add_circle_outline),
+          title: const Text('Add Device'),
+          onTap: () => context.push('/device-pairing'),
+        ),
+      ],
+    );
+  }
+}
+
 /// Motor trim slider widget
 class _MotorTrimSlider extends ConsumerWidget {
   @override
@@ -195,7 +396,6 @@ class _WiFiSetupHelp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final textTheme = Theme.of(context).textTheme;
-    final secondaryColor = Theme.of(context).colorScheme.onSurface.withOpacity(0.7);
 
     return ExpansionTile(
       leading: const Icon(Icons.wifi_tethering),
@@ -384,151 +584,4 @@ class _LedIndicator extends StatelessWidget {
       ),
     );
   }
-}
-
-/// Connection status tile with 3-tier state
-class _ConnectionStatusTile extends ConsumerWidget {
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final connection = ref.watch(connectionProvider);
-    final deviceId = ref.watch(deviceIdProvider); // Single source of truth
-
-    // Determine icon and color based on status
-    IconData icon;
-    Color color;
-
-    switch (connection.status) {
-      case ConnectionStatus.disconnected:
-        icon = Icons.cloud_off;
-        color = Colors.grey;
-        break;
-      case ConnectionStatus.connecting:
-        icon = Icons.cloud_sync;
-        color = Colors.orange;
-        break;
-      case ConnectionStatus.relayConnected:
-        icon = Icons.cloud_done;
-        color = connection.isNotPaired ? Colors.orange : Colors.blue;
-        break;
-      case ConnectionStatus.robotOnline:
-        icon = Icons.smart_toy;
-        color = Colors.green;
-        break;
-      case ConnectionStatus.error:
-        icon = Icons.error_outline;
-        color = Colors.red;
-        break;
-    }
-
-    return Column(
-      children: [
-        ListTile(
-          leading: Icon(icon, color: color),
-          title: Text(connection.statusMessage),
-          subtitle: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text('Device: $deviceId'),
-              if (connection.host != null)
-                Text(
-                  'Server: ${connection.host}',
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: Theme.of(context).colorScheme.onSurface.withOpacity(0.5),
-                  ),
-                ),
-            ],
-          ),
-          trailing: connection.status == ConnectionStatus.connecting
-              ? const SizedBox(
-                  width: 20,
-                  height: 20,
-                  child: CircularProgressIndicator(strokeWidth: 2),
-                )
-              : TextButton(
-                  onPressed: () async {
-                    await ref.read(connectionProvider.notifier).disconnect();
-                    if (context.mounted) context.go('/connect');
-                  },
-                  child: const Text('Disconnect'),
-                ),
-        ),
-        // Show error message if present
-        if (connection.errorMessage != null)
-          Container(
-            margin: const EdgeInsets.symmetric(horizontal: 16),
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: Colors.red.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Row(
-              children: [
-                const Icon(Icons.warning, color: Colors.red, size: 18),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    connection.errorMessage!,
-                    style: const TextStyle(color: Colors.red, fontSize: 13),
-                  ),
-                ),
-                IconButton(
-                  icon: const Icon(Icons.close, size: 16),
-                  onPressed: () =>
-                      ref.read(connectionProvider.notifier).clearError(),
-                  padding: EdgeInsets.zero,
-                  constraints: const BoxConstraints(),
-                ),
-              ],
-            ),
-          ),
-        // Show pairing hint if not paired
-        if (connection.isNotPaired)
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            child: OutlinedButton.icon(
-              onPressed: () => context.push('/device-pairing'),
-              icon: const Icon(Icons.link),
-              label: const Text('Pair Device'),
-            ),
-          ),
-      ],
-    );
-  }
-}
-
-void _showDeviceIdDialog(BuildContext context, WidgetRef ref, String currentId) {
-  final controller = TextEditingController(text: currentId);
-
-  showDialog(
-    context: context,
-    builder: (context) => AlertDialog(
-      title: const Text('Pair Robot'),
-      content: TextField(
-        controller: controller,
-        decoration: const InputDecoration(
-          labelText: 'Robot ID',
-          hintText: 'e.g., wimz_robot_01',
-          border: OutlineInputBorder(),
-        ),
-        autofocus: true,
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(context),
-          child: const Text('Cancel'),
-        ),
-        FilledButton(
-          onPressed: () {
-            final newId = controller.text.trim();
-            if (newId.isNotEmpty) {
-              ref.read(deviceIdProvider.notifier).setDeviceId(newId);
-            }
-            Navigator.pop(context);
-          },
-          child: const Text('Save'),
-        ),
-      ],
-    ),
-  );
 }

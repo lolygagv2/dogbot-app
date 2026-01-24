@@ -90,16 +90,11 @@ class HomeScreen extends ConsumerWidget {
                           ),
                         ),
 
-                      // Mode selector
-                      Positioned(
+                      // Mode selector (uses optimistic state)
+                      const Positioned(
                         top: 16,
                         right: 16,
-                        child: _ModeSelector(
-                          currentMode: telemetry.mode,
-                          onModeSelected: (mode) {
-                            ref.read(modeControlProvider).setMode(mode);
-                          },
-                        ),
+                        child: _ModeSelector(),
                       ),
 
                       // Push-to-talk controls
@@ -113,7 +108,8 @@ class HomeScreen extends ConsumerWidget {
 
               // Quick controls or Event Feed (depending on mode)
               // In landscape: compact single row, In portrait: full controls
-              if (telemetry.mode == 'silent_guardian')
+              // Use optimistic mode for immediate UI response
+              if (ref.watch(displayModeProvider) == RobotMode.silentGuardian)
                 Expanded(
                   flex: isLandscape ? 1 : 2,
                   child: const EventFeed(),
@@ -290,25 +286,44 @@ class _DetectionChipState extends State<_DetectionChip> {
   }
 }
 
-/// Mode selector with dropdown and event badge
+/// Mode selector with dropdown, loading state, and event badge
 class _ModeSelector extends ConsumerWidget {
-  final String currentMode;
-  final void Function(RobotMode) onModeSelected;
-
-  const _ModeSelector({
-    required this.currentMode,
-    required this.onModeSelected,
-  });
+  const _ModeSelector();
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final current = RobotMode.fromString(currentMode);
+    // Use optimistic display mode instead of telemetry mode
+    final modeState = ref.watch(modeStateProvider);
+    final displayMode = modeState.displayMode;
+    final isChanging = modeState.isChanging;
     final unreadCount = ref.watch(unreadEventCountProvider);
-    final showBadge = current == RobotMode.silentGuardian && unreadCount > 0;
+    final showBadge = displayMode == RobotMode.silentGuardian && unreadCount > 0;
+
+    // Show error snackbar when mode change fails
+    ref.listen<String?>(modeErrorProvider, (previous, error) {
+      if (error != null && context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(error),
+            backgroundColor: AppTheme.error,
+            duration: const Duration(seconds: 3),
+            action: SnackBarAction(
+              label: 'Dismiss',
+              textColor: Colors.white,
+              onPressed: () {
+                ScaffoldMessenger.of(context).hideCurrentSnackBar();
+              },
+            ),
+          ),
+        );
+      }
+    });
 
     return PopupMenuButton<RobotMode>(
-      initialValue: current,
-      onSelected: onModeSelected,
+      initialValue: displayMode,
+      onSelected: (mode) {
+        ref.read(modeStateProvider.notifier).setMode(mode);
+      },
       offset: const Offset(0, 40),
       child: Stack(
         clipBehavior: Clip.none,
@@ -316,16 +331,26 @@ class _ModeSelector extends ConsumerWidget {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
             decoration: BoxDecoration(
-              color: _getModeColor(current).withOpacity(0.9),
+              color: _getModeColor(displayMode).withOpacity(isChanging ? 0.6 : 0.9),
               borderRadius: BorderRadius.circular(20),
             ),
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(_getModeIcon(current), color: Colors.white, size: 16),
+                if (isChanging)
+                  const SizedBox(
+                    width: 16,
+                    height: 16,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: Colors.white,
+                    ),
+                  )
+                else
+                  Icon(_getModeIcon(displayMode), color: Colors.white, size: 16),
                 const SizedBox(width: 6),
                 Text(
-                  current.label.toUpperCase(),
+                  displayMode.label.toUpperCase(),
                   style: const TextStyle(
                     color: Colors.white,
                     fontWeight: FontWeight.w500,
@@ -373,7 +398,7 @@ class _ModeSelector extends ConsumerWidget {
               Icon(_getModeIcon(mode), size: 20),
               const SizedBox(width: 12),
               Text(mode.label),
-              if (mode == current) ...[
+              if (mode == displayMode) ...[
                 const Spacer(),
                 const Icon(Icons.check, size: 20),
               ],

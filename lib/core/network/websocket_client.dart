@@ -209,6 +209,15 @@ class WebSocketClient {
           _eventController.add(statusResponseEvent);
           break;
 
+        // Status update from robot (mode, battery, telemetry combined)
+        case 'status_update':
+          print('WS: Received status_update: $json');
+          // Forward to both device status and event streams
+          _deviceStatusController.add(json);
+          final statusUpdateEvent = WsEvent.fromJson(json);
+          _eventController.add(statusUpdateEvent);
+          break;
+
         // Robot events - forward to event stream
         case 'telemetry':
         case 'status':

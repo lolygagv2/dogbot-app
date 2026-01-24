@@ -169,7 +169,18 @@ class PairedDevicesNotifier extends StateNotifier<PairedDevicesState> {
 
   /// Select a device as the active one
   void selectDevice(String deviceId) {
+    print('PairedDevices: selectDevice called with $deviceId');
+    print('PairedDevices: Current online status map: ${state.deviceOnlineStatus}');
+    print('PairedDevices: Device online? ${state.isDeviceOnline(deviceId)}');
+
+    // Set the device ID - this triggers:
+    // 1. deviceIdProvider state update
+    // 2. WebSocket target device update
+    // 3. Connection provider onDeviceIdChanged (requests new status)
+    // 4. WebRTC provider device switch
     _ref.read(deviceIdProvider.notifier).setDeviceId(deviceId);
+
+    print('PairedDevices: selectDevice completed for $deviceId');
   }
 
   /// Clear error

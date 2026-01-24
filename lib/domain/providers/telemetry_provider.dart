@@ -41,6 +41,7 @@ class TelemetryNotifier extends StateNotifier<Telemetry> {
       case 'telemetry':
       case 'status':
       case 'robot_status':
+      case 'status_update':  // Combined status from robot
         // Full status update - parse but preserve existing values if not in this event
         final parsed = Telemetry.fromApiResponse(event.data);
         // Only update mode if it was actually in the event data (not defaulted to 'idle')
@@ -59,7 +60,7 @@ class TelemetryNotifier extends StateNotifier<Telemetry> {
           activeMissionId: parsed.activeMissionId,
           rawData: parsed.rawData,
         );
-        print('Telemetry updated: battery=${state.battery}, mode=${state.mode}, hasMode=$hasMode');
+        print('Telemetry updated (${event.type}): battery=${state.battery}, mode=${state.mode}, hasMode=$hasMode');
         break;
 
       case 'device_status':
