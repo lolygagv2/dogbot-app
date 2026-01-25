@@ -58,10 +58,13 @@ bool get _isMobilePlatform {
   try {
     final isIOS = Platform.isIOS;
     final isAndroid = Platform.isAndroid;
-    rprint('PushToTalk: Platform check - isIOS=$isIOS, isAndroid=$isAndroid');
+    final os = Platform.operatingSystem;
+    final osVersion = Platform.operatingSystemVersion;
+    rprint('PushToTalk: Platform check - isIOS=$isIOS, isAndroid=$isAndroid, os=$os, version=$osVersion');
     return isIOS || isAndroid;
-  } catch (e) {
-    rprint('PushToTalk: Platform check failed (web?): $e');
+  } catch (e, stack) {
+    rprint('PushToTalk: Platform check EXCEPTION: $e');
+    rprint('PushToTalk: Stack: $stack');
     return false; // Web platform
   }
 }
@@ -70,6 +73,12 @@ bool get _isMobilePlatform {
 final pushToTalkProvider =
     StateNotifierProvider<PushToTalkNotifier, PttStateData>((ref) {
   return PushToTalkNotifier();
+});
+
+/// Provider to run recording diagnostics
+final recordingDiagnosticsProvider = FutureProvider<String>((ref) async {
+  final notifier = ref.read(pushToTalkProvider.notifier);
+  return notifier.runDiagnostics();
 });
 
 /// Push-to-talk notifier - Full implementation for mobile, stubbed for desktop
@@ -98,13 +107,27 @@ class PushToTalkNotifier extends StateNotifier<PttStateData> {
   }
 
   Future<void> _initRecorder() async {
-    _recorder = FlutterSoundRecorder();
+    rprint('PushToTalk: _initRecorder() called');
+    rprint('PushToTalk: Creating FlutterSoundRecorder instance...');
+
+    try {
+      _recorder = FlutterSoundRecorder();
+      rprint('PushToTalk: FlutterSoundRecorder created, calling openRecorder()...');
+    } catch (e, stack) {
+      rprint('PushToTalk: FAILED to create FlutterSoundRecorder: $e');
+      rprint('PushToTalk: Stack: $stack');
+      _isRecorderInitialized = false;
+      return;
+    }
+
     try {
       await _recorder!.openRecorder();
       _isRecorderInitialized = true;
-      rprint('PushToTalk: Recorder initialized');
-    } catch (e) {
-      rprint('PushToTalk: Failed to initialize recorder: $e');
+      rprint('PushToTalk: Recorder initialized successfully!');
+      rprint('PushToTalk: Recorder isOpen = ${_recorder!.isRecording}');
+    } catch (e, stack) {
+      rprint('PushToTalk: FAILED to openRecorder(): $e');
+      rprint('PushToTalk: Stack: $stack');
       _isRecorderInitialized = false;
     }
   }
@@ -229,20 +252,132 @@ class PushToTalkNotifier extends StateNotifier<PttStateData> {
     return status.isGranted;
   }
 
+  /// Run a diagnostic test of recording capability
+  Future<String> runDiagnostics() async {
+    final results = StringBuffer();
+    results.writeln('=== RECORDING DIAGNOSTICS ===');
+    results.writeln('Time: ${DateTime.now().toIso8601String()}');
+
+    // Platform info
+    try {
+      results.writeln('Platform.isIOS: ${Platform.isIOS}');
+      results.writeln('Platform.isAndroid: ${Platform.isAndroid}');
+      results.writeln('Platform.operatingSystem: ${Platform.operatingSystem}');
+      results.writeln('Platform.operatingSystemVersion: ${Platform.operatingSystemVersion}');
+    } catch (e) {
+      results.writeln('Platform check ERROR: $e');
+    }
+
+    results.writeln('_isMobilePlatform: $_isMobilePlatform');
+
+    // Permission check
+    try {
+      final status = await Permission.microphone.status;
+      results.writeln('Microphone permission: $status');
+    } catch (e) {
+      results.writeln('Permission check ERROR: $e');
+    }
+
+    // Recorder state
+    results.writeln('_recorder: ${_recorder != null ? "exists" : "null"}');
+    results.writeln('_isRecorderInitialized: $_isRecorderInitialized');
+
+    if (_recorder != null) {
+      try {
+        results.writeln('_recorder.isRecording: ${_recorder!.isRecording}');
+        results.writeln('_recorder.isStopped: ${_recorder!.isStopped}');
+      } catch (e) {
+        results.writeln('Recorder state check ERROR: $e');
+      }
+    }
+
+    // Try to initialize recorder if not done
+    if (!_isRecorderInitialized) {
+      results.writeln('Attempting to initialize recorder...');
+      try {
+        _recorder = FlutterSoundRecorder();
+        results.writeln('FlutterSoundRecorder created');
+        await _recorder!.openRecorder();
+        _isRecorderInitialized = true;
+        results.writeln('openRecorder() SUCCESS');
+      } catch (e, stack) {
+        results.writeln('openRecorder() FAILED: $e');
+        results.writeln('Stack: $stack');
+      }
+    }
+
+    // Try a test recording
+    if (_isRecorderInitialized) {
+      results.writeln('Attempting 1 second test recording...');
+      try {
+        final tempDir = await getTemporaryDirectory();
+        final testPath = '${tempDir.path}/diagnostic_test.aac';
+        results.writeln('Test path: $testPath');
+
+        await _recorder!.startRecorder(
+          toFile: testPath,
+          codec: Codec.aacADTS,
+          sampleRate: 16000,
+          numChannels: 1,
+        );
+        results.writeln('startRecorder() SUCCESS');
+
+        await Future.delayed(const Duration(seconds: 1));
+
+        final path = await _recorder!.stopRecorder();
+        results.writeln('stopRecorder() returned: $path');
+
+        if (path != null) {
+          final file = File(path);
+          final exists = await file.exists();
+          results.writeln('File exists: $exists');
+          if (exists) {
+            final size = await file.length();
+            results.writeln('File size: $size bytes');
+            await file.delete();
+            results.writeln('Test file deleted');
+          }
+        }
+
+        results.writeln('TEST RECORDING: SUCCESS');
+      } catch (e, stack) {
+        results.writeln('TEST RECORDING FAILED: $e');
+        results.writeln('Stack: $stack');
+      }
+    }
+
+    results.writeln('=== END DIAGNOSTICS ===');
+
+    final output = results.toString();
+    rprint(output);
+    return output;
+  }
+
   /// Start recording - Full implementation for mobile
   Future<bool> startRecording() async {
+    rprint('PushToTalk: ===== startRecording() CALLED =====');
+
     // Platform check
-    if (!_isMobilePlatform) {
-      state = state.copyWith(
-        error: 'Recording only available on mobile (iOS/Android)',
-      );
-      rprint('PushToTalk: Recording only available on mobile');
+    rprint('PushToTalk: Checking platform...');
+    final isMobile = _isMobilePlatform;
+    rprint('PushToTalk: isMobile = $isMobile');
+
+    if (!isMobile) {
+      final errorMsg = 'Recording only available on mobile (iOS/Android)';
+      rprint('PushToTalk: ERROR - $errorMsg');
+      state = state.copyWith(error: errorMsg);
       return false;
     }
 
     // Permission check
-    if (!await _hasPermission()) {
+    rprint('PushToTalk: Checking microphone permission...');
+    final hasPerm = await _hasPermission();
+    rprint('PushToTalk: hasPermission = $hasPerm');
+
+    if (!hasPerm) {
+      rprint('PushToTalk: Requesting permission...');
       final granted = await _requestPermission();
+      rprint('PushToTalk: Permission granted = $granted');
       if (!granted) {
         state = state.copyWith(error: 'Microphone permission denied');
         return false;
@@ -250,28 +385,38 @@ class PushToTalkNotifier extends StateNotifier<PttStateData> {
     }
 
     // Ensure recorder is initialized
+    rprint('PushToTalk: Checking recorder state - recorder=${_recorder != null}, initialized=$_isRecorderInitialized');
+
     if (_recorder == null || !_isRecorderInitialized) {
+      rprint('PushToTalk: Recorder not ready, initializing...');
       await _initRecorder();
+      rprint('PushToTalk: After init - recorder=${_recorder != null}, initialized=$_isRecorderInitialized');
+
       if (!_isRecorderInitialized) {
-        state = state.copyWith(error: 'Recorder not available');
-        rprint('PushToTalk: Recorder not available');
+        final errorMsg = 'Recorder not available - initialization failed';
+        rprint('PushToTalk: ERROR - $errorMsg');
+        state = state.copyWith(error: errorMsg);
         return false;
       }
     }
 
     try {
       // Get temp directory for recording
+      rprint('PushToTalk: Getting temp directory...');
       final tempDir = await getTemporaryDirectory();
       final timestamp = DateTime.now().millisecondsSinceEpoch;
       _currentRecordingPath = '${tempDir.path}/ptt_$timestamp.aac';
+      rprint('PushToTalk: Recording path: $_currentRecordingPath');
 
       // Start recording - AAC format, 16kHz sample rate, mono channel
+      rprint('PushToTalk: Calling startRecorder()...');
       await _recorder!.startRecorder(
         toFile: _currentRecordingPath,
         codec: Codec.aacADTS,
         sampleRate: 16000,
         numChannels: 1,
       );
+      rprint('PushToTalk: startRecorder() completed successfully');
 
       _recordingStartTime = DateTime.now();
 
@@ -306,10 +451,11 @@ class PushToTalkNotifier extends StateNotifier<PttStateData> {
         error: null,
       );
 
-      rprint('PushToTalk: Started recording at $_currentRecordingPath');
+      rprint('PushToTalk: Recording STARTED at $_currentRecordingPath');
       return true;
-    } catch (e) {
-      rprint('PushToTalk: Failed to start recording: $e');
+    } catch (e, stack) {
+      rprint('PushToTalk: EXCEPTION in startRecording: $e');
+      rprint('PushToTalk: Stack: $stack');
       state = state.copyWith(error: 'Failed to start recording: $e');
       _currentRecordingPath = null;
       _recordingStartTime = null;

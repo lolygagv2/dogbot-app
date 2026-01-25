@@ -31,10 +31,13 @@ bool get _isMobilePlatform {
   try {
     final isIOS = Platform.isIOS;
     final isAndroid = Platform.isAndroid;
-    rprint('VoiceCommands: Platform check - isIOS=$isIOS, isAndroid=$isAndroid');
+    final os = Platform.operatingSystem;
+    final osVersion = Platform.operatingSystemVersion;
+    rprint('VoiceCommands: Platform check - isIOS=$isIOS, isAndroid=$isAndroid, os=$os, version=$osVersion');
     return isIOS || isAndroid;
-  } catch (e) {
-    rprint('VoiceCommands: Platform check failed (web?): $e');
+  } catch (e, stack) {
+    rprint('VoiceCommands: Platform check EXCEPTION: $e');
+    rprint('VoiceCommands: Stack: $stack');
     return false; // Web platform
   }
 }
