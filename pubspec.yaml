@@ -1,7 +1,7 @@
 name: wimz_app
 description: WIM-Z Robotic Dog Trainer - Mobile Control App
 publish_to: 'none'
-version: 1.0.0+12
+version: 1.0.0+14
 
 environment:
   sdk: '>=3.2.0 <4.0.0'
@@ -53,7 +53,7 @@ dependencies:
   flutter_svg: ^2.0.9              # SVG support
 
   # ============ Audio Recording ============
-  # flutter_sound: ^9.2.13  # DISABLED - testing if this causes white screen
+  record: ^5.1.2
   permission_handler: ^11.0.0
   audioplayers: ^6.0.0
 
