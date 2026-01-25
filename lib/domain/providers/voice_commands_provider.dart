@@ -26,18 +26,16 @@ final isRecordingProvider = StateProvider<bool>((ref) => false);
 /// Provider for current playback command
 final playingCommandProvider = StateProvider<String?>((ref) => null);
 
-/// Check if we're on a mobile platform
+/// Check if we're on a mobile platform (uses print, not rprint, for safe early init)
 bool get _isMobilePlatform {
   try {
     final isIOS = Platform.isIOS;
     final isAndroid = Platform.isAndroid;
-    final os = Platform.operatingSystem;
-    final osVersion = Platform.operatingSystemVersion;
-    rprint('VoiceCommands: Platform check - isIOS=$isIOS, isAndroid=$isAndroid, os=$os, version=$osVersion');
+    // Use print() not rprint() - this runs during early init before WebSocket is ready
+    print('VoiceCommands: Platform check - isIOS=$isIOS, isAndroid=$isAndroid');
     return isIOS || isAndroid;
-  } catch (e, stack) {
-    rprint('VoiceCommands: Platform check EXCEPTION: $e');
-    rprint('VoiceCommands: Stack: $stack');
+  } catch (e) {
+    print('VoiceCommands: Platform check failed (web?): $e');
     return false; // Web platform
   }
 }
@@ -57,19 +55,28 @@ class VoiceCommandsNotifier extends StateNotifier<DogVoiceCommands> {
   VoiceCommandsNotifier(this.dogId, this._ref)
       : super(DogVoiceCommands(dogId: dogId)) {
     _loadCommands();
-    if (_isMobilePlatform) {
-      _initRecorder();
-    }
+    // Don't initialize recorder in constructor - do it lazily when needed
+    // This prevents crashes during app startup
   }
 
   Future<void> _initRecorder() async {
-    _recorder = FlutterSoundRecorder();
+    print('VoiceCommands: _initRecorder() called');
+
+    try {
+      _recorder = FlutterSoundRecorder();
+      print('VoiceCommands: FlutterSoundRecorder created');
+    } catch (e) {
+      print('VoiceCommands: FAILED to create FlutterSoundRecorder: $e');
+      _isRecorderInitialized = false;
+      return;
+    }
+
     try {
       await _recorder!.openRecorder();
       _isRecorderInitialized = true;
-      rprint('VoiceCommands: Recorder initialized');
+      print('VoiceCommands: Recorder initialized');
     } catch (e) {
-      rprint('VoiceCommands: Failed to initialize recorder: $e');
+      print('VoiceCommands: Failed to openRecorder: $e');
       _isRecorderInitialized = false;
     }
   }

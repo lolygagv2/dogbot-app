@@ -34,7 +34,8 @@ class ConnectionModeNotifier extends StateNotifier<ConnectionMode> {
         state = ConnectionMode.local;
       }
     } catch (e) {
-      rprint('ConnectionMode: Failed to load saved mode: $e');
+      // Use print() not rprint() - called during early init
+      print('ConnectionMode: Failed to load saved mode: $e');
     }
   }
 

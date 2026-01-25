@@ -53,18 +53,16 @@ class PttStateData {
   bool get isBusy => state != PttState.idle;
 }
 
-/// Check if we're on a mobile platform
+/// Check if we're on a mobile platform (uses print, not rprint, for safe early init)
 bool get _isMobilePlatform {
   try {
     final isIOS = Platform.isIOS;
     final isAndroid = Platform.isAndroid;
-    final os = Platform.operatingSystem;
-    final osVersion = Platform.operatingSystemVersion;
-    rprint('PushToTalk: Platform check - isIOS=$isIOS, isAndroid=$isAndroid, os=$os, version=$osVersion');
+    // Use print() not rprint() - this runs during early init before WebSocket is ready
+    print('PushToTalk: Platform check - isIOS=$isIOS, isAndroid=$isAndroid');
     return isIOS || isAndroid;
-  } catch (e, stack) {
-    rprint('PushToTalk: Platform check EXCEPTION: $e');
-    rprint('PushToTalk: Stack: $stack');
+  } catch (e) {
+    print('PushToTalk: Platform check failed (web?): $e');
     return false; // Web platform
   }
 }
@@ -100,34 +98,33 @@ class PushToTalkNotifier extends StateNotifier<PttStateData> {
 
   PushToTalkNotifier() : super(const PttStateData()) {
     _setupAudioListener();
+    // Don't initialize recorder in constructor - do it lazily when needed
+    // This prevents crashes during app startup
     if (_isMobilePlatform) {
-      _initRecorder();
       _initPlayer();
     }
   }
 
   Future<void> _initRecorder() async {
-    rprint('PushToTalk: _initRecorder() called');
-    rprint('PushToTalk: Creating FlutterSoundRecorder instance...');
+    print('PushToTalk: _initRecorder() called');
 
     try {
+      print('PushToTalk: Creating FlutterSoundRecorder...');
       _recorder = FlutterSoundRecorder();
-      rprint('PushToTalk: FlutterSoundRecorder created, calling openRecorder()...');
-    } catch (e, stack) {
-      rprint('PushToTalk: FAILED to create FlutterSoundRecorder: $e');
-      rprint('PushToTalk: Stack: $stack');
+      print('PushToTalk: FlutterSoundRecorder created');
+    } catch (e) {
+      print('PushToTalk: FAILED to create FlutterSoundRecorder: $e');
       _isRecorderInitialized = false;
       return;
     }
 
     try {
+      print('PushToTalk: Calling openRecorder()...');
       await _recorder!.openRecorder();
       _isRecorderInitialized = true;
-      rprint('PushToTalk: Recorder initialized successfully!');
-      rprint('PushToTalk: Recorder isOpen = ${_recorder!.isRecording}');
-    } catch (e, stack) {
-      rprint('PushToTalk: FAILED to openRecorder(): $e');
-      rprint('PushToTalk: Stack: $stack');
+      print('PushToTalk: Recorder initialized successfully');
+    } catch (e) {
+      print('PushToTalk: FAILED to openRecorder(): $e');
       _isRecorderInitialized = false;
     }
   }
