@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:wakelock_plus/wakelock_plus.dart';
 
 import '../../../domain/providers/control_provider.dart';
 import '../../../domain/providers/mode_provider.dart';
@@ -23,10 +24,22 @@ class _DriveScreenState extends ConsumerState<DriveScreen> {
   @override
   void initState() {
     super.initState();
+    // Keep screen on while driving
+    WakelockPlus.enable();
+    print('DriveScreen: Wakelock enabled');
+
     // Ensure we're in manual mode when entering drive screen
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _ensureManualMode();
     });
+  }
+
+  @override
+  void dispose() {
+    // Allow screen to sleep again
+    WakelockPlus.disable();
+    print('DriveScreen: Wakelock disabled');
+    super.dispose();
   }
 
   void _ensureManualMode() {

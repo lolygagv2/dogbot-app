@@ -350,9 +350,13 @@ class AudioControl {
     _ref.read(websocketClientProvider).sendAudioStop();
   }
 
-  /// Set volume
+  /// Set volume (0-100)
   void setVolume(int level) {
-    if (!_ref.read(connectionProvider).isConnected) return;
+    if (!_ref.read(connectionProvider).isConnected) {
+      print('AudioControl: Cannot set volume - not connected');
+      return;
+    }
+    print('AudioControl: Setting volume to $level');
     _ref.read(websocketClientProvider).sendAudioVolume(level);
   }
 

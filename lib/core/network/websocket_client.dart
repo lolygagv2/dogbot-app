@@ -195,6 +195,8 @@ class WebSocketClient {
 
         // Photo capture response
         case 'photo':
+          print('WebSocket: Received photo response, keys: ${json.keys}');
+          print('WebSocket: Photo data length: ${(json['data'] as String?)?.length ?? 0}');
           _photoController.add(json);
           break;
 
@@ -454,7 +456,10 @@ class WebSocketClient {
 
   /// Take a photo with optional HUD overlay
   void sendTakePhoto({bool withHud = true}) {
+    print('WebSocket: sendTakePhoto called with withHud=$withHud');
+    print('WebSocket: targetDeviceId=$_targetDeviceId, state=$_state');
     sendCommand('take_photo', {'with_hud': withHud});
+    print('WebSocket: take_photo command sent');
   }
 
   /// Upload a voice command recording to the robot

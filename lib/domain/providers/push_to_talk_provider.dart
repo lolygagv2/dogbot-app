@@ -161,8 +161,15 @@ class PushToTalkNotifier extends StateNotifier<PttStateData> {
   /// Start recording
   Future<bool> startRecording() async {
     print('PushToTalk: startRecording() called');
+    print('PushToTalk: Platform.isIOS=${Platform.isIOS}, Platform.isAndroid=${Platform.isAndroid}');
+    print('PushToTalk: _isMobilePlatform=$_isMobilePlatform');
 
-    if (!_isMobilePlatform) {
+    // Check platform - use direct Platform check for reliability
+    final isMobile = Platform.isIOS || Platform.isAndroid;
+    print('PushToTalk: isMobile=$isMobile');
+
+    if (!isMobile) {
+      print('PushToTalk: FAILED - not on mobile platform');
       state = state.copyWith(error: 'Recording only available on iOS/Android');
       return false;
     }

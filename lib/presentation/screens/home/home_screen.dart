@@ -302,15 +302,18 @@ class _ModeSelector extends ConsumerWidget {
     // Show error snackbar when mode change fails
     ref.listen<String?>(modeErrorProvider, (previous, error) {
       if (error != null && context.mounted) {
+        ScaffoldMessenger.of(context).hideCurrentSnackBar();
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(error),
             backgroundColor: AppTheme.error,
-            duration: const Duration(seconds: 3),
+            behavior: SnackBarBehavior.floating,
+            duration: const Duration(seconds: 5),
             action: SnackBarAction(
               label: 'Dismiss',
               textColor: Colors.white,
               onPressed: () {
+                ref.read(modeStateProvider.notifier).clearError();
                 ScaffoldMessenger.of(context).hideCurrentSnackBar();
               },
             ),

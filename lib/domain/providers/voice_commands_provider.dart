@@ -119,9 +119,14 @@ class VoiceCommandsNotifier extends StateNotifier<DogVoiceCommands> {
   /// Start recording a voice command
   Future<bool> startRecording(String commandId) async {
     print('VoiceCommands: startRecording($commandId)');
+    print('VoiceCommands: Platform.isIOS=${Platform.isIOS}, Platform.isAndroid=${Platform.isAndroid}');
 
-    if (!_isMobilePlatform) {
-      print('VoiceCommands: Not on mobile platform');
+    // Check platform directly for reliability
+    final isMobile = Platform.isIOS || Platform.isAndroid;
+    print('VoiceCommands: isMobile=$isMobile');
+
+    if (!isMobile) {
+      print('VoiceCommands: FAILED - Not on mobile platform');
       return false;
     }
 
