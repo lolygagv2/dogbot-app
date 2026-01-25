@@ -55,8 +55,12 @@ class PttStateData {
 /// Check if we're on a mobile platform
 bool get _isMobilePlatform {
   try {
-    return Platform.isIOS || Platform.isAndroid;
+    final isIOS = Platform.isIOS;
+    final isAndroid = Platform.isAndroid;
+    print('PushToTalk: Platform check - isIOS=$isIOS, isAndroid=$isAndroid');
+    return isIOS || isAndroid;
   } catch (e) {
+    print('PushToTalk: Platform check failed (web?): $e');
     return false; // Web platform
   }
 }

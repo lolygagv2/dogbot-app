@@ -3,11 +3,324 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:image_picker/image_picker.dart';
 
 import '../../../data/models/dog_profile.dart';
 import '../../../domain/providers/dog_profiles_provider.dart';
 import '../../../domain/providers/notifications_provider.dart';
 import '../../theme/app_theme.dart';
+
+/// Show dog settings bottom sheet
+void _showDogSettingsSheet(BuildContext context, WidgetRef ref, DogProfile profile) {
+  showModalBottomSheet(
+    context: context,
+    isScrollControlled: true,
+    backgroundColor: AppTheme.surface,
+    shape: const RoundedRectangleBorder(
+      borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+    ),
+    builder: (context) => _DogSettingsSheet(profile: profile),
+  );
+}
+
+/// Dog settings bottom sheet content
+class _DogSettingsSheet extends ConsumerStatefulWidget {
+  final DogProfile profile;
+
+  const _DogSettingsSheet({required this.profile});
+
+  @override
+  ConsumerState<_DogSettingsSheet> createState() => _DogSettingsSheetState();
+}
+
+class _DogSettingsSheetState extends ConsumerState<_DogSettingsSheet> {
+  late TextEditingController _nameController;
+  late TextEditingController _breedController;
+
+  @override
+  void initState() {
+    super.initState();
+    _nameController = TextEditingController(text: widget.profile.name);
+    _breedController = TextEditingController(text: widget.profile.breed ?? '');
+  }
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    _breedController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: EdgeInsets.only(
+        left: 24,
+        right: 24,
+        top: 16,
+        bottom: MediaQuery.of(context).viewInsets.bottom + 24,
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          // Handle bar
+          Center(
+            child: Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: AppTheme.textTertiary,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+          ),
+          const SizedBox(height: 20),
+
+          // Title
+          Text(
+            'Dog Settings',
+            style: TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+              color: AppTheme.textPrimary,
+            ),
+          ),
+          const SizedBox(height: 24),
+
+          // Change Photo
+          _SettingsOption(
+            icon: Icons.camera_alt,
+            label: 'Change Photo',
+            onTap: () => _changePhoto(),
+          ),
+          const Divider(height: 1),
+
+          // Rename Dog
+          _SettingsOption(
+            icon: Icons.edit,
+            label: 'Rename Dog',
+            onTap: () => _showRenameDialog(),
+          ),
+          const Divider(height: 1),
+
+          // Edit Breed
+          _SettingsOption(
+            icon: Icons.pets,
+            label: 'Edit Breed',
+            subtitle: widget.profile.breed ?? 'Not set',
+            onTap: () => _showBreedDialog(),
+          ),
+          const Divider(height: 1),
+
+          // Delete Dog
+          _SettingsOption(
+            icon: Icons.delete_forever,
+            label: 'Delete Dog',
+            color: Colors.red,
+            onTap: () => _confirmDelete(),
+          ),
+
+          const SizedBox(height: 16),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _changePhoto() async {
+    Navigator.pop(context);
+
+    final picker = ImagePicker();
+    final source = await showModalBottomSheet<ImageSource>(
+      context: context,
+      builder: (ctx) => Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          ListTile(
+            leading: const Icon(Icons.camera_alt),
+            title: const Text('Take Photo'),
+            onTap: () => Navigator.pop(ctx, ImageSource.camera),
+          ),
+          ListTile(
+            leading: const Icon(Icons.photo_library),
+            title: const Text('Choose from Gallery'),
+            onTap: () => Navigator.pop(ctx, ImageSource.gallery),
+          ),
+        ],
+      ),
+    );
+
+    if (source == null) return;
+
+    final image = await picker.pickImage(source: source, maxWidth: 512, maxHeight: 512);
+    if (image != null) {
+      await ref.read(dogProfilesProvider.notifier).updateProfilePhoto(
+        widget.profile.id,
+        image.path,
+      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Photo updated')),
+        );
+      }
+    }
+  }
+
+  void _showRenameDialog() {
+    Navigator.pop(context);
+    _nameController.text = widget.profile.name;
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Rename Dog'),
+        content: TextField(
+          controller: _nameController,
+          autofocus: true,
+          decoration: const InputDecoration(
+            labelText: 'Name',
+            hintText: 'Enter dog name',
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () async {
+              final newName = _nameController.text.trim();
+              if (newName.isNotEmpty && newName != widget.profile.name) {
+                await ref.read(dogProfilesProvider.notifier).updateProfile(
+                  widget.profile.copyWith(name: newName),
+                );
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Renamed to $newName')),
+                  );
+                }
+              }
+              Navigator.pop(ctx);
+            },
+            child: const Text('Save'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showBreedDialog() {
+    Navigator.pop(context);
+    _breedController.text = widget.profile.breed ?? '';
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Edit Breed'),
+        content: TextField(
+          controller: _breedController,
+          autofocus: true,
+          decoration: const InputDecoration(
+            labelText: 'Breed',
+            hintText: 'e.g. Golden Retriever',
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () async {
+              final newBreed = _breedController.text.trim();
+              await ref.read(dogProfilesProvider.notifier).updateProfile(
+                widget.profile.copyWith(breed: newBreed.isEmpty ? null : newBreed),
+              );
+              if (mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Breed updated')),
+                );
+              }
+              Navigator.pop(ctx);
+            },
+            child: const Text('Save'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _confirmDelete() {
+    Navigator.pop(context);
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Delete Dog?'),
+        content: Text(
+          'Are you sure you want to delete ${widget.profile.name}? '
+          'This will remove all their data and cannot be undone.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: Colors.red),
+            onPressed: () async {
+              await ref.read(dogProfilesProvider.notifier).removeProfile(widget.profile.id);
+              Navigator.pop(ctx);
+              if (mounted) {
+                context.go('/dogs');
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text('${widget.profile.name} deleted')),
+                );
+              }
+            },
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Settings option tile
+class _SettingsOption extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final String? subtitle;
+  final Color? color;
+  final VoidCallback onTap;
+
+  const _SettingsOption({
+    required this.icon,
+    required this.label,
+    this.subtitle,
+    this.color,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final effectiveColor = color ?? AppTheme.textPrimary;
+
+    return ListTile(
+      contentPadding: EdgeInsets.zero,
+      leading: Icon(icon, color: effectiveColor),
+      title: Text(
+        label,
+        style: TextStyle(color: effectiveColor),
+      ),
+      subtitle: subtitle != null
+          ? Text(subtitle!, style: TextStyle(color: AppTheme.textTertiary))
+          : null,
+      trailing: Icon(Icons.chevron_right, color: AppTheme.textTertiary),
+      onTap: onTap,
+    );
+  }
+}
 
 /// Dog profile screen - central hub for a dog's info, stats, and quick actions
 class DogProfileScreen extends ConsumerWidget {
@@ -37,9 +350,7 @@ class DogProfileScreen extends ConsumerWidget {
         actions: [
           IconButton(
             icon: const Icon(Icons.settings),
-            onPressed: () {
-              // TODO: Navigate to dog edit screen
-            },
+            onPressed: () => _showDogSettingsSheet(context, ref, profile),
           ),
         ],
       ),

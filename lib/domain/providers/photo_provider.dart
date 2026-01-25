@@ -66,13 +66,17 @@ class PhotoNotifier extends StateNotifier<PhotoState> {
   }
 
   Future<void> _handlePhotoMessage(Map<String, dynamic> message) async {
-    print('PhotoNotifier: Received photo message');
+    print('PhotoNotifier: Received photo message: ${message.keys}');
 
     final base64Data = message['data'] as String?;
     final filename = message['filename'] as String? ?? 'wimz_photo';
     final timestamp = message['timestamp'] as String?;
 
+    print('PhotoNotifier: filename=$filename, timestamp=$timestamp');
+    print('PhotoNotifier: data length=${base64Data?.length ?? 0}');
+
     if (base64Data == null || base64Data.isEmpty) {
+      print('PhotoNotifier: ERROR - Empty photo data received');
       state = state.copyWith(
         isCapturing: false,
         error: 'Received empty photo data',
@@ -107,14 +111,35 @@ class PhotoNotifier extends StateNotifier<PhotoState> {
 
   /// Take a photo (sends command to robot)
   void takePhoto({bool withHud = true}) {
-    if (!_ref.read(connectionProvider).isConnected) {
+    print('PhotoNotifier: takePhoto() called, withHud=$withHud');
+
+    final isConnected = _ref.read(connectionProvider).isConnected;
+    print('PhotoNotifier: isConnected=$isConnected');
+
+    if (!isConnected) {
+      print('PhotoNotifier: ERROR - Not connected to robot');
       state = state.copyWith(error: 'Not connected to robot');
       return;
     }
 
     state = state.copyWith(isCapturing: true, clearError: true);
-    _ref.read(websocketClientProvider).sendTakePhoto(withHud: withHud);
-    print('PhotoNotifier: Take photo command sent');
+    print('PhotoNotifier: State updated to isCapturing=true');
+
+    final wsClient = _ref.read(websocketClientProvider);
+    print('PhotoNotifier: Got websocket client, sending take_photo command...');
+    wsClient.sendTakePhoto(withHud: withHud);
+    print('PhotoNotifier: Take photo command sent successfully');
+
+    // Add timeout for photo response
+    Future.delayed(const Duration(seconds: 10), () {
+      if (state.isCapturing) {
+        print('PhotoNotifier: Photo capture timed out after 10s');
+        state = state.copyWith(
+          isCapturing: false,
+          error: 'Photo capture timed out - no response from robot',
+        );
+      }
+    });
   }
 
   /// Load photos from local storage

@@ -28,8 +28,12 @@ final playingCommandProvider = StateProvider<String?>((ref) => null);
 /// Check if we're on a mobile platform
 bool get _isMobilePlatform {
   try {
-    return Platform.isIOS || Platform.isAndroid;
+    final isIOS = Platform.isIOS;
+    final isAndroid = Platform.isAndroid;
+    print('VoiceCommands: Platform check - isIOS=$isIOS, isAndroid=$isAndroid');
+    return isIOS || isAndroid;
   } catch (e) {
+    print('VoiceCommands: Platform check failed (web?): $e');
     return false; // Web platform
   }
 }
@@ -140,15 +144,24 @@ class VoiceCommandsNotifier extends StateNotifier<DogVoiceCommands> {
 
   /// Start recording a voice command
   Future<bool> startRecording(String commandId) async {
+    print('VoiceCommands: startRecording called for $commandId');
+
     // Platform check
-    if (!_isMobilePlatform) {
+    final isMobile = _isMobilePlatform;
+    print('VoiceCommands: isMobilePlatform = $isMobile');
+    if (!isMobile) {
       print('VoiceCommands: Recording only available on mobile (iOS/Android)');
       return false;
     }
 
     // Permission check
-    if (!await hasPermission()) {
+    print('VoiceCommands: Checking permission...');
+    final hasPerm = await hasPermission();
+    print('VoiceCommands: hasPermission = $hasPerm');
+    if (!hasPerm) {
+      print('VoiceCommands: Requesting permission...');
       final granted = await requestPermission();
+      print('VoiceCommands: Permission granted = $granted');
       if (!granted) {
         print('VoiceCommands: Microphone permission denied');
         return false;
@@ -156,10 +169,13 @@ class VoiceCommandsNotifier extends StateNotifier<DogVoiceCommands> {
     }
 
     // Ensure recorder is initialized
+    print('VoiceCommands: Checking recorder - recorder=$_recorder, initialized=$_isRecorderInitialized');
     if (_recorder == null || !_isRecorderInitialized) {
+      print('VoiceCommands: Initializing recorder...');
       await _initRecorder();
+      print('VoiceCommands: After init - initialized=$_isRecorderInitialized');
       if (!_isRecorderInitialized) {
-        print('VoiceCommands: Recorder not available');
+        print('VoiceCommands: Recorder not available after init');
         return false;
       }
     }

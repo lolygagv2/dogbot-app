@@ -11,6 +11,12 @@ final _lightingIndexProvider = StateProvider<int>((ref) => 0);
 /// Provider to track if audio is playing
 final _isPlayingProvider = StateProvider<bool>((ref) => false);
 
+/// Provider to track current track name
+final _currentTrackProvider = StateProvider<String?>((ref) => null);
+
+/// Provider to track volume level (0-100)
+final _volumeProvider = StateProvider<int>((ref) => 70);
+
 class QuickActions extends ConsumerWidget {
   const QuickActions({super.key});
 
@@ -102,15 +108,18 @@ class QuickActions extends ConsumerWidget {
 
             const SizedBox(width: 24),
 
-            // Music controls row
-            // Prev/Next load songs but don't auto-play
-            // Play/Pause toggles playback state
-            _MusicControls(
+            // Music controls row with volume
+            _MusicControlsWithVolume(
               isPlaying: isPlaying,
+              volume: ref.watch(_volumeProvider),
               onPrev: () {
                 audioControl.prev();
-                audioControl.toggle(); // Auto-play after loading
+                // Small delay to let track load, then play
+                Future.delayed(const Duration(milliseconds: 100), () {
+                  audioControl.toggle();
+                });
                 ref.read(_isPlayingProvider.notifier).state = true;
+                _showTrackToast(context, 'Previous track');
               },
               onToggle: () {
                 audioControl.toggle();
@@ -118,13 +127,40 @@ class QuickActions extends ConsumerWidget {
               },
               onNext: () {
                 audioControl.next();
-                audioControl.toggle(); // Auto-play after loading
+                // Small delay to let track load, then play
+                Future.delayed(const Duration(milliseconds: 100), () {
+                  audioControl.toggle();
+                });
                 ref.read(_isPlayingProvider.notifier).state = true;
+                _showTrackToast(context, 'Next track');
+              },
+              onVolumeChanged: (volume) {
+                ref.read(_volumeProvider.notifier).state = volume;
+                audioControl.setVolume(volume);
               },
             ),
           ],
         ),
       ],
+    );
+  }
+
+  void _showTrackToast(BuildContext context, String message) {
+    ScaffoldMessenger.of(context).hideCurrentSnackBar();
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.music_note, color: Colors.white, size: 16),
+            const SizedBox(width: 8),
+            Text(message),
+          ],
+        ),
+        duration: const Duration(milliseconds: 1500),
+        behavior: SnackBarBehavior.floating,
+        width: 180,
+      ),
     );
   }
 
@@ -256,63 +292,111 @@ class _LightingButton extends StatelessWidget {
   }
 }
 
-/// Music playback controls
-class _MusicControls extends StatelessWidget {
+/// Music playback controls with volume slider
+class _MusicControlsWithVolume extends StatelessWidget {
   final bool isPlaying;
+  final int volume;
   final VoidCallback onPrev;
   final VoidCallback onToggle;
   final VoidCallback onNext;
+  final ValueChanged<int> onVolumeChanged;
 
-  const _MusicControls({
+  const _MusicControlsWithVolume({
     required this.isPlaying,
+    required this.volume,
     required this.onPrev,
     required this.onToggle,
     required this.onNext,
+    required this.onVolumeChanged,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surfaceContainerHighest,
-        borderRadius: BorderRadius.circular(24),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          // Music icon
-          Icon(
-            Icons.music_note,
-            color: Theme.of(context).colorScheme.primary,
-            size: 18,
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        // Transport controls row
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          decoration: BoxDecoration(
+            color: Theme.of(context).colorScheme.surfaceContainerHighest,
+            borderRadius: BorderRadius.circular(24),
           ),
-          const SizedBox(width: 8),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Music icon
+              Icon(
+                Icons.music_note,
+                color: Theme.of(context).colorScheme.primary,
+                size: 18,
+              ),
+              const SizedBox(width: 8),
 
-          // Previous button
-          _MusicButton(
-            icon: Icons.skip_previous,
-            onPressed: onPrev,
+              // Previous button
+              _MusicButton(
+                icon: Icons.skip_previous,
+                onPressed: onPrev,
+              ),
+
+              const SizedBox(width: 4),
+
+              // Play/Pause button - icon changes based on state
+              _MusicButton(
+                icon: isPlaying ? Icons.pause : Icons.play_arrow,
+                onPressed: onToggle,
+                isPrimary: true,
+              ),
+
+              const SizedBox(width: 4),
+
+              // Next button
+              _MusicButton(
+                icon: Icons.skip_next,
+                onPressed: onNext,
+              ),
+            ],
           ),
-
-          const SizedBox(width: 4),
-
-          // Play/Pause button
-          _MusicButton(
-            icon: isPlaying ? Icons.pause : Icons.play_arrow,
-            onPressed: onToggle,
-            isPrimary: true,
+        ),
+        const SizedBox(height: 8),
+        // Volume slider
+        SizedBox(
+          width: 140,
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                volume == 0 ? Icons.volume_off : Icons.volume_down,
+                size: 14,
+                color: Theme.of(context).colorScheme.primary.withOpacity(0.7),
+              ),
+              Expanded(
+                child: SliderTheme(
+                  data: SliderThemeData(
+                    trackHeight: 3,
+                    thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 6),
+                    overlayShape: const RoundSliderOverlayShape(overlayRadius: 12),
+                    activeTrackColor: Theme.of(context).colorScheme.primary,
+                    inactiveTrackColor: Theme.of(context).colorScheme.primary.withOpacity(0.2),
+                    thumbColor: Theme.of(context).colorScheme.primary,
+                  ),
+                  child: Slider(
+                    value: volume.toDouble(),
+                    min: 0,
+                    max: 100,
+                    onChanged: (v) => onVolumeChanged(v.toInt()),
+                  ),
+                ),
+              ),
+              Icon(
+                Icons.volume_up,
+                size: 14,
+                color: Theme.of(context).colorScheme.primary.withOpacity(0.7),
+              ),
+            ],
           ),
-
-          const SizedBox(width: 4),
-
-          // Next button
-          _MusicButton(
-            icon: Icons.skip_next,
-            onPressed: onNext,
-          ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 }
