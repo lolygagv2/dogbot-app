@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
 
 import '../constants/app_constants.dart';
+import '../utils/remote_logger.dart';
 
 /// WebSocket connection state
 enum WsConnectionState {
@@ -144,6 +145,9 @@ class WebSocketClient {
 
       _setState(WsConnectionState.connected);
       _reconnectAttempts = 0;
+
+      // Flush any pending remote logs
+      RemoteLogger.onConnected();
 
       // Listen for messages
       _subscription = _channel!.stream.listen(

@@ -9,6 +9,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
 
 import '../../core/network/websocket_client.dart';
+import '../../core/utils/remote_logger.dart';
 
 /// Push-to-talk state
 enum PttState {
@@ -57,10 +58,10 @@ bool get _isMobilePlatform {
   try {
     final isIOS = Platform.isIOS;
     final isAndroid = Platform.isAndroid;
-    print('PushToTalk: Platform check - isIOS=$isIOS, isAndroid=$isAndroid');
+    rprint('PushToTalk: Platform check - isIOS=$isIOS, isAndroid=$isAndroid');
     return isIOS || isAndroid;
   } catch (e) {
-    print('PushToTalk: Platform check failed (web?): $e');
+    rprint('PushToTalk: Platform check failed (web?): $e');
     return false; // Web platform
   }
 }
@@ -101,9 +102,9 @@ class PushToTalkNotifier extends StateNotifier<PttStateData> {
     try {
       await _recorder!.openRecorder();
       _isRecorderInitialized = true;
-      print('PushToTalk: Recorder initialized');
+      rprint('PushToTalk: Recorder initialized');
     } catch (e) {
-      print('PushToTalk: Failed to initialize recorder: $e');
+      rprint('PushToTalk: Failed to initialize recorder: $e');
       _isRecorderInitialized = false;
     }
   }
@@ -111,12 +112,12 @@ class PushToTalkNotifier extends StateNotifier<PttStateData> {
   Future<void> _initPlayer() async {
     _audioPlayer = AudioPlayer();
     _audioPlayer!.onPlayerComplete.listen((_) {
-      print('PushToTalk: Playback complete');
+      rprint('PushToTalk: Playback complete');
       if (state.state == PttState.playing) {
         state = state.copyWith(state: PttState.idle);
       }
     });
-    print('PushToTalk: Player initialized');
+    rprint('PushToTalk: Player initialized');
   }
 
   void _setupAudioListener() {
@@ -131,7 +132,7 @@ class PushToTalkNotifier extends StateNotifier<PttStateData> {
   /// Handle incoming audio from robot
   Future<void> _handleIncomingAudio(Map<String, dynamic> data) async {
     if (!_isMobilePlatform) {
-      print('PushToTalk: Audio playback only available on mobile');
+      rprint('PushToTalk: Audio playback only available on mobile');
       return;
     }
 
@@ -140,11 +141,11 @@ class PushToTalkNotifier extends StateNotifier<PttStateData> {
     final durationMs = data['duration_ms'] as int? ?? 0;
 
     if (base64Data == null || base64Data.isEmpty) {
-      print('PushToTalk: Received empty audio data');
+      rprint('PushToTalk: Received empty audio data');
       return;
     }
 
-    print('PushToTalk: Received audio message (${base64Data.length} chars, $format, ${durationMs}ms)');
+    rprint('PushToTalk: Received audio message (${base64Data.length} chars, $format, ${durationMs}ms)');
 
     try {
       // Decode base64 to bytes
@@ -159,12 +160,12 @@ class PushToTalkNotifier extends StateNotifier<PttStateData> {
       final file = File(filePath);
       await file.writeAsBytes(bytes);
 
-      print('PushToTalk: Saved audio to $filePath (${bytes.length} bytes)');
+      rprint('PushToTalk: Saved audio to $filePath (${bytes.length} bytes)');
 
       // Play the audio
       await _playAudioFile(filePath);
     } catch (e) {
-      print('PushToTalk: Failed to handle incoming audio: $e');
+      rprint('PushToTalk: Failed to handle incoming audio: $e');
       state = state.copyWith(
         state: PttState.idle,
         error: 'Failed to play audio from robot',
@@ -182,9 +183,9 @@ class PushToTalkNotifier extends StateNotifier<PttStateData> {
       state = state.copyWith(state: PttState.playing);
 
       await _audioPlayer!.play(DeviceFileSource(filePath));
-      print('PushToTalk: Playing audio');
+      rprint('PushToTalk: Playing audio');
     } catch (e) {
-      print('PushToTalk: Failed to play audio: $e');
+      rprint('PushToTalk: Failed to play audio: $e');
       state = state.copyWith(
         state: PttState.idle,
         error: 'Failed to play audio',
@@ -214,9 +215,9 @@ class PushToTalkNotifier extends StateNotifier<PttStateData> {
   Future<bool> _requestPermission() async {
     if (!_isMobilePlatform) return false;
 
-    print('PushToTalk: Requesting microphone permission...');
+    rprint('PushToTalk: Requesting microphone permission...');
     final status = await Permission.microphone.request();
-    print('PushToTalk: Permission result: $status');
+    rprint('PushToTalk: Permission result: $status');
 
     if (status.isPermanentlyDenied) {
       state = state.copyWith(
@@ -235,7 +236,7 @@ class PushToTalkNotifier extends StateNotifier<PttStateData> {
       state = state.copyWith(
         error: 'Recording only available on mobile (iOS/Android)',
       );
-      print('PushToTalk: Recording only available on mobile');
+      rprint('PushToTalk: Recording only available on mobile');
       return false;
     }
 
@@ -253,7 +254,7 @@ class PushToTalkNotifier extends StateNotifier<PttStateData> {
       await _initRecorder();
       if (!_isRecorderInitialized) {
         state = state.copyWith(error: 'Recorder not available');
-        print('PushToTalk: Recorder not available');
+        rprint('PushToTalk: Recorder not available');
         return false;
       }
     }
@@ -293,7 +294,7 @@ class PushToTalkNotifier extends StateNotifier<PttStateData> {
 
         // Auto-stop at max duration
         if (elapsed >= maxRecordingDurationMs) {
-          print('PushToTalk: Max recording duration reached');
+          rprint('PushToTalk: Max recording duration reached');
           stopRecordingAndSend();
         }
       });
@@ -305,10 +306,10 @@ class PushToTalkNotifier extends StateNotifier<PttStateData> {
         error: null,
       );
 
-      print('PushToTalk: Started recording at $_currentRecordingPath');
+      rprint('PushToTalk: Started recording at $_currentRecordingPath');
       return true;
     } catch (e) {
-      print('PushToTalk: Failed to start recording: $e');
+      rprint('PushToTalk: Failed to start recording: $e');
       state = state.copyWith(error: 'Failed to start recording: $e');
       _currentRecordingPath = null;
       _recordingStartTime = null;
@@ -329,7 +330,7 @@ class PushToTalkNotifier extends StateNotifier<PttStateData> {
       final path = await _recorder!.stopRecorder();
 
       if (path == null || path.isEmpty) {
-        print('PushToTalk: Recording returned null path');
+        rprint('PushToTalk: Recording returned null path');
         state = state.copyWith(
           state: PttState.idle,
           error: 'Recording failed - no audio captured',
@@ -345,7 +346,7 @@ class PushToTalkNotifier extends StateNotifier<PttStateData> {
       // Verify file exists
       final file = File(path);
       if (!await file.exists()) {
-        print('PushToTalk: Recording file does not exist at $path');
+        rprint('PushToTalk: Recording file does not exist at $path');
         state = state.copyWith(
           state: PttState.idle,
           error: 'Recording failed - file not found',
@@ -354,7 +355,7 @@ class PushToTalkNotifier extends StateNotifier<PttStateData> {
       }
 
       final fileSize = await file.length();
-      print('PushToTalk: Recording complete: $path ($fileSize bytes, ${durationMs}ms)');
+      rprint('PushToTalk: Recording complete: $path ($fileSize bytes, ${durationMs}ms)');
 
       // Update state to sending
       state = state.copyWith(state: PttState.sending);
@@ -366,13 +367,13 @@ class PushToTalkNotifier extends StateNotifier<PttStateData> {
       // Send via WebSocket
       WebSocketClient.instance.sendAudioMessage(base64Data, 'aac', durationMs);
 
-      print('PushToTalk: Sent audio message to robot');
+      rprint('PushToTalk: Sent audio message to robot');
 
       // Clean up temp file
       try {
         await file.delete();
       } catch (e) {
-        print('PushToTalk: Failed to delete temp file: $e');
+        rprint('PushToTalk: Failed to delete temp file: $e');
       }
 
       // Return to idle
@@ -387,7 +388,7 @@ class PushToTalkNotifier extends StateNotifier<PttStateData> {
 
       return true;
     } catch (e) {
-      print('PushToTalk: Failed to stop recording and send: $e');
+      rprint('PushToTalk: Failed to stop recording and send: $e');
       state = state.copyWith(
         state: PttState.idle,
         error: 'Failed to send audio: $e',
@@ -404,7 +405,7 @@ class PushToTalkNotifier extends StateNotifier<PttStateData> {
       try {
         await _recorder!.stopRecorder();
       } catch (e) {
-        print('PushToTalk: Error stopping recorder: $e');
+        rprint('PushToTalk: Error stopping recorder: $e');
       }
     }
 
@@ -416,7 +417,7 @@ class PushToTalkNotifier extends StateNotifier<PttStateData> {
           await file.delete();
         }
       } catch (e) {
-        print('PushToTalk: Error deleting temp file: $e');
+        rprint('PushToTalk: Error deleting temp file: $e');
       }
     }
 
@@ -429,14 +430,14 @@ class PushToTalkNotifier extends StateNotifier<PttStateData> {
     _currentRecordingPath = null;
     _recordingStartTime = null;
 
-    print('PushToTalk: Recording cancelled');
+    rprint('PushToTalk: Recording cancelled');
   }
 
   /// Request audio from robot (listen button)
   void requestAudio({int durationSeconds = 5}) {
     if (state.isBusy) return;
 
-    print('PushToTalk: Requesting ${durationSeconds}s audio from robot');
+    rprint('PushToTalk: Requesting ${durationSeconds}s audio from robot');
 
     state = state.copyWith(state: PttState.requesting, error: null);
     WebSocketClient.instance.requestAudioFromRobot(durationSeconds);
@@ -444,7 +445,7 @@ class PushToTalkNotifier extends StateNotifier<PttStateData> {
     // Timeout after duration + 2 seconds
     Future.delayed(Duration(seconds: durationSeconds + 2), () {
       if (state.state == PttState.requesting) {
-        print('PushToTalk: Audio request timed out');
+        rprint('PushToTalk: Audio request timed out');
         state = state.copyWith(
           state: PttState.idle,
           error: 'No audio received from robot',
@@ -459,7 +460,7 @@ class PushToTalkNotifier extends StateNotifier<PttStateData> {
       try {
         await _audioPlayer!.stop();
       } catch (e) {
-        print('PushToTalk: Error stopping playback: $e');
+        rprint('PushToTalk: Error stopping playback: $e');
       }
     }
     state = state.copyWith(state: PttState.idle);

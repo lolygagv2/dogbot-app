@@ -10,6 +10,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../data/models/voice_command.dart';
 import '../../core/network/websocket_client.dart';
+import '../../core/utils/remote_logger.dart';
 
 const String _voiceCommandsKey = 'voice_commands';
 
@@ -30,10 +31,10 @@ bool get _isMobilePlatform {
   try {
     final isIOS = Platform.isIOS;
     final isAndroid = Platform.isAndroid;
-    print('VoiceCommands: Platform check - isIOS=$isIOS, isAndroid=$isAndroid');
+    rprint('VoiceCommands: Platform check - isIOS=$isIOS, isAndroid=$isAndroid');
     return isIOS || isAndroid;
   } catch (e) {
-    print('VoiceCommands: Platform check failed (web?): $e');
+    rprint('VoiceCommands: Platform check failed (web?): $e');
     return false; // Web platform
   }
 }
@@ -63,9 +64,9 @@ class VoiceCommandsNotifier extends StateNotifier<DogVoiceCommands> {
     try {
       await _recorder!.openRecorder();
       _isRecorderInitialized = true;
-      print('VoiceCommands: Recorder initialized');
+      rprint('VoiceCommands: Recorder initialized');
     } catch (e) {
-      print('VoiceCommands: Failed to initialize recorder: $e');
+      rprint('VoiceCommands: Failed to initialize recorder: $e');
       _isRecorderInitialized = false;
     }
   }
@@ -93,9 +94,9 @@ class VoiceCommandsNotifier extends StateNotifier<DogVoiceCommands> {
         }
 
         state = state.copyWith(commands: commands);
-        print('VoiceCommands: Loaded ${commands.length} commands for $dogId');
+        rprint('VoiceCommands: Loaded ${commands.length} commands for $dogId');
       } catch (e) {
-        print('VoiceCommands: Failed to load commands: $e');
+        rprint('VoiceCommands: Failed to load commands: $e');
       }
     }
   }
@@ -109,18 +110,18 @@ class VoiceCommandsNotifier extends StateNotifier<DogVoiceCommands> {
     }
 
     await _prefs?.setString('${_voiceCommandsKey}_$dogId', jsonEncode(data));
-    print('VoiceCommands: Saved ${state.commands.length} commands');
+    rprint('VoiceCommands: Saved ${state.commands.length} commands');
   }
 
   /// Check if recording is available
   Future<bool> hasPermission() async {
     if (!_isMobilePlatform) {
-      print('VoiceCommands: Recording only available on mobile platforms');
+      rprint('VoiceCommands: Recording only available on mobile platforms');
       return false;
     }
 
     final status = await Permission.microphone.status;
-    print('VoiceCommands: Microphone permission status: $status');
+    rprint('VoiceCommands: Microphone permission status: $status');
     return status.isGranted;
   }
 
@@ -130,12 +131,12 @@ class VoiceCommandsNotifier extends StateNotifier<DogVoiceCommands> {
       return false;
     }
 
-    print('VoiceCommands: Requesting microphone permission...');
+    rprint('VoiceCommands: Requesting microphone permission...');
     final status = await Permission.microphone.request();
-    print('VoiceCommands: Permission result: $status');
+    rprint('VoiceCommands: Permission result: $status');
 
     if (status.isPermanentlyDenied) {
-      print('VoiceCommands: Permission permanently denied - user must enable in settings');
+      rprint('VoiceCommands: Permission permanently denied - user must enable in settings');
       return false;
     }
 
@@ -144,38 +145,38 @@ class VoiceCommandsNotifier extends StateNotifier<DogVoiceCommands> {
 
   /// Start recording a voice command
   Future<bool> startRecording(String commandId) async {
-    print('VoiceCommands: startRecording called for $commandId');
+    rprint('VoiceCommands: startRecording called for $commandId');
 
     // Platform check
     final isMobile = _isMobilePlatform;
-    print('VoiceCommands: isMobilePlatform = $isMobile');
+    rprint('VoiceCommands: isMobilePlatform = $isMobile');
     if (!isMobile) {
-      print('VoiceCommands: Recording only available on mobile (iOS/Android)');
+      rprint('VoiceCommands: Recording only available on mobile (iOS/Android)');
       return false;
     }
 
     // Permission check
-    print('VoiceCommands: Checking permission...');
+    rprint('VoiceCommands: Checking permission...');
     final hasPerm = await hasPermission();
-    print('VoiceCommands: hasPermission = $hasPerm');
+    rprint('VoiceCommands: hasPermission = $hasPerm');
     if (!hasPerm) {
-      print('VoiceCommands: Requesting permission...');
+      rprint('VoiceCommands: Requesting permission...');
       final granted = await requestPermission();
-      print('VoiceCommands: Permission granted = $granted');
+      rprint('VoiceCommands: Permission granted = $granted');
       if (!granted) {
-        print('VoiceCommands: Microphone permission denied');
+        rprint('VoiceCommands: Microphone permission denied');
         return false;
       }
     }
 
     // Ensure recorder is initialized
-    print('VoiceCommands: Checking recorder - recorder=$_recorder, initialized=$_isRecorderInitialized');
+    rprint('VoiceCommands: Checking recorder - recorder=$_recorder, initialized=$_isRecorderInitialized');
     if (_recorder == null || !_isRecorderInitialized) {
-      print('VoiceCommands: Initializing recorder...');
+      rprint('VoiceCommands: Initializing recorder...');
       await _initRecorder();
-      print('VoiceCommands: After init - initialized=$_isRecorderInitialized');
+      rprint('VoiceCommands: After init - initialized=$_isRecorderInitialized');
       if (!_isRecorderInitialized) {
-        print('VoiceCommands: Recorder not available after init');
+        rprint('VoiceCommands: Recorder not available after init');
         return false;
       }
     }
@@ -202,10 +203,10 @@ class VoiceCommandsNotifier extends StateNotifier<DogVoiceCommands> {
       );
       _ref.read(isRecordingProvider.notifier).state = true;
 
-      print('VoiceCommands: Started recording for $commandId at $_currentRecordingPath');
+      rprint('VoiceCommands: Started recording for $commandId at $_currentRecordingPath');
       return true;
     } catch (e) {
-      print('VoiceCommands: Failed to start recording: $e');
+      rprint('VoiceCommands: Failed to start recording: $e');
       _currentRecordingPath = null;
       _recordingStartTime = null;
       return false;
@@ -229,7 +230,7 @@ class VoiceCommandsNotifier extends StateNotifier<DogVoiceCommands> {
       final path = await _recorder!.stopRecorder();
 
       if (path == null || path.isEmpty) {
-        print('VoiceCommands: Recording returned null path');
+        rprint('VoiceCommands: Recording returned null path');
         await cancelRecording();
         return null;
       }
@@ -242,13 +243,13 @@ class VoiceCommandsNotifier extends StateNotifier<DogVoiceCommands> {
       // Verify file exists
       final file = File(path);
       if (!await file.exists()) {
-        print('VoiceCommands: Recording file does not exist at $path');
+        rprint('VoiceCommands: Recording file does not exist at $path');
         await cancelRecording();
         return null;
       }
 
       final fileSize = await file.length();
-      print('VoiceCommands: Recording saved: $path ($fileSize bytes, ${durationMs}ms)');
+      rprint('VoiceCommands: Recording saved: $path ($fileSize bytes, ${durationMs}ms)');
 
       // Move to permanent location
       final appDir = await getApplicationDocumentsDirectory();
@@ -294,10 +295,10 @@ class VoiceCommandsNotifier extends StateNotifier<DogVoiceCommands> {
       // Save to persistent storage
       await _saveCommands();
 
-      print('VoiceCommands: Successfully recorded $commandId');
+      rprint('VoiceCommands: Successfully recorded $commandId');
       return command;
     } catch (e) {
-      print('VoiceCommands: Failed to stop recording: $e');
+      rprint('VoiceCommands: Failed to stop recording: $e');
       await cancelRecording();
       return null;
     }
@@ -309,7 +310,7 @@ class VoiceCommandsNotifier extends StateNotifier<DogVoiceCommands> {
       try {
         await _recorder!.stopRecorder();
       } catch (e) {
-        print('VoiceCommands: Error stopping recorder: $e');
+        rprint('VoiceCommands: Error stopping recorder: $e');
       }
     }
 
@@ -321,7 +322,7 @@ class VoiceCommandsNotifier extends StateNotifier<DogVoiceCommands> {
           await file.delete();
         }
       } catch (e) {
-        print('VoiceCommands: Error deleting temp file: $e');
+        rprint('VoiceCommands: Error deleting temp file: $e');
       }
     }
 
@@ -334,7 +335,7 @@ class VoiceCommandsNotifier extends StateNotifier<DogVoiceCommands> {
     _currentRecordingPath = null;
     _recordingStartTime = null;
 
-    print('VoiceCommands: Recording cancelled');
+    rprint('VoiceCommands: Recording cancelled');
   }
 
   /// Delete a recorded command
@@ -347,7 +348,7 @@ class VoiceCommandsNotifier extends StateNotifier<DogVoiceCommands> {
           await file.delete();
         }
       } catch (e) {
-        print('VoiceCommands: Failed to delete file: $e');
+        rprint('VoiceCommands: Failed to delete file: $e');
       }
     }
 
@@ -382,10 +383,10 @@ class VoiceCommandsNotifier extends StateNotifier<DogVoiceCommands> {
       state = state.copyWith(commands: newCommands);
 
       await _saveCommands();
-      print('VoiceCommands: Synced $commandId to robot');
+      rprint('VoiceCommands: Synced $commandId to robot');
       return true;
     } catch (e) {
-      print('VoiceCommands: Failed to sync $commandId: $e');
+      rprint('VoiceCommands: Failed to sync $commandId: $e');
       return false;
     }
   }
