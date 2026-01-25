@@ -4,19 +4,55 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../domain/providers/control_provider.dart';
+import '../../../domain/providers/mode_provider.dart';
 import '../../../domain/providers/telemetry_provider.dart';
 import '../../widgets/video/webrtc_video_view.dart';
 import '../../widgets/controls/push_to_talk.dart';
 import '../../theme/app_theme.dart';
 
-class DriveScreen extends ConsumerWidget {
+class DriveScreen extends ConsumerStatefulWidget {
   const DriveScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<DriveScreen> createState() => _DriveScreenState();
+}
+
+class _DriveScreenState extends ConsumerState<DriveScreen> {
+  bool _modeChangeRequested = false;
+
+  @override
+  void initState() {
+    super.initState();
+    // Ensure we're in manual mode when entering drive screen
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _ensureManualMode();
+    });
+  }
+
+  void _ensureManualMode() {
+    final modeState = ref.read(modeStateProvider);
+    if (modeState.currentMode != RobotMode.manual) {
+      print('DriveScreen: Not in manual mode, switching...');
+      _modeChangeRequested = true;
+      ref.read(modeStateProvider.notifier).setManualMode();
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final telemetry = ref.watch(telemetryProvider);
     final motorControl = ref.watch(motorControlProvider.notifier);
     final motorState = ref.watch(motorControlProvider);
+    final modeState = ref.watch(modeStateProvider);
+
+    // Check if we're ready to drive (in manual mode and not pending)
+    final isReady = modeState.currentMode == RobotMode.manual &&
+        modeState.pendingMode == null;
+
+    // Clear mode change request flag when confirmed
+    if (_modeChangeRequested && isReady) {
+      _modeChangeRequested = false;
+    }
 
     return Scaffold(
       extendBodyBehindAppBar: true,
@@ -72,6 +108,33 @@ class DriveScreen extends ConsumerWidget {
                   leftSpeed: motorState.left,
                   rightSpeed: motorState.right,
                 ),
+                // Mode indicator
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: isReady ? Colors.green : Colors.orange,
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        isReady ? Icons.check_circle : Icons.hourglass_empty,
+                        color: Colors.white,
+                        size: 14,
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        isReady ? 'MANUAL' : 'SWITCHING...',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 11,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
                 // Detection indicator
                 if (telemetry.dogDetected)
                   Container(
@@ -100,50 +163,98 @@ class DriveScreen extends ConsumerWidget {
             ),
           ),
 
-          // Bottom controls - joysticks overlaid
+          // Bottom controls - joysticks overlaid (only enabled when ready)
           Positioned(
             bottom: 24,
             left: 24,
             right: 24,
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                // Drive D-pad (left) - press and hold to accelerate
-                const _MotorDpad(),
-
-                // Center controls - treat, center, and push-to-talk
-                Column(
-                  mainAxisSize: MainAxisSize.min,
+            child: IgnorePointer(
+              ignoring: !isReady,
+              child: AnimatedOpacity(
+                opacity: isReady ? 1.0 : 0.5,
+                duration: const Duration(milliseconds: 200),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
-                    // Push-to-talk controls
-                    const PushToTalkControls(compact: true),
-                    const SizedBox(height: 16),
-                    // Action buttons
-                    Row(
+                    // Drive D-pad (left) - press and hold to accelerate
+                    const _MotorDpad(),
+
+                    // Center controls - treat, center, and push-to-talk
+                    Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        _OverlayButton(
-                          icon: Icons.cookie,
-                          label: 'TREAT',
-                          onTap: () => ref.read(treatControlProvider).dispense(),
-                        ),
-                        const SizedBox(width: 12),
-                        _OverlayButton(
-                          icon: Icons.center_focus_strong,
-                          label: 'CENTER',
-                          onTap: () => ref.read(servoControlProvider.notifier).center(),
+                        // Push-to-talk controls
+                        const PushToTalkControls(compact: true),
+                        const SizedBox(height: 16),
+                        // Action buttons
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            _OverlayButton(
+                              icon: Icons.cookie,
+                              label: 'TREAT',
+                              onTap: () => ref.read(treatControlProvider).dispense(),
+                            ),
+                            const SizedBox(width: 12),
+                            _OverlayButton(
+                              icon: Icons.center_focus_strong,
+                              label: 'CENTER',
+                              onTap: () => ref.read(servoControlProvider.notifier).center(),
+                            ),
+                          ],
                         ),
                       ],
                     ),
+
+                    // Camera joystick (right)
+                    const _OverlayCameraControl(),
                   ],
                 ),
-
-                // Camera joystick (right)
-                const _OverlayCameraControl(),
-              ],
+              ),
             ),
           ),
+
+          // "Not Ready" overlay
+          if (!isReady)
+            Positioned.fill(
+              child: IgnorePointer(
+                child: Container(
+                  color: Colors.black.withOpacity(0.3),
+                  child: Center(
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                      decoration: BoxDecoration(
+                        color: Colors.black87,
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const SizedBox(
+                            width: 24,
+                            height: 24,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              valueColor: AlwaysStoppedAnimation(Colors.orange),
+                            ),
+                          ),
+                          const SizedBox(height: 12),
+                          const Text(
+                            'Switching to Manual Mode...',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 14,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
         ],
       ),
     );
