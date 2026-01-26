@@ -472,8 +472,8 @@ class WebSocketClient {
 
   /// Send audio message to robot (push-to-talk)
   void sendAudioMessage(String base64Data, String format, int durationMs) {
-    send({
-      'type': 'audio_message',
+    print('WebSocket: sendAudioMessage format=$format, duration=${durationMs}ms, dataLen=${base64Data.length}');
+    sendCommand('ptt_play', {
       'data': base64Data,
       'format': format,
       'duration_ms': durationMs,
