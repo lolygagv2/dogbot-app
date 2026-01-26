@@ -469,10 +469,12 @@ class WebSocketClient {
   }
 
   /// Upload a voice command recording to the robot
-  void sendVoiceCommand(String commandId, String base64Data) {
+  void sendVoiceCommand(String commandId, String base64Data, {String format = 'wav'}) {
+    print('WebSocket: sendVoiceCommand name=$commandId, format=$format, dataLen=${base64Data.length}');
     sendCommand('upload_voice', {
       'name': commandId,
       'data': base64Data,
+      'format': format,
     });
   }
 

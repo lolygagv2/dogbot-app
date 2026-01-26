@@ -327,6 +327,7 @@ class VoiceCommandsNotifier extends StateNotifier<DogVoiceCommands> {
       final bytes = await file.readAsBytes();
       final base64Data = base64Encode(bytes);
 
+      rlog('VOICE', 'Syncing $commandId: ${bytes.length} bytes raw, format=wav');
       WebSocketClient.instance.sendVoiceCommand(commandId, base64Data);
 
       final updatedCommand = command.copyWith(
