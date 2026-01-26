@@ -2,28 +2,23 @@ import 'dart:convert';
 
 import '../network/websocket_client.dart';
 
+// Reference to dart:core print to avoid shadowing
+final void Function(Object?) _consolePrint = print;
+
 /// Remote logger that sends debug logs to relay server via WebSocket
-/// Enable by setting RemoteLogger.enabled = true
+/// Logs go to BOTH local console AND relay server for remote debugging.
 class RemoteLogger {
-  static bool enabled = true; // Set to false to disable remote logging
-  static bool _initialized = false;
+  static bool enabled = true;
   static final List<String> _pendingLogs = [];
   static const int _maxPendingLogs = 100;
-
-  /// Initialize the logger (call once at app start)
-  static void init() {
-    _initialized = true;
-    // Flush any pending logs
-    _flushPendingLogs();
-  }
 
   /// Log a message - sends to console AND relay server
   static void log(String tag, String message) {
     final timestamp = DateTime.now().toIso8601String();
     final fullMessage = '[$tag] $message';
 
-    // Always print to console
-    print(fullMessage);
+    // Always print to local console (use _consolePrint to avoid recursion)
+    _consolePrint(fullMessage);
 
     if (!enabled) return;
 
@@ -32,8 +27,8 @@ class RemoteLogger {
   }
 
   /// Log with automatic tag extraction from message prefix
-  static void print(String message) {
-    // Extract tag if message starts with "TagName: "
+  /// e.g. rprint('PTT: Recording started') → tag='PTT', message='Recording started'
+  static void rprint(String message) {
     final colonIndex = message.indexOf(': ');
     if (colonIndex > 0 && colonIndex < 30) {
       final tag = message.substring(0, colonIndex);
@@ -81,8 +76,8 @@ class RemoteLogger {
       if (wsClient.state != WsConnectionState.connected) return;
 
       for (final logJson in _pendingLogs) {
-        final log = jsonDecode(logJson) as Map<String, dynamic>;
-        wsClient.send(log);
+        final decoded = jsonDecode(logJson) as Map<String, dynamic>;
+        wsClient.send(decoded);
       }
       _pendingLogs.clear();
     } catch (e) {
@@ -96,8 +91,8 @@ class RemoteLogger {
   }
 }
 
-/// Shorthand function for logging
+/// Shorthand for tagged logging: rlog('PTT', 'Recording started')
 void rlog(String tag, String message) => RemoteLogger.log(tag, message);
 
-/// Shorthand that mimics print() but sends to relay
-void rprint(String message) => RemoteLogger.print(message);
+/// Shorthand that mimics print() but sends to relay too
+void rprint(String message) => RemoteLogger.rprint(message);

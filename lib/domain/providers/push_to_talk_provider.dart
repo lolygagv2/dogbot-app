@@ -8,6 +8,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:record/record.dart';
 
 import '../../core/network/websocket_client.dart';
+import '../../core/utils/remote_logger.dart';
 
 /// Push-to-talk state
 enum PttState {
@@ -160,40 +161,38 @@ class PushToTalkNotifier extends StateNotifier<PttStateData> {
 
   /// Start recording
   Future<bool> startRecording() async {
-    print('PushToTalk: startRecording() called');
-    print('PushToTalk: Platform.isIOS=${Platform.isIOS}, Platform.isAndroid=${Platform.isAndroid}');
-    print('PushToTalk: _isMobilePlatform=$_isMobilePlatform');
+    rlog('PTT', 'startRecording() called');
+    rlog('PTT', 'Platform.isIOS=${Platform.isIOS}, Platform.isAndroid=${Platform.isAndroid}');
 
-    // Check platform - use direct Platform check for reliability
     final isMobile = Platform.isIOS || Platform.isAndroid;
-    print('PushToTalk: isMobile=$isMobile');
+    rlog('PTT', 'isMobile=$isMobile');
 
     if (!isMobile) {
-      print('PushToTalk: FAILED - not on mobile platform');
+      rlog('PTT', 'FAILED - not on mobile platform');
       state = state.copyWith(error: 'Recording only available on iOS/Android');
       return false;
     }
 
     try {
-      // Create recorder if needed
+      rlog('PTT', 'Creating AudioRecorder...');
       _recorder ??= AudioRecorder();
 
-      // Check permission
+      rlog('PTT', 'Checking permission...');
       final hasPermission = await _recorder!.hasPermission();
-      print('PushToTalk: hasPermission=$hasPermission');
+      rlog('PTT', 'hasPermission=$hasPermission');
 
       if (!hasPermission) {
+        rlog('PTT', 'FAILED - permission denied');
         state = state.copyWith(error: 'Microphone permission denied');
         return false;
       }
 
-      // Get recording path
       final tempDir = await getTemporaryDirectory();
       final timestamp = DateTime.now().millisecondsSinceEpoch;
       _currentRecordingPath = '${tempDir.path}/ptt_$timestamp.m4a';
-      print('PushToTalk: Recording to $_currentRecordingPath');
+      rlog('PTT', 'Recording to $_currentRecordingPath');
 
-      // Start recording with AAC encoder
+      rlog('PTT', 'Starting recorder (AAC, 16kHz, mono)...');
       await _recorder!.start(
         const RecordConfig(
           encoder: AudioEncoder.aacLc,
@@ -202,10 +201,10 @@ class PushToTalkNotifier extends StateNotifier<PttStateData> {
         ),
         path: _currentRecordingPath!,
       );
+      rlog('PTT', 'Recorder started OK');
 
       _recordingStartTime = DateTime.now();
 
-      // Progress timer
       _progressTimer?.cancel();
       _progressTimer = Timer.periodic(const Duration(milliseconds: 100), (_) {
         if (!state.isRecording) {
@@ -222,7 +221,7 @@ class PushToTalkNotifier extends StateNotifier<PttStateData> {
         );
 
         if (elapsed >= maxRecordingDurationMs) {
-          print('PushToTalk: Max duration reached');
+          rlog('PTT', 'Max duration reached');
           stopRecordingAndSend();
         }
       });
@@ -234,10 +233,10 @@ class PushToTalkNotifier extends StateNotifier<PttStateData> {
         error: null,
       );
 
-      print('PushToTalk: Recording started');
+      rlog('PTT', 'Recording started successfully');
       return true;
     } catch (e) {
-      print('PushToTalk: Failed to start recording: $e');
+      rlog('PTT', 'ERROR starting recording: $e');
       state = state.copyWith(error: 'Failed to start recording: $e');
       return false;
     }
@@ -247,19 +246,25 @@ class PushToTalkNotifier extends StateNotifier<PttStateData> {
   Future<bool> stopRecordingAndSend() async {
     _progressTimer?.cancel();
 
-    if (!state.isRecording || _recorder == null) return false;
+    if (!state.isRecording || _recorder == null) {
+      rlog('PTT', 'stopRecordingAndSend: not recording or no recorder');
+      return false;
+    }
 
     try {
+      rlog('PTT', 'Stopping recorder...');
       final path = await _recorder!.stop();
-      print('PushToTalk: Recording stopped, path=$path');
+      rlog('PTT', 'Recorder stopped, path=$path');
 
       if (path == null || path.isEmpty) {
+        rlog('PTT', 'ERROR: Empty path returned');
         state = state.copyWith(state: PttState.idle, error: 'Recording failed');
         return false;
       }
 
       final file = File(path);
       if (!await file.exists()) {
+        rlog('PTT', 'ERROR: File does not exist at $path');
         state = state.copyWith(state: PttState.idle, error: 'Recording file not found');
         return false;
       }
@@ -269,18 +274,16 @@ class PushToTalkNotifier extends StateNotifier<PttStateData> {
           ? DateTime.now().difference(_recordingStartTime!).inMilliseconds
           : 0;
 
-      print('PushToTalk: File size=$fileSize, duration=${durationMs}ms');
+      rlog('PTT', 'File size=$fileSize bytes, duration=${durationMs}ms');
 
       state = state.copyWith(state: PttState.sending);
 
-      // Encode and send
       final bytes = await file.readAsBytes();
       final base64Data = base64Encode(bytes);
+      rlog('PTT', 'Sending audio (${base64Data.length} chars base64)...');
       WebSocketClient.instance.sendAudioMessage(base64Data, 'aac', durationMs);
+      rlog('PTT', 'Audio sent to robot');
 
-      print('PushToTalk: Audio sent to robot');
-
-      // Cleanup
       try { await file.delete(); } catch (_) {}
 
       state = state.copyWith(
@@ -294,7 +297,7 @@ class PushToTalkNotifier extends StateNotifier<PttStateData> {
 
       return true;
     } catch (e) {
-      print('PushToTalk: Failed to stop/send: $e');
+      rlog('PTT', 'ERROR stop/send: $e');
       state = state.copyWith(state: PttState.idle, error: 'Failed to send audio: $e');
       return false;
     }
