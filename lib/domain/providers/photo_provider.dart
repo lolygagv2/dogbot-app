@@ -3,7 +3,6 @@ import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/network/websocket_client.dart';
-import '../../core/utils/remote_logger.dart';
 import '../../data/services/photo_service.dart';
 import 'connection_provider.dart';
 
@@ -67,17 +66,17 @@ class PhotoNotifier extends StateNotifier<PhotoState> {
   }
 
   Future<void> _handlePhotoMessage(Map<String, dynamic> message) async {
-    rprint('PhotoNotifier: Received photo message: ${message.keys}');
+    print('PhotoNotifier: Received photo message: ${message.keys}');
 
     final base64Data = message['data'] as String?;
     final filename = message['filename'] as String? ?? 'wimz_photo';
     final timestamp = message['timestamp'] as String?;
 
-    rprint('PhotoNotifier: filename=$filename, timestamp=$timestamp');
-    rprint('PhotoNotifier: data length=${base64Data?.length ?? 0}');
+    print('PhotoNotifier: filename=$filename, timestamp=$timestamp');
+    print('PhotoNotifier: data length=${base64Data?.length ?? 0}');
 
     if (base64Data == null || base64Data.isEmpty) {
-      rprint('PhotoNotifier: ERROR - Empty photo data received');
+      print('PhotoNotifier: ERROR - Empty photo data received');
       state = state.copyWith(
         isCapturing: false,
         error: 'Received empty photo data',
@@ -100,9 +99,9 @@ class PhotoNotifier extends StateNotifier<PhotoState> {
         clearError: true,
       );
 
-      rprint('PhotoNotifier: Photo saved successfully: ${photo.filename}');
+      print('PhotoNotifier: Photo saved successfully: ${photo.filename}');
     } catch (e) {
-      rprint('PhotoNotifier: Failed to save photo: $e');
+      print('PhotoNotifier: Failed to save photo: $e');
       state = state.copyWith(
         isCapturing: false,
         error: 'Failed to save photo: $e',
@@ -112,29 +111,41 @@ class PhotoNotifier extends StateNotifier<PhotoState> {
 
   /// Take a photo (sends command to robot)
   void takePhoto({bool withHud = true}) {
-    rprint('PhotoNotifier: takePhoto() called, withHud=$withHud');
+    print('DEBUG PHOTO: ===== takePhoto() CALLED =====');
+    print('DEBUG PHOTO: withHud=$withHud');
+    print('DEBUG PHOTO: current isCapturing=${state.isCapturing}');
 
-    final isConnected = _ref.read(connectionProvider).isConnected;
-    rprint('PhotoNotifier: isConnected=$isConnected');
+    if (state.isCapturing) {
+      print('DEBUG PHOTO: Already capturing, ignoring');
+      return;
+    }
 
-    if (!isConnected) {
-      rprint('PhotoNotifier: ERROR - Not connected to robot');
+    final connectionState = _ref.read(connectionProvider);
+    print('DEBUG PHOTO: connectionStatus=${connectionState.status}');
+    print('DEBUG PHOTO: isConnected=${connectionState.isConnected}');
+    print('DEBUG PHOTO: isRelayConnected=${connectionState.isRelayConnected}');
+
+    if (!connectionState.isConnected) {
+      print('DEBUG PHOTO: ERROR - Not connected to robot');
       state = state.copyWith(error: 'Not connected to robot');
       return;
     }
 
     state = state.copyWith(isCapturing: true, clearError: true);
-    rprint('PhotoNotifier: State updated to isCapturing=true');
+    print('DEBUG PHOTO: State updated to isCapturing=true');
 
     final wsClient = _ref.read(websocketClientProvider);
-    rprint('PhotoNotifier: Got websocket client, sending take_photo command...');
+    print('DEBUG PHOTO: WebSocket state=${wsClient.state}');
+    print('DEBUG PHOTO: WebSocket targetDevice=${wsClient.targetDeviceId}');
+    print('DEBUG PHOTO: Calling sendTakePhoto...');
     wsClient.sendTakePhoto(withHud: withHud);
-    rprint('PhotoNotifier: Take photo command sent successfully');
+    print('DEBUG PHOTO: sendTakePhoto returned');
+    print('DEBUG PHOTO: ===== takePhoto() DONE =====');
 
     // Add timeout for photo response
     Future.delayed(const Duration(seconds: 10), () {
       if (state.isCapturing) {
-        rprint('PhotoNotifier: Photo capture timed out after 10s');
+        print('PhotoNotifier: Photo capture timed out after 10s');
         state = state.copyWith(
           isCapturing: false,
           error: 'Photo capture timed out - no response from robot',
@@ -148,9 +159,9 @@ class PhotoNotifier extends StateNotifier<PhotoState> {
     try {
       final photos = await _photoService.getPhotos();
       state = state.copyWith(photos: photos);
-      rprint('PhotoNotifier: Loaded ${photos.length} photos');
+      print('PhotoNotifier: Loaded ${photos.length} photos');
     } catch (e) {
-      rprint('PhotoNotifier: Failed to load photos: $e');
+      print('PhotoNotifier: Failed to load photos: $e');
     }
   }
 

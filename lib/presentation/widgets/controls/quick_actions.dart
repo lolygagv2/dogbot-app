@@ -140,12 +140,11 @@ class _QuickActionsState extends ConsumerState<QuickActions> {
               volume: ref.watch(_volumeProvider),
               onPrev: () {
                 audioControl.prev();
-                // Small delay to let track load, then play
                 Future.delayed(const Duration(milliseconds: 100), () {
                   audioControl.toggle();
                 });
                 ref.read(_isPlayingProvider.notifier).state = true;
-                _showTrackToast(context, 'Previous track');
+                _showTrackToast(context, 'Skipped back');
               },
               onToggle: () {
                 audioControl.toggle();
@@ -153,12 +152,11 @@ class _QuickActionsState extends ConsumerState<QuickActions> {
               },
               onNext: () {
                 audioControl.next();
-                // Small delay to let track load, then play
                 Future.delayed(const Duration(milliseconds: 100), () {
                   audioControl.toggle();
                 });
                 ref.read(_isPlayingProvider.notifier).state = true;
-                _showTrackToast(context, 'Next track');
+                _showTrackToast(context, 'Skipped forward');
               },
               onVolumeChanged: _onVolumeChanged,
             ),

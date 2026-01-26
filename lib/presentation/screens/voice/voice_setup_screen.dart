@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io' show Platform;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -8,6 +9,14 @@ import '../../../data/models/voice_command.dart';
 import '../../../domain/providers/dog_profiles_provider.dart';
 import '../../../domain/providers/voice_commands_provider.dart';
 import '../../theme/app_theme.dart';
+
+bool get _isMobilePlatform {
+  try {
+    return Platform.isIOS || Platform.isAndroid;
+  } catch (e) {
+    return false;
+  }
+}
 
 /// Voice command recording setup screen
 class VoiceSetupScreen extends ConsumerStatefulWidget {
@@ -85,23 +94,24 @@ class _VoiceSetupScreenState extends ConsumerState<VoiceSetupScreen> {
             ),
           ),
 
-          // Mobile-only notice
-          Container(
-            padding: const EdgeInsets.all(12),
-            color: Colors.orange.shade100,
-            child: Row(
-              children: [
-                Icon(Icons.phone_android, color: Colors.orange.shade800),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Text(
-                    'Recording requires the iOS/Android app. Use mobile to record commands.',
-                    style: TextStyle(color: Colors.orange.shade900, fontSize: 13),
+          // Mobile-only notice (only show on non-mobile platforms)
+          if (!_isMobilePlatform)
+            Container(
+              padding: const EdgeInsets.all(12),
+              color: Colors.orange.shade100,
+              child: Row(
+                children: [
+                  Icon(Icons.phone_android, color: Colors.orange.shade800),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      'Recording requires the iOS/Android app. Use mobile to record commands.',
+                      style: TextStyle(color: Colors.orange.shade900, fontSize: 13),
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
 
           // Progress indicator
           _buildProgressBar(notifier),
@@ -182,36 +192,45 @@ class _VoiceSetupScreenState extends ConsumerState<VoiceSetupScreen> {
     String dogName,
     VoiceCommandsNotifier notifier,
   ) {
+    if (!_isMobilePlatform) {
+      // Show "not available" dialog on non-mobile platforms
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Row(
+            children: [
+              Icon(Icons.phone_android),
+              SizedBox(width: 8),
+              Text('Mobile Required'),
+            ],
+          ),
+          content: const Text(
+            'Voice recording requires the iOS or Android app. '
+            'Please use your mobile device to record voice commands.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('OK'),
+            ),
+          ],
+        ),
+      );
+      return;
+    }
+
+    // On mobile: show actual recording dialog
+    final displayLabel = commandType == VoiceCommandType.name
+        ? '"$dogName"'
+        : commandType.label;
+
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: Row(
-          children: [
-            const Icon(Icons.phone_android),
-            const SizedBox(width: 8),
-            const Text('Mobile Required'),
-          ],
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              'To record "${commandType == VoiceCommandType.name ? dogName : commandType.label}"',
-              style: const TextStyle(fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 16),
-            const Text(
-              'Voice recording requires the iOS or Android app. '
-              'Please use your mobile device to record voice commands.',
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('OK'),
-          ),
-        ],
+      barrierDismissible: false,
+      builder: (context) => _RecordingDialog(
+        commandId: commandType.id,
+        commandLabel: displayLabel,
+        notifier: notifier,
       ),
     );
   }
@@ -351,6 +370,164 @@ class _CommandTile extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+/// Recording dialog for voice commands on mobile
+class _RecordingDialog extends StatefulWidget {
+  final String commandId;
+  final String commandLabel;
+  final VoiceCommandsNotifier notifier;
+
+  const _RecordingDialog({
+    required this.commandId,
+    required this.commandLabel,
+    required this.notifier,
+  });
+
+  @override
+  State<_RecordingDialog> createState() => _RecordingDialogState();
+}
+
+class _RecordingDialogState extends State<_RecordingDialog> {
+  bool _isRecording = false;
+  bool _isDone = false;
+  String? _error;
+  Timer? _durationTimer;
+  int _elapsedMs = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _startRecording();
+  }
+
+  @override
+  void dispose() {
+    _durationTimer?.cancel();
+    super.dispose();
+  }
+
+  Future<void> _startRecording() async {
+    print('RecordDialog: Starting recording for ${widget.commandId}');
+    final success = await widget.notifier.startRecording(widget.commandId);
+    print('RecordDialog: startRecording returned $success');
+
+    if (!mounted) return;
+
+    if (success) {
+      setState(() {
+        _isRecording = true;
+        _elapsedMs = 0;
+      });
+
+      _durationTimer = Timer.periodic(const Duration(milliseconds: 100), (_) {
+        if (mounted) {
+          setState(() => _elapsedMs += 100);
+        }
+      });
+    } else {
+      setState(() {
+        _error = 'Failed to start recording. Check microphone permission.';
+      });
+    }
+  }
+
+  Future<void> _stopRecording() async {
+    _durationTimer?.cancel();
+    print('RecordDialog: Stopping recording');
+
+    final command = await widget.notifier.stopRecording();
+    print('RecordDialog: stopRecording returned ${command != null ? "success" : "null"}');
+
+    if (!mounted) return;
+
+    if (command != null) {
+      setState(() {
+        _isRecording = false;
+        _isDone = true;
+      });
+    } else {
+      setState(() {
+        _isRecording = false;
+        _error = 'Recording failed. Try again.';
+      });
+    }
+  }
+
+  Future<void> _cancelRecording() async {
+    _durationTimer?.cancel();
+    if (_isRecording) {
+      await widget.notifier.cancelRecording();
+    }
+    if (mounted) {
+      Navigator.pop(context);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final seconds = (_elapsedMs / 1000).toStringAsFixed(1);
+
+    return AlertDialog(
+      title: Text(_isDone ? 'Saved!' : 'Record: ${widget.commandLabel}'),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (_error != null) ...[
+            const Icon(Icons.error, color: Colors.red, size: 48),
+            const SizedBox(height: 12),
+            Text(_error!, style: const TextStyle(color: Colors.red)),
+          ] else if (_isDone) ...[
+            const Icon(Icons.check_circle, color: Colors.green, size: 48),
+            const SizedBox(height: 12),
+            const Text('Voice command recorded successfully!'),
+          ] else if (_isRecording) ...[
+            const Icon(Icons.mic, color: Colors.red, size: 48),
+            const SizedBox(height: 12),
+            Text(
+              '${seconds}s',
+              style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 8),
+            const Text('Say the command clearly...'),
+            const SizedBox(height: 16),
+            const LinearProgressIndicator(),
+          ] else ...[
+            const CircularProgressIndicator(),
+            const SizedBox(height: 12),
+            const Text('Preparing microphone...'),
+          ],
+        ],
+      ),
+      actions: [
+        if (_error != null || _isDone)
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text(_isDone ? 'Done' : 'Close'),
+          ),
+        if (_error != null && !_isDone)
+          TextButton(
+            onPressed: () {
+              setState(() => _error = null);
+              _startRecording();
+            },
+            child: const Text('Retry'),
+          ),
+        if (_isRecording) ...[
+          TextButton(
+            onPressed: _cancelRecording,
+            child: const Text('Cancel'),
+          ),
+          FilledButton.icon(
+            onPressed: _stopRecording,
+            icon: const Icon(Icons.stop),
+            label: const Text('Stop'),
+            style: FilledButton.styleFrom(backgroundColor: Colors.red),
+          ),
+        ],
+      ],
     );
   }
 }
