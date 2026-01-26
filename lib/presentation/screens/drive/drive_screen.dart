@@ -205,6 +205,12 @@ class _DriveScreenState extends ConsumerState<DriveScreen> {
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             _OverlayButton(
+                              icon: Icons.campaign,
+                              label: 'CALL',
+                              onTap: () => ref.read(callDogProvider).call(),
+                            ),
+                            const SizedBox(width: 12),
+                            _OverlayButton(
                               icon: Icons.cookie,
                               label: 'TREAT',
                               onTap: () => ref.read(treatControlProvider).dispense(),

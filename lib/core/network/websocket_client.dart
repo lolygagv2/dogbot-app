@@ -462,6 +462,12 @@ class WebSocketClient {
     print('WebSocket: take_photo command sent');
   }
 
+  /// Call dog - plays attention/recall sound on robot
+  void sendCallDog() {
+    print('WebSocket: sendCallDog');
+    sendCommand('call_dog');
+  }
+
   /// Upload a voice command recording to the robot
   void sendVoiceCommand(String commandId, String base64Data) {
     sendCommand('upload_voice', {

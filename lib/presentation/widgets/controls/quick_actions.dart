@@ -54,10 +54,12 @@ class _QuickActionsState extends ConsumerState<QuickActions> {
     final lightingIndex = ref.watch(_lightingIndexProvider);
     final isPlaying = ref.watch(_isPlayingProvider);
 
+    final callDogControl = ref.watch(callDogProvider);
+
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        // Main action buttons row - [Good] [Give Treat] [Want Treat?] [No]
+        // Main action buttons row
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceEvenly,
           children: [
@@ -68,6 +70,16 @@ class _QuickActionsState extends ConsumerState<QuickActions> {
               color: Colors.green,
               onPressed: () {
                 audioControl.play('good_dog.mp3');
+              },
+            ),
+
+            // Call Dog button - plays recall sound
+            _ActionButton(
+              icon: Icons.campaign,
+              label: 'Call Dog',
+              color: Colors.deepOrange,
+              onPressed: () {
+                callDogControl.call();
               },
             ),
 

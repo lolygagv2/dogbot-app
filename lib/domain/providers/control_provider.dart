@@ -297,6 +297,24 @@ class TreatControl {
   }
 }
 
+/// Provider for call dog action
+final callDogProvider = Provider<CallDogControl>((ref) {
+  return CallDogControl(ref);
+});
+
+/// Call dog control
+class CallDogControl {
+  final Ref _ref;
+
+  CallDogControl(this._ref);
+
+  /// Send call dog command to robot
+  void call() {
+    if (!_ref.read(connectionProvider).isConnected) return;
+    _ref.read(websocketClientProvider).sendCallDog();
+  }
+}
+
 /// Provider for LED control
 final ledControlProvider = Provider<LedControl>((ref) {
   return LedControl(ref);
