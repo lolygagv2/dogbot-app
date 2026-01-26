@@ -174,8 +174,10 @@ class PushToTalkNotifier extends StateNotifier<PttStateData> {
     }
 
     try {
-      rlog('PTT', 'Creating AudioRecorder...');
-      _recorder ??= AudioRecorder();
+      // Create FRESH recorder each time to avoid stale state
+      rlog('PTT', 'Creating fresh AudioRecorder...');
+      _recorder?.dispose();
+      _recorder = AudioRecorder();
 
       rlog('PTT', 'Checking permission...');
       final hasPermission = await _recorder!.hasPermission();
@@ -189,14 +191,15 @@ class PushToTalkNotifier extends StateNotifier<PttStateData> {
 
       final tempDir = await getTemporaryDirectory();
       final timestamp = DateTime.now().millisecondsSinceEpoch;
-      _currentRecordingPath = '${tempDir.path}/ptt_$timestamp.m4a';
+      // Use WAV format - raw PCM always works on iOS (AAC was producing empty files)
+      _currentRecordingPath = '${tempDir.path}/ptt_$timestamp.wav';
       rlog('PTT', 'Recording to $_currentRecordingPath');
 
-      rlog('PTT', 'Starting recorder (AAC, 16kHz, mono)...');
+      rlog('PTT', 'Starting recorder (WAV, 44100Hz, mono)...');
       await _recorder!.start(
         const RecordConfig(
-          encoder: AudioEncoder.aacLc,
-          sampleRate: 16000,
+          encoder: AudioEncoder.wav,
+          sampleRate: 44100,
           numChannels: 1,
         ),
         path: _currentRecordingPath!,
@@ -262,6 +265,9 @@ class PushToTalkNotifier extends StateNotifier<PttStateData> {
         return false;
       }
 
+      // Wait for filesystem to flush the file
+      await Future.delayed(const Duration(milliseconds: 500));
+
       final file = File(path);
       if (!await file.exists()) {
         rlog('PTT', 'ERROR: File does not exist at $path');
@@ -276,12 +282,20 @@ class PushToTalkNotifier extends StateNotifier<PttStateData> {
 
       rlog('PTT', 'File size=$fileSize bytes, duration=${durationMs}ms');
 
+      // Check for empty recording (just container header, no audio data)
+      if (fileSize < 100) {
+        rlog('PTT', 'ERROR: File too small ($fileSize bytes) - recording is empty');
+        state = state.copyWith(state: PttState.idle, error: 'Recording was empty - no audio captured');
+        try { await file.delete(); } catch (_) {}
+        return false;
+      }
+
       state = state.copyWith(state: PttState.sending);
 
       final bytes = await file.readAsBytes();
       final base64Data = base64Encode(bytes);
-      rlog('PTT', 'Sending audio (${base64Data.length} chars base64)...');
-      WebSocketClient.instance.sendAudioMessage(base64Data, 'aac', durationMs);
+      rlog('PTT', 'Sending audio: ${bytes.length} bytes raw, ${base64Data.length} chars base64, format=wav');
+      WebSocketClient.instance.sendAudioMessage(base64Data, 'wav', durationMs);
       rlog('PTT', 'Audio sent to robot');
 
       try { await file.delete(); } catch (_) {}
@@ -364,43 +378,91 @@ class PushToTalkNotifier extends StateNotifier<PttStateData> {
     results.writeln('_isMobilePlatform: $_isMobilePlatform');
 
     try {
-      _recorder ??= AudioRecorder();
-      final hasPermission = await _recorder!.hasPermission();
+      // Create fresh recorder for diagnostics
+      final testRecorder = AudioRecorder();
+      final hasPermission = await testRecorder.hasPermission();
       results.writeln('hasPermission: $hasPermission');
 
       if (hasPermission) {
-        results.writeln('Attempting test recording...');
         final tempDir = await getTemporaryDirectory();
-        final testPath = '${tempDir.path}/test_recording.m4a';
 
-        await _recorder!.start(
-          const RecordConfig(encoder: AudioEncoder.aacLc, sampleRate: 16000, numChannels: 1),
-          path: testPath,
+        // Test WAV format (should always work)
+        results.writeln('');
+        results.writeln('--- WAV Test (44100Hz mono) ---');
+        final wavPath = '${tempDir.path}/test_recording.wav';
+        await testRecorder.start(
+          const RecordConfig(encoder: AudioEncoder.wav, sampleRate: 44100, numChannels: 1),
+          path: wavPath,
         );
-        results.writeln('Recording started');
+        results.writeln('Recording started...');
+        await Future.delayed(const Duration(seconds: 2));
 
-        await Future.delayed(const Duration(seconds: 1));
+        final wavResult = await testRecorder.stop();
+        await Future.delayed(const Duration(milliseconds: 500));
+        results.writeln('Recording stopped: $wavResult');
 
-        final path = await _recorder!.stop();
-        results.writeln('Recording stopped: $path');
-
-        if (path != null) {
-          final file = File(path);
+        if (wavResult != null) {
+          final file = File(wavResult);
           final exists = await file.exists();
           results.writeln('File exists: $exists');
           if (exists) {
             final size = await file.length();
             results.writeln('File size: $size bytes');
-            results.writeln('TEST: ${size > 0 ? "SUCCESS" : "FAILED (empty file)"}');
+            // 2 seconds of 44100Hz 16-bit mono WAV ≈ 176KB
+            // Anything under 1000 bytes is just a header
+            if (size > 1000) {
+              results.writeln('WAV TEST: SUCCESS ($size bytes)');
+            } else {
+              results.writeln('WAV TEST: FAILED (only $size bytes - no audio data)');
+            }
             await file.delete();
           }
         }
+
+        // Also test AAC for comparison
+        results.writeln('');
+        results.writeln('--- AAC Test (44100Hz mono) ---');
+        final aacRecorder = AudioRecorder();
+        final aacPath = '${tempDir.path}/test_recording.m4a';
+        try {
+          await aacRecorder.start(
+            const RecordConfig(encoder: AudioEncoder.aacLc, sampleRate: 44100, numChannels: 1),
+            path: aacPath,
+          );
+          results.writeln('AAC recording started...');
+          await Future.delayed(const Duration(seconds: 2));
+
+          final aacResult = await aacRecorder.stop();
+          await Future.delayed(const Duration(milliseconds: 500));
+
+          if (aacResult != null) {
+            final aacFile = File(aacResult);
+            if (await aacFile.exists()) {
+              final aacSize = await aacFile.length();
+              results.writeln('AAC file size: $aacSize bytes');
+              if (aacSize > 100) {
+                results.writeln('AAC TEST: SUCCESS ($aacSize bytes)');
+              } else {
+                results.writeln('AAC TEST: FAILED (only $aacSize bytes)');
+              }
+              await aacFile.delete();
+            }
+          }
+        } catch (e) {
+          results.writeln('AAC TEST: ERROR - $e');
+        } finally {
+          aacRecorder.dispose();
+        }
       }
+
+      testRecorder.dispose();
     } catch (e) {
       results.writeln('ERROR: $e');
     }
 
+    results.writeln('');
     results.writeln('=== END DIAGNOSTICS ===');
+    rlog('DIAG', results.toString());
     return results.toString();
   }
 }

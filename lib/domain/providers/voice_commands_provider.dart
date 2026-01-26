@@ -9,6 +9,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../data/models/voice_command.dart';
 import '../../core/network/websocket_client.dart';
+import '../../core/utils/remote_logger.dart';
 
 const String _voiceCommandsKey = 'voice_commands';
 
@@ -118,41 +119,41 @@ class VoiceCommandsNotifier extends StateNotifier<DogVoiceCommands> {
 
   /// Start recording a voice command
   Future<bool> startRecording(String commandId) async {
-    print('VoiceCommands: startRecording($commandId)');
-    print('VoiceCommands: Platform.isIOS=${Platform.isIOS}, Platform.isAndroid=${Platform.isAndroid}');
+    rlog('VOICE', 'startRecording($commandId)');
+    rlog('VOICE', 'Platform.isIOS=${Platform.isIOS}, Platform.isAndroid=${Platform.isAndroid}');
 
-    // Check platform directly for reliability
     final isMobile = Platform.isIOS || Platform.isAndroid;
-    print('VoiceCommands: isMobile=$isMobile');
-
     if (!isMobile) {
-      print('VoiceCommands: FAILED - Not on mobile platform');
+      rlog('VOICE', 'FAILED - Not on mobile platform');
       return false;
     }
 
     try {
-      _recorder ??= AudioRecorder();
+      // Create fresh recorder to avoid stale state
+      rlog('VOICE', 'Creating fresh AudioRecorder...');
+      _recorder?.dispose();
+      _recorder = AudioRecorder();
 
       final hasPermission = await _recorder!.hasPermission();
-      print('VoiceCommands: hasPermission=$hasPermission');
+      rlog('VOICE', 'hasPermission=$hasPermission');
 
       if (!hasPermission) {
-        print('VoiceCommands: Permission denied');
+        rlog('VOICE', 'FAILED - Permission denied');
         return false;
       }
 
-      // Get temp directory
+      // Use WAV format - raw PCM always works on iOS
       final tempDir = await getTemporaryDirectory();
       final timestamp = DateTime.now().millisecondsSinceEpoch;
-      _currentRecordingPath = '${tempDir.path}/voice_${dogId}_${commandId}_$timestamp.m4a';
+      _currentRecordingPath = '${tempDir.path}/voice_${dogId}_${commandId}_$timestamp.wav';
 
-      print('VoiceCommands: Recording to $_currentRecordingPath');
+      rlog('VOICE', 'Recording to $_currentRecordingPath');
 
-      // Start recording
+      rlog('VOICE', 'Starting recorder (WAV, 44100Hz, mono)...');
       await _recorder!.start(
         const RecordConfig(
-          encoder: AudioEncoder.aacLc,
-          sampleRate: 16000,
+          encoder: AudioEncoder.wav,
+          sampleRate: 44100,
           numChannels: 1,
         ),
         path: _currentRecordingPath!,
@@ -166,10 +167,10 @@ class VoiceCommandsNotifier extends StateNotifier<DogVoiceCommands> {
       );
       _ref.read(isRecordingProvider.notifier).state = true;
 
-      print('VoiceCommands: Recording started');
+      rlog('VOICE', 'Recording started successfully');
       return true;
     } catch (e) {
-      print('VoiceCommands: Failed to start recording: $e');
+      rlog('VOICE', 'ERROR starting recording: $e');
       _currentRecordingPath = null;
       _recordingStartTime = null;
       return false;
@@ -187,13 +188,18 @@ class VoiceCommandsNotifier extends StateNotifier<DogVoiceCommands> {
     }
 
     try {
+      rlog('VOICE', 'Stopping recorder...');
       final path = await _recorder!.stop();
-      print('VoiceCommands: Recording stopped, path=$path');
+      rlog('VOICE', 'Recorder stopped, path=$path');
 
       if (path == null || path.isEmpty) {
+        rlog('VOICE', 'ERROR: Empty path returned');
         await cancelRecording();
         return null;
       }
+
+      // Wait for filesystem to flush
+      await Future.delayed(const Duration(milliseconds: 500));
 
       final durationMs = _recordingStartTime != null
           ? DateTime.now().difference(_recordingStartTime!).inMilliseconds
@@ -201,32 +207,37 @@ class VoiceCommandsNotifier extends StateNotifier<DogVoiceCommands> {
 
       final file = File(path);
       if (!await file.exists()) {
-        print('VoiceCommands: File does not exist');
+        rlog('VOICE', 'ERROR: File does not exist at $path');
         await cancelRecording();
         return null;
       }
 
       final fileSize = await file.length();
-      print('VoiceCommands: File size=$fileSize, duration=${durationMs}ms');
+      rlog('VOICE', 'File size=$fileSize bytes, duration=${durationMs}ms');
 
-      // Move to permanent location
+      // Check for empty recording
+      if (fileSize < 1000) {
+        rlog('VOICE', 'ERROR: File too small ($fileSize bytes) - recording is empty');
+        try { await file.delete(); } catch (_) {}
+        await cancelRecording();
+        return null;
+      }
+
+      // Move to permanent location (use .wav extension)
       final appDir = await getApplicationDocumentsDirectory();
       final permanentDir = '${appDir.path}/voice_commands';
       await Directory(permanentDir).create(recursive: true);
 
-      final permanentPath = '$permanentDir/${dogId}_$commandId.m4a';
+      final permanentPath = '$permanentDir/${dogId}_$commandId.wav';
 
-      // Delete existing
       final existingFile = File(permanentPath);
       if (await existingFile.exists()) {
         await existingFile.delete();
       }
 
-      // Copy and delete temp
       await file.copy(permanentPath);
       await file.delete();
 
-      // Create command
       final command = VoiceCommand(
         dogId: dogId,
         commandId: commandId,
@@ -236,7 +247,6 @@ class VoiceCommandsNotifier extends StateNotifier<DogVoiceCommands> {
         durationMs: durationMs,
       );
 
-      // Update state
       final newCommands = Map<String, VoiceCommand>.from(state.commands);
       newCommands[commandId] = command;
 
@@ -252,10 +262,10 @@ class VoiceCommandsNotifier extends StateNotifier<DogVoiceCommands> {
 
       await _saveCommands();
 
-      print('VoiceCommands: Saved $commandId');
+      rlog('VOICE', 'Saved $commandId ($fileSize bytes)');
       return command;
     } catch (e) {
-      print('VoiceCommands: Failed to stop recording: $e');
+      rlog('VOICE', 'ERROR stopping recording: $e');
       await cancelRecording();
       return null;
     }
