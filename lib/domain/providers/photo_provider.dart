@@ -49,6 +49,7 @@ class PhotoNotifier extends StateNotifier<PhotoState> {
   final Ref _ref;
   final PhotoService _photoService = PhotoService.instance;
   StreamSubscription? _photoSubscription;
+  Timer? _photoTimeout;
 
   PhotoNotifier(this._ref) : super(const PhotoState()) {
     _init();
@@ -67,7 +68,9 @@ class PhotoNotifier extends StateNotifier<PhotoState> {
   }
 
   Future<void> _handlePhotoMessage(Map<String, dynamic> message) async {
-    rlog('PHOTO', 'Received photo message: ${message.keys}');
+    _photoTimeout?.cancel();
+    _photoTimeout = null;
+    rlog('PHOTO', 'Received photo message: ${message.keys} (timeout cancelled)');
 
     final base64Data = message['data'] as String?;
     final filename = message['filename'] as String? ?? 'wimz_photo';
@@ -137,8 +140,9 @@ class PhotoNotifier extends StateNotifier<PhotoState> {
     wsClient.sendTakePhoto(withHud: withHud);
     rlog('PHOTO', 'take_photo command sent');
 
-    // Add timeout for photo response
-    Future.delayed(const Duration(seconds: 10), () {
+    // Cancellable timeout for photo response
+    _photoTimeout?.cancel();
+    _photoTimeout = Timer(const Duration(seconds: 10), () {
       if (state.isCapturing) {
         rlog('PHOTO', 'Photo capture timed out after 10s');
         state = state.copyWith(
@@ -146,6 +150,7 @@ class PhotoNotifier extends StateNotifier<PhotoState> {
           error: 'Photo capture timed out - no response from robot',
         );
       }
+      _photoTimeout = null;
     });
   }
 
@@ -182,6 +187,7 @@ class PhotoNotifier extends StateNotifier<PhotoState> {
 
   @override
   void dispose() {
+    _photoTimeout?.cancel();
     _photoSubscription?.cancel();
     super.dispose();
   }

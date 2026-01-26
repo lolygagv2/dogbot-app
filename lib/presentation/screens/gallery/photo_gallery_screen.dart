@@ -238,9 +238,19 @@ class _PhotoViewerScreen extends ConsumerWidget {
 
   Future<void> _sharePhoto(BuildContext context) async {
     try {
+      final box = context.findRenderObject() as RenderBox?;
+      final shareOrigin = box != null
+          ? box.localToGlobal(Offset.zero) & box.size
+          : Rect.fromCenter(
+              center: MediaQuery.of(context).size.center(Offset.zero),
+              width: 100,
+              height: 100,
+            );
+
       await Share.shareXFiles(
         [XFile(photo.localPath)],
         text: 'WIM-Z Photo - ${photo.formattedDate}',
+        sharePositionOrigin: shareOrigin,
       );
     } catch (e) {
       if (context.mounted) {
@@ -254,19 +264,20 @@ class _PhotoViewerScreen extends ConsumerWidget {
   void _confirmDelete(BuildContext context, WidgetRef ref) {
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
+      builder: (dialogContext) => AlertDialog(
         title: const Text('Delete Photo'),
         content: const Text('Are you sure you want to delete this photo?'),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
+            onPressed: () => Navigator.pop(dialogContext),
             child: const Text('Cancel'),
           ),
           FilledButton(
             onPressed: () {
+              // Close dialog first, then viewer, then delete
+              Navigator.pop(dialogContext); // Close dialog
+              Navigator.pop(context); // Close viewer (outer context)
               ref.read(photoProvider.notifier).deletePhoto(photo.localPath);
-              Navigator.pop(context); // Close dialog
-              Navigator.pop(context); // Close viewer
             },
             style: FilledButton.styleFrom(
               backgroundColor: Colors.red,
