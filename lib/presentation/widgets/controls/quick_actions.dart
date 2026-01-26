@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -17,11 +19,35 @@ final _currentTrackProvider = StateProvider<String?>((ref) => null);
 /// Provider to track volume level (0-100)
 final _volumeProvider = StateProvider<int>((ref) => 70);
 
-class QuickActions extends ConsumerWidget {
+class QuickActions extends ConsumerStatefulWidget {
   const QuickActions({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<QuickActions> createState() => _QuickActionsState();
+}
+
+class _QuickActionsState extends ConsumerState<QuickActions> {
+  Timer? _volumeDebounce;
+
+  @override
+  void dispose() {
+    _volumeDebounce?.cancel();
+    super.dispose();
+  }
+
+  void _onVolumeChanged(int volume) {
+    // Update UI immediately for responsive feel
+    ref.read(_volumeProvider.notifier).state = volume;
+
+    // Debounce the actual command to the robot
+    _volumeDebounce?.cancel();
+    _volumeDebounce = Timer(const Duration(milliseconds: 200), () {
+      ref.read(audioControlProvider).setVolume(volume);
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final treatControl = ref.watch(treatControlProvider);
     final ledControl = ref.watch(ledControlProvider);
     final audioControl = ref.watch(audioControlProvider);
@@ -134,10 +160,7 @@ class QuickActions extends ConsumerWidget {
                 ref.read(_isPlayingProvider.notifier).state = true;
                 _showTrackToast(context, 'Next track');
               },
-              onVolumeChanged: (volume) {
-                ref.read(_volumeProvider.notifier).state = volume;
-                audioControl.setVolume(volume);
-              },
+              onVolumeChanged: _onVolumeChanged,
             ),
           ],
         ),
