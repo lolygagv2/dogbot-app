@@ -192,9 +192,26 @@ class ModeStateNotifier extends StateNotifier<ModeState> {
     _timeoutTimer = Timer(_confirmationTimeout, _onTimeout);
   }
 
-  /// Handle timeout - revert to previous mode
+  /// Handle timeout - check if mode actually changed before showing error
   void _onTimeout() {
     if (!state.isChanging) return;
+
+    // Check latest telemetry - mode may have changed without explicit confirmation event
+    final telemetry = _ref.read(telemetryProvider);
+    if (state.pendingMode != null && telemetry.mode.isNotEmpty) {
+      final actualMode = RobotMode.fromString(telemetry.mode);
+      if (actualMode == state.pendingMode) {
+        // Mode actually changed, just didn't get explicit confirmation event
+        print('Mode: Timeout but telemetry shows mode=${actualMode.value} — confirming');
+        state = state.copyWith(
+          currentMode: actualMode,
+          isChanging: false,
+          clearPending: true,
+          clearError: true,
+        );
+        return;
+      }
+    }
 
     print('Mode: Timeout waiting for confirmation, reverting from ${state.pendingMode?.value} to ${state.currentMode.value}');
 

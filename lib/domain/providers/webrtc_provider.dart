@@ -63,11 +63,15 @@ class WebRTCNotifier extends StateNotifier<WebRTCConnectionState> {
   String? _lastDeviceId;  // Store for auto-reconnect
   Timer? _reconnectTimer;
   int _reconnectAttempts = 0;
+  bool _isPaused = false;  // True when app is backgrounded
   static const int _maxReconnectAttempts = 5;
   static const Duration _reconnectDelay = Duration(seconds: 3);
 
   /// Whether the data channel is ready for sending
   bool get isDataChannelOpen => _dataChannelOpen;
+
+  /// Whether WebRTC is paused (app backgrounded)
+  bool get isPaused => _isPaused;
 
   WebRTCNotifier(this._ref) : super(const WebRTCConnectionState()) {
     _setupWebSocketListeners();
@@ -173,7 +177,8 @@ class WebRTCNotifier extends StateNotifier<WebRTCConnectionState> {
         print('WebRTC: Device status - online=$isOnline, deviceId=$deviceId');
 
         // If device came online and we have a stored device ID, auto-reconnect
-        if (isOnline && _lastDeviceId != null && state.state != WebRTCState.connected) {
+        // But not if app is backgrounded
+        if (isOnline && _lastDeviceId != null && state.state != WebRTCState.connected && !_isPaused) {
           print('WebRTC: Device came online, requesting video stream');
           _reconnectAttempts = 0;  // Reset attempts for fresh connection
           requestVideoStream(_lastDeviceId!);
@@ -420,6 +425,10 @@ class WebRTCNotifier extends StateNotifier<WebRTCConnectionState> {
 
   /// Schedule auto-reconnect with exponential backoff
   void _scheduleReconnect() {
+    if (_isPaused) {
+      print('WebRTC: Skipping reconnect - app is backgrounded');
+      return;
+    }
     if (_lastDeviceId == null) {
       print('WebRTC: No device ID for reconnect');
       return;
@@ -439,6 +448,10 @@ class WebRTCNotifier extends StateNotifier<WebRTCConnectionState> {
     print('WebRTC: Auto-reconnecting in ${delay.inSeconds}s (attempt $_reconnectAttempts/$_maxReconnectAttempts)');
 
     _reconnectTimer = Timer(delay, () async {
+      if (_isPaused) {
+        print('WebRTC: Reconnect timer fired but app is backgrounded, skipping');
+        return;
+      }
       if (_lastDeviceId != null && state.state != WebRTCState.connected) {
         // Close existing connection cleanly
         await _closeInternal();
@@ -489,6 +502,33 @@ class WebRTCNotifier extends StateNotifier<WebRTCConnectionState> {
       state: WebRTCState.disconnected,
       sessionId: null,
     );
+  }
+
+  /// Pause WebRTC when app is backgrounded.
+  /// Closes the connection cleanly and suppresses reconnection attempts.
+  /// Preserves _lastDeviceId so resume() can reconnect.
+  Future<void> pause() async {
+    if (_isPaused) return;
+    _isPaused = true;
+    _reconnectTimer?.cancel();
+    _reconnectAttempts = 0;
+    print('WebRTC: Paused (app backgrounded) - closing connection, suppressing reconnects');
+    await _closeInternal();
+  }
+
+  /// Resume WebRTC when app returns to foreground.
+  /// Reconnects to the last device if we had an active session.
+  Future<void> resume() async {
+    if (!_isPaused) return;
+    _isPaused = false;
+    print('WebRTC: Resumed (app foregrounded)');
+
+    // Reconnect if we had a previous device
+    if (_lastDeviceId != null) {
+      print('WebRTC: Reconnecting to $_lastDeviceId');
+      _reconnectAttempts = 0;
+      await requestVideoStream(_lastDeviceId!);
+    }
   }
 
   /// Close the WebRTC connection (manual close - stops auto-reconnect)

@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import 'domain/providers/connection_provider.dart';
 import 'domain/providers/notifications_provider.dart';
+import 'domain/providers/webrtc_provider.dart';
 import 'presentation/screens/auth/login_screen.dart';
 import 'presentation/screens/connect/connect_screen.dart';
 import 'presentation/screens/home/home_screen.dart';
@@ -344,11 +345,45 @@ class _DemoModeEntry extends ConsumerWidget {
   }
 }
 
-class WimzApp extends ConsumerWidget {
+class WimzApp extends ConsumerStatefulWidget {
   const WimzApp({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<WimzApp> createState() => _WimzAppState();
+}
+
+class _WimzAppState extends ConsumerState<WimzApp> with WidgetsBindingObserver {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    switch (state) {
+      case AppLifecycleState.paused:
+      case AppLifecycleState.inactive:
+        print('App: Lifecycle → $state — pausing WebRTC');
+        ref.read(webrtcProvider.notifier).pause();
+        break;
+      case AppLifecycleState.resumed:
+        print('App: Lifecycle → resumed — resuming WebRTC');
+        ref.read(webrtcProvider.notifier).resume();
+        break;
+      default:
+        break;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
     return MaterialApp.router(
       title: 'WIM-Z',
       theme: AppTheme.light,
