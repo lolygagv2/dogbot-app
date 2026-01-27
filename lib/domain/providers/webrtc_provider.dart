@@ -64,6 +64,7 @@ class WebRTCNotifier extends StateNotifier<WebRTCConnectionState> {
   Timer? _reconnectTimer;
   int _reconnectAttempts = 0;
   bool _isPaused = false;  // True when app is backgrounded
+  bool _isRequesting = false;  // Guard against concurrent requestVideoStream calls
   static const int _maxReconnectAttempts = 5;
   static const Duration _reconnectDelay = Duration(seconds: 3);
 
@@ -103,26 +104,7 @@ class WebRTCNotifier extends StateNotifier<WebRTCConnectionState> {
     _reconnectTimer?.cancel();
     _reconnectAttempts = 0;
 
-    // Send close for old session if we have one
-    if (state.sessionId != null) {
-      final wsClient = _ref.read(websocketClientProvider);
-      wsClient.send({
-        'type': 'webrtc_close',
-        'session_id': state.sessionId,
-        'device_id': _lastDeviceId,
-      });
-      print('WebRTC: Sent close for old session ${state.sessionId}');
-    }
-
-    // Tear down existing connection
-    await _closeInternal();
-
-    // Update device ID
-    _lastDeviceId = newDeviceId;
-
-    // Request new video stream for new device
-    // Small delay to ensure close is processed
-    await Future.delayed(const Duration(milliseconds: 200));
+    // requestVideoStream handles closing existing session internally
     await requestVideoStream(newDeviceId);
   }
 
@@ -177,8 +159,11 @@ class WebRTCNotifier extends StateNotifier<WebRTCConnectionState> {
         print('WebRTC: Device status - online=$isOnline, deviceId=$deviceId');
 
         // If device came online and we have a stored device ID, auto-reconnect
-        // But not if app is backgrounded
-        if (isOnline && _lastDeviceId != null && state.state != WebRTCState.connected && !_isPaused) {
+        // But not if app is backgrounded, already connected, or already requesting
+        if (isOnline && _lastDeviceId != null &&
+            state.state != WebRTCState.connected &&
+            state.state != WebRTCState.connecting &&
+            !_isPaused && !_isRequesting) {
           print('WebRTC: Device came online, requesting video stream');
           _reconnectAttempts = 0;  // Reset attempts for fresh connection
           requestVideoStream(_lastDeviceId!);
@@ -200,7 +185,7 @@ class WebRTCNotifier extends StateNotifier<WebRTCConnectionState> {
 
   /// Request video stream from robot
   Future<void> requestVideoStream(String deviceId) async {
-    // Skip if already connected (prevents duplicate requests from multiple widgets)
+    // Skip if already connected to this device
     if (_peerConnection != null &&
         _peerConnection!.connectionState ==
             RTCPeerConnectionState.RTCPeerConnectionStateConnected) {
@@ -208,22 +193,41 @@ class WebRTCNotifier extends StateNotifier<WebRTCConnectionState> {
       return;
     }
 
-    _lastDeviceId = deviceId;  // Store for auto-reconnect
-    _reconnectAttempts = 0;
-    _reconnectTimer?.cancel();
+    // Prevent concurrent requests from overlapping code paths
+    if (_isRequesting) {
+      print('WebRTC: Request already in progress, skipping duplicate');
+      return;
+    }
+    _isRequesting = true;
 
-    state = state.copyWith(state: WebRTCState.connecting, errorMessage: null);
+    try {
+      _lastDeviceId = deviceId;  // Store for auto-reconnect
+      _reconnectAttempts = 0;
+      _reconnectTimer?.cancel();
 
-    // Ensure renderer is initialized
-    await getRenderer();
+      // Close existing session before requesting new one
+      if (_peerConnection != null || state.sessionId != null) {
+        print('WebRTC: Closing existing session ${state.sessionId} before new request');
+        await _closeInternal();
+        // Small delay to ensure relay processes the close
+        await Future.delayed(const Duration(milliseconds: 500));
+      }
 
-    // Send request to relay
-    final wsClient = _ref.read(websocketClientProvider);
-    wsClient.send({
-      'type': 'webrtc_request',
-      'device_id': deviceId,
-    });
-    print('WebRTC: Sent request for device $deviceId');
+      state = state.copyWith(state: WebRTCState.connecting, errorMessage: null);
+
+      // Ensure renderer is initialized
+      await getRenderer();
+
+      // Send request to relay
+      final wsClient = _ref.read(websocketClientProvider);
+      wsClient.send({
+        'type': 'webrtc_request',
+        'device_id': deviceId,
+      });
+      print('WebRTC: Sent request for device $deviceId');
+    } finally {
+      _isRequesting = false;
+    }
   }
 
   /// Handle credentials received from relay (step 2)
@@ -452,10 +456,12 @@ class WebRTCNotifier extends StateNotifier<WebRTCConnectionState> {
         print('WebRTC: Reconnect timer fired but app is backgrounded, skipping');
         return;
       }
+      if (_isRequesting) {
+        print('WebRTC: Reconnect timer fired but request already in progress, skipping');
+        return;
+      }
       if (_lastDeviceId != null && state.state != WebRTCState.connected) {
-        // Close existing connection cleanly
-        await _closeInternal();
-        // Request new session
+        // requestVideoStream now handles closing existing session internally
         await requestVideoStream(_lastDeviceId!);
       }
     });
@@ -512,6 +518,7 @@ class WebRTCNotifier extends StateNotifier<WebRTCConnectionState> {
     _isPaused = true;
     _reconnectTimer?.cancel();
     _reconnectAttempts = 0;
+    _isRequesting = false;
     print('WebRTC: Paused (app backgrounded) - closing connection, suppressing reconnects');
     await _closeInternal();
   }
@@ -535,6 +542,7 @@ class WebRTCNotifier extends StateNotifier<WebRTCConnectionState> {
   Future<void> close() async {
     _reconnectTimer?.cancel();
     _reconnectAttempts = 0;
+    _isRequesting = false;
     _lastDeviceId = null;  // Clear to prevent auto-reconnect
     await _closeInternal();
   }
