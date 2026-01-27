@@ -422,6 +422,25 @@ class ConnectionNotifier extends StateNotifier<ConnectionState> {
     });
   }
 
+  /// Called when app resumes from background (phone lock, task switch)
+  /// Resets reconnect counters and attempts to restore connection
+  void onAppResumed() {
+    print('Connection: App resumed — checking connection state');
+    _reconnectAttempts = 0;
+    final ws = _ref.read(websocketClientProvider);
+    ws.resetReconnectAttempts();
+
+    if (state.isDemoMode) return;
+
+    if (!state.isRelayConnected && state.host != null) {
+      print('Connection: Not connected, attempting reconnect');
+      reconnect();
+    } else if (state.isRelayConnected) {
+      print('Connection: Already connected, requesting robot status');
+      _requestRobotStatus();
+    }
+  }
+
   /// Called when device ID changes - re-check robot status
   void onDeviceIdChanged(String newDeviceId) {
     state = state.copyWith(

@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 
+import '../../../core/network/websocket_client.dart';
 import '../../../domain/providers/control_provider.dart';
 import '../../../domain/providers/mode_provider.dart';
 import '../../../domain/providers/telemetry_provider.dart';
@@ -31,11 +32,14 @@ class _DriveScreenState extends ConsumerState<DriveScreen> {
     // Ensure we're in manual mode when entering drive screen
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _ensureManualMode();
+      ref.read(websocketClientProvider).sendManualControlActive();
     });
   }
 
   @override
   void dispose() {
+    // Notify robot that manual control is no longer active
+    WebSocketClient.instance.sendManualControlInactive();
     // Allow screen to sleep again
     WakelockPlus.disable();
     print('DriveScreen: Wakelock disabled');

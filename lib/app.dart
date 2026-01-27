@@ -181,13 +181,69 @@ class MainShell extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final unreadCount = ref.watch(unreadCountProvider);
+    final connState = ref.watch(connectionProvider);
     final location = GoRouterState.of(context).uri.path;
 
     // Determine current tab index from location
     final currentIndex = _getTabIndex(location);
 
+    // Show reconnecting banner when connection lost with saved host (not demo mode)
+    final showReconnecting = !connState.isDemoMode &&
+        connState.host != null &&
+        (connState.status == ConnectionStatus.connecting ||
+         connState.status == ConnectionStatus.error);
+
     return Scaffold(
-      body: child,
+      body: Stack(
+        children: [
+          child,
+          if (showReconnecting)
+            Positioned(
+              top: MediaQuery.of(context).padding.top,
+              left: 0,
+              right: 0,
+              child: Material(
+                color: Colors.orange.shade800,
+                child: InkWell(
+                  onTap: () => ref.read(connectionProvider.notifier).reconnect(),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const SizedBox(
+                          width: 14,
+                          height: 14,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            valueColor: AlwaysStoppedAnimation(Colors.white),
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        const Text(
+                          'Reconnecting...',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        const SizedBox(width: 16),
+                        const Text(
+                          'Tap to retry',
+                          style: TextStyle(
+                            color: Colors.white70,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+        ],
+      ),
       bottomNavigationBar: Container(
         decoration: BoxDecoration(
           color: AppTheme.surface,
@@ -376,6 +432,7 @@ class _WimzAppState extends ConsumerState<WimzApp> with WidgetsBindingObserver {
       case AppLifecycleState.resumed:
         print('App: Lifecycle → resumed — resuming WebRTC');
         ref.read(webrtcProvider.notifier).resume();
+        ref.read(connectionProvider.notifier).onAppResumed();
         break;
       default:
         break;

@@ -7,6 +7,8 @@ import 'package:image_picker/image_picker.dart';
 
 import '../../../data/models/dog_profile.dart';
 import '../../../domain/providers/dog_profiles_provider.dart';
+import '../../../domain/providers/analytics_provider.dart';
+import '../../../domain/providers/missions_provider.dart';
 import '../../../domain/providers/notifications_provider.dart';
 import '../../theme/app_theme.dart';
 
@@ -371,6 +373,10 @@ class DogProfileScreen extends ConsumerWidget {
             _TodaySummary(summary: summary),
             const SizedBox(height: 24),
 
+            // Metrics dashboard
+            _MetricsDashboard(dogId: profile.id),
+            const SizedBox(height: 24),
+
             // Quick actions
             _QuickActionsGrid(dogId: profile.id),
             const SizedBox(height: 24),
@@ -492,42 +498,56 @@ class _DogHeader extends StatelessWidget {
 }
 
 /// Launch last mission button
-class _LaunchMissionButton extends StatelessWidget {
+class _LaunchMissionButton extends ConsumerWidget {
   final DogProfile profile;
 
   const _LaunchMissionButton({required this.profile});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final missionsState = ref.watch(missionsProvider);
+    final activeMission = missionsState.activeMission;
     final hasMission = profile.lastMissionId != null;
+    final hasActive = activeMission != null;
 
     return Container(
       decoration: BoxDecoration(
-        gradient: hasMission ? AppTheme.primaryGradient : null,
-        color: hasMission ? null : AppTheme.surfaceLight,
+        gradient: (hasMission || hasActive) ? AppTheme.primaryGradient : null,
+        color: (hasMission || hasActive) ? null : AppTheme.surfaceLight,
         borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
-        boxShadow: hasMission ? AppTheme.glowShadow(AppTheme.primary, blur: 10) : null,
+        boxShadow: (hasMission || hasActive) ? AppTheme.glowShadow(AppTheme.primary, blur: 10) : null,
       ),
       child: Material(
         color: Colors.transparent,
         child: InkWell(
-          onTap: hasMission
+          onTap: hasActive
               ? () {
-                  // TODO: Launch last mission
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Launching mission...')),
-                  );
+                  // Show active mission
+                  context.push('/missions/${activeMission.id}');
                 }
-              : null,
+              : hasMission
+                  ? () {
+                      // Start the last mission
+                      ref.read(missionsProvider.notifier).startMission(profile.lastMissionId!);
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Mission started')),
+                      );
+                    }
+                  : () {
+                      // Navigate to missions list
+                      context.go('/missions');
+                    },
           borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
           child: Padding(
             padding: const EdgeInsets.all(16),
             child: Row(
               children: [
                 Icon(
-                  Icons.play_circle_filled,
+                  hasActive ? Icons.play_circle : Icons.play_circle_filled,
                   size: 40,
-                  color: hasMission ? AppTheme.background : AppTheme.textTertiary,
+                  color: (hasMission || hasActive)
+                      ? AppTheme.background
+                      : AppTheme.textTertiary,
                 ),
                 const SizedBox(width: 16),
                 Expanded(
@@ -535,20 +555,24 @@ class _LaunchMissionButton extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        hasMission ? 'LAUNCH LAST MISSION' : 'NO RECENT MISSION',
+                        hasActive
+                            ? 'MISSION ACTIVE'
+                            : hasMission
+                                ? 'LAUNCH LAST MISSION'
+                                : 'START A MISSION',
                         style: TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.w700,
                           letterSpacing: 1,
-                          color: hasMission
+                          color: (hasMission || hasActive)
                               ? AppTheme.background
                               : AppTheme.textTertiary,
                         ),
                       ),
-                      if (hasMission) ...[
+                      if (hasActive) ...[
                         const SizedBox(height: 4),
                         Text(
-                          '"Sit Training" - ran 2h ago',
+                          activeMission.name,
                           style: TextStyle(
                             fontSize: 12,
                             color: AppTheme.background.withOpacity(0.8),
@@ -558,11 +582,12 @@ class _LaunchMissionButton extends StatelessWidget {
                     ],
                   ),
                 ),
-                if (hasMission)
-                  Icon(
-                    Icons.chevron_right,
-                    color: AppTheme.background,
-                  ),
+                Icon(
+                  Icons.chevron_right,
+                  color: (hasMission || hasActive)
+                      ? AppTheme.background
+                      : AppTheme.textTertiary,
+                ),
               ],
             ),
           ),
@@ -685,6 +710,160 @@ class _StatCard extends StatelessWidget {
   }
 }
 
+/// Metrics dashboard with day/week/all toggle
+class _MetricsDashboard extends ConsumerWidget {
+  final String dogId;
+
+  const _MetricsDashboard({required this.dogId});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final analytics = ref.watch(dogAnalyticsProvider(dogId));
+    final notifier = ref.read(dogAnalyticsProvider(dogId).notifier);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              'Metrics',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+                color: AppTheme.textPrimary,
+              ),
+            ),
+            // Range toggle
+            Container(
+              decoration: BoxDecoration(
+                color: AppTheme.surfaceLight,
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: AppTheme.glassBorder),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  _RangeChip(
+                    label: 'Day',
+                    isSelected: analytics.range == AnalyticsRange.today,
+                    onTap: () => notifier.setRange(AnalyticsRange.today),
+                  ),
+                  _RangeChip(
+                    label: 'Week',
+                    isSelected: analytics.range == AnalyticsRange.week,
+                    onTap: () => notifier.setRange(AnalyticsRange.week),
+                  ),
+                  _RangeChip(
+                    label: 'All',
+                    isSelected: analytics.range == AnalyticsRange.lifetime,
+                    onTap: () => notifier.setRange(AnalyticsRange.lifetime),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        // Metrics grid
+        Row(
+          children: [
+            Expanded(
+              child: _StatCard(
+                value: analytics.treatCount.toString(),
+                label: 'Treats',
+                icon: Icons.cookie,
+                color: AppTheme.accent,
+              ),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: _StatCard(
+                value: analytics.detectionCount.toString(),
+                label: 'Detections',
+                icon: Icons.visibility,
+                color: AppTheme.primary,
+              ),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: _StatCard(
+                value: '${analytics.missionsSucceeded}/${analytics.missionsAttempted}',
+                label: 'Missions',
+                icon: Icons.flag,
+                color: Colors.green,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        Row(
+          children: [
+            Expanded(
+              child: _StatCard(
+                value: analytics.missionsAttempted > 0
+                    ? '${(analytics.successRate * 100).toInt()}%'
+                    : '--',
+                label: 'Success',
+                icon: Icons.check_circle,
+                color: Colors.teal,
+              ),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: _StatCard(
+                value: '${analytics.activeMinutes}m',
+                label: 'Active',
+                icon: Icons.timer,
+                color: Colors.deepPurple,
+              ),
+            ),
+            const SizedBox(width: 8),
+            // Spacer card to keep grid alignment
+            const Expanded(child: SizedBox()),
+          ],
+        ),
+      ],
+    );
+  }
+}
+
+/// Range toggle chip
+class _RangeChip extends StatelessWidget {
+  final String label;
+  final bool isSelected;
+  final VoidCallback onTap;
+
+  const _RangeChip({
+    required this.label,
+    required this.isSelected,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        decoration: BoxDecoration(
+          color: isSelected ? AppTheme.primary : Colors.transparent,
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w600,
+            color: isSelected ? AppTheme.background : AppTheme.textSecondary,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 /// Quick actions grid
 class _QuickActionsGrid extends StatelessWidget {
   final String dogId;
@@ -722,7 +901,14 @@ class _QuickActionsGrid extends StatelessWidget {
                 icon: Icons.bar_chart,
                 label: 'Stats',
                 onTap: () {
-                  // TODO: Navigate to analytics
+                  // Metrics dashboard is inline above — show a hint
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Metrics are shown above — use Day/Week/All toggle'),
+                      duration: Duration(seconds: 2),
+                      behavior: SnackBarBehavior.floating,
+                    ),
+                  );
                 },
               ),
             ),

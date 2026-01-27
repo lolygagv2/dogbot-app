@@ -1,7 +1,7 @@
 name: wimz_app
 description: WIM-Z Robotic Dog Trainer - Mobile Control App
 publish_to: 'none'
-version: 1.0.0+23
+version: 1.0.0+24
 
 environment:
   sdk: '>=3.2.0 <4.0.0'
@@ -56,6 +56,9 @@ dependencies:
   record: ^5.2.1
   permission_handler: ^11.0.0
   audioplayers: ^6.0.0
+
+  # ============ File Picking ============
+  file_picker: ^8.0.0
 
   # ============ Storage ============
   shared_preferences: ^2.2.2

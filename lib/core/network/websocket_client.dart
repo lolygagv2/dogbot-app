@@ -119,6 +119,11 @@ class WebSocketClient {
     print('WebSocket: Target device set to $deviceId');
   }
 
+  /// Reset reconnect attempt counter (used when app resumes from background)
+  void resetReconnectAttempts() {
+    _reconnectAttempts = 0;
+  }
+
   /// Connect to WebSocket server
   Future<void> connect(String url) async {
     if (_state == WsConnectionState.connected && _currentUrl == url) {
@@ -393,6 +398,16 @@ class WebSocketClient {
     sendCommand('set_mode', {'mode': mode});
   }
 
+  /// Notify robot that manual control (drive screen) is active
+  void sendManualControlActive() {
+    sendCommand('set_manual_control', {'active': true});
+  }
+
+  /// Notify robot that manual control (drive screen) is inactive
+  void sendManualControlInactive() {
+    sendCommand('set_manual_control', {'active': false});
+  }
+
   /// Send servo command
   void sendServoCommand(double pan, double tilt) {
     sendCommand('servo', {'pan': pan, 'tilt': tilt});
@@ -481,6 +496,16 @@ class WebSocketClient {
     sendCommand('upload_voice', {
       'name': commandId,
       'dog_id': dogId,
+      'data': base64Data,
+      'format': format,
+    });
+  }
+
+  /// Upload a song/audio file to the robot
+  void sendUploadSong(String filename, String base64Data, String format) {
+    print('WebSocket: sendUploadSong filename=$filename, format=$format, dataLen=${base64Data.length}');
+    sendCommand('upload_song', {
+      'filename': filename,
       'data': base64Data,
       'format': format,
     });

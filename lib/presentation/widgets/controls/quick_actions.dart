@@ -1,9 +1,13 @@
 import 'dart:async';
+import 'dart:convert';
+import 'dart:io';
 
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/constants/api_endpoints.dart';
+import '../../../core/network/websocket_client.dart';
 import '../../../domain/providers/control_provider.dart';
 import '../../theme/app_theme.dart';
 
@@ -165,11 +169,53 @@ class _QuickActionsState extends ConsumerState<QuickActions> {
                 _showTrackToast(context, 'Skipped forward');
               },
               onVolumeChanged: _onVolumeChanged,
+              onUpload: () => _pickAndUploadSong(context, ref),
             ),
           ],
         ),
       ],
     );
+  }
+
+  Future<void> _pickAndUploadSong(BuildContext context, WidgetRef ref) async {
+    try {
+      final result = await FilePicker.platform.pickFiles(
+        type: FileType.audio,
+        allowMultiple: false,
+      );
+
+      if (result == null || result.files.isEmpty) return;
+
+      final file = result.files.first;
+      if (file.path == null) return;
+
+      final bytes = await File(file.path!).readAsBytes();
+      final base64Data = base64Encode(bytes);
+      final filename = file.name;
+      final format = file.extension ?? 'mp3';
+
+      ref.read(websocketClientProvider).sendUploadSong(filename, base64Data, format);
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).hideCurrentSnackBar();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Uploading "$filename" to robot...'),
+            duration: const Duration(seconds: 2),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Upload failed: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
   }
 
   void _showTrackToast(BuildContext context, String message) {
@@ -327,6 +373,7 @@ class _MusicControlsWithVolume extends StatelessWidget {
   final VoidCallback onToggle;
   final VoidCallback onNext;
   final ValueChanged<int> onVolumeChanged;
+  final VoidCallback? onUpload;
 
   const _MusicControlsWithVolume({
     required this.isPlaying,
@@ -335,6 +382,7 @@ class _MusicControlsWithVolume extends StatelessWidget {
     required this.onToggle,
     required this.onNext,
     required this.onVolumeChanged,
+    this.onUpload,
   });
 
   @override
@@ -382,6 +430,17 @@ class _MusicControlsWithVolume extends StatelessWidget {
                 icon: Icons.skip_next,
                 onPressed: onNext,
               ),
+
+              if (onUpload != null) ...[
+                const SizedBox(width: 8),
+                Container(width: 1, height: 20, color: Theme.of(context).colorScheme.primary.withOpacity(0.3)),
+                const SizedBox(width: 8),
+                // Upload button
+                _MusicButton(
+                  icon: Icons.file_upload,
+                  onPressed: onUpload!,
+                ),
+              ],
             ],
           ),
         ),
