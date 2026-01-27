@@ -76,8 +76,25 @@ class DogAnalyticsNotifier extends StateNotifier<AnalyticsData> {
   }
 
   void _onWsEvent(WsEvent event) {
-    // Only update today's stats in real-time
     switch (event.type) {
+      // Relay sends metrics_sync on connect with the day's totals per dog
+      case 'metrics_sync':
+        final dogId = event.data['dog_id'] as String?;
+        final metrics = event.data['metrics'] as Map<String, dynamic>?;
+        if (dogId == _dogId && metrics != null) {
+          state = AnalyticsData(
+            dogId: _dogId,
+            range: state.range,
+            treatCount: metrics['treat_count'] as int? ?? 0,
+            detectionCount: metrics['detection_count'] as int? ?? 0,
+            missionsAttempted: metrics['mission_attempts'] as int? ?? 0,
+            missionsSucceeded: metrics['mission_successes'] as int? ?? 0,
+            activeMinutes: metrics['session_minutes'] as int? ?? 0,
+          );
+        }
+        break;
+
+      // Real-time incremental updates
       case 'treat':
         state = AnalyticsData(
           dogId: _dogId,
