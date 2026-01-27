@@ -80,8 +80,8 @@ class PushToTalkNotifier extends StateNotifier<PttStateData> {
   // Playback
   AudioPlayer? _audioPlayer;
 
-  // Max recording duration (30 seconds)
-  static const int maxRecordingDurationMs = 30000;
+  // Max recording duration (10 seconds)
+  static const int maxRecordingDurationMs = 10000;
 
   PushToTalkNotifier() : super(const PttStateData()) {
     _setupAudioListener();
@@ -224,8 +224,10 @@ class PushToTalkNotifier extends StateNotifier<PttStateData> {
         );
 
         if (elapsed >= maxRecordingDurationMs) {
-          rlog('PTT', 'Max duration reached');
-          stopRecordingAndSend();
+          rlog('PTT', 'Max duration (10s) reached, auto-stopping');
+          stopRecordingAndSend().then((_) {
+            state = state.copyWith(error: 'Max recording time reached (10 seconds)');
+          });
         }
       });
 

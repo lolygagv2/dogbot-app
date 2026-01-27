@@ -1,5 +1,51 @@
 # WIM-Z Resume Chat Log
 
+## Session: 2026-01-26
+**Goal:** Fix WebRTC session churn on background + mode change timeout false positives
+**Status:** Complete
+
+### Problems Solved This Session:
+
+1. **WebRTC Session Churn on Background (PRIORITY 1)**
+   - **Problem:** When screen turns off, app rapidly creates/closes WebRTC sessions (5 sessions in 14 seconds), then disconnects. No app lifecycle handling existed.
+   - **Fix:** Added `_isPaused` flag and `pause()`/`resume()` methods to `WebRTCNotifier`
+   - When backgrounded: closes WebRTC cleanly, cancels reconnect timers, suppresses all reconnection attempts
+   - When resumed: reconnects to last device if one existed
+   - Guarded 4 reconnection paths: `_scheduleReconnect()`, reconnect timer callback, device status listener, webrtc close listener
+   - Added `WidgetsBindingObserver` to `WimzApp` to trigger pause/resume on lifecycle changes
+
+2. **Mode Change Timeout False Positives (LOWER PRIORITY)**
+   - **Problem:** App shows "mode change timed out" even when mode changes successfully
+   - **Fix:** Updated `_onTimeout()` to check latest telemetry mode before showing error
+   - If telemetry shows mode matches pending mode, treats it as silent confirmation (no error shown)
+   - Only shows "Mode change timed out" if mode genuinely didn't change
+
+### Key Code Changes Made:
+
+#### Modified Files:
+- `lib/domain/providers/webrtc_provider.dart` - Added `_isPaused`, `pause()`, `resume()`, guarded all reconnection paths
+- `lib/app.dart` - Converted `WimzApp` to `ConsumerStatefulWidget` with `WidgetsBindingObserver` for lifecycle management
+- `lib/domain/providers/mode_provider.dart` - Updated `_onTimeout()` to check telemetry before showing error
+- `pubspec.yaml` - Version bump to 1.0.0+21
+
+### Commits This Session:
+- `58d531d` - fix: Prevent WebRTC session churn on background, fix mode timeout false positives
+
+### Architecture Notes:
+- `WimzApp` is now a `ConsumerStatefulWidget` with `WidgetsBindingObserver` mixin (was `ConsumerWidget`)
+- `AppLifecycleState.paused`/`inactive` → `webrtcProvider.pause()` (close + suppress reconnects)
+- `AppLifecycleState.resumed` → `webrtcProvider.resume()` (reconnect to last device)
+- `_lastDeviceId` preserved across pause/resume cycle for seamless reconnection
+- Mode timeout confirmation timeout remains 10 seconds
+
+### Next Session:
+1. Test WebRTC pause/resume on physical device (screen off/on cycle)
+2. Verify no more session churn in logs when backgrounded
+3. Test mode changes with robot to confirm timeout fix works
+4. Consider adding WebSocket pause/resume if needed (currently WebSocket stays alive in background - intentional for receiving events)
+
+---
+
 ## Session: 2026-01-24
 **Goal:** Fix device switching, add optimistic mode UI, consolidate settings
 **Status:** Complete

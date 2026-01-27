@@ -236,6 +236,13 @@ class WebSocketClient {
           _eventController.add(statusEvent);
           break;
 
+        // Audio message from robot (listen/PTT response)
+        case 'audio_message':
+          print('WebSocket: Received audio_message, data length: ${(json['data'] as String?)?.length ?? 0}');
+          final audioEvent = WsEvent.fromJson(json);
+          _eventController.add(audioEvent);
+          break;
+
         // Bark event - forward as guardian event for event feed
         case 'bark':
           final barkEvent = WsEvent(
@@ -469,10 +476,11 @@ class WebSocketClient {
   }
 
   /// Upload a voice command recording to the robot
-  void sendVoiceCommand(String commandId, String base64Data, {String format = 'wav'}) {
-    print('WebSocket: sendVoiceCommand name=$commandId, format=$format, dataLen=${base64Data.length}');
+  void sendVoiceCommand(String commandId, String base64Data, {String format = 'wav', String dogId = 'default'}) {
+    print('WebSocket: sendVoiceCommand name=$commandId, dogId=$dogId, format=$format, dataLen=${base64Data.length}');
     sendCommand('upload_voice', {
       'name': commandId,
+      'dog_id': dogId,
       'data': base64Data,
       'format': format,
     });
@@ -490,10 +498,8 @@ class WebSocketClient {
 
   /// Request audio from robot (listen)
   void requestAudioFromRobot(int durationSeconds) {
-    send({
-      'type': 'audio_request',
-      'duration': durationSeconds,
-    });
+    print('WebSocket: requestAudioFromRobot duration=${durationSeconds}s');
+    sendCommand('audio_request', {'duration': durationSeconds});
   }
 
   /// Request WebRTC video stream
