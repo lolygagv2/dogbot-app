@@ -4,7 +4,9 @@ import 'dart:ui' show Color;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../../data/datasources/robot_api.dart';
 import '../../data/models/dog_profile.dart';
+import 'auth_provider.dart';
 
 const String _dogsKey = 'dog_profiles';
 const String _selectedDogKey = 'selected_dog_id';
@@ -113,6 +115,20 @@ class DogProfilesNotifier extends StateNotifier<List<DogProfile>> {
 
   /// Remove a dog profile
   Future<void> removeProfile(String id) async {
+    // Attempt server-side delete (offline-friendly: proceed locally even on failure)
+    final token = _ref.read(authProvider).token;
+    if (token != null) {
+      try {
+        final api = _ref.read(robotApiProvider);
+        final success = await api.deleteDog(id, token);
+        if (!success) {
+          print('DogProfiles: Server delete failed for $id, removing locally');
+        }
+      } catch (e) {
+        print('DogProfiles: Server delete error for $id: $e');
+      }
+    }
+
     state = state.where((p) => p.id != id).toList();
     await _saveProfiles();
 

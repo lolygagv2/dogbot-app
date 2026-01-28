@@ -382,6 +382,11 @@ mixin _$MissionProgress {
   int get failCount => throw _privateConstructorUsedError;
   String? get status => throw _privateConstructorUsedError;
   DateTime? get startedAt => throw _privateConstructorUsedError;
+  String? get stage => throw _privateConstructorUsedError;
+  String? get trick => throw _privateConstructorUsedError;
+  double? get targetSec => throw _privateConstructorUsedError;
+  double? get holdTime => throw _privateConstructorUsedError;
+  String? get reason => throw _privateConstructorUsedError;
 
   /// Serializes this MissionProgress to a JSON map.
   Map<String, dynamic> toJson() => throw _privateConstructorUsedError;
@@ -406,7 +411,12 @@ abstract class $MissionProgressCopyWith<$Res> {
       int successCount,
       int failCount,
       String? status,
-      DateTime? startedAt});
+      DateTime? startedAt,
+      String? stage,
+      String? trick,
+      double? targetSec,
+      double? holdTime,
+      String? reason});
 }
 
 /// @nodoc
@@ -431,6 +441,11 @@ class _$MissionProgressCopyWithImpl<$Res, $Val extends MissionProgress>
     Object? failCount = null,
     Object? status = freezed,
     Object? startedAt = freezed,
+    Object? stage = freezed,
+    Object? trick = freezed,
+    Object? targetSec = freezed,
+    Object? holdTime = freezed,
+    Object? reason = freezed,
   }) {
     return _then(_value.copyWith(
       missionId: null == missionId
@@ -461,6 +476,26 @@ class _$MissionProgressCopyWithImpl<$Res, $Val extends MissionProgress>
           ? _value.startedAt
           : startedAt // ignore: cast_nullable_to_non_nullable
               as DateTime?,
+      stage: freezed == stage
+          ? _value.stage
+          : stage // ignore: cast_nullable_to_non_nullable
+              as String?,
+      trick: freezed == trick
+          ? _value.trick
+          : trick // ignore: cast_nullable_to_non_nullable
+              as String?,
+      targetSec: freezed == targetSec
+          ? _value.targetSec
+          : targetSec // ignore: cast_nullable_to_non_nullable
+              as double?,
+      holdTime: freezed == holdTime
+          ? _value.holdTime
+          : holdTime // ignore: cast_nullable_to_non_nullable
+              as double?,
+      reason: freezed == reason
+          ? _value.reason
+          : reason // ignore: cast_nullable_to_non_nullable
+              as String?,
     ) as $Val);
   }
 }
@@ -480,7 +515,12 @@ abstract class _$$MissionProgressImplCopyWith<$Res>
       int successCount,
       int failCount,
       String? status,
-      DateTime? startedAt});
+      DateTime? startedAt,
+      String? stage,
+      String? trick,
+      double? targetSec,
+      double? holdTime,
+      String? reason});
 }
 
 /// @nodoc
@@ -503,6 +543,11 @@ class __$$MissionProgressImplCopyWithImpl<$Res>
     Object? failCount = null,
     Object? status = freezed,
     Object? startedAt = freezed,
+    Object? stage = freezed,
+    Object? trick = freezed,
+    Object? targetSec = freezed,
+    Object? holdTime = freezed,
+    Object? reason = freezed,
   }) {
     return _then(_$MissionProgressImpl(
       missionId: null == missionId
@@ -533,13 +578,33 @@ class __$$MissionProgressImplCopyWithImpl<$Res>
           ? _value.startedAt
           : startedAt // ignore: cast_nullable_to_non_nullable
               as DateTime?,
+      stage: freezed == stage
+          ? _value.stage
+          : stage // ignore: cast_nullable_to_non_nullable
+              as String?,
+      trick: freezed == trick
+          ? _value.trick
+          : trick // ignore: cast_nullable_to_non_nullable
+              as String?,
+      targetSec: freezed == targetSec
+          ? _value.targetSec
+          : targetSec // ignore: cast_nullable_to_non_nullable
+              as double?,
+      holdTime: freezed == holdTime
+          ? _value.holdTime
+          : holdTime // ignore: cast_nullable_to_non_nullable
+              as double?,
+      reason: freezed == reason
+          ? _value.reason
+          : reason // ignore: cast_nullable_to_non_nullable
+              as String?,
     ));
   }
 }
 
 /// @nodoc
 @JsonSerializable()
-class _$MissionProgressImpl implements _MissionProgress {
+class _$MissionProgressImpl extends _MissionProgress {
   const _$MissionProgressImpl(
       {required this.missionId,
       this.progress = 0.0,
@@ -547,7 +612,13 @@ class _$MissionProgressImpl implements _MissionProgress {
       this.successCount = 0,
       this.failCount = 0,
       this.status,
-      this.startedAt});
+      this.startedAt,
+      this.stage,
+      this.trick,
+      this.targetSec,
+      this.holdTime,
+      this.reason})
+      : super._();
 
   factory _$MissionProgressImpl.fromJson(Map<String, dynamic> json) =>
       _$$MissionProgressImplFromJson(json);
@@ -570,10 +641,20 @@ class _$MissionProgressImpl implements _MissionProgress {
   final String? status;
   @override
   final DateTime? startedAt;
+  @override
+  final String? stage;
+  @override
+  final String? trick;
+  @override
+  final double? targetSec;
+  @override
+  final double? holdTime;
+  @override
+  final String? reason;
 
   @override
   String toString() {
-    return 'MissionProgress(missionId: $missionId, progress: $progress, rewardsGiven: $rewardsGiven, successCount: $successCount, failCount: $failCount, status: $status, startedAt: $startedAt)';
+    return 'MissionProgress(missionId: $missionId, progress: $progress, rewardsGiven: $rewardsGiven, successCount: $successCount, failCount: $failCount, status: $status, startedAt: $startedAt, stage: $stage, trick: $trick, targetSec: $targetSec, holdTime: $holdTime, reason: $reason)';
   }
 
   @override
@@ -593,13 +674,32 @@ class _$MissionProgressImpl implements _MissionProgress {
                 other.failCount == failCount) &&
             (identical(other.status, status) || other.status == status) &&
             (identical(other.startedAt, startedAt) ||
-                other.startedAt == startedAt));
+                other.startedAt == startedAt) &&
+            (identical(other.stage, stage) || other.stage == stage) &&
+            (identical(other.trick, trick) || other.trick == trick) &&
+            (identical(other.targetSec, targetSec) ||
+                other.targetSec == targetSec) &&
+            (identical(other.holdTime, holdTime) ||
+                other.holdTime == holdTime) &&
+            (identical(other.reason, reason) || other.reason == reason));
   }
 
   @JsonKey(includeFromJson: false, includeToJson: false)
   @override
-  int get hashCode => Object.hash(runtimeType, missionId, progress,
-      rewardsGiven, successCount, failCount, status, startedAt);
+  int get hashCode => Object.hash(
+      runtimeType,
+      missionId,
+      progress,
+      rewardsGiven,
+      successCount,
+      failCount,
+      status,
+      startedAt,
+      stage,
+      trick,
+      targetSec,
+      holdTime,
+      reason);
 
   /// Create a copy of MissionProgress
   /// with the given fields replaced by the non-null parameter values.
@@ -618,7 +718,7 @@ class _$MissionProgressImpl implements _MissionProgress {
   }
 }
 
-abstract class _MissionProgress implements MissionProgress {
+abstract class _MissionProgress extends MissionProgress {
   const factory _MissionProgress(
       {required final String missionId,
       final double progress,
@@ -626,7 +726,13 @@ abstract class _MissionProgress implements MissionProgress {
       final int successCount,
       final int failCount,
       final String? status,
-      final DateTime? startedAt}) = _$MissionProgressImpl;
+      final DateTime? startedAt,
+      final String? stage,
+      final String? trick,
+      final double? targetSec,
+      final double? holdTime,
+      final String? reason}) = _$MissionProgressImpl;
+  const _MissionProgress._() : super._();
 
   factory _MissionProgress.fromJson(Map<String, dynamic> json) =
       _$MissionProgressImpl.fromJson;
@@ -645,6 +751,16 @@ abstract class _MissionProgress implements MissionProgress {
   String? get status;
   @override
   DateTime? get startedAt;
+  @override
+  String? get stage;
+  @override
+  String? get trick;
+  @override
+  double? get targetSec;
+  @override
+  double? get holdTime;
+  @override
+  String? get reason;
 
   /// Create a copy of MissionProgress
   /// with the given fields replaced by the non-null parameter values.

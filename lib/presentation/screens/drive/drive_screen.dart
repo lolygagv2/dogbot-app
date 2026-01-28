@@ -257,7 +257,7 @@ class _DriveScreenState extends ConsumerState<DriveScreen> {
           // "Not Ready" overlay
           if (!isReady)
             Positioned.fill(
-              child: IgnorePointer(
+              child: AbsorbPointer(
                 child: Container(
                   color: Colors.black.withOpacity(0.3),
                   child: Center(

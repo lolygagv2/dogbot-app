@@ -9,6 +9,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/constants/api_endpoints.dart';
 import '../../../core/network/websocket_client.dart';
 import '../../../domain/providers/control_provider.dart';
+import '../../../domain/providers/dog_profiles_provider.dart';
 import '../../theme/app_theme.dart';
 
 /// Provider to track current lighting pattern index
@@ -59,6 +60,8 @@ class _QuickActionsState extends ConsumerState<QuickActions> {
     final isPlaying = ref.watch(_isPlayingProvider);
 
     final callDogControl = ref.watch(callDogProvider);
+    final selectedDog = ref.watch(selectedDogProvider);
+    final ws = ref.read(websocketClientProvider);
 
     return Column(
       mainAxisSize: MainAxisSize.min,
@@ -67,13 +70,13 @@ class _QuickActionsState extends ConsumerState<QuickActions> {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceEvenly,
           children: [
-            // Good button - plays good_dog.mp3
+            // Good button - plays voice command on robot
             _ActionButton(
               icon: Icons.thumb_up,
               label: 'Good',
               color: Colors.green,
               onPressed: () {
-                audioControl.play('good_dog.mp3');
+                ws.sendPlayVoice('good', dogId: selectedDog?.id);
               },
             ),
 
@@ -97,24 +100,24 @@ class _QuickActionsState extends ConsumerState<QuickActions> {
               },
             ),
 
-            // Want Treat? button - plays treat.mp3 audio
+            // Want Treat? button - plays voice command on robot
             _ActionButton(
               icon: Icons.restaurant,
               label: 'Want Treat?',
               color: Colors.amber,
               onPressed: () {
-                audioControl.play('treat.mp3');
+                ws.sendPlayVoice('treat', dogId: selectedDog?.id);
               },
             ),
 
-            // No button - warning LED + no.mp3
+            // No button - warning LED + voice command on robot
             _ActionButton(
               icon: Icons.block,
               label: 'No',
               color: Colors.red,
               onPressed: () {
                 ledControl.setPattern(LedPatterns.warning);
-                audioControl.play('no.mp3');
+                ws.sendPlayVoice('no', dogId: selectedDog?.id);
               },
             ),
           ],

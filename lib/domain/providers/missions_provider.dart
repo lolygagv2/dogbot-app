@@ -61,6 +61,9 @@ class MissionsState {
   final double activeProgress;
   final int activeRewards;
   final String? error;
+  final String? activeStage;
+  final String? activeTrick;
+  final double? activeHoldTime;
 
   const MissionsState({
     this.missions = const [],
@@ -68,6 +71,9 @@ class MissionsState {
     this.activeProgress = 0.0,
     this.activeRewards = 0,
     this.error,
+    this.activeStage,
+    this.activeTrick,
+    this.activeHoldTime,
   });
 
   MissionsState copyWith({
@@ -76,8 +82,12 @@ class MissionsState {
     double? activeProgress,
     int? activeRewards,
     String? error,
+    String? activeStage,
+    String? activeTrick,
+    double? activeHoldTime,
     bool clearActiveMission = false,
     bool clearError = false,
+    bool clearActiveStage = false,
   }) {
     return MissionsState(
       missions: missions ?? this.missions,
@@ -85,6 +95,9 @@ class MissionsState {
       activeProgress: activeProgress ?? this.activeProgress,
       activeRewards: activeRewards ?? this.activeRewards,
       error: clearError ? null : (error ?? this.error),
+      activeStage: clearActiveStage ? null : (activeStage ?? this.activeStage),
+      activeTrick: clearActiveStage ? null : (activeTrick ?? this.activeTrick),
+      activeHoldTime: clearActiveStage ? null : (activeHoldTime ?? this.activeHoldTime),
     );
   }
 
@@ -96,6 +109,23 @@ class MissionsState {
       return missions.firstWhere((m) => m.id == activeMissionId);
     } catch (_) {
       return null;
+    }
+  }
+
+  /// Human-readable label for the current active stage
+  String? get activeStageLabel {
+    if (activeStage == null) return null;
+    switch (activeStage) {
+      case 'watching':
+        return 'Watching...';
+      case 'success':
+        return 'Success!';
+      case 'failure':
+        return 'Try again';
+      case 'complete':
+        return 'Complete!';
+      default:
+        return activeStage;
     }
   }
 }
@@ -140,10 +170,13 @@ class MissionsNotifier extends StateNotifier<MissionsState> {
       case 'mission_progress':
         final progress = MissionProgress.fromWsEvent(event.data);
         if (progress.missionId == state.activeMissionId) {
-          // Update active mission progress
+          // Use effectiveProgress which handles progress/target_sec ratio
           state = state.copyWith(
-            activeProgress: progress.progress,
+            activeProgress: progress.effectiveProgress,
             activeRewards: progress.rewardsGiven,
+            activeStage: progress.stage,
+            activeTrick: progress.trick,
+            activeHoldTime: progress.holdTime,
           );
           // Update mission's rewardsGiven in the list
           _updateMissionInList(progress.missionId, rewardsGiven: progress.rewardsGiven);
@@ -153,11 +186,15 @@ class MissionsNotifier extends StateNotifier<MissionsState> {
       case 'mission_complete':
         final missionId = event.data['mission_id'] as String? ?? event.data['id'] as String? ?? '';
         if (missionId == state.activeMissionId) {
+          final treatsGiven = event.data['treats_given'] as int?;
           state = state.copyWith(
             activeProgress: 1.0,
+            activeStage: 'complete',
+            activeRewards: treatsGiven ?? state.activeRewards,
             clearActiveMission: true,
           );
-          _updateMissionInList(missionId, isActive: false);
+          _updateMissionInList(missionId, isActive: false,
+              rewardsGiven: treatsGiven);
         }
         break;
 
@@ -168,6 +205,7 @@ class MissionsNotifier extends StateNotifier<MissionsState> {
             clearActiveMission: true,
             activeProgress: 0.0,
             activeRewards: 0,
+            clearActiveStage: true,
           );
           _updateMissionInList(missionId, isActive: false);
         }
@@ -204,7 +242,10 @@ class MissionsNotifier extends StateNotifier<MissionsState> {
   /// Start a mission
   void startMission(String missionId) {
     final ws = _ref.read(websocketClientProvider);
-    ws.sendCommand('start_mission', {'mission_id': missionId});
+    ws.sendCommand('start_mission', {
+      'mission_id': missionId,
+      'mission_name': missionId,
+    });
 
     // Optimistic update
     state = state.copyWith(

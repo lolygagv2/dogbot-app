@@ -203,19 +203,21 @@ class _WebRTCVideoViewState extends ConsumerState<WebRTCVideoView> {
             ),
           ),
           // Overlay loading indicator
-          Container(
-            color: Colors.black87,
-            child: const Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  CircularProgressIndicator(color: AppTheme.primary),
-                  SizedBox(height: 16),
-                  Text(
-                    'Receiving video...',
-                    style: TextStyle(color: AppTheme.textSecondary),
-                  ),
-                ],
+          AbsorbPointer(
+            child: Container(
+              color: Colors.black87,
+              child: const Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    CircularProgressIndicator(color: AppTheme.primary),
+                    SizedBox(height: 16),
+                    Text(
+                      'Receiving video...',
+                      style: TextStyle(color: AppTheme.textSecondary),
+                    ),
+                  ],
+                ),
               ),
             ),
           ),

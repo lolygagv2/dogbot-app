@@ -26,6 +26,8 @@ class Mission with _$Mission {
 /// Mission progress update from WebSocket
 @freezed
 class MissionProgress with _$MissionProgress {
+  const MissionProgress._();
+
   const factory MissionProgress({
     required String missionId,
     @Default(0.0) double progress,
@@ -34,6 +36,11 @@ class MissionProgress with _$MissionProgress {
     @Default(0) int failCount,
     String? status,
     DateTime? startedAt,
+    String? stage,
+    String? trick,
+    double? targetSec,
+    double? holdTime,
+    String? reason,
   }) = _MissionProgress;
 
   factory MissionProgress.fromJson(Map<String, dynamic> json) =>
@@ -47,6 +54,20 @@ class MissionProgress with _$MissionProgress {
       successCount: data['success_count'] as int? ?? 0,
       failCount: data['fail_count'] as int? ?? 0,
       status: data['status'] as String?,
+      stage: data['stage'] as String?,
+      trick: data['trick'] as String?,
+      targetSec: (data['target_sec'] as num?)?.toDouble(),
+      holdTime: (data['hold_time'] as num?)?.toDouble(),
+      reason: data['reason'] as String?,
     );
+  }
+
+  /// Compute effective progress: if progress and targetSec are both present,
+  /// use (progress / targetSec).clamp(0.0, 1.0)
+  double get effectiveProgress {
+    if (targetSec != null && targetSec! > 0 && progress > 0) {
+      return (progress / targetSec!).clamp(0.0, 1.0);
+    }
+    return progress.clamp(0.0, 1.0);
   }
 }

@@ -27,6 +27,9 @@ class MissionsScreen extends ConsumerWidget {
               mission: activeMission,
               progress: missionsState.activeProgress,
               rewards: missionsState.activeRewards,
+              stage: missionsState.activeStage,
+              stageLabel: missionsState.activeStageLabel,
+              trick: missionsState.activeTrick,
               onStop: () => ref.read(missionsProvider.notifier).stopMission(),
             ),
             const SizedBox(height: 24),
@@ -76,14 +79,33 @@ class _ActiveMissionCard extends StatelessWidget {
   final Mission mission;
   final double progress;
   final int rewards;
+  final String? stage;
+  final String? stageLabel;
+  final String? trick;
   final VoidCallback onStop;
 
   const _ActiveMissionCard({
     required this.mission,
     required this.progress,
     required this.rewards,
+    this.stage,
+    this.stageLabel,
+    this.trick,
     required this.onStop,
   });
+
+  Color _progressColorForStage() {
+    switch (stage) {
+      case 'watching':
+        return Colors.lightBlue;
+      case 'success':
+        return Colors.greenAccent;
+      case 'failure':
+        return Colors.orange;
+      default:
+        return Colors.white;
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -170,7 +192,7 @@ class _ActiveMissionCard extends StatelessWidget {
               child: LinearProgressIndicator(
                 value: progress,
                 backgroundColor: Colors.white.withOpacity(0.2),
-                valueColor: const AlwaysStoppedAnimation(Colors.white),
+                valueColor: AlwaysStoppedAnimation(_progressColorForStage()),
                 minHeight: 6,
               ),
             ),
@@ -194,6 +216,33 @@ class _ActiveMissionCard extends StatelessWidget {
                 ),
               ],
             ),
+            // Stage and trick info
+            if (stageLabel != null || trick != null) ...[
+              const SizedBox(height: 6),
+              Row(
+                children: [
+                  if (stageLabel != null)
+                    Text(
+                      stageLabel!,
+                      style: TextStyle(
+                        color: _progressColorForStage(),
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  if (stageLabel != null && trick != null)
+                    const SizedBox(width: 8),
+                  if (trick != null)
+                    Text(
+                      trick!,
+                      style: TextStyle(
+                        color: Colors.white.withOpacity(0.7),
+                        fontSize: 12,
+                      ),
+                    ),
+                ],
+              ),
+            ],
           ],
         ),
       ),

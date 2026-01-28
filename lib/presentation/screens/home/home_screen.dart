@@ -84,9 +84,11 @@ class HomeScreen extends ConsumerWidget {
                         Positioned(
                           top: 16,
                           left: 16,
-                          child: _DetectionChip(
-                            behavior: telemetry.currentBehavior,
-                            confidence: telemetry.confidence,
+                          child: IgnorePointer(
+                            child: _DetectionChip(
+                              behavior: telemetry.currentBehavior,
+                              confidence: telemetry.confidence,
+                            ),
                           ),
                         ),
 

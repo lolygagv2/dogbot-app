@@ -30,7 +30,8 @@ class VideoHudOverlay extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Stack(
+    return IgnorePointer(
+      child: Stack(
       children: [
         // Corner brackets (HUD frame)
         ..._buildCornerBrackets(),
@@ -65,6 +66,7 @@ class VideoHudOverlay extends StatelessWidget {
             child: _buildRecordingIndicator(),
           ),
       ],
+    ),
     );
   }
 

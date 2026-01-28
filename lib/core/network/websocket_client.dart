@@ -493,6 +493,14 @@ class WebSocketClient {
     });
   }
 
+  /// Play a pre-recorded voice command on the robot
+  void sendPlayVoice(String voiceType, {String? dogId}) {
+    sendCommand('play_voice', {
+      'voice_type': voiceType,
+      if (dogId != null) 'dog_id': dogId,
+    });
+  }
+
   /// Upload a voice command recording to the robot
   void sendVoiceCommand(String commandId, String base64Data, {String format = 'wav', String dogId = 'default'}) {
     print('WebSocket: sendVoiceCommand name=$commandId, dogId=$dogId, format=$format, dataLen=${base64Data.length}');

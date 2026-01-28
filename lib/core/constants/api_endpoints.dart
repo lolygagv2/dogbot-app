@@ -45,6 +45,10 @@ class ApiEndpoints {
   static String missionStop(String id) => '/missions/$id/stop';
   static const String missionActive = '/missions/active';
 
+  // Dog profiles
+  static const String dogs = '/api/dogs';
+  static String dogDelete(String id) => '/api/dogs/$id';
+
   // Device pairing
   static const String userDevices = '/api/user/devices';
   static const String pairDevice = '/api/user/pair-device';

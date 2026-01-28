@@ -46,6 +46,11 @@ _$MissionProgressImpl _$$MissionProgressImplFromJson(
       startedAt: json['startedAt'] == null
           ? null
           : DateTime.parse(json['startedAt'] as String),
+      stage: json['stage'] as String?,
+      trick: json['trick'] as String?,
+      targetSec: (json['targetSec'] as num?)?.toDouble(),
+      holdTime: (json['holdTime'] as num?)?.toDouble(),
+      reason: json['reason'] as String?,
     );
 
 Map<String, dynamic> _$$MissionProgressImplToJson(
@@ -58,4 +63,9 @@ Map<String, dynamic> _$$MissionProgressImplToJson(
       'failCount': instance.failCount,
       'status': instance.status,
       'startedAt': instance.startedAt?.toIso8601String(),
+      'stage': instance.stage,
+      'trick': instance.trick,
+      'targetSec': instance.targetSec,
+      'holdTime': instance.holdTime,
+      'reason': instance.reason,
     };

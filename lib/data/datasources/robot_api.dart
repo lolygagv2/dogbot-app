@@ -26,4 +26,18 @@ class RobotApi {
       return false;
     }
   }
+
+  /// Delete a dog profile from the relay server
+  Future<bool> deleteDog(String dogId, String token) async {
+    try {
+      final response = await _dio.delete(
+        ApiEndpoints.dogDelete(dogId),
+        options: Options(headers: {'Authorization': 'Bearer $token'}),
+      );
+      return response.statusCode == 200;
+    } catch (e) {
+      print('RobotApi: Failed to delete dog $dogId: $e');
+      return false;
+    }
+  }
 }

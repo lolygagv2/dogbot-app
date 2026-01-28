@@ -18,7 +18,8 @@ class LoadingOverlay extends StatelessWidget {
       children: [
         child,
         if (isLoading)
-          Container(
+          AbsorbPointer(
+            child: Container(
             color: Colors.black54,
             child: Center(
               child: Card(
@@ -37,6 +38,7 @@ class LoadingOverlay extends StatelessWidget {
                 ),
               ),
             ),
+          ),
           ),
       ],
     );
