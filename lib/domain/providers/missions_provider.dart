@@ -196,6 +196,11 @@ class MissionsNotifier extends StateNotifier<MissionsState> {
     state = state.copyWith(missions: updatedMissions);
   }
 
+  /// Clear state (used on logout)
+  void clearState() {
+    state = MissionsState(missions: _predefinedMissions);
+  }
+
   /// Start a mission
   void startMission(String missionId) {
     final ws = _ref.read(websocketClientProvider);

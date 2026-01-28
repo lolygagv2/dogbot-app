@@ -490,7 +490,19 @@ class _AddDogScreenState extends ConsumerState<AddDogScreen> {
       createdAt: DateTime.now(),
     );
 
-    await ref.read(dogProfilesProvider.notifier).addProfile(profile);
+    final added = await ref.read(dogProfilesProvider.notifier).addProfile(profile);
+
+    if (!added) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('A dog named "$name" already exists'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+      return;
+    }
 
     // Select the new dog
     ref.read(selectedDogProvider.notifier).selectDog(profile);

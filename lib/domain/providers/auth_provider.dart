@@ -2,6 +2,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../data/datasources/auth_api.dart';
+import 'connection_provider.dart';
+import 'dog_profiles_provider.dart';
+import 'missions_provider.dart';
 
 /// Auth state
 class AuthState {
@@ -148,8 +151,19 @@ class AuthNotifier extends StateNotifier<AuthState> {
     }
   }
 
-  /// Logout
+  /// Logout - clears all provider state
   Future<void> logout() async {
+    // Disconnect from relay/robot
+    await _ref.read(connectionProvider.notifier).disconnect();
+
+    // Clear dog profiles and selection
+    _ref.read(dogProfilesProvider.notifier).clearState();
+    _ref.read(selectedDogProvider.notifier).clearState();
+
+    // Clear missions state
+    _ref.read(missionsProvider.notifier).clearState();
+
+    // Clear stored auth
     await _clearAuth();
     state = const AuthState();
   }

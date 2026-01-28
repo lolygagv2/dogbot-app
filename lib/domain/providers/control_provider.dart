@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/constants/app_constants.dart';
 import '../../core/network/websocket_client.dart';
 import 'connection_provider.dart';
+import 'dog_profiles_provider.dart';
 import 'settings_provider.dart';
 import 'webrtc_provider.dart';
 
@@ -308,10 +309,14 @@ class CallDogControl {
 
   CallDogControl(this._ref);
 
-  /// Send call dog command to robot
+  /// Send call dog command to robot with selected dog info
   void call() {
     if (!_ref.read(connectionProvider).isConnected) return;
-    _ref.read(websocketClientProvider).sendCallDog();
+    final selectedDog = _ref.read(selectedDogProvider);
+    _ref.read(websocketClientProvider).sendCallDog(
+      dogId: selectedDog?.id,
+      dogName: selectedDog?.name,
+    );
   }
 }
 

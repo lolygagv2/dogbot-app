@@ -12,7 +12,7 @@ const String _selectedDogKey = 'selected_dog_id';
 /// Provider for list of dog profiles
 final dogProfilesProvider =
     StateNotifierProvider<DogProfilesNotifier, List<DogProfile>>((ref) {
-  return DogProfilesNotifier();
+  return DogProfilesNotifier(ref);
 });
 
 /// Provider for currently selected dog
@@ -51,9 +51,10 @@ final dogDailySummaryProvider =
 
 /// Dog profiles state notifier with persistence
 class DogProfilesNotifier extends StateNotifier<List<DogProfile>> {
+  final Ref _ref;
   SharedPreferences? _prefs;
 
-  DogProfilesNotifier() : super([]) {
+  DogProfilesNotifier(this._ref) : super([]) {
     _loadProfiles();
   }
 
@@ -80,10 +81,25 @@ class DogProfilesNotifier extends StateNotifier<List<DogProfile>> {
     print('DogProfiles: Saved ${state.length} profiles');
   }
 
-  /// Add a new dog profile
-  Future<void> addProfile(DogProfile profile) async {
+  /// Clear all profiles (used on logout)
+  void clearState() {
+    state = [];
+  }
+
+  /// Add a new dog profile (rejects duplicate names)
+  Future<bool> addProfile(DogProfile profile) async {
+    // Check for duplicate name (case-insensitive)
+    final duplicate = state.any(
+      (p) => p.name.toLowerCase() == profile.name.toLowerCase(),
+    );
+    if (duplicate) {
+      print('DogProfiles: Rejected duplicate name "${profile.name}"');
+      return false;
+    }
+
     state = [...state, profile];
     await _saveProfiles();
+    return true;
   }
 
   /// Update an existing dog profile
@@ -99,6 +115,12 @@ class DogProfilesNotifier extends StateNotifier<List<DogProfile>> {
   Future<void> removeProfile(String id) async {
     state = state.where((p) => p.id != id).toList();
     await _saveProfiles();
+
+    // Clear selection if deleted dog was selected
+    final selected = _ref.read(selectedDogProvider);
+    if (selected != null && selected.id == id) {
+      _ref.read(selectedDogProvider.notifier).clearState();
+    }
   }
 
   /// Update profile photo path
@@ -135,6 +157,11 @@ class SelectedDogNotifier extends StateNotifier<DogProfile?> {
     } else if (_profiles.isNotEmpty) {
       state = _profiles.first;
     }
+  }
+
+  /// Clear selection (used on logout)
+  void clearState() {
+    state = null;
   }
 
   Future<void> selectDog(DogProfile dog) async {

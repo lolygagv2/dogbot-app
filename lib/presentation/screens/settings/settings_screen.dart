@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 // Temporarily disabled local mode imports for debugging white screen
 // import '../../../core/services/local_connection_service.dart';
 // import '../../../domain/providers/connection_mode_provider.dart';
+import '../../../domain/providers/auth_provider.dart';
 import '../../../domain/providers/connection_provider.dart';
 import '../../../domain/providers/device_provider.dart';
 import '../../../domain/providers/paired_devices_provider.dart';
@@ -28,6 +29,33 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       ref.read(pairedDevicesProvider.notifier).loadDevices();
     });
+  }
+
+  Future<void> _confirmSignOut(BuildContext context) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Sign Out'),
+        content: const Text('Are you sure you want to sign out? You will need to log in again.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Sign Out', style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true && mounted) {
+      await ref.read(authProvider.notifier).logout();
+      if (mounted) {
+        context.go('/login');
+      }
+    }
   }
 
   void _showRecordingDiagnostics(BuildContext context, WidgetRef ref) {
@@ -133,6 +161,19 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             title: Text('API Version'),
             subtitle: Text('v1'),
           ),
+          const Divider(),
+
+          _SectionHeader('Account'),
+          ListTile(
+            leading: const Icon(Icons.logout, color: Colors.red),
+            title: const Text('Sign Out'),
+            subtitle: Text(
+              ref.watch(authProvider).email ?? '',
+              style: TextStyle(color: AppTheme.textTertiary, fontSize: 12),
+            ),
+            onTap: () => _confirmSignOut(context),
+          ),
+          const SizedBox(height: 32),
         ],
       ),
     );

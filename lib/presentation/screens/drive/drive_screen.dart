@@ -21,6 +21,7 @@ class DriveScreen extends ConsumerStatefulWidget {
 
 class _DriveScreenState extends ConsumerState<DriveScreen> {
   bool _modeChangeRequested = false;
+  bool _missionWasActive = false;
 
   @override
   void initState() {
@@ -29,17 +30,25 @@ class _DriveScreenState extends ConsumerState<DriveScreen> {
     WakelockPlus.enable();
     print('DriveScreen: Wakelock enabled');
 
-    // Ensure we're in manual mode when entering drive screen
+    // Only switch to manual if not in mission mode
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _ensureManualMode();
-      ref.read(websocketClientProvider).sendManualControlActive();
+      final modeState = ref.read(modeStateProvider);
+      if (modeState.currentMode == RobotMode.mission) {
+        print('DriveScreen: Mission active, keeping mission mode');
+        _missionWasActive = true;
+      } else {
+        _ensureManualMode();
+        ref.read(websocketClientProvider).sendManualControlActive();
+      }
     });
   }
 
   @override
   void dispose() {
-    // Notify robot that manual control is no longer active
-    WebSocketClient.instance.sendManualControlInactive();
+    // Only send manual control inactive if we activated it
+    if (!_missionWasActive) {
+      WebSocketClient.instance.sendManualControlInactive();
+    }
     // Allow screen to sleep again
     WakelockPlus.disable();
     print('DriveScreen: Wakelock disabled');
@@ -63,8 +72,9 @@ class _DriveScreenState extends ConsumerState<DriveScreen> {
     final modeState = ref.watch(modeStateProvider);
 
     // Check if we're ready to drive (in manual mode and not pending)
-    final isReady = modeState.currentMode == RobotMode.manual &&
-        modeState.pendingMode == null;
+    final isMissionActive = modeState.currentMode == RobotMode.mission;
+    final isReady = (modeState.currentMode == RobotMode.manual &&
+        modeState.pendingMode == null) || isMissionActive;
 
     // Clear mode change request flag when confirmed
     if (_modeChangeRequested && isReady) {
@@ -129,20 +139,26 @@ class _DriveScreenState extends ConsumerState<DriveScreen> {
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                   decoration: BoxDecoration(
-                    color: isReady ? Colors.green : Colors.orange,
+                    color: isMissionActive
+                        ? Colors.orange
+                        : (isReady ? Colors.green : Colors.orange),
                     borderRadius: BorderRadius.circular(20),
                   ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Icon(
-                        isReady ? Icons.check_circle : Icons.hourglass_empty,
+                        isMissionActive
+                            ? Icons.flag
+                            : (isReady ? Icons.check_circle : Icons.hourglass_empty),
                         color: Colors.white,
                         size: 14,
                       ),
                       const SizedBox(width: 4),
                       Text(
-                        isReady ? 'MANUAL' : 'SWITCHING...',
+                        isMissionActive
+                            ? 'MISSION ACTIVE'
+                            : (isReady ? 'MANUAL' : 'SWITCHING...'),
                         style: const TextStyle(
                           color: Colors.white,
                           fontWeight: FontWeight.bold,

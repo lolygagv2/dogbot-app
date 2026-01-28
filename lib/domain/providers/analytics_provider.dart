@@ -142,6 +142,11 @@ class DogAnalyticsNotifier extends StateNotifier<AnalyticsData> {
     }
   }
 
+  /// Clear state (used on logout)
+  void clearState() {
+    state = AnalyticsData(dogId: _dogId, range: AnalyticsRange.today);
+  }
+
   /// Update the range (reloads data from summary)
   void setRange(AnalyticsRange range) {
     // For week/lifetime we'd fetch from API; for now use multiplied mock data

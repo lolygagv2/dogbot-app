@@ -65,8 +65,8 @@ class WebRTCNotifier extends StateNotifier<WebRTCConnectionState> {
   int _reconnectAttempts = 0;
   bool _isPaused = false;  // True when app is backgrounded
   bool _isRequesting = false;  // Guard against concurrent requestVideoStream calls
-  static const int _maxReconnectAttempts = 5;
-  static const Duration _reconnectDelay = Duration(seconds: 3);
+  static const int _maxReconnectAttempts = 3;
+  static const Duration _reconnectDelay = Duration(seconds: 5);
 
   /// Whether the data channel is ready for sending
   bool get isDataChannelOpen => _dataChannelOpen;
@@ -439,6 +439,10 @@ class WebRTCNotifier extends StateNotifier<WebRTCConnectionState> {
     }
     if (_reconnectAttempts >= _maxReconnectAttempts) {
       print('WebRTC: Max reconnect attempts reached');
+      state = state.copyWith(
+        state: WebRTCState.error,
+        errorMessage: 'Connection failed - tap to retry',
+      );
       return;
     }
 
@@ -465,6 +469,14 @@ class WebRTCNotifier extends StateNotifier<WebRTCConnectionState> {
         await requestVideoStream(_lastDeviceId!);
       }
     });
+  }
+
+  /// Retry connection after max attempts reached (user-initiated)
+  Future<void> retryConnection() async {
+    if (_lastDeviceId == null) return;
+    _reconnectAttempts = 0;
+    _reconnectTimer?.cancel();
+    await requestVideoStream(_lastDeviceId!);
   }
 
   /// Internal close without clearing device ID (for reconnect)

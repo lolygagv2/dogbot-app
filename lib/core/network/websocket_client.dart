@@ -485,9 +485,12 @@ class WebSocketClient {
   }
 
   /// Call dog - plays attention/recall sound on robot
-  void sendCallDog() {
-    print('WebSocket: sendCallDog');
-    sendCommand('call_dog');
+  void sendCallDog({String? dogId, String? dogName}) {
+    print('WebSocket: sendCallDog dogId=$dogId, dogName=$dogName');
+    sendCommand('call_dog', {
+      if (dogId != null) 'dog_id': dogId,
+      if (dogName != null) 'dog_name': dogName,
+    });
   }
 
   /// Upload a voice command recording to the robot
