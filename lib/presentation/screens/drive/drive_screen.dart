@@ -6,6 +6,7 @@ import 'package:wakelock_plus/wakelock_plus.dart';
 
 import '../../../core/network/websocket_client.dart';
 import '../../../domain/providers/control_provider.dart';
+import '../../../domain/providers/missions_provider.dart';
 import '../../../domain/providers/mode_provider.dart';
 import '../../../domain/providers/telemetry_provider.dart';
 import '../../widgets/video/webrtc_video_view.dart';
@@ -195,6 +196,15 @@ class _DriveScreenState extends ConsumerState<DriveScreen> {
               ],
             ),
           ),
+
+          // Active mission banner
+          if (isMissionActive)
+            Positioned(
+              top: MediaQuery.of(context).padding.top + 88,
+              left: 16,
+              right: 16,
+              child: _ActiveMissionBanner(),
+            ),
 
           // Bottom controls - joysticks overlaid (only enabled when ready)
           Positioned(
@@ -724,6 +734,42 @@ class _DpadButton extends StatelessWidget {
           shape: BoxShape.circle,
         ),
         child: Icon(icon, color: Colors.white, size: 28),
+      ),
+    );
+  }
+}
+
+/// Active mission banner shown on drive screen
+class _ActiveMissionBanner extends ConsumerWidget {
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final missionsState = ref.watch(missionsProvider);
+    final missionName = missionsState.activeMission?.name ?? 'Mission';
+    final stage = missionsState.activeStageLabel;
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: Colors.green.withOpacity(0.85),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(Icons.flag, color: Colors.white, size: 16),
+          const SizedBox(width: 8),
+          Flexible(
+            child: Text(
+              stage != null ? '$missionName — $stage' : missionName,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+              ),
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+        ],
       ),
     );
   }

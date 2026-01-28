@@ -209,7 +209,8 @@ class _QuickActionsState extends ConsumerState<QuickActions> {
           ),
         );
       }
-    } catch (e) {
+    } catch (e, stackTrace) {
+      debugPrint('Song upload failed: $e\n$stackTrace');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(

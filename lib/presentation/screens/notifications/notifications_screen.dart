@@ -40,6 +40,10 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
           PopupMenuButton<String>(
             icon: const Icon(Icons.filter_list),
             onSelected: (value) {
+              if (value == 'clear_all') {
+                ref.read(notificationsProvider.notifier).clearAll();
+                return;
+              }
               setState(() {
                 if (value == 'all') {
                   _activeFilter = null;
@@ -54,6 +58,11 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
               const PopupMenuItem(value: 'missions', child: Text('Missions')),
               const PopupMenuItem(value: 'alerts', child: Text('Alerts')),
               const PopupMenuItem(value: 'treats', child: Text('Treats')),
+              const PopupMenuDivider(),
+              const PopupMenuItem(
+                value: 'clear_all',
+                child: Text('Clear all', style: TextStyle(color: Colors.red)),
+              ),
             ],
           ),
         ],
@@ -122,9 +131,22 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
             ),
           ),
         ),
-        ...events.map((event) => _NotificationTile(
-              event: event,
-              onTap: () => _handleNotificationTap(event),
+        ...events.map((event) => Dismissible(
+              key: ValueKey(event.id),
+              direction: DismissDirection.endToStart,
+              onDismissed: (_) {
+                ref.read(notificationsProvider.notifier).removeNotification(event.id);
+              },
+              background: Container(
+                alignment: Alignment.centerRight,
+                padding: const EdgeInsets.only(right: 20),
+                color: Colors.red,
+                child: const Icon(Icons.delete, color: Colors.white),
+              ),
+              child: _NotificationTile(
+                event: event,
+                onTap: () => _handleNotificationTap(event),
+              ),
             )),
       ],
     );

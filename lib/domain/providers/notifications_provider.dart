@@ -186,6 +186,11 @@ class NotificationsNotifier extends StateNotifier<List<NotificationEvent>> {
     state = state.map((n) => n.copyWith(isRead: true)).toList();
   }
 
+  /// Remove a single notification by ID
+  void removeNotification(String id) {
+    state = state.where((n) => n.id != id).toList();
+  }
+
   /// Clear all notifications
   void clearAll() {
     state = [];

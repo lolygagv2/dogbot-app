@@ -253,14 +253,20 @@ class _DogSettingsSheetState extends ConsumerState<_DogSettingsSheet> {
   }
 
   void _confirmDelete() {
-    Navigator.pop(context);
+    // Capture values before any async gaps or pops
+    final profileId = widget.profile.id;
+    final profileName = widget.profile.name;
+    final router = GoRouter.of(context);
+    final messenger = ScaffoldMessenger.of(context);
+    final notifier = ref.read(dogProfilesProvider.notifier);
 
+    // Show dialog on top of the bottom sheet (don't pop sheet first)
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('Delete Dog?'),
         content: Text(
-          'Are you sure you want to delete ${widget.profile.name}? '
+          'Are you sure you want to delete $profileName? '
           'This will remove all their data and cannot be undone.',
         ),
         actions: [
@@ -271,14 +277,16 @@ class _DogSettingsSheetState extends ConsumerState<_DogSettingsSheet> {
           FilledButton(
             style: FilledButton.styleFrom(backgroundColor: Colors.red),
             onPressed: () async {
-              await ref.read(dogProfilesProvider.notifier).removeProfile(widget.profile.id);
+              await notifier.removeProfile(profileId);
+              // Close dialog
               Navigator.pop(ctx);
-              if (mounted) {
-                context.go('/dogs');
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('${widget.profile.name} deleted')),
-                );
-              }
+              // Close the settings bottom sheet
+              if (mounted) Navigator.pop(context);
+              // Navigate to dogs list
+              router.go('/dogs');
+              messenger.showSnackBar(
+                SnackBar(content: Text('$profileName deleted')),
+              );
             },
             child: const Text('Delete'),
           ),
@@ -490,7 +498,9 @@ class _DogHeader extends StatelessWidget {
 
   String _buildSubtitle() {
     final parts = <String>[];
-    if (profile.breed != null) parts.add(profile.breed!);
+    if (profile.breed != null && profile.breed!.isNotEmpty) {
+      parts.add(profile.breed!);
+    }
     final age = profile.shortAgeString;
     if (age != null) parts.add(age);
     return parts.join(' · ');
