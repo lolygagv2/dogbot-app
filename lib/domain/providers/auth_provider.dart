@@ -3,7 +3,6 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../data/datasources/auth_api.dart';
 import 'connection_provider.dart';
-import 'dog_profiles_provider.dart';
 import 'missions_provider.dart';
 
 /// Auth state
@@ -151,16 +150,13 @@ class AuthNotifier extends StateNotifier<AuthState> {
     }
   }
 
-  /// Logout - clears all provider state
+  /// Logout - clears auth state but preserves dog profiles
   Future<void> logout() async {
     // Disconnect from relay/robot
     await _ref.read(connectionProvider.notifier).disconnect();
 
-    // Clear dog profiles and selection
-    _ref.read(dogProfilesProvider.notifier).clearState();
-    _ref.read(selectedDogProvider.notifier).clearState();
-
-    // Clear missions state
+    // NOTE: Dog profiles are NOT cleared - they're local data that persists across logins
+    // Only clear cloud-synced data like missions
     _ref.read(missionsProvider.notifier).clearState();
 
     // Clear stored auth

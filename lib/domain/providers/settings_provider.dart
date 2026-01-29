@@ -8,7 +8,7 @@ class SettingsKeys {
 
 /// App settings state
 class AppSettings {
-  /// Motor trim for right motor (-0.2 to 0.2)
+  /// Motor trim for right motor (-0.5 to 0.5)
   /// Positive values slow down right motor (robot drifts left naturally)
   /// Negative values speed up right motor (robot drifts right naturally)
   final double motorTrimRight;
@@ -46,14 +46,14 @@ class SettingsNotifier extends StateNotifier<AppSettings> {
     final motorTrim = _prefs?.getDouble(SettingsKeys.motorTrimRight) ?? 0.0;
 
     state = AppSettings(
-      motorTrimRight: motorTrim.clamp(-0.2, 0.2),
+      motorTrimRight: motorTrim.clamp(-0.5, 0.5),
     );
   }
 
   /// Set motor trim for right motor
-  /// Range: -0.2 to 0.2 (or -20% to +20%)
+  /// Range: -0.5 to 0.5 (or -50% to +50%)
   Future<void> setMotorTrimRight(double trim) async {
-    final clampedTrim = trim.clamp(-0.2, 0.2);
+    final clampedTrim = trim.clamp(-0.5, 0.5);
     state = state.copyWith(motorTrimRight: clampedTrim);
     await _prefs?.setDouble(SettingsKeys.motorTrimRight, clampedTrim);
   }

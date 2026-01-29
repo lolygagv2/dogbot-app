@@ -6,7 +6,6 @@ import 'domain/providers/connection_provider.dart';
 import 'domain/providers/notifications_provider.dart';
 import 'domain/providers/webrtc_provider.dart';
 import 'presentation/screens/auth/login_screen.dart';
-import 'presentation/screens/connect/connect_screen.dart';
 import 'presentation/screens/home/home_screen.dart';
 import 'presentation/screens/drive/drive_screen.dart';
 import 'presentation/screens/missions/missions_screen.dart';
@@ -41,18 +40,6 @@ final _router = GoRouter(
     GoRoute(
       path: '/login',
       builder: (context, state) => const LoginScreen(),
-    ),
-
-    // Connect screen (no bottom nav) - receives host/port from login
-    GoRoute(
-      path: '/connect',
-      builder: (context, state) {
-        final extra = state.extra as Map<String, dynamic>?;
-        return ConnectScreen(
-          initialHost: extra?['host'] as String?,
-          initialPort: extra?['port'] as int?,
-        );
-      },
     ),
 
     // Demo mode entry point
@@ -156,10 +143,14 @@ final _router = GoRouter(
       builder: (context, state) => const DevicePairingScreen(),
     ),
 
-    // Voice commands setup (standalone route from settings)
+    // Voice commands setup (standalone route from settings or dog profile)
     GoRoute(
       path: '/voice-setup',
-      builder: (context, state) => const VoiceSetupScreen(),
+      builder: (context, state) {
+        final extra = state.extra as Map<String, dynamic>?;
+        final dogId = extra?['dogId'] as String?;
+        return VoiceSetupScreen(dogId: dogId);
+      },
     ),
 
     // Dog profile detail (can also be accessed directly)

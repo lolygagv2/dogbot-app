@@ -429,20 +429,20 @@ class _MotorTrimSlider extends ConsumerWidget {
           padding: const EdgeInsets.symmetric(horizontal: 16),
           child: Row(
             children: [
-              const Text('-20%', style: TextStyle(fontSize: 12)),
+              const Text('-50%', style: TextStyle(fontSize: 12)),
               Expanded(
                 child: Slider(
                   value: settings.motorTrimRight,
-                  min: -0.2,
-                  max: 0.2,
-                  divisions: 40,
+                  min: -0.5,
+                  max: 0.5,
+                  divisions: 100,
                   label: '${trimPercent > 0 ? '+' : ''}$trimPercent%',
                   onChanged: (value) {
                     ref.read(settingsProvider.notifier).setMotorTrimRight(value);
                   },
                 ),
               ),
-              const Text('+20%', style: TextStyle(fontSize: 12)),
+              const Text('+50%', style: TextStyle(fontSize: 12)),
             ],
           ),
         ),

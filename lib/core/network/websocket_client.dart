@@ -248,6 +248,15 @@ class WebSocketClient {
           _eventController.add(audioEvent);
           break;
 
+        // Mission events - forward to event stream for mode provider
+        case 'mission_progress':
+        case 'mission_complete':
+        case 'mission_stopped':
+          print('WS: Received $msgType: $json');
+          final missionEvent = WsEvent.fromJson(json);
+          _eventController.add(missionEvent);
+          break;
+
         // Bark event - forward as guardian event for event feed
         case 'bark':
           final barkEvent = WsEvent(

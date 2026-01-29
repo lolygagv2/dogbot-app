@@ -100,12 +100,36 @@ class ModeStateNotifier extends StateNotifier<ModeState> {
   final Ref _ref;
   Timer? _timeoutTimer;
   Timer? _errorDismissTimer;
+  Timer? _telemetrySyncTimer;
   StreamSubscription? _wsSubscription;
   static const Duration _confirmationTimeout = Duration(seconds: 10);
 
   ModeStateNotifier(this._ref) : super(const ModeState()) {
     _listenToModeEvents();
     _getInitialMode();
+    _startTelemetrySync();
+  }
+
+  /// Periodically sync mode from telemetry (catches missed WebSocket events)
+  void _startTelemetrySync() {
+    _telemetrySyncTimer = Timer.periodic(const Duration(seconds: 2), (_) {
+      if (!mounted) return;
+      _syncFromTelemetry();
+    });
+  }
+
+  /// Sync mode from telemetry if we're not in the middle of a change
+  void _syncFromTelemetry() {
+    if (state.isChanging) return; // Don't override during pending change
+
+    final telemetry = _ref.read(telemetryProvider);
+    if (telemetry.mode.isEmpty) return;
+
+    final telemetryMode = RobotMode.fromString(telemetry.mode);
+    if (telemetryMode != state.currentMode) {
+      print('Mode: Syncing from telemetry - ${telemetry.mode} (was ${state.currentMode.value})');
+      state = state.copyWith(currentMode: telemetryMode);
+    }
   }
 
   /// Get initial mode from telemetry
@@ -348,6 +372,7 @@ class ModeStateNotifier extends StateNotifier<ModeState> {
   void dispose() {
     _cancelTimeout();
     _errorDismissTimer?.cancel();
+    _telemetrySyncTimer?.cancel();
     _wsSubscription?.cancel();
     super.dispose();
   }

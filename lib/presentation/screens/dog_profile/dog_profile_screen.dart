@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:path_provider/path_provider.dart';
 
 import '../../../data/models/dog_profile.dart';
 import '../../../domain/providers/dog_profiles_provider.dart';
@@ -36,22 +37,6 @@ class _DogSettingsSheet extends ConsumerStatefulWidget {
 }
 
 class _DogSettingsSheetState extends ConsumerState<_DogSettingsSheet> {
-  late TextEditingController _nameController;
-  late TextEditingController _breedController;
-
-  @override
-  void initState() {
-    super.initState();
-    _nameController = TextEditingController(text: widget.profile.name);
-    _breedController = TextEditingController(text: widget.profile.breed ?? '');
-  }
-
-  @override
-  void dispose() {
-    _nameController.dispose();
-    _breedController.dispose();
-    super.dispose();
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -156,99 +141,142 @@ class _DogSettingsSheetState extends ConsumerState<_DogSettingsSheet> {
 
     final image = await picker.pickImage(source: source, maxWidth: 512, maxHeight: 512);
     if (image != null) {
-      await ref.read(dogProfilesProvider.notifier).updateProfilePhoto(
-        widget.profile.id,
-        image.path,
-      );
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Photo updated')),
+      try {
+        // Copy to permanent location before saving
+        final appDir = await getApplicationDocumentsDirectory();
+        final photosDir = Directory('${appDir.path}/dog_photos');
+        await photosDir.create(recursive: true);
+
+        final permanentPath = '${photosDir.path}/${widget.profile.id}.jpg';
+
+        // Delete old photo if exists
+        final oldFile = File(permanentPath);
+        if (await oldFile.exists()) {
+          await oldFile.delete();
+        }
+
+        // Copy new photo to permanent location
+        await File(image.path).copy(permanentPath);
+
+        await ref.read(dogProfilesProvider.notifier).updateProfilePhoto(
+          widget.profile.id,
+          permanentPath,
         );
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Photo updated')),
+          );
+        }
+      } catch (e) {
+        print('Error saving photo: $e');
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Failed to save photo: $e'), backgroundColor: Colors.red),
+          );
+        }
       }
     }
   }
 
   void _showRenameDialog() {
-    Navigator.pop(context);
-    _nameController.text = widget.profile.name;
+    // Capture values before any async gaps
+    final profile = widget.profile;
+    final notifier = ref.read(dogProfilesProvider.notifier);
+    final messenger = ScaffoldMessenger.of(context);
 
+    // Show dialog on top of the bottom sheet
     showDialog(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Rename Dog'),
-        content: TextField(
-          controller: _nameController,
-          autofocus: true,
-          decoration: const InputDecoration(
-            labelText: 'Name',
-            hintText: 'Enter dog name',
+      builder: (ctx) {
+        final nameController = TextEditingController(text: profile.name);
+        return AlertDialog(
+          title: const Text('Rename Dog'),
+          content: TextField(
+            controller: nameController,
+            autofocus: true,
+            textCapitalization: TextCapitalization.words,
+            decoration: const InputDecoration(
+              labelText: 'Name',
+              hintText: 'Enter dog name',
+              border: OutlineInputBorder(),
+            ),
           ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () async {
-              final newName = _nameController.text.trim();
-              if (newName.isNotEmpty && newName != widget.profile.name) {
-                await ref.read(dogProfilesProvider.notifier).updateProfile(
-                  widget.profile.copyWith(name: newName),
-                );
-                if (mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed: () async {
+                final newName = nameController.text.trim();
+                if (newName.isNotEmpty && newName != profile.name) {
+                  await notifier.updateProfile(
+                    profile.copyWith(name: newName),
+                  );
+                  messenger.showSnackBar(
                     SnackBar(content: Text('Renamed to $newName')),
                   );
                 }
-              }
-              Navigator.pop(ctx);
-            },
-            child: const Text('Save'),
-          ),
-        ],
-      ),
+                // Close dialog
+                Navigator.pop(ctx);
+                // Close the settings bottom sheet
+                if (mounted) Navigator.pop(context);
+              },
+              child: const Text('Save'),
+            ),
+          ],
+        );
+      },
     );
   }
 
   void _showBreedDialog() {
-    Navigator.pop(context);
-    _breedController.text = widget.profile.breed ?? '';
+    // Capture values before any async gaps (same pattern as _confirmDelete)
+    final profile = widget.profile;
+    final notifier = ref.read(dogProfilesProvider.notifier);
+    final messenger = ScaffoldMessenger.of(context);
 
+    // Show dialog on top of the bottom sheet
     showDialog(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Edit Breed'),
-        content: TextField(
-          controller: _breedController,
-          autofocus: true,
-          decoration: const InputDecoration(
-            labelText: 'Breed',
-            hintText: 'e.g. Golden Retriever',
+      builder: (ctx) {
+        final breedController = TextEditingController(text: profile.breed ?? '');
+        return AlertDialog(
+          title: const Text('Edit Breed'),
+          content: TextField(
+            controller: breedController,
+            autofocus: true,
+            textCapitalization: TextCapitalization.words,
+            decoration: const InputDecoration(
+              labelText: 'Breed',
+              hintText: 'e.g. Golden Retriever',
+              border: OutlineInputBorder(),
+            ),
           ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () async {
-              final newBreed = _breedController.text.trim();
-              await ref.read(dogProfilesProvider.notifier).updateProfile(
-                widget.profile.copyWith(breed: newBreed.isEmpty ? null : newBreed),
-              );
-              if (mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed: () async {
+                final newBreed = breedController.text.trim();
+                await notifier.updateProfile(
+                  profile.copyWith(breed: newBreed.isEmpty ? null : newBreed),
+                );
+                // Close dialog
+                Navigator.pop(ctx);
+                // Close the settings bottom sheet
+                if (mounted) Navigator.pop(context);
+                messenger.showSnackBar(
                   const SnackBar(content: Text('Breed updated')),
                 );
-              }
-              Navigator.pop(ctx);
-            },
-            child: const Text('Save'),
-          ),
-        ],
-      ),
+              },
+              child: const Text('Save'),
+            ),
+          ],
+        );
+      },
     );
   }
 
@@ -901,7 +929,8 @@ class _QuickActionsGrid extends StatelessWidget {
                 icon: Icons.mic,
                 label: 'Voice',
                 onTap: () {
-                  context.push('/dogs/$dogId/voice');
+                  // Use standalone route with extra data for reliability
+                  context.push('/voice-setup', extra: {'dogId': dogId});
                 },
               ),
             ),

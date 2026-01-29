@@ -60,7 +60,6 @@ class _QuickActionsState extends ConsumerState<QuickActions> {
     final lightingIndex = ref.watch(_lightingIndexProvider);
     final isPlaying = ref.watch(_isPlayingProvider);
 
-    final callDogControl = ref.watch(callDogProvider);
     final selectedDog = ref.watch(selectedDogProvider);
     final ws = ref.read(websocketClientProvider);
 
@@ -77,7 +76,11 @@ class _QuickActionsState extends ConsumerState<QuickActions> {
               label: 'Good',
               color: Colors.green,
               onPressed: () {
-                ws.sendPlayVoice('good', dogId: selectedDog?.id);
+                if (selectedDog == null) {
+                  _showNoDogError(context);
+                  return;
+                }
+                ws.sendPlayVoice('good', dogId: selectedDog.id);
               },
             ),
 
@@ -87,7 +90,11 @@ class _QuickActionsState extends ConsumerState<QuickActions> {
               label: 'Call Dog',
               color: Colors.deepOrange,
               onPressed: () {
-                callDogControl.call();
+                if (selectedDog == null) {
+                  _showNoDogError(context);
+                  return;
+                }
+                ws.sendCallDog(dogId: selectedDog.id, dogName: selectedDog.name);
               },
             ),
 
@@ -107,7 +114,11 @@ class _QuickActionsState extends ConsumerState<QuickActions> {
               label: 'Want Treat?',
               color: Colors.amber,
               onPressed: () {
-                ws.sendPlayVoice('treat', dogId: selectedDog?.id);
+                if (selectedDog == null) {
+                  _showNoDogError(context);
+                  return;
+                }
+                ws.sendPlayVoice('treat', dogId: selectedDog.id);
               },
             ),
 
@@ -117,8 +128,12 @@ class _QuickActionsState extends ConsumerState<QuickActions> {
               label: 'No',
               color: Colors.red,
               onPressed: () {
+                if (selectedDog == null) {
+                  _showNoDogError(context);
+                  return;
+                }
                 ledControl.setPattern(LedPatterns.warning);
-                ws.sendPlayVoice('no', dogId: selectedDog?.id);
+                ws.sendPlayVoice('no', dogId: selectedDog.id);
               },
             ),
           ],
@@ -285,6 +300,17 @@ class _QuickActionsState extends ConsumerState<QuickActions> {
         duration: const Duration(milliseconds: 1500),
         behavior: SnackBarBehavior.floating,
         width: 180,
+      ),
+    );
+  }
+
+  void _showNoDogError(BuildContext context) {
+    ScaffoldMessenger.of(context).hideCurrentSnackBar();
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Please select a dog first'),
+        backgroundColor: Colors.orange,
+        behavior: SnackBarBehavior.floating,
       ),
     );
   }
