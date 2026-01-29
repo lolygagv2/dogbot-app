@@ -1,5 +1,70 @@
 # WIM-Z Resume Chat Log
 
+## Session: 2026-01-29
+**Goal:** Build 28 — Fix mission mode conflicts, upload crash, breed field, unified login
+**Status:** ✅ Complete
+
+### Problems Solved This Session:
+
+1. **P0: Mode Lock for Missions**
+   - **Problem:** Drive screen was overriding mode to "manual" even when mission active
+   - **Fix:** Added `activeMissionId`, `activeMissionName`, `isModeLocked` to `ModeState`
+   - Added `_handleMissionProgress()` to listen for `mission_progress` events
+   - Mode automatically sets to `mission` when `action: 'started'`, clears on `completed`/`stopped`
+   - `setMode()` blocks changes when `isModeLocked` is true
+   - Drive screen respects mode lock — won't override to manual during missions
+
+2. **P1: Upload Crash (iOS)**
+   - **Problem:** `FileType.audio` opens Apple Music library and crashes on iOS
+   - **Fix:** Changed to `FileType.custom` with `allowedExtensions: ['mp3']`
+   - Added `PlatformException` handling and debug logging
+
+3. **P1: Breed Field Missing**
+   - **Problem:** Add Dog screen had no breed field
+   - **Fix:** Added `_breedController` and breed TextFormField to name step
+   - Breed now included in `DogProfile` creation
+
+4. **P2: Unified Login Flow**
+   - **Problem:** Two screens (Login → Connect) both asking for server info was confusing
+   - **Fix:** Login screen now connects WebSocket AND navigates directly to `/home`
+   - Removed redirect to `/connect` from home screen on disconnect
+   - Users stay in app — MainShell's reconnect banner handles reconnection
+   - "Disconnect" in Settings goes to `/login` (explicit user action)
+
+### Key Code Changes Made:
+
+#### Modified Files:
+- `lib/domain/providers/mode_provider.dart` — Mission mode lock, event handling, new providers
+- `lib/presentation/screens/auth/login_screen.dart` — Unified login + connect flow
+- `lib/presentation/screens/dog_profile/add_dog_screen.dart` — Breed field
+- `lib/presentation/screens/drive/drive_screen.dart` — Respect mode lock
+- `lib/presentation/screens/home/home_screen.dart` — Remove disconnect redirect
+- `lib/presentation/screens/settings/settings_screen.dart` — Disconnect → login
+- `lib/presentation/widgets/controls/quick_actions.dart` — Fix upload crash
+
+### Commits This Session:
+- `9c26203` - fix: Build 28 — mode lock for missions, upload crash, breed field, unified login
+
+### Architecture Notes:
+- `ModeState.isModeLocked` prevents mode changes during active missions
+- `mission_progress` event with `action: 'started'` triggers lock
+- `mission_complete` or `mission_stopped` releases lock
+- New providers: `isMissionActiveProvider`, `activeMissionNameProvider`
+- Login flow: authenticate → connect WebSocket → go to /home (one step)
+
+### Next Session:
+1. Test mission mode lock on physical device with robot
+2. Verify upload works on iOS after FileType.custom change
+3. Test breed field saves and displays correctly
+4. Verify reconnect banner works smoothly after connection drop
+
+### Important Notes/Warnings:
+- Run `dart run build_runner build --delete-conflicting-outputs` after provider changes
+- The `/connect` route still exists as fallback but not part of main flow
+- WebRTC provider already handles pause/resume on app lifecycle (previous session)
+
+---
+
 ## Session: 2026-01-26
 **Goal:** Fix WebRTC session churn on background + mode change timeout false positives
 **Status:** Complete
@@ -71,47 +136,8 @@
    - Removed redundant connection details
    - Added WiFi setup help expandable section
 
-4. **Command Audit for device_id**
-   - Verified all `ws.send()` calls include `device_id` where needed
-   - WebRTC signaling uses session-based routing (correct)
-   - All device-routed commands properly include device_id
-
-5. **Debug Logging for Device Selection**
-   - Added logging to `paired_devices_provider.dart` for device selection flow
-   - Logs device ID, online status map, and completion
-
-### Key Code Changes Made:
-
-#### Modified Files:
-- `lib/domain/providers/mode_provider.dart` - Complete rewrite with optimistic updates
-  - New: ModeState, ModeStateNotifier, displayModeProvider, modeErrorProvider
-  - 5-second timeout with revert on failure
-  - WebSocket event listener for confirmations
-- `lib/core/network/websocket_client.dart` - Added status_update handler
-- `lib/domain/providers/telemetry_provider.dart` - Added status_update case
-- `lib/domain/providers/paired_devices_provider.dart` - Added debug logging
-- `lib/presentation/screens/home/home_screen.dart` - Updated _ModeSelector for optimistic UI
-- `lib/presentation/screens/settings/settings_screen.dart` - Complete UI consolidation
-
 ### Commits This Session:
 - `15afac8` - feat: Optimistic mode UI, status_update handler, settings consolidation
-
-### Working Features:
-- Optimistic mode changes with timeout/revert
-- status_update event processing
-- Consolidated settings with device management
-- Device switching with proper video reconnection
-- 3-tier connection status (disconnected/relayConnected/robotOnline)
-
-### Architecture Notes:
-- `displayModeProvider` returns pending mode for immediate UI feedback
-- `modeErrorProvider` for toast display (auto-clears after 5 seconds)
-- Legacy `modeControlProvider` delegates to new `modeStateProvider.notifier`
-
-### Next Session:
-1. Test optimistic mode on physical device
-2. Verify status_update events from robot trigger confirmations
-3. Debug any remaining robot offline display issues
 
 ---
 
@@ -131,57 +157,8 @@
    - Relay sends ice_servers as List, not wrapped Map
    - Added type check: `iceServers is List ? {'iceServers': iceServers} : iceServers`
 
-3. **Command Debug Logging**
-   - Added `WS SEND: $json` logging to websocket_client.dart
-   - Traced all commands being sent correctly
-
-4. **Servo Pan Inversion**
-   - Fixed joystick left/right being backwards for camera pan
-   - Negated pan value in pan_tilt_control.dart
-
-### Key Code Changes Made:
-
-#### Deleted Files:
-- `lib/data/services/webrtc_service.dart` (replaced by provider)
-- `lib/domain/providers/webrtc_handler.dart` (merged into webrtc_provider)
-
-#### Modified Files:
-- `lib/domain/providers/webrtc_provider.dart` - Complete rewrite as StateNotifierProvider
-- `lib/core/network/websocket_client.dart` - Added debug logging
-- `lib/presentation/widgets/video/webrtc_video_view.dart` - Updated for new provider
-- `lib/presentation/widgets/controls/pan_tilt_control.dart` - Pan inversion fix
-- `lib/presentation/screens/home/home_screen.dart` - Removed old imports
-- `lib/presentation/screens/drive/drive_screen.dart` - Updated WebRTCVideoView usage
-
-### Working Features (Confirmed):
-- LED commands (rainbow, celebration patterns)
-- Audio commands (good.mp3)
-- Treat dispenser
-- Servo control (pan/tilt) - now with correct direction
-
-### Unresolved Issues (Robot-Side):
-
-1. **Motor Control Not Responding**
-   - App sends correct: `{"type":"command","command":"motor","data":{"left":0.48,"right":0.04}}`
-   - Robot not executing - check robot's motor command handler
-
-2. **WebRTC Video Not Displaying**
-   - App logs: "Peer connection created, waiting for offer"
-   - Robot needs to send `webrtc_offer` after receiving `webrtc_request`
-
-### Robot-Side Fix Made (by user):
-- Changed `message.get('params', {})` → `message.get('data', {})` in RelayClient
-- This fixed LED, audio, treat, servo - but motor still not working
-
-### Next Session:
-1. Debug robot's motor command handler specifically
-2. Ensure robot sends WebRTC offer for video
-3. Remove debug logging once testing complete
-
-### Important Notes:
-- Default device ID: `wimz_robot_01`
-- Command format: `{"type":"command","command":"<cmd>","data":{...}}`
-- WebRTC signaling via WebSocket, not separate service
+### Commits This Session:
+- WebRTC architecture rewrite
 
 ---
 
@@ -189,40 +166,11 @@
 **Goal:** Update relay connection URLs to production server
 **Status:** Complete
 
-### Problems Solved This Session:
-
-1. **Production URL Configuration**
-   - Changed API URL from api.wimz.io → api.wimzai.com
-   - Changed WebSocket path from /ws → /ws/app
-   - Set default environment to Environment.prod
-
-2. **Cloud Mode Telemetry**
-   - Disabled REST polling to /telemetry in production mode
-   - Telemetry now received via WebSocket events from relay
-   - Robot → Relay → App flow implemented
-
-3. **Build Environment**
-   - Added Linux platform support for desktop testing
-   - Installed build tools (clang, ninja, lld, pkg-config)
-
-### Key Code Changes Made:
-
-#### Modified Files:
-- `lib/core/config/environment.dart` - Production URLs, default env
-- `lib/core/network/dio_client.dart` - Default base URL initialization
-- `lib/domain/providers/telemetry_provider.dart` - WebSocket-only telemetry in cloud mode
-
 ### Configuration Now Active:
 - REST API: https://api.wimzai.com
 - WebSocket: wss://api.wimzai.com/ws/app
 - Cloud mode: Telemetry via WebSocket only (no REST polling)
 
-### Commits:
-- `dd0e41d` - feat: Update to production relay server
-- `5d2599e` - feat: Add dog profiles, notifications, and Linux platform
-
 ### GitHub:
 - Repository: https://github.com/lolygagv2/dogbot-app
 - Ready for Codemagic CI/CD
-
----
