@@ -12,7 +12,7 @@ enum VoiceCommandType {
   spin('spin', 'Spin', 'Say "Spin" enthusiastically'),
   come('come', 'Come', 'Say "Come" or "Come here"'),
   treat('treat', 'Want a treat?', 'Say "Want a treat?" playfully'),
-  goodDog('good_dog', 'Good dog!', 'Say "Good dog!" with praise'),
+  goodDog('good', 'Good dog!', 'Say "Good dog!" with praise'),
   no('no', 'No / Bad', 'Say "No" or "Bad" firmly');
 
   final String id;

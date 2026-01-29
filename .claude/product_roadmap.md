@@ -450,7 +450,7 @@ from missions import MissionController
 mission = MissionController("sit_training")
 mission.start()
 mission.wait_for_condition("sit", duration=3.0)
-mission.reward(treat=True, audio="good_dog.mp3", lights="celebration")
+mission.reward(treat=True, audio="good.mp3", lights="celebration")
 mission.log_event("success")
 mission.end()
 ```

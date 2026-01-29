@@ -216,7 +216,7 @@ Connect to `ws://{host}:8000/ws` for real-time updates.
 // Quick actions
 {"command": "treat"}
 {"command": "led", "pattern": "celebration"}
-{"command": "audio", "file": "good_dog.mp3"}
+{"command": "audio", "file": "good.mp3"}
 ```
 
 ---

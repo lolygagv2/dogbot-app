@@ -155,7 +155,7 @@
 
 ### Working Features (Confirmed):
 - LED commands (rainbow, celebration patterns)
-- Audio commands (good_dog.mp3)
+- Audio commands (good.mp3)
 - Treat dispenser
 - Servo control (pan/tilt) - now with correct direction
 
