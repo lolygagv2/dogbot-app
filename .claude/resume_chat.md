@@ -1,6 +1,79 @@
 # WIM-Z Resume Chat Log
 
-## Session: 2026-01-29
+## Session: 2026-01-29 (Build 29)
+**Goal:** Build 29 — Fix mode sync, voice dog_id, profile issues, motor trim, logout, remove connect screen
+**Status:** ✅ Complete
+
+### Problems Solved This Session:
+
+1. **Mode State Not Updating in UI**
+   - **Problem:** Robot sends `status_update` and `mission_progress` events but UI shows wrong mode (e.g., "Manual" when in "Mission")
+   - **Fix:** Added explicit `mission_progress/complete/stopped` handlers in `websocket_client.dart`
+   - Added periodic telemetry sync (every 2s) in `mode_provider.dart` to catch missed WebSocket events
+   - New `_startTelemetrySync()` and `_syncFromTelemetry()` methods
+
+2. **Voice Commands Missing dog_id**
+   - **Problem:** Logs showed `play_voice, params: {'voice_type': 'no'}` with no dog_id
+   - **Fix:** Now require selected dog before sending voice commands
+   - Show "Please select a dog first" error if no dog selected
+   - Changed `call_dog` to pass dog info directly via `ws.sendCallDog()` instead of through provider
+
+3. **Dog Profile Issues**
+   - **Voice button blank screen:** Changed to use `/voice-setup` route with extra data instead of nested route
+   - **Photo doesn't save:** Now copies photo to permanent location (`dog_photos/` in app documents) before saving path
+   - **Breed dialog issues:** Fixed context handling — don't pop bottom sheet before dialog, capture references upfront
+
+4. **Motor Trim Needs 50%**
+   - **Problem:** Trim range was only -20% to +20%
+   - **Fix:** Changed to -50% to +50% in `settings_provider.dart` and slider UI
+
+5. **Sign Out Clears All Dogs**
+   - **Problem:** `logout()` called `clearState()` on dog profiles, wiping local data
+   - **Fix:** Removed dog profile clearing from logout — dogs persist locally regardless of auth
+
+6. **Two Login Screens**
+   - **Problem:** `/connect` screen was redundant since login handles everything
+   - **Fix:** Removed `/connect` route and deleted `connect_screen.dart`
+
+### Key Code Changes Made:
+
+#### Modified Files:
+- `lib/core/network/websocket_client.dart` — Explicit mission event handlers
+- `lib/domain/providers/mode_provider.dart` — Periodic telemetry sync
+- `lib/domain/providers/auth_provider.dart` — Don't clear dogs on logout
+- `lib/domain/providers/settings_provider.dart` — Motor trim 50%
+- `lib/presentation/widgets/controls/quick_actions.dart` — Require selected dog for voice commands
+- `lib/presentation/screens/dog_profile/dog_profile_screen.dart` — Photo saving, dialog fixes, voice route
+- `lib/presentation/screens/settings/settings_screen.dart` — Slider range 50%
+- `lib/app.dart` — Remove connect route
+- `pubspec.yaml` — Version bump
+
+#### Deleted Files:
+- `lib/presentation/screens/connect/connect_screen.dart`
+
+### Commits This Session:
+- `c1151f6` - fix: Build 29 — mode sync, voice dog_id, profile fixes, motor trim, logout
+
+### Architecture Notes:
+- `_telemetrySyncTimer` in ModeStateNotifier runs every 2s to sync mode from telemetry
+- Photo files saved to `getApplicationDocumentsDirectory()/dog_photos/<dogId>.jpg`
+- Dog profiles no longer cleared on logout — only missions state is cleared
+- Voice commands require `selectedDog != null` before sending
+
+### Next Session:
+1. Test mode sync with physical robot during missions
+2. Verify photo persistence across app restarts
+3. Test voice commands show error when no dog selected
+4. Verify breed saves and displays correctly
+5. Test logout preserves dogs
+
+### Important Notes/Warnings:
+- Run `dart run build_runner build --delete-conflicting-outputs` after provider changes
+- Motor trim range increased — existing saved values still valid (clamped on load)
+
+---
+
+## Session: 2026-01-29 (Build 28)
 **Goal:** Build 28 — Fix mission mode conflicts, upload crash, breed field, unified login
 **Status:** ✅ Complete
 
@@ -31,37 +104,8 @@
    - Users stay in app — MainShell's reconnect banner handles reconnection
    - "Disconnect" in Settings goes to `/login` (explicit user action)
 
-### Key Code Changes Made:
-
-#### Modified Files:
-- `lib/domain/providers/mode_provider.dart` — Mission mode lock, event handling, new providers
-- `lib/presentation/screens/auth/login_screen.dart` — Unified login + connect flow
-- `lib/presentation/screens/dog_profile/add_dog_screen.dart` — Breed field
-- `lib/presentation/screens/drive/drive_screen.dart` — Respect mode lock
-- `lib/presentation/screens/home/home_screen.dart` — Remove disconnect redirect
-- `lib/presentation/screens/settings/settings_screen.dart` — Disconnect → login
-- `lib/presentation/widgets/controls/quick_actions.dart` — Fix upload crash
-
 ### Commits This Session:
 - `9c26203` - fix: Build 28 — mode lock for missions, upload crash, breed field, unified login
-
-### Architecture Notes:
-- `ModeState.isModeLocked` prevents mode changes during active missions
-- `mission_progress` event with `action: 'started'` triggers lock
-- `mission_complete` or `mission_stopped` releases lock
-- New providers: `isMissionActiveProvider`, `activeMissionNameProvider`
-- Login flow: authenticate → connect WebSocket → go to /home (one step)
-
-### Next Session:
-1. Test mission mode lock on physical device with robot
-2. Verify upload works on iOS after FileType.custom change
-3. Test breed field saves and displays correctly
-4. Verify reconnect banner works smoothly after connection drop
-
-### Important Notes/Warnings:
-- Run `dart run build_runner build --delete-conflicting-outputs` after provider changes
-- The `/connect` route still exists as fallback but not part of main flow
-- WebRTC provider already handles pause/resume on app lifecycle (previous session)
 
 ---
 
@@ -85,29 +129,8 @@
    - If telemetry shows mode matches pending mode, treats it as silent confirmation (no error shown)
    - Only shows "Mode change timed out" if mode genuinely didn't change
 
-### Key Code Changes Made:
-
-#### Modified Files:
-- `lib/domain/providers/webrtc_provider.dart` - Added `_isPaused`, `pause()`, `resume()`, guarded all reconnection paths
-- `lib/app.dart` - Converted `WimzApp` to `ConsumerStatefulWidget` with `WidgetsBindingObserver` for lifecycle management
-- `lib/domain/providers/mode_provider.dart` - Updated `_onTimeout()` to check telemetry before showing error
-- `pubspec.yaml` - Version bump to 1.0.0+21
-
 ### Commits This Session:
 - `58d531d` - fix: Prevent WebRTC session churn on background, fix mode timeout false positives
-
-### Architecture Notes:
-- `WimzApp` is now a `ConsumerStatefulWidget` with `WidgetsBindingObserver` mixin (was `ConsumerWidget`)
-- `AppLifecycleState.paused`/`inactive` → `webrtcProvider.pause()` (close + suppress reconnects)
-- `AppLifecycleState.resumed` → `webrtcProvider.resume()` (reconnect to last device)
-- `_lastDeviceId` preserved across pause/resume cycle for seamless reconnection
-- Mode timeout confirmation timeout remains 10 seconds
-
-### Next Session:
-1. Test WebRTC pause/resume on physical device (screen off/on cycle)
-2. Verify no more session churn in logs when backgrounded
-3. Test mode changes with robot to confirm timeout fix works
-4. Consider adding WebSocket pause/resume if needed (currently WebSocket stays alive in background - intentional for receiving events)
 
 ---
 
@@ -156,9 +179,6 @@
    - Fixed: `type 'List<dynamic>' is not a subtype of type 'Map<String, dynamic>'`
    - Relay sends ice_servers as List, not wrapped Map
    - Added type check: `iceServers is List ? {'iceServers': iceServers} : iceServers`
-
-### Commits This Session:
-- WebRTC architecture rewrite
 
 ---
 
