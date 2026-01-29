@@ -6,6 +6,7 @@ import '../../../core/config/environment.dart';
 import '../../../core/constants/app_constants.dart';
 import '../../../core/network/dio_client.dart';
 import '../../../domain/providers/auth_provider.dart';
+import '../../../domain/providers/connection_provider.dart';
 import '../../theme/app_theme.dart';
 
 /// Login/Register screen for WIM-Z cloud connection
@@ -65,8 +66,12 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     }
 
     if (success && mounted) {
-      // Navigate to connect screen (which will now auto-connect with token)
-      context.go('/connect', extra: {'host': host, 'port': port});
+      // Connect to WebSocket and go directly to home
+      // Robot connection status is handled within the app (reconnect banner, device pairing)
+      await ref.read(connectionProvider.notifier).connect(host, port);
+      if (mounted) {
+        context.go('/home');
+      }
     }
   }
 
@@ -292,13 +297,19 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   const Divider(),
                   const SizedBox(height: 16),
                   OutlinedButton(
-                    onPressed: () {
-                      if (_hostController.text.isNotEmpty) {
-                        final host = _hostController.text.trim();
-                        final port = int.tryParse(_portController.text.trim()) ?? 8000;
-                        context.go('/connect', extra: {'host': host, 'port': port, 'skipAuth': true});
-                      } else {
-                        context.go('/connect');
+                    onPressed: () async {
+                      final host = _hostController.text.trim().isNotEmpty
+                          ? _hostController.text.trim()
+                          : AppConstants.defaultHost;
+                      final port = int.tryParse(_portController.text.trim()) ?? AppConstants.defaultPort;
+
+                      // Configure Dio and connect directly
+                      final baseUrl = AppConfig.baseUrl(host, port);
+                      DioClient.setBaseUrl(baseUrl);
+
+                      await ref.read(connectionProvider.notifier).connect(host, port);
+                      if (mounted) {
+                        context.go('/home');
                       }
                     },
                     child: const Text('Connect Without Login'),

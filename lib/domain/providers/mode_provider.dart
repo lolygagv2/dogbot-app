@@ -33,6 +33,9 @@ class ModeState {
   final bool isChanging;             // True while waiting for confirmation
   final String? error;               // Error message if mode change failed
   final DateTime? errorTime;         // When error occurred (for auto-dismiss)
+  final String? activeMissionId;     // ID of active mission (if any)
+  final String? activeMissionName;   // Name of active mission (if any)
+  final bool isModeLocked;           // True when mission is active (mode can't change)
 
   const ModeState({
     this.currentMode = RobotMode.idle,
@@ -40,6 +43,9 @@ class ModeState {
     this.isChanging = false,
     this.error,
     this.errorTime,
+    this.activeMissionId,
+    this.activeMissionName,
+    this.isModeLocked = false,
   });
 
   ModeState copyWith({
@@ -48,8 +54,12 @@ class ModeState {
     bool? isChanging,
     String? error,
     DateTime? errorTime,
+    String? activeMissionId,
+    String? activeMissionName,
+    bool? isModeLocked,
     bool clearPending = false,
     bool clearError = false,
+    bool clearMission = false,
   }) {
     return ModeState(
       currentMode: currentMode ?? this.currentMode,
@@ -57,8 +67,17 @@ class ModeState {
       isChanging: isChanging ?? this.isChanging,
       error: clearError ? null : (error ?? this.error),
       errorTime: clearError ? null : (errorTime ?? this.errorTime),
+      activeMissionId: clearMission ? null : (activeMissionId ?? this.activeMissionId),
+      activeMissionName: clearMission ? null : (activeMissionName ?? this.activeMissionName),
+      isModeLocked: isModeLocked ?? this.isModeLocked,
     );
   }
+
+  /// True if a mission is currently active
+  bool get isMissionActive => activeMissionId != null;
+
+  /// Check if mode change is allowed
+  bool canChangeMode() => !isModeLocked;
 
   /// The mode to display in UI (optimistic - shows pending if changing)
   RobotMode get displayMode => pendingMode ?? currentMode;
@@ -115,8 +134,68 @@ class ModeStateNotifier extends StateNotifier<ModeState> {
         if (mode != null) {
           _handleModeConfirmation(mode);
         }
+      } else if (event.type == 'mission_progress') {
+        _handleMissionProgress(event.data);
+      } else if (event.type == 'mission_complete' || event.type == 'mission_stopped') {
+        _handleMissionEnded();
       }
     });
+  }
+
+  /// Handle mission_progress events to lock/unlock mode
+  void _handleMissionProgress(Map<String, dynamic> data) {
+    final action = data['action'] as String?;
+    final missionId = data['mission_id']?.toString() ?? data['id']?.toString();
+    final missionName = data['mission'] as String? ?? data['mission_name'] as String? ?? missionId;
+
+    print('Mode: mission_progress action=$action, mission=$missionName');
+
+    switch (action) {
+      case 'started':
+        // Mission started - lock mode to mission
+        print('Mode: Mission started: $missionName, locking mode');
+        state = state.copyWith(
+          currentMode: RobotMode.mission,
+          activeMissionId: missionId,
+          activeMissionName: missionName,
+          isModeLocked: true,
+          isChanging: false,
+          clearPending: true,
+          clearError: true,
+        );
+        break;
+      case 'completed':
+      case 'stopped':
+        _handleMissionEnded();
+        break;
+      // For progress updates (no action field), don't change mode state
+      default:
+        // If we get a progress update without action but we're not in mission mode,
+        // and we have an active mission, set mode to mission
+        if (missionId != null && state.currentMode != RobotMode.mission) {
+          print('Mode: Progress update received, ensuring mission mode');
+          state = state.copyWith(
+            currentMode: RobotMode.mission,
+            activeMissionId: missionId,
+            activeMissionName: missionName,
+            isModeLocked: true,
+          );
+        }
+        break;
+    }
+  }
+
+  /// Handle mission ended (completed or stopped)
+  void _handleMissionEnded() {
+    final wasActive = state.activeMissionName;
+    print('Mode: Mission ended: $wasActive, unlocking mode');
+    state = state.copyWith(
+      currentMode: RobotMode.idle,
+      isModeLocked: false,
+      clearMission: true,
+      isChanging: false,
+      clearPending: true,
+    );
   }
 
   /// Handle mode confirmation from telemetry/status_update
@@ -161,6 +240,17 @@ class ModeStateNotifier extends StateNotifier<ModeState> {
     if (!_ref.read(connectionProvider).isConnected) {
       state = state.copyWith(
         error: 'Not connected to robot',
+        errorTime: DateTime.now(),
+      );
+      _scheduleErrorDismiss();
+      return;
+    }
+
+    // Don't change if mode is locked (mission active)
+    if (state.isModeLocked && mode != RobotMode.mission) {
+      print('Mode: Cannot change to ${mode.value} - mode locked (mission: ${state.activeMissionName})');
+      state = state.copyWith(
+        error: 'Cannot change mode while mission is active',
         errorTime: DateTime.now(),
       );
       _scheduleErrorDismiss();
@@ -272,6 +362,16 @@ final displayModeProvider = Provider<RobotMode>((ref) {
 final modeErrorProvider = Provider<String?>((ref) {
   final state = ref.watch(modeStateProvider);
   return state.hasRecentError ? state.error : null;
+});
+
+/// Provider for checking if mission is active (mode locked)
+final isMissionActiveProvider = Provider<bool>((ref) {
+  return ref.watch(modeStateProvider).isMissionActive;
+});
+
+/// Provider for active mission name
+final activeMissionNameProvider = Provider<String?>((ref) {
+  return ref.watch(modeStateProvider).activeMissionName;
 });
 
 /// Legacy provider for mode control (delegates to new state notifier)

@@ -31,11 +31,14 @@ class _DriveScreenState extends ConsumerState<DriveScreen> {
     WakelockPlus.enable();
     print('DriveScreen: Wakelock enabled');
 
-    // Only switch to manual if not in mission mode
+    // Only switch to manual if not in mission mode and mode is not locked
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final modeState = ref.read(modeStateProvider);
-      if (modeState.currentMode == RobotMode.mission) {
-        print('DriveScreen: Mission active, keeping mission mode');
+      if (modeState.isMissionActive || modeState.isModeLocked) {
+        print('DriveScreen: Mission active (${modeState.activeMissionName}), keeping mission mode');
+        _missionWasActive = true;
+      } else if (modeState.currentMode == RobotMode.mission) {
+        print('DriveScreen: In mission mode, keeping it');
         _missionWasActive = true;
       } else {
         _ensureManualMode();
@@ -73,7 +76,7 @@ class _DriveScreenState extends ConsumerState<DriveScreen> {
     final modeState = ref.watch(modeStateProvider);
 
     // Check if we're ready to drive (in manual mode and not pending)
-    final isMissionActive = modeState.currentMode == RobotMode.mission;
+    final isMissionActive = modeState.isMissionActive || modeState.currentMode == RobotMode.mission;
     final isReady = (modeState.currentMode == RobotMode.manual &&
         modeState.pendingMode == null) || isMissionActive;
 

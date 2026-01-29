@@ -23,6 +23,7 @@ class _AddDogScreenState extends ConsumerState<AddDogScreen> {
 
   // Form data
   final _nameController = TextEditingController();
+  final _breedController = TextEditingController();
   DogColor _selectedColor = DogColor.mixed;
   String? _photoPath;
   final _arucoController = TextEditingController();
@@ -32,6 +33,7 @@ class _AddDogScreenState extends ConsumerState<AddDogScreen> {
   @override
   void dispose() {
     _nameController.dispose();
+    _breedController.dispose();
     _arucoController.dispose();
     super.dispose();
   }
@@ -143,6 +145,22 @@ class _AddDogScreenState extends ConsumerState<AddDogScreen> {
               }
               return null;
             },
+          ),
+          const SizedBox(height: 24),
+          const Text(
+            "What breed is your dog?",
+            style: TextStyle(fontSize: 16),
+          ),
+          const SizedBox(height: 16),
+          TextFormField(
+            controller: _breedController,
+            decoration: const InputDecoration(
+              labelText: 'Breed',
+              hintText: 'e.g., Golden Retriever, Mixed, Unknown',
+              border: OutlineInputBorder(),
+              prefixIcon: Icon(Icons.category),
+            ),
+            textCapitalization: TextCapitalization.words,
           ),
         ],
       ),
@@ -479,9 +497,11 @@ class _AddDogScreenState extends ConsumerState<AddDogScreen> {
       return;
     }
 
+    final breed = _breedController.text.trim();
     final profile = DogProfile(
       id: 'dog_${DateTime.now().millisecondsSinceEpoch}',
       name: name,
+      breed: breed.isNotEmpty ? breed : null,
       color: _selectedColor,
       localPhotoPath: _photoPath,
       arucoMarkerId: _arucoController.text.isNotEmpty

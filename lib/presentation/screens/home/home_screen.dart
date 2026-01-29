@@ -5,7 +5,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../data/models/dog_profile.dart';
-import '../../../domain/providers/connection_provider.dart';
 import '../../../domain/providers/device_provider.dart';
 import '../../../domain/providers/dog_profiles_provider.dart';
 import '../../../domain/providers/guardian_events_provider.dart';
@@ -25,18 +24,10 @@ class HomeScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final connection = ref.watch(connectionProvider);
+    // Connection status is shown via MainShell's reconnect banner
+    // No redirect needed - user stays in app and can reconnect from banner
     final telemetry = ref.watch(telemetryProvider);
     final deviceId = ref.watch(deviceIdProvider);
-
-    // Redirect only if completely disconnected from relay
-    // Allow staying on home screen while waiting for robot
-    if (connection.status == ConnectionStatus.disconnected ||
-        connection.status == ConnectionStatus.error) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        context.go('/connect');
-      });
-    }
 
     return Scaffold(
       appBar: AppBar(

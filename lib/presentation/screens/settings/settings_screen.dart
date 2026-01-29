@@ -237,7 +237,7 @@ class _SimpleConnectionTile extends ConsumerWidget {
           ? TextButton(
               onPressed: () async {
                 await ref.read(connectionProvider.notifier).disconnect();
-                if (context.mounted) context.go('/connect');
+                if (context.mounted) context.go('/login');
               },
               child: const Text('Disconnect'),
             )

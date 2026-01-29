@@ -4,6 +4,7 @@ import 'dart:io';
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/constants/api_endpoints.dart';
@@ -182,17 +183,53 @@ class _QuickActionsState extends ConsumerState<QuickActions> {
 
   Future<void> _pickAndUploadSong(BuildContext context, WidgetRef ref) async {
     try {
+      print('[UPLOAD] Opening file picker...');
+
+      // IMPORTANT: Use FileType.custom with explicit extensions
+      // DO NOT use FileType.audio - it opens Apple Music on iOS and crashes
       final result = await FilePicker.platform.pickFiles(
-        type: FileType.audio,
+        type: FileType.custom,
+        allowedExtensions: ['mp3'],  // Only MP3 files
         allowMultiple: false,
       );
 
-      if (result == null || result.files.isEmpty) return;
+      if (result == null || result.files.isEmpty) {
+        print('[UPLOAD] User cancelled');
+        return;
+      }
 
       final file = result.files.first;
-      if (file.path == null) return;
+      print('[UPLOAD] Selected: ${file.name}, size: ${file.size} bytes');
+
+      // Validate extension
+      if (!file.name.toLowerCase().endsWith('.mp3')) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Please select an MP3 file'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+        return;
+      }
+
+      // Check we have a valid path
+      if (file.path == null) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Could not access file'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+        return;
+      }
 
       final bytes = await File(file.path!).readAsBytes();
+      print('[UPLOAD] Read ${bytes.length} bytes');
+
       final base64Data = base64Encode(bytes);
       final filename = file.name;
       final format = file.extension ?? 'mp3';
@@ -209,8 +246,19 @@ class _QuickActionsState extends ConsumerState<QuickActions> {
           ),
         );
       }
+    } on PlatformException catch (e) {
+      print('[UPLOAD] Platform error: ${e.code} - ${e.message}');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Could not open file picker: ${e.message}'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     } catch (e, stackTrace) {
-      debugPrint('Song upload failed: $e\n$stackTrace');
+      print('[UPLOAD] Error: $e');
+      print('[UPLOAD] Stack: $stackTrace');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
