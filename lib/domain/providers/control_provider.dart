@@ -272,22 +272,35 @@ class ServoControlNotifier extends StateNotifier<ServoState> {
   }
 }
 
-/// Provider for treat dispenser actions
+/// Provider for treat dispenser actions with debouncing
 final treatControlProvider = Provider<TreatControl>((ref) {
   return TreatControl(ref);
 });
 
-/// Treat dispenser control
+/// Treat dispenser control with debouncing
 class TreatControl {
   final Ref _ref;
 
+  // Debounce - treats should have longer cooldown to prevent overfeeding
+  static const _debounceMs = 1000; // 1 second between treats
+  DateTime? _lastDispense;
+
   TreatControl(this._ref);
 
-  /// Dispense a treat
+  bool _canExecute(DateTime? lastTime) {
+    if (lastTime == null) return true;
+    return DateTime.now().difference(lastTime).inMilliseconds > _debounceMs;
+  }
+
+  /// Dispense a treat (debounced - 1 second cooldown)
   Future<void> dispense() async {
     if (!_ref.read(connectionProvider).isConnected) return;
-
-    // Use WebSocket for speed
+    if (!_canExecute(_lastDispense)) {
+      print('TreatControl: dispense() debounced');
+      return;
+    }
+    _lastDispense = DateTime.now();
+    print('TreatControl: dispense() sent');
     _ref.read(websocketClientProvider).sendTreatCommand();
   }
 
@@ -320,20 +333,34 @@ class CallDogControl {
   }
 }
 
-/// Provider for LED control
+/// Provider for LED control with debouncing
 final ledControlProvider = Provider<LedControl>((ref) {
   return LedControl(ref);
 });
 
-/// LED control
+/// LED control with debouncing
 class LedControl {
   final Ref _ref;
 
+  // Debounce for LED pattern changes
+  static const _debounceMs = 200;
+  DateTime? _lastPattern;
+
   LedControl(this._ref);
 
-  /// Set LED pattern
+  bool _canExecute(DateTime? lastTime) {
+    if (lastTime == null) return true;
+    return DateTime.now().difference(lastTime).inMilliseconds > _debounceMs;
+  }
+
+  /// Set LED pattern (debounced)
   void setPattern(String pattern) {
     if (!_ref.read(connectionProvider).isConnected) return;
+    if (!_canExecute(_lastPattern)) {
+      print('LedControl: setPattern() debounced');
+      return;
+    }
+    _lastPattern = DateTime.now();
     _ref.read(websocketClientProvider).sendLedCommand(pattern);
   }
 
@@ -350,16 +377,27 @@ class LedControl {
   }
 }
 
-/// Provider for audio control
+/// Provider for audio control with debouncing
 final audioControlProvider = Provider<AudioControl>((ref) {
   return AudioControl(ref);
 });
 
-/// Audio control
+/// Audio control with debouncing to prevent command queue buildup
 class AudioControl {
   final Ref _ref;
 
+  // Debounce tracking - prevents rapid-fire commands
+  static const _debounceMs = 300;
+  DateTime? _lastNext;
+  DateTime? _lastPrev;
+  DateTime? _lastToggle;
+
   AudioControl(this._ref);
+
+  bool _canExecute(DateTime? lastTime) {
+    if (lastTime == null) return true;
+    return DateTime.now().difference(lastTime).inMilliseconds > _debounceMs;
+  }
 
   /// Play audio file
   void play(String filename) {
@@ -383,21 +421,39 @@ class AudioControl {
     _ref.read(websocketClientProvider).sendAudioVolume(level);
   }
 
-  /// Play next track
+  /// Play next track (debounced)
   void next() {
     if (!_ref.read(connectionProvider).isConnected) return;
+    if (!_canExecute(_lastNext)) {
+      print('AudioControl: next() debounced');
+      return;
+    }
+    _lastNext = DateTime.now();
+    print('AudioControl: next() sent');
     _ref.read(websocketClientProvider).sendAudioNext();
   }
 
-  /// Play previous track
+  /// Play previous track (debounced)
   void prev() {
     if (!_ref.read(connectionProvider).isConnected) return;
+    if (!_canExecute(_lastPrev)) {
+      print('AudioControl: prev() debounced');
+      return;
+    }
+    _lastPrev = DateTime.now();
+    print('AudioControl: prev() sent');
     _ref.read(websocketClientProvider).sendAudioPrev();
   }
 
-  /// Toggle play/pause
+  /// Toggle play/pause (debounced)
   void toggle() {
     if (!_ref.read(connectionProvider).isConnected) return;
+    if (!_canExecute(_lastToggle)) {
+      print('AudioControl: toggle() debounced');
+      return;
+    }
+    _lastToggle = DateTime.now();
+    print('AudioControl: toggle() sent');
     _ref.read(websocketClientProvider).sendAudioToggle();
   }
 }

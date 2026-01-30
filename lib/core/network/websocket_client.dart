@@ -264,6 +264,13 @@ class WebSocketClient {
           _eventController.add(modeChangedEvent);
           break;
 
+        // Audio state event (Build 31) - sync music player UI
+        case 'audio_state':
+          print('WS: Received audio_state: $json');
+          final audioStateEvent = WsEvent.fromJson(json);
+          _eventController.add(audioStateEvent);
+          break;
+
         // Bark event - forward as guardian event for event feed
         case 'bark':
           final barkEvent = WsEvent(
@@ -384,7 +391,8 @@ class WebSocketClient {
   }
 
   /// Send a command to the robot via relay
-  /// Format: {"type": "command", "device_id": "<id>", "command": "<cmd>", "data": {...}}
+  /// Format: {"type": "command", "device_id": "<id>", "command": "<cmd>", "data": {...}, "timestamp": <ms>}
+  /// Timestamp allows robot/relay to reject stale commands (>2s old)
   void sendCommand(String command, [Map<String, dynamic>? data]) {
     if (_targetDeviceId == null) {
       print('WebSocket: Cannot send command - no target device set');
@@ -395,6 +403,7 @@ class WebSocketClient {
       'device_id': _targetDeviceId,
       'command': command,
       'data': data ?? {},
+      'timestamp': DateTime.now().millisecondsSinceEpoch,
     });
   }
 

@@ -16,11 +16,17 @@ import '../../theme/app_theme.dart';
 /// Provider to track current lighting pattern index
 final _lightingIndexProvider = StateProvider<int>((ref) => 0);
 
-/// Provider to track if audio is playing
+/// Provider to track if audio is playing (synced from robot)
 final _isPlayingProvider = StateProvider<bool>((ref) => false);
 
-/// Provider to track current track name
+/// Provider to track current track name (synced from robot)
 final _currentTrackProvider = StateProvider<String?>((ref) => null);
+
+/// Provider to track playlist index (synced from robot)
+final _playlistIndexProvider = StateProvider<int>((ref) => 0);
+
+/// Provider to track playlist length (synced from robot)
+final _playlistLengthProvider = StateProvider<int>((ref) => 0);
 
 /// Provider to track volume level (0-100)
 final _volumeProvider = StateProvider<int>((ref) => 70);
@@ -34,10 +40,56 @@ class QuickActions extends ConsumerStatefulWidget {
 
 class _QuickActionsState extends ConsumerState<QuickActions> {
   Timer? _volumeDebounce;
+  StreamSubscription? _audioStateSubscription;
+
+  // Debounce tracking for voice buttons (prevents command queue buildup)
+  static const _voiceDebounceMs = 500;
+  DateTime? _lastGood;
+  DateTime? _lastCallDog;
+  DateTime? _lastWantTreat;
+  DateTime? _lastNo;
+
+  bool _canExecuteVoice(DateTime? lastTime) {
+    if (lastTime == null) return true;
+    return DateTime.now().difference(lastTime).inMilliseconds > _voiceDebounceMs;
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    // Listen for audio_state events from robot to sync UI
+    _audioStateSubscription = ref
+        .read(websocketClientProvider)
+        .eventStream
+        .where((event) => event.type == 'audio_state')
+        .listen(_handleAudioState);
+  }
+
+  void _handleAudioState(dynamic event) {
+    // event is WsEvent with type 'audio_state'
+    final data = event.data as Map<String, dynamic>;
+
+    // Update playing state
+    final playing = data['playing'] as bool? ?? false;
+    ref.read(_isPlayingProvider.notifier).state = playing;
+
+    // Update track name
+    final track = data['track'] as String?;
+    ref.read(_currentTrackProvider.notifier).state = track;
+
+    // Update playlist info
+    final playlistIndex = data['playlist_index'] as int? ?? 0;
+    final playlistLength = data['playlist_length'] as int? ?? 0;
+    ref.read(_playlistIndexProvider.notifier).state = playlistIndex;
+    ref.read(_playlistLengthProvider.notifier).state = playlistLength;
+
+    print('[AUDIO_STATE] playing=$playing, track=$track, index=$playlistIndex/$playlistLength');
+  }
 
   @override
   void dispose() {
     _volumeDebounce?.cancel();
+    _audioStateSubscription?.cancel();
     super.dispose();
   }
 
@@ -70,7 +122,7 @@ class _QuickActionsState extends ConsumerState<QuickActions> {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceEvenly,
           children: [
-            // Good button - plays voice command on robot
+            // Good button - plays voice command on robot (debounced)
             _ActionButton(
               icon: Icons.thumb_up,
               label: 'Good',
@@ -80,11 +132,13 @@ class _QuickActionsState extends ConsumerState<QuickActions> {
                   _showNoDogError(context);
                   return;
                 }
+                if (!_canExecuteVoice(_lastGood)) return;
+                _lastGood = DateTime.now();
                 ws.sendPlayVoice('good', dogId: selectedDog.id);
               },
             ),
 
-            // Call Dog button - plays recall sound
+            // Call Dog button - plays recall sound (debounced)
             _ActionButton(
               icon: Icons.campaign,
               label: 'Call Dog',
@@ -94,11 +148,13 @@ class _QuickActionsState extends ConsumerState<QuickActions> {
                   _showNoDogError(context);
                   return;
                 }
+                if (!_canExecuteVoice(_lastCallDog)) return;
+                _lastCallDog = DateTime.now();
                 ws.sendCallDog(dogId: selectedDog.id, dogName: selectedDog.name);
               },
             ),
 
-            // Give Treat button - dispenses treat only
+            // Give Treat button - dispenses treat only (debounced in provider)
             _ActionButton(
               icon: Icons.pets,
               label: 'Give Treat',
@@ -108,7 +164,7 @@ class _QuickActionsState extends ConsumerState<QuickActions> {
               },
             ),
 
-            // Want Treat? button - plays voice command on robot
+            // Want Treat? button - plays voice command on robot (debounced)
             _ActionButton(
               icon: Icons.restaurant,
               label: 'Want Treat?',
@@ -118,11 +174,13 @@ class _QuickActionsState extends ConsumerState<QuickActions> {
                   _showNoDogError(context);
                   return;
                 }
+                if (!_canExecuteVoice(_lastWantTreat)) return;
+                _lastWantTreat = DateTime.now();
                 ws.sendPlayVoice('treat', dogId: selectedDog.id);
               },
             ),
 
-            // No button - warning LED + voice command on robot
+            // No button - warning LED + voice command on robot (debounced)
             _ActionButton(
               icon: Icons.block,
               label: 'No',
@@ -132,6 +190,8 @@ class _QuickActionsState extends ConsumerState<QuickActions> {
                   _showNoDogError(context);
                   return;
                 }
+                if (!_canExecuteVoice(_lastNo)) return;
+                _lastNo = DateTime.now();
                 ledControl.setPattern(LedPatterns.warning);
                 ws.sendPlayVoice('no', dogId: selectedDog.id);
               },
@@ -170,22 +230,22 @@ class _QuickActionsState extends ConsumerState<QuickActions> {
             const SizedBox(width: 24),
 
             // Music controls row with volume
+            // State synced from robot via audio_state WebSocket events
             _MusicControlsWithVolume(
               isPlaying: isPlaying,
               volume: ref.watch(_volumeProvider),
+              trackName: ref.watch(_currentTrackProvider),
               onPrev: () {
                 audioControl.prev();
-                ref.read(_isPlayingProvider.notifier).state = true;
-                _showTrackToast(context, 'Skipped back');
+                // Don't set local state - wait for audio_state event from robot
               },
               onToggle: () {
                 audioControl.toggle();
-                ref.read(_isPlayingProvider.notifier).state = !isPlaying;
+                // Don't set local state - wait for audio_state event from robot
               },
               onNext: () {
                 audioControl.next();
-                ref.read(_isPlayingProvider.notifier).state = true;
-                _showTrackToast(context, 'Skipped forward');
+                // Don't set local state - wait for audio_state event from robot
               },
               onVolumeChanged: _onVolumeChanged,
               onUpload: () => _pickAndUploadSong(context, ref),
@@ -292,25 +352,6 @@ class _QuickActionsState extends ConsumerState<QuickActions> {
         );
       }
     }
-  }
-
-  void _showTrackToast(BuildContext context, String message) {
-    ScaffoldMessenger.of(context).hideCurrentSnackBar();
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(Icons.music_note, color: Colors.white, size: 16),
-            const SizedBox(width: 8),
-            Text(message),
-          ],
-        ),
-        duration: const Duration(milliseconds: 1500),
-        behavior: SnackBarBehavior.floating,
-        width: 180,
-      ),
-    );
   }
 
   void _showNoDogError(BuildContext context) {
@@ -456,6 +497,7 @@ class _LightingButton extends StatelessWidget {
 class _MusicControlsWithVolume extends StatelessWidget {
   final bool isPlaying;
   final int volume;
+  final String? trackName;
   final VoidCallback onPrev;
   final VoidCallback onToggle;
   final VoidCallback onNext;
@@ -465,6 +507,7 @@ class _MusicControlsWithVolume extends StatelessWidget {
   const _MusicControlsWithVolume({
     required this.isPlaying,
     required this.volume,
+    this.trackName,
     required this.onPrev,
     required this.onToggle,
     required this.onNext,
@@ -472,8 +515,20 @@ class _MusicControlsWithVolume extends StatelessWidget {
     this.onUpload,
   });
 
+  /// Extract display name from track path (e.g., "default/Wimz_theme.mp3" → "Wimz_theme")
+  String _getTrackDisplayName() {
+    if (trackName == null || trackName!.isEmpty) return '';
+    // Extract filename without path and extension
+    final parts = trackName!.split('/');
+    final filename = parts.last;
+    final dotIndex = filename.lastIndexOf('.');
+    return dotIndex > 0 ? filename.substring(0, dotIndex) : filename;
+  }
+
   @override
   Widget build(BuildContext context) {
+    final displayName = _getTrackDisplayName();
+
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -487,9 +542,9 @@ class _MusicControlsWithVolume extends StatelessWidget {
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              // Music icon
+              // Music icon - animated when playing
               Icon(
-                Icons.music_note,
+                isPlaying ? Icons.music_note : Icons.music_off,
                 color: Theme.of(context).colorScheme.primary,
                 size: 18,
               ),
@@ -531,6 +586,19 @@ class _MusicControlsWithVolume extends StatelessWidget {
             ],
           ),
         ),
+        // Track name display (when playing)
+        if (displayName.isNotEmpty) ...[
+          const SizedBox(height: 4),
+          Text(
+            displayName,
+            style: TextStyle(
+              fontSize: 10,
+              color: Theme.of(context).colorScheme.primary.withOpacity(0.8),
+            ),
+            overflow: TextOverflow.ellipsis,
+            maxLines: 1,
+          ),
+        ],
         const SizedBox(height: 8),
         // Volume slider
         SizedBox(
