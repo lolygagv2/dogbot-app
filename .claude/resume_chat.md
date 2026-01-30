@@ -1,5 +1,57 @@
 # WIM-Z Resume Chat Log
 
+## Session: 2026-01-30 (Build 31 - Part 2)
+**Goal:** Add command debouncing, timestamps, and audio_state sync
+**Status:** ✅ Complete
+
+### Problems Solved This Session:
+
+1. **Command Queue Buildup on Reconnect**
+   - **Problem:** Button mashing while robot busy caused commands to queue in relay, then all execute on reconnect (music plays, treats dispense, etc.)
+   - **Root Cause:** No debouncing on quick action buttons, relay buffers commands
+   - **Fix:** Added debouncing to all quick action controls + timestamps on all commands
+
+2. **Music Player State Out of Sync**
+   - **Problem:** App guessed play/pause state locally, got out of sync with robot
+   - **Fix:** Added `audio_state` WebSocket event handler to sync from robot
+
+3. **Investigated /audio/next Mystery**
+   - **Finding:** Robot translates WebSocket `audio_next` → REST `/audio/next` internally
+   - **Conclusion:** App did send the command, likely accidental button tap (buttons close together)
+
+### Key Code Changes Made:
+
+| File | Change |
+|------|--------|
+| `websocket_client.dart` | Added `timestamp` to all commands, added `audio_state` event handler |
+| `control_provider.dart` | Debounced audio (300ms), treat (1s), LED (200ms) controls |
+| `quick_actions.dart` | Debounced voice buttons (500ms), audio_state subscription, track name display |
+
+### Debounce Values:
+- Audio next/prev/toggle: 300ms
+- Treat dispense: 1000ms (prevent overfeeding)
+- LED pattern: 200ms
+- Voice buttons (Good/Call/Treat/No): 500ms
+
+### Commits This Session:
+- `3ac53e4` - fix: Add command debouncing and timestamps to prevent queue buildup
+
+### Robot/Relay TODO:
+```python
+# Reject stale commands (>2s old)
+age_ms = time.time() * 1000 - cmd.get('timestamp', 0)
+if age_ms > 2000:
+    logger.info(f"Dropping stale: {cmd['command']} ({age_ms:.0f}ms)")
+    return
+```
+
+### Next Session:
+1. Test debouncing prevents queue buildup
+2. Verify audio_state sync works with robot
+3. Implement stale command rejection on robot/relay side
+
+---
+
 ## Session: 2026-01-30 (Build 31)
 **Goal:** Build 31 — Mission progress overlay, mode locking, coach-style flow display
 **Status:** ✅ Complete
