@@ -150,6 +150,9 @@ class ModeStateNotifier extends StateNotifier<ModeState> {
         if (mode != null) {
           _handleModeConfirmation(mode);
         }
+      } else if (event.type == 'mode_changed') {
+        // Build 31: mode_changed event with locked state
+        _handleModeChangedEvent(event.data);
       } else if (event.type == 'status_update' ||
                  event.type == 'battery' ||
                  event.type == 'telemetry') {
@@ -164,6 +167,35 @@ class ModeStateNotifier extends StateNotifier<ModeState> {
         _handleMissionEnded();
       }
     });
+  }
+
+  /// Handle Build 31 mode_changed events
+  void _handleModeChangedEvent(Map<String, dynamic> data) {
+    final mode = data['mode'] as String?;
+    final locked = data['locked'] as bool? ?? false;
+    final lockReason = data['lock_reason'] as String?;
+
+    print('Mode: mode_changed event - mode=$mode, locked=$locked, reason=$lockReason');
+
+    if (mode != null) {
+      final confirmedMode = RobotMode.fromString(mode);
+      _cancelTimeout();
+
+      // Extract mission name from lock reason if available
+      String? missionName;
+      if (locked && lockReason != null && lockReason.contains(':')) {
+        missionName = lockReason.split(':').last.trim();
+      }
+
+      state = state.copyWith(
+        currentMode: confirmedMode,
+        isChanging: false,
+        clearPending: true,
+        clearError: true,
+        isModeLocked: locked,
+        activeMissionName: locked ? missionName : null,
+      );
+    }
   }
 
   /// Handle mission_progress events to lock/unlock mode

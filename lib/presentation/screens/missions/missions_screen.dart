@@ -27,9 +27,11 @@ class MissionsScreen extends ConsumerWidget {
               mission: activeMission,
               progress: missionsState.activeProgress,
               rewards: missionsState.activeRewards,
-              stage: missionsState.activeStage,
-              stageLabel: missionsState.activeStageLabel,
+              status: missionsState.activeStatus,
+              stageDisplay: missionsState.stageDisplay,
+              statusDisplay: missionsState.statusDisplay,
               trick: missionsState.activeTrick,
+              dogName: missionsState.activeDogName,
               onStop: () => ref.read(missionsProvider.notifier).stopMission(),
             ),
             const SizedBox(height: 24),
@@ -74,34 +76,41 @@ class MissionsScreen extends ConsumerWidget {
   }
 }
 
-/// Card showing the currently active mission with progress
+/// Card showing the currently active mission with progress (Build 31)
 class _ActiveMissionCard extends StatelessWidget {
   final Mission mission;
   final double progress;
   final int rewards;
-  final String? stage;
-  final String? stageLabel;
+  final MissionStatus status;
+  final String? stageDisplay;
+  final String? statusDisplay;
   final String? trick;
+  final String? dogName;
   final VoidCallback onStop;
 
   const _ActiveMissionCard({
     required this.mission,
     required this.progress,
     required this.rewards,
-    this.stage,
-    this.stageLabel,
+    required this.status,
+    this.stageDisplay,
+    this.statusDisplay,
     this.trick,
+    this.dogName,
     required this.onStop,
   });
 
-  Color _progressColorForStage() {
-    switch (stage) {
-      case 'watching':
+  Color _progressColorForStatus() {
+    switch (status) {
+      case MissionStatus.watching:
         return Colors.lightBlue;
-      case 'success':
+      case MissionStatus.success:
+      case MissionStatus.completed:
         return Colors.greenAccent;
-      case 'failure':
+      case MissionStatus.failed:
         return Colors.orange;
+      case MissionStatus.waitingForDog:
+        return Colors.amber;
       default:
         return Colors.white;
     }
@@ -186,13 +195,24 @@ class _ActiveMissionCard extends StatelessWidget {
               ),
             ],
             const SizedBox(height: 16),
+            // Stage display (Build 31)
+            if (stageDisplay != null) ...[
+              Text(
+                stageDisplay!,
+                style: TextStyle(
+                  color: Colors.white.withOpacity(0.7),
+                  fontSize: 12,
+                ),
+              ),
+              const SizedBox(height: 8),
+            ],
             // Progress bar
             ClipRRect(
               borderRadius: BorderRadius.circular(4),
               child: LinearProgressIndicator(
                 value: progress,
                 backgroundColor: Colors.white.withOpacity(0.2),
-                valueColor: AlwaysStoppedAnimation(_progressColorForStage()),
+                valueColor: AlwaysStoppedAnimation(_progressColorForStatus()),
                 minHeight: 6,
               ),
             ),
@@ -200,49 +220,51 @@ class _ActiveMissionCard extends StatelessWidget {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text(
-                  '${(progress * 100).toInt()}% complete',
-                  style: TextStyle(
-                    color: Colors.white.withOpacity(0.8),
-                    fontSize: 12,
-                  ),
-                ),
-                Text(
-                  '$rewards/${mission.dailyLimit} treats',
-                  style: TextStyle(
-                    color: Colors.white.withOpacity(0.8),
-                    fontSize: 12,
-                  ),
-                ),
-              ],
-            ),
-            // Stage and trick info
-            if (stageLabel != null || trick != null) ...[
-              const SizedBox(height: 6),
-              Row(
-                children: [
-                  if (stageLabel != null)
-                    Text(
-                      stageLabel!,
-                      style: TextStyle(
-                        color: _progressColorForStage(),
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600,
-                      ),
+                // Status display (Build 31)
+                if (statusDisplay != null && statusDisplay!.isNotEmpty)
+                  Text(
+                    statusDisplay!,
+                    style: TextStyle(
+                      color: _progressColorForStatus(),
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
                     ),
-                  if (stageLabel != null && trick != null)
-                    const SizedBox(width: 8),
-                  if (trick != null)
+                  )
+                else
+                  Text(
+                    '${(progress * 100).toInt()}% complete',
+                    style: TextStyle(
+                      color: Colors.white.withOpacity(0.8),
+                      fontSize: 12,
+                    ),
+                  ),
+                Row(
+                  children: [
+                    if (dogName != null) ...[
+                      Icon(Icons.pets, size: 14, color: Colors.white.withOpacity(0.7)),
+                      const SizedBox(width: 4),
+                      Text(
+                        dogName!,
+                        style: TextStyle(
+                          color: Colors.white.withOpacity(0.8),
+                          fontSize: 12,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                    ],
+                    Icon(Icons.cookie, size: 14, color: Colors.white.withOpacity(0.7)),
+                    const SizedBox(width: 4),
                     Text(
-                      trick!,
+                      '$rewards',
                       style: TextStyle(
-                        color: Colors.white.withOpacity(0.7),
+                        color: Colors.white.withOpacity(0.8),
                         fontSize: 12,
                       ),
                     ),
-                ],
-              ),
-            ],
+                  ],
+                ),
+              ],
+            ),
           ],
         ),
       ),

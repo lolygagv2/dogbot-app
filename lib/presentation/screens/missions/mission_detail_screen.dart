@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../data/models/mission.dart';
 import '../../../domain/providers/connection_provider.dart';
 import '../../../domain/providers/missions_provider.dart';
 import '../../theme/app_theme.dart';
@@ -110,7 +111,7 @@ class MissionDetailScreen extends ConsumerWidget {
                             value: missionsState.activeProgress,
                             backgroundColor: AppTheme.glassBorder,
                             valueColor: AlwaysStoppedAnimation(
-                              _stageColor(missionsState.activeStage),
+                              _statusColor(missionsState.activeStatus),
                             ),
                             minHeight: 8,
                           ),
@@ -129,26 +130,26 @@ class MissionDetailScreen extends ConsumerWidget {
                             ),
                           ],
                         ),
-                        // Stage indicator + trick + hold time
-                        if (missionsState.activeStageLabel != null ||
+                        // Status indicator + trick + stage (Build 31)
+                        if (missionsState.statusDisplay.isNotEmpty ||
                             missionsState.activeTrick != null) ...[
                           const SizedBox(height: 8),
                           Row(
                             children: [
-                              if (missionsState.activeStageLabel != null)
+                              if (missionsState.statusDisplay.isNotEmpty)
                                 Container(
                                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                                   decoration: BoxDecoration(
-                                    color: _stageColor(missionsState.activeStage).withOpacity(0.2),
+                                    color: _statusColor(missionsState.activeStatus).withOpacity(0.2),
                                     borderRadius: BorderRadius.circular(8),
                                     border: Border.all(
-                                      color: _stageColor(missionsState.activeStage).withOpacity(0.5),
+                                      color: _statusColor(missionsState.activeStatus).withOpacity(0.5),
                                     ),
                                   ),
                                   child: Text(
-                                    missionsState.activeStageLabel!,
+                                    missionsState.statusDisplay,
                                     style: TextStyle(
-                                      color: _stageColor(missionsState.activeStage),
+                                      color: _statusColor(missionsState.activeStatus),
                                       fontSize: 12,
                                       fontWeight: FontWeight.w600,
                                     ),
@@ -167,10 +168,10 @@ class MissionDetailScreen extends ConsumerWidget {
                             ],
                           ),
                         ],
-                        if (missionsState.activeHoldTime != null) ...[
+                        if (missionsState.stageDisplay != null) ...[
                           const SizedBox(height: 4),
                           Text(
-                            'Hold: ${missionsState.activeHoldTime!.toStringAsFixed(1)}s',
+                            missionsState.stageDisplay!,
                             style: TextStyle(
                               color: AppTheme.textSecondary,
                               fontSize: 12,
@@ -250,16 +251,22 @@ class MissionDetailScreen extends ConsumerWidget {
     );
   }
 
-  Color _stageColor(String? stage) {
-    switch (stage) {
-      case 'watching':
+  Color _statusColor(MissionStatus status) {
+    switch (status) {
+      case MissionStatus.watching:
         return Colors.lightBlue;
-      case 'success':
+      case MissionStatus.success:
+      case MissionStatus.completed:
         return Colors.green;
-      case 'failure':
+      case MissionStatus.failed:
         return Colors.orange;
-      case 'complete':
-        return Colors.green;
+      case MissionStatus.waitingForDog:
+        return Colors.amber;
+      case MissionStatus.greeting:
+      case MissionStatus.command:
+        return Colors.cyan;
+      case MissionStatus.retry:
+        return Colors.deepOrange;
       default:
         return Colors.green;
     }

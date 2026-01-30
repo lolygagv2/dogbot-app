@@ -381,12 +381,17 @@ mixin _$MissionProgress {
   int get successCount => throw _privateConstructorUsedError;
   int get failCount => throw _privateConstructorUsedError;
   String? get status => throw _privateConstructorUsedError;
-  DateTime? get startedAt => throw _privateConstructorUsedError;
-  String? get stage => throw _privateConstructorUsedError;
+  DateTime? get startedAt =>
+      throw _privateConstructorUsedError; // Build 31 fields
   String? get trick => throw _privateConstructorUsedError;
   double? get targetSec => throw _privateConstructorUsedError;
   double? get holdTime => throw _privateConstructorUsedError;
   String? get reason => throw _privateConstructorUsedError;
+  int? get stageNumber =>
+      throw _privateConstructorUsedError; // Current stage (1-based)
+  int? get totalStages =>
+      throw _privateConstructorUsedError; // Total stages in mission
+  String? get dogName => throw _privateConstructorUsedError;
 
   /// Serializes this MissionProgress to a JSON map.
   Map<String, dynamic> toJson() => throw _privateConstructorUsedError;
@@ -412,11 +417,13 @@ abstract class $MissionProgressCopyWith<$Res> {
       int failCount,
       String? status,
       DateTime? startedAt,
-      String? stage,
       String? trick,
       double? targetSec,
       double? holdTime,
-      String? reason});
+      String? reason,
+      int? stageNumber,
+      int? totalStages,
+      String? dogName});
 }
 
 /// @nodoc
@@ -441,11 +448,13 @@ class _$MissionProgressCopyWithImpl<$Res, $Val extends MissionProgress>
     Object? failCount = null,
     Object? status = freezed,
     Object? startedAt = freezed,
-    Object? stage = freezed,
     Object? trick = freezed,
     Object? targetSec = freezed,
     Object? holdTime = freezed,
     Object? reason = freezed,
+    Object? stageNumber = freezed,
+    Object? totalStages = freezed,
+    Object? dogName = freezed,
   }) {
     return _then(_value.copyWith(
       missionId: null == missionId
@@ -476,10 +485,6 @@ class _$MissionProgressCopyWithImpl<$Res, $Val extends MissionProgress>
           ? _value.startedAt
           : startedAt // ignore: cast_nullable_to_non_nullable
               as DateTime?,
-      stage: freezed == stage
-          ? _value.stage
-          : stage // ignore: cast_nullable_to_non_nullable
-              as String?,
       trick: freezed == trick
           ? _value.trick
           : trick // ignore: cast_nullable_to_non_nullable
@@ -495,6 +500,18 @@ class _$MissionProgressCopyWithImpl<$Res, $Val extends MissionProgress>
       reason: freezed == reason
           ? _value.reason
           : reason // ignore: cast_nullable_to_non_nullable
+              as String?,
+      stageNumber: freezed == stageNumber
+          ? _value.stageNumber
+          : stageNumber // ignore: cast_nullable_to_non_nullable
+              as int?,
+      totalStages: freezed == totalStages
+          ? _value.totalStages
+          : totalStages // ignore: cast_nullable_to_non_nullable
+              as int?,
+      dogName: freezed == dogName
+          ? _value.dogName
+          : dogName // ignore: cast_nullable_to_non_nullable
               as String?,
     ) as $Val);
   }
@@ -516,11 +533,13 @@ abstract class _$$MissionProgressImplCopyWith<$Res>
       int failCount,
       String? status,
       DateTime? startedAt,
-      String? stage,
       String? trick,
       double? targetSec,
       double? holdTime,
-      String? reason});
+      String? reason,
+      int? stageNumber,
+      int? totalStages,
+      String? dogName});
 }
 
 /// @nodoc
@@ -543,11 +562,13 @@ class __$$MissionProgressImplCopyWithImpl<$Res>
     Object? failCount = null,
     Object? status = freezed,
     Object? startedAt = freezed,
-    Object? stage = freezed,
     Object? trick = freezed,
     Object? targetSec = freezed,
     Object? holdTime = freezed,
     Object? reason = freezed,
+    Object? stageNumber = freezed,
+    Object? totalStages = freezed,
+    Object? dogName = freezed,
   }) {
     return _then(_$MissionProgressImpl(
       missionId: null == missionId
@@ -578,10 +599,6 @@ class __$$MissionProgressImplCopyWithImpl<$Res>
           ? _value.startedAt
           : startedAt // ignore: cast_nullable_to_non_nullable
               as DateTime?,
-      stage: freezed == stage
-          ? _value.stage
-          : stage // ignore: cast_nullable_to_non_nullable
-              as String?,
       trick: freezed == trick
           ? _value.trick
           : trick // ignore: cast_nullable_to_non_nullable
@@ -598,6 +615,18 @@ class __$$MissionProgressImplCopyWithImpl<$Res>
           ? _value.reason
           : reason // ignore: cast_nullable_to_non_nullable
               as String?,
+      stageNumber: freezed == stageNumber
+          ? _value.stageNumber
+          : stageNumber // ignore: cast_nullable_to_non_nullable
+              as int?,
+      totalStages: freezed == totalStages
+          ? _value.totalStages
+          : totalStages // ignore: cast_nullable_to_non_nullable
+              as int?,
+      dogName: freezed == dogName
+          ? _value.dogName
+          : dogName // ignore: cast_nullable_to_non_nullable
+              as String?,
     ));
   }
 }
@@ -613,11 +642,13 @@ class _$MissionProgressImpl extends _MissionProgress {
       this.failCount = 0,
       this.status,
       this.startedAt,
-      this.stage,
       this.trick,
       this.targetSec,
       this.holdTime,
-      this.reason})
+      this.reason,
+      this.stageNumber,
+      this.totalStages,
+      this.dogName})
       : super._();
 
   factory _$MissionProgressImpl.fromJson(Map<String, dynamic> json) =>
@@ -641,8 +672,7 @@ class _$MissionProgressImpl extends _MissionProgress {
   final String? status;
   @override
   final DateTime? startedAt;
-  @override
-  final String? stage;
+// Build 31 fields
   @override
   final String? trick;
   @override
@@ -651,10 +681,18 @@ class _$MissionProgressImpl extends _MissionProgress {
   final double? holdTime;
   @override
   final String? reason;
+  @override
+  final int? stageNumber;
+// Current stage (1-based)
+  @override
+  final int? totalStages;
+// Total stages in mission
+  @override
+  final String? dogName;
 
   @override
   String toString() {
-    return 'MissionProgress(missionId: $missionId, progress: $progress, rewardsGiven: $rewardsGiven, successCount: $successCount, failCount: $failCount, status: $status, startedAt: $startedAt, stage: $stage, trick: $trick, targetSec: $targetSec, holdTime: $holdTime, reason: $reason)';
+    return 'MissionProgress(missionId: $missionId, progress: $progress, rewardsGiven: $rewardsGiven, successCount: $successCount, failCount: $failCount, status: $status, startedAt: $startedAt, trick: $trick, targetSec: $targetSec, holdTime: $holdTime, reason: $reason, stageNumber: $stageNumber, totalStages: $totalStages, dogName: $dogName)';
   }
 
   @override
@@ -675,13 +713,17 @@ class _$MissionProgressImpl extends _MissionProgress {
             (identical(other.status, status) || other.status == status) &&
             (identical(other.startedAt, startedAt) ||
                 other.startedAt == startedAt) &&
-            (identical(other.stage, stage) || other.stage == stage) &&
             (identical(other.trick, trick) || other.trick == trick) &&
             (identical(other.targetSec, targetSec) ||
                 other.targetSec == targetSec) &&
             (identical(other.holdTime, holdTime) ||
                 other.holdTime == holdTime) &&
-            (identical(other.reason, reason) || other.reason == reason));
+            (identical(other.reason, reason) || other.reason == reason) &&
+            (identical(other.stageNumber, stageNumber) ||
+                other.stageNumber == stageNumber) &&
+            (identical(other.totalStages, totalStages) ||
+                other.totalStages == totalStages) &&
+            (identical(other.dogName, dogName) || other.dogName == dogName));
   }
 
   @JsonKey(includeFromJson: false, includeToJson: false)
@@ -695,11 +737,13 @@ class _$MissionProgressImpl extends _MissionProgress {
       failCount,
       status,
       startedAt,
-      stage,
       trick,
       targetSec,
       holdTime,
-      reason);
+      reason,
+      stageNumber,
+      totalStages,
+      dogName);
 
   /// Create a copy of MissionProgress
   /// with the given fields replaced by the non-null parameter values.
@@ -727,11 +771,13 @@ abstract class _MissionProgress extends MissionProgress {
       final int failCount,
       final String? status,
       final DateTime? startedAt,
-      final String? stage,
       final String? trick,
       final double? targetSec,
       final double? holdTime,
-      final String? reason}) = _$MissionProgressImpl;
+      final String? reason,
+      final int? stageNumber,
+      final int? totalStages,
+      final String? dogName}) = _$MissionProgressImpl;
   const _MissionProgress._() : super._();
 
   factory _MissionProgress.fromJson(Map<String, dynamic> json) =
@@ -750,9 +796,7 @@ abstract class _MissionProgress extends MissionProgress {
   @override
   String? get status;
   @override
-  DateTime? get startedAt;
-  @override
-  String? get stage;
+  DateTime? get startedAt; // Build 31 fields
   @override
   String? get trick;
   @override
@@ -761,6 +805,12 @@ abstract class _MissionProgress extends MissionProgress {
   double? get holdTime;
   @override
   String? get reason;
+  @override
+  int? get stageNumber; // Current stage (1-based)
+  @override
+  int? get totalStages; // Total stages in mission
+  @override
+  String? get dogName;
 
   /// Create a copy of MissionProgress
   /// with the given fields replaced by the non-null parameter values.

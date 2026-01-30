@@ -748,7 +748,7 @@ class _ActiveMissionBanner extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final missionsState = ref.watch(missionsProvider);
     final missionName = missionsState.activeMission?.name ?? 'Mission';
-    final stage = missionsState.activeStageLabel;
+    final stage = missionsState.statusDisplay.isNotEmpty ? missionsState.statusDisplay : missionsState.stageDisplay;
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),

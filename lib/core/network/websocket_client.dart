@@ -257,6 +257,13 @@ class WebSocketClient {
           _eventController.add(missionEvent);
           break;
 
+        // Mode changed event (Build 31) - includes locked state
+        case 'mode_changed':
+          print('WS: Received mode_changed: $json');
+          final modeChangedEvent = WsEvent.fromJson(json);
+          _eventController.add(modeChangedEvent);
+          break;
+
         // Bark event - forward as guardian event for event feed
         case 'bark':
           final barkEvent = WsEvent(

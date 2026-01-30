@@ -54,16 +54,15 @@ final _predefinedMissions = [
   ),
 ];
 
-/// Missions state
+/// Missions state (Build 31 - enhanced with full progress tracking)
 class MissionsState {
   final List<Mission> missions;
   final String? activeMissionId;
   final double activeProgress;
   final int activeRewards;
   final String? error;
-  final String? activeStage;
-  final String? activeTrick;
-  final double? activeHoldTime;
+  // Build 31: Full progress state
+  final MissionProgress? currentProgress;
 
   const MissionsState({
     this.missions = const [],
@@ -71,9 +70,7 @@ class MissionsState {
     this.activeProgress = 0.0,
     this.activeRewards = 0,
     this.error,
-    this.activeStage,
-    this.activeTrick,
-    this.activeHoldTime,
+    this.currentProgress,
   });
 
   MissionsState copyWith({
@@ -82,22 +79,18 @@ class MissionsState {
     double? activeProgress,
     int? activeRewards,
     String? error,
-    String? activeStage,
-    String? activeTrick,
-    double? activeHoldTime,
+    MissionProgress? currentProgress,
     bool clearActiveMission = false,
     bool clearError = false,
-    bool clearActiveStage = false,
+    bool clearProgress = false,
   }) {
     return MissionsState(
       missions: missions ?? this.missions,
       activeMissionId: clearActiveMission ? null : (activeMissionId ?? this.activeMissionId),
-      activeProgress: activeProgress ?? this.activeProgress,
-      activeRewards: activeRewards ?? this.activeRewards,
+      activeProgress: clearActiveMission ? 0.0 : (activeProgress ?? this.activeProgress),
+      activeRewards: clearActiveMission ? 0 : (activeRewards ?? this.activeRewards),
       error: clearError ? null : (error ?? this.error),
-      activeStage: clearActiveStage ? null : (activeStage ?? this.activeStage),
-      activeTrick: clearActiveStage ? null : (activeTrick ?? this.activeTrick),
-      activeHoldTime: clearActiveStage ? null : (activeHoldTime ?? this.activeHoldTime),
+      currentProgress: clearProgress || clearActiveMission ? null : (currentProgress ?? this.currentProgress),
     );
   }
 
@@ -112,22 +105,26 @@ class MissionsState {
     }
   }
 
-  /// Human-readable label for the current active stage
-  String? get activeStageLabel {
-    if (activeStage == null) return null;
-    switch (activeStage) {
-      case 'watching':
-        return 'Watching...';
-      case 'success':
-        return 'Success!';
-      case 'failure':
-        return 'Try again';
-      case 'complete':
-        return 'Complete!';
-      default:
-        return activeStage;
-    }
-  }
+  /// Current mission status (Build 31)
+  MissionStatus get activeStatus => currentProgress?.statusEnum ?? MissionStatus.unknown;
+
+  /// Current trick being trained
+  String? get activeTrick => currentProgress?.trick;
+
+  /// Current stage (e.g., "Stage 2 of 5")
+  String? get stageDisplay => currentProgress?.stageDisplay;
+
+  /// Dog name being trained
+  String? get activeDogName => currentProgress?.dogName;
+
+  /// Target seconds for hold
+  double? get targetSec => currentProgress?.targetSec;
+
+  /// Human-readable status display
+  String get statusDisplay => currentProgress?.statusDisplay ?? '';
+
+  /// Whether to show progress indicator (during watching state)
+  bool get showProgressIndicator => activeStatus == MissionStatus.watching;
 }
 
 /// Provider for missions state
@@ -169,43 +166,61 @@ class MissionsNotifier extends StateNotifier<MissionsState> {
     switch (event.type) {
       case 'mission_progress':
         final progress = MissionProgress.fromWsEvent(event.data);
-        if (progress.missionId == state.activeMissionId) {
-          // Use effectiveProgress which handles progress/target_sec ratio
+        print('Missions: progress event - status=${progress.status}, mission=${progress.missionId}, stage=${progress.stageNumber}/${progress.totalStages}');
+
+        // If we don't have an active mission but get progress, set it
+        final missionId = progress.missionId.isNotEmpty
+            ? progress.missionId
+            : state.activeMissionId ?? '';
+
+        if (missionId.isNotEmpty) {
           state = state.copyWith(
+            activeMissionId: missionId,
             activeProgress: progress.effectiveProgress,
             activeRewards: progress.rewardsGiven,
-            activeStage: progress.stage,
-            activeTrick: progress.trick,
-            activeHoldTime: progress.holdTime,
+            currentProgress: progress,
           );
-          // Update mission's rewardsGiven in the list
-          _updateMissionInList(progress.missionId, rewardsGiven: progress.rewardsGiven);
+          _updateMissionInList(missionId, rewardsGiven: progress.rewardsGiven, isActive: true);
         }
         break;
 
       case 'mission_complete':
         final missionId = event.data['mission_id'] as String? ?? event.data['id'] as String? ?? '';
-        if (missionId == state.activeMissionId) {
-          final treatsGiven = event.data['treats_given'] as int?;
+        print('Missions: complete event - mission=$missionId');
+        if (missionId == state.activeMissionId || state.activeMissionId == null) {
+          final treatsGiven = event.data['treats_given'] as int? ?? event.data['rewards'] as int?;
+          // Create final progress with completed status
+          final finalProgress = MissionProgress(
+            missionId: missionId,
+            status: 'completed',
+            rewardsGiven: treatsGiven ?? state.activeRewards,
+            stageNumber: state.currentProgress?.totalStages,
+            totalStages: state.currentProgress?.totalStages,
+            dogName: state.currentProgress?.dogName,
+          );
           state = state.copyWith(
             activeProgress: 1.0,
-            activeStage: 'complete',
             activeRewards: treatsGiven ?? state.activeRewards,
-            clearActiveMission: true,
+            currentProgress: finalProgress,
           );
-          _updateMissionInList(missionId, isActive: false,
-              rewardsGiven: treatsGiven);
+          _updateMissionInList(missionId, isActive: false, rewardsGiven: treatsGiven);
+
+          // Clear after delay so user sees completion
+          Future.delayed(const Duration(seconds: 3), () {
+            if (mounted && state.activeStatus == MissionStatus.completed) {
+              state = state.copyWith(clearActiveMission: true, clearProgress: true);
+            }
+          });
         }
         break;
 
       case 'mission_stopped':
         final missionId = event.data['mission_id'] as String? ?? event.data['id'] as String? ?? '';
-        if (missionId == state.activeMissionId) {
+        print('Missions: stopped event - mission=$missionId');
+        if (missionId == state.activeMissionId || state.activeMissionId == null) {
           state = state.copyWith(
             clearActiveMission: true,
-            activeProgress: 0.0,
-            activeRewards: 0,
-            clearActiveStage: true,
+            clearProgress: true,
           );
           _updateMissionInList(missionId, isActive: false);
         }

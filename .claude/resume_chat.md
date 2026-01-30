@@ -1,5 +1,88 @@
 # WIM-Z Resume Chat Log
 
+## Session: 2026-01-30 (Build 31)
+**Goal:** Build 31 — Mission progress overlay, mode locking, coach-style flow display
+**Status:** ✅ Complete
+
+### What Changed (from BUILD31_APP_INSTRUCTIONS.md):
+
+1. **Mission Progress Display (Priority 1 - DONE)**
+   - Created `MissionProgressOverlay` widget with circular pie progress
+   - Shows real-time status: waiting_for_dog, greeting, command, watching, success, failed, retry, completed
+   - Stage indicator ("Stage 2 of 5")
+   - Dog name + rewards count
+   - Animated icons for each status
+   - Overlay appears on video stream during active mission
+
+2. **Mode Locking (Priority 2 - DONE)**
+   - Mode selector shows lock icon when mission is active
+   - Tooltip shows lock reason
+   - Mode cannot be changed during active mission
+   - Handles `mode_changed` WebSocket events with `locked` field
+
+3. **Updated Mission Model**
+   - Added `MissionStatus` enum with all coach-flow states
+   - Added `stageNumber`, `totalStages`, `dogName` fields to `MissionProgress`
+   - New `statusDisplay`, `stageDisplay` getters for UI
+   - `effectiveProgress` for watching state (progress/target_sec)
+
+4. **Updated Missions Provider**
+   - Stores full `MissionProgress` object in state
+   - Tracks status, stage, dogName, trick
+   - Shows completion state for 3s before clearing
+
+5. **Fixed Photo Change Bug**
+   - `_changePhoto()` was popping bottom sheet before async operations
+   - Now captures `profileId`, `notifier`, `messenger` upfront
+   - Uses dialog instead of nested bottom sheet
+   - Added extensive `[PHOTO]` logging
+
+6. **Enhanced Upload Logging**
+   - Added `[UPLOAD]` logs for MP3 file picker flow
+   - Logs filename, size, base64 length, WebSocket command
+
+### Key Code Changes Made:
+
+#### New Files:
+- `lib/presentation/widgets/mission/mission_progress_overlay.dart` — Circular pie progress overlay
+
+#### Modified Files:
+- `lib/data/models/mission.dart` — Added `MissionStatus` enum, new fields
+- `lib/domain/providers/missions_provider.dart` — Full progress state tracking
+- `lib/domain/providers/mode_provider.dart` — Handle `mode_changed` events with locked
+- `lib/core/network/websocket_client.dart` — Handle `mode_changed` event type
+- `lib/presentation/screens/home/home_screen.dart` — Add overlay, mode lock UI
+- `lib/presentation/screens/missions/missions_screen.dart` — Use Build 31 status fields
+- `lib/presentation/screens/dog_profile/dog_profile_screen.dart` — Fix photo change flow
+- `lib/presentation/widgets/controls/quick_actions.dart` — Enhanced upload logging
+- `lib/domain/providers/dog_profiles_provider.dart` — Photo update logging
+- `pubspec.yaml` — Version bump to 1.0.0+31
+
+### Architecture Notes:
+- `MissionProgressOverlay` is a positioned overlay on the video stack
+- Uses `missionsProvider` for state, renders based on `activeStatus`
+- Mode selector returns non-interactive widget when `isModeLocked`
+- `_handleModeChangedEvent()` extracts mission name from lock_reason
+
+### WebSocket Events Handled:
+- `mission_progress` — Updates stage, status, progress, dogName, rewards
+- `mission_complete` — Shows completion state, clears after 3s
+- `mission_stopped` — Clears immediately
+- `mode_changed` — Updates mode and locked state
+
+### Testing Checklist:
+- [ ] Start mission → see "Waiting for dog" status
+- [ ] Dog appears → status changes to "greeting" then "command"
+- [ ] During "watching" → circular progress shows and fills
+- [ ] Trick success → green checkmark appears
+- [ ] Mission complete → summary shows briefly
+- [ ] Mode selector shows lock icon during active mission
+- [ ] Stop button works mid-mission
+- [ ] Photo change saves correctly
+- [ ] Upload shows detailed logs
+
+---
+
 ## Session: 2026-01-29 (Build 29)
 **Goal:** Build 29 — Fix mode sync, voice dog_id, profile issues, motor trim, logout, remove connect screen
 **Status:** ✅ Complete

@@ -23,7 +23,38 @@ class Mission with _$Mission {
       _$MissionFromJson(json);
 }
 
-/// Mission progress update from WebSocket
+/// Mission status values from Build 31 coach flow
+enum MissionStatus {
+  waitingForDog('waiting_for_dog', 'Waiting for dog...'),
+  greeting('greeting', 'Greeting...'),
+  command('command', 'Commanding'),
+  watching('watching', 'Hold it...'),
+  success('success', 'Success!'),
+  failed('failed', 'Try again'),
+  retry('retry', 'Trying again...'),
+  completed('completed', 'Complete!'),
+  stopped('stopped', 'Stopped'),
+  unknown('unknown', '');
+
+  final String value;
+  final String label;
+  const MissionStatus(this.value, this.label);
+
+  static MissionStatus fromString(String? value) {
+    if (value == null) return MissionStatus.unknown;
+    return MissionStatus.values.firstWhere(
+      (s) => s.value == value.toLowerCase(),
+      orElse: () => MissionStatus.unknown,
+    );
+  }
+
+  bool get isActive => this != stopped && this != completed && this != unknown;
+  bool get showsProgress => this == watching;
+  bool get isSuccess => this == success || this == completed;
+  bool get isFailure => this == failed;
+}
+
+/// Mission progress update from WebSocket (Build 31 format)
 @freezed
 class MissionProgress with _$MissionProgress {
   const MissionProgress._();
@@ -36,11 +67,14 @@ class MissionProgress with _$MissionProgress {
     @Default(0) int failCount,
     String? status,
     DateTime? startedAt,
-    String? stage,
+    // Build 31 fields
     String? trick,
     double? targetSec,
     double? holdTime,
     String? reason,
+    int? stageNumber,      // Current stage (1-based)
+    int? totalStages,      // Total stages in mission
+    String? dogName,       // Dog being trained
   }) = _MissionProgress;
 
   factory MissionProgress.fromJson(Map<String, dynamic> json) =>
@@ -50,17 +84,22 @@ class MissionProgress with _$MissionProgress {
     return MissionProgress(
       missionId: data['id'] as String? ?? data['mission_id'] as String? ?? '',
       progress: (data['progress'] as num?)?.toDouble() ?? 0.0,
-      rewardsGiven: data['rewards_given'] as int? ?? 0,
+      rewardsGiven: data['rewards'] as int? ?? data['rewards_given'] as int? ?? 0,
       successCount: data['success_count'] as int? ?? 0,
       failCount: data['fail_count'] as int? ?? 0,
       status: data['status'] as String?,
-      stage: data['stage'] as String?,
       trick: data['trick'] as String?,
       targetSec: (data['target_sec'] as num?)?.toDouble(),
       holdTime: (data['hold_time'] as num?)?.toDouble(),
       reason: data['reason'] as String?,
+      stageNumber: data['stage'] as int?,
+      totalStages: data['total_stages'] as int?,
+      dogName: data['dog_name'] as String?,
     );
   }
+
+  /// Get typed status enum
+  MissionStatus get statusEnum => MissionStatus.fromString(status);
 
   /// Compute effective progress: if progress and targetSec are both present,
   /// use (progress / targetSec).clamp(0.0, 1.0)
@@ -69,5 +108,26 @@ class MissionProgress with _$MissionProgress {
       return (progress / targetSec!).clamp(0.0, 1.0);
     }
     return progress.clamp(0.0, 1.0);
+  }
+
+  /// Stage display string (e.g., "Stage 2 of 5")
+  String? get stageDisplay {
+    if (stageNumber == null || totalStages == null) return null;
+    return 'Stage $stageNumber of $totalStages';
+  }
+
+  /// Status display with dog name
+  String get statusDisplay {
+    final statusLabel = statusEnum.label;
+    if (dogName != null && statusEnum == MissionStatus.waitingForDog) {
+      return 'Waiting for $dogName...';
+    }
+    if (dogName != null && statusEnum == MissionStatus.greeting) {
+      return 'Greeting $dogName...';
+    }
+    if (trick != null && statusEnum == MissionStatus.command) {
+      return '${trick!.toUpperCase()}!';
+    }
+    return statusLabel;
   }
 }

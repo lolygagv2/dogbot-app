@@ -8,6 +8,7 @@ import '../../../data/models/dog_profile.dart';
 import '../../../domain/providers/device_provider.dart';
 import '../../../domain/providers/dog_profiles_provider.dart';
 import '../../../domain/providers/guardian_events_provider.dart';
+import '../../../domain/providers/missions_provider.dart';
 import '../../../domain/providers/mode_provider.dart';
 import '../../../domain/providers/telemetry_provider.dart';
 import '../../widgets/video/webrtc_video_view.dart';
@@ -16,6 +17,7 @@ import '../../widgets/status/connection_badge.dart';
 import '../../widgets/controls/quick_actions.dart';
 import '../../widgets/controls/push_to_talk.dart';
 import '../../widgets/guardian/event_feed.dart';
+import '../../widgets/mission/mission_progress_overlay.dart';
 import '../../theme/app_theme.dart';
 
 /// Main dashboard screen with video and quick controls
@@ -70,8 +72,8 @@ class HomeScreen extends ConsumerWidget {
                       // Use WebRTC for video streaming via relay
                       const WebRTCVideoView(),
 
-                      // Detection overlay
-                      if (telemetry.dogDetected)
+                      // Detection overlay (hidden during mission to avoid clutter)
+                      if (telemetry.dogDetected && !ref.watch(missionsProvider).hasActiveMission)
                         Positioned(
                           top: 16,
                           left: 16,
@@ -82,6 +84,9 @@ class HomeScreen extends ConsumerWidget {
                             ),
                           ),
                         ),
+
+                      // Mission progress overlay (Build 31)
+                      const MissionProgressOverlay(),
 
                       // Mode selector (uses optimistic state)
                       const Positioned(
@@ -279,7 +284,7 @@ class _DetectionChipState extends State<_DetectionChip> {
   }
 }
 
-/// Mode selector with dropdown, loading state, and event badge
+/// Mode selector with dropdown, loading state, lock indicator, and event badge
 class _ModeSelector extends ConsumerWidget {
   const _ModeSelector();
 
@@ -289,6 +294,7 @@ class _ModeSelector extends ConsumerWidget {
     final modeState = ref.watch(modeStateProvider);
     final displayMode = modeState.displayMode;
     final isChanging = modeState.isChanging;
+    final isLocked = modeState.isModeLocked;
     final unreadCount = ref.watch(unreadEventCountProvider);
     final showBadge = displayMode == RobotMode.silentGuardian && unreadCount > 0;
 
@@ -314,6 +320,38 @@ class _ModeSelector extends ConsumerWidget {
         );
       }
     });
+
+    // When locked, show a non-interactive badge with lock icon
+    if (isLocked) {
+      return Tooltip(
+        message: 'Mode locked: ${modeState.activeMissionName ?? "Mission active"}',
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+          decoration: BoxDecoration(
+            color: _getModeColor(displayMode).withOpacity(0.9),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: Colors.white.withOpacity(0.3), width: 1),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.lock, color: Colors.white70, size: 14),
+              const SizedBox(width: 6),
+              Icon(_getModeIcon(displayMode), color: Colors.white, size: 16),
+              const SizedBox(width: 6),
+              Text(
+                displayMode.label.toUpperCase(),
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w500,
+                  fontSize: 12,
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
 
     return PopupMenuButton<RobotMode>(
       initialValue: displayMode,
