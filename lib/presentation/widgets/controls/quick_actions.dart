@@ -243,13 +243,22 @@ class _QuickActionsState extends ConsumerState<QuickActions> {
       }
 
       final bytes = await File(file.path!).readAsBytes();
-      print('[UPLOAD] Read ${bytes.length} bytes');
+      print('[UPLOAD] Read ${bytes.length} bytes from file');
 
       final base64Data = base64Encode(bytes);
       final filename = file.name;
       final format = file.extension ?? 'mp3';
 
+      print('[UPLOAD] Preparing WebSocket command:');
+      print('[UPLOAD]   filename: $filename');
+      print('[UPLOAD]   format: $format');
+      print('[UPLOAD]   raw bytes: ${bytes.length}');
+      print('[UPLOAD]   base64 length: ${base64Data.length}');
+      print('[UPLOAD] Sending upload_song command via WebSocket...');
+
       ref.read(websocketClientProvider).sendUploadSong(filename, base64Data, format);
+
+      print('[UPLOAD] Command sent - check robot logs for upload_song handling');
 
       if (mounted) {
         ScaffoldMessenger.of(context).hideCurrentSnackBar();

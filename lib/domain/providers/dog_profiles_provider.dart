@@ -141,13 +141,25 @@ class DogProfilesNotifier extends StateNotifier<List<DogProfile>> {
 
   /// Update profile photo path
   Future<void> updateProfilePhoto(String dogId, String photoPath) async {
+    print('[PHOTO] updateProfilePhoto called: dogId=$dogId, path=$photoPath');
+    print('[PHOTO] Current profiles: ${state.map((p) => '${p.id}:${p.name}').toList()}');
+
+    final beforeProfile = state.firstWhere((p) => p.id == dogId, orElse: () => throw Exception('Dog not found'));
+    print('[PHOTO] Before update: localPhotoPath=${beforeProfile.localPhotoPath}');
+
     state = state.map((p) {
       if (p.id == dogId) {
+        print('[PHOTO] Updating profile for ${p.name}');
         return p.copyWith(localPhotoPath: photoPath);
       }
       return p;
     }).toList();
+
+    final afterProfile = state.firstWhere((p) => p.id == dogId);
+    print('[PHOTO] After update: localPhotoPath=${afterProfile.localPhotoPath}');
+
     await _saveProfiles();
+    print('[PHOTO] Profiles saved to SharedPreferences');
   }
 }
 

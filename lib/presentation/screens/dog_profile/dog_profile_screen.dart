@@ -115,66 +115,105 @@ class _DogSettingsSheetState extends ConsumerState<_DogSettingsSheet> {
   }
 
   Future<void> _changePhoto() async {
-    Navigator.pop(context);
+    // Capture values BEFORE any async gaps (same pattern as _confirmDelete)
+    final profileId = widget.profile.id;
+    final notifier = ref.read(dogProfilesProvider.notifier);
+    final messenger = ScaffoldMessenger.of(context);
 
-    final picker = ImagePicker();
-    final source = await showModalBottomSheet<ImageSource>(
+    // Show source picker as a dialog ON TOP of the settings sheet (don't pop first)
+    final source = await showDialog<ImageSource>(
       context: context,
-      builder: (ctx) => Column(
-        mainAxisSize: MainAxisSize.min,
+      builder: (ctx) => SimpleDialog(
+        title: const Text('Choose Photo Source'),
         children: [
-          ListTile(
-            leading: const Icon(Icons.camera_alt),
-            title: const Text('Take Photo'),
-            onTap: () => Navigator.pop(ctx, ImageSource.camera),
+          SimpleDialogOption(
+            onPressed: () => Navigator.pop(ctx, ImageSource.camera),
+            child: const ListTile(
+              leading: Icon(Icons.camera_alt),
+              title: Text('Take Photo'),
+            ),
           ),
-          ListTile(
-            leading: const Icon(Icons.photo_library),
-            title: const Text('Choose from Gallery'),
-            onTap: () => Navigator.pop(ctx, ImageSource.gallery),
+          SimpleDialogOption(
+            onPressed: () => Navigator.pop(ctx, ImageSource.gallery),
+            child: const ListTile(
+              leading: Icon(Icons.photo_library),
+              title: Text('Choose from Gallery'),
+            ),
           ),
         ],
       ),
     );
 
-    if (source == null) return;
+    if (source == null) {
+      print('[PHOTO] User cancelled source selection');
+      return;
+    }
 
+    print('[PHOTO] Selected source: $source');
+    final picker = ImagePicker();
     final image = await picker.pickImage(source: source, maxWidth: 512, maxHeight: 512);
-    if (image != null) {
-      try {
-        // Copy to permanent location before saving
-        final appDir = await getApplicationDocumentsDirectory();
-        final photosDir = Directory('${appDir.path}/dog_photos');
-        await photosDir.create(recursive: true);
 
-        final permanentPath = '${photosDir.path}/${widget.profile.id}.jpg';
+    if (image == null) {
+      print('[PHOTO] User cancelled image picker');
+      return;
+    }
 
-        // Delete old photo if exists
-        final oldFile = File(permanentPath);
-        if (await oldFile.exists()) {
-          await oldFile.delete();
-        }
+    print('[PHOTO] Image picked: ${image.path}');
 
-        // Copy new photo to permanent location
-        await File(image.path).copy(permanentPath);
+    try {
+      // Copy to permanent location before saving
+      final appDir = await getApplicationDocumentsDirectory();
+      final photosDir = Directory('${appDir.path}/dog_photos');
+      await photosDir.create(recursive: true);
 
-        await ref.read(dogProfilesProvider.notifier).updateProfilePhoto(
-          widget.profile.id,
-          permanentPath,
-        );
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Photo updated')),
-          );
-        }
-      } catch (e) {
-        print('Error saving photo: $e');
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Failed to save photo: $e'), backgroundColor: Colors.red),
-          );
-        }
+      final permanentPath = '${photosDir.path}/$profileId.jpg';
+      print('[PHOTO] Permanent path: $permanentPath');
+
+      // Delete old photo if exists
+      final oldFile = File(permanentPath);
+      if (await oldFile.exists()) {
+        await oldFile.delete();
+        print('[PHOTO] Deleted old photo');
       }
+
+      // Copy new photo to permanent location
+      final sourceFile = File(image.path);
+      final sourceSize = await sourceFile.length();
+      print('[PHOTO] Source file size: $sourceSize bytes');
+
+      await sourceFile.copy(permanentPath);
+      print('[PHOTO] Copied to permanent location');
+
+      // Verify the copy
+      final newFile = File(permanentPath);
+      if (await newFile.exists()) {
+        final newSize = await newFile.length();
+        print('[PHOTO] Verified: new file exists, size: $newSize bytes');
+      } else {
+        print('[PHOTO] ERROR: File copy failed - destination does not exist');
+        messenger.showSnackBar(
+          const SnackBar(content: Text('Failed to save photo'), backgroundColor: Colors.red),
+        );
+        return;
+      }
+
+      // Update the profile with new photo path
+      print('[PHOTO] Calling updateProfilePhoto for dog $profileId');
+      await notifier.updateProfilePhoto(profileId, permanentPath);
+      print('[PHOTO] Profile updated successfully');
+
+      // Close the settings bottom sheet
+      if (mounted) Navigator.pop(context);
+
+      messenger.showSnackBar(
+        const SnackBar(content: Text('Photo updated')),
+      );
+    } catch (e, stackTrace) {
+      print('[PHOTO] ERROR: $e');
+      print('[PHOTO] Stack: $stackTrace');
+      messenger.showSnackBar(
+        SnackBar(content: Text('Failed to save photo: $e'), backgroundColor: Colors.red),
+      );
     }
   }
 
