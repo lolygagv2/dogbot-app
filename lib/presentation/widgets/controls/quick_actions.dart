@@ -55,6 +55,8 @@ class _QuickActionsState extends ConsumerState<QuickActions> {
     return DateTime.now().difference(lastTime).inMilliseconds > _voiceDebounceMs;
   }
 
+  StreamSubscription? _uploadResultSubscription;
+
   @override
   void initState() {
     super.initState();
@@ -64,6 +66,46 @@ class _QuickActionsState extends ConsumerState<QuickActions> {
         .eventStream
         .where((event) => event.type == 'audio_state')
         .listen(_handleAudioState);
+
+    // Build 34: Listen for upload result events
+    _uploadResultSubscription = ref
+        .read(websocketClientProvider)
+        .eventStream
+        .where((event) =>
+            event.type == 'upload_complete' ||
+            event.type == 'upload_error' ||
+            event.type == 'upload_result')
+        .listen(_handleUploadResult);
+  }
+
+  void _handleUploadResult(dynamic event) {
+    final data = event.data as Map<String, dynamic>;
+    final success = data['success'] as bool? ?? (event.type == 'upload_complete');
+    final filename = data['filename'] as String? ?? 'file';
+    final error = data['error'] as String?;
+
+    print('[UPLOAD] Result event: type=${event.type}, success=$success, filename=$filename, error=$error');
+
+    if (mounted) {
+      ScaffoldMessenger.of(context).hideCurrentSnackBar();
+      if (success) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Uploaded "$filename" successfully'),
+            backgroundColor: Colors.green,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Upload failed: ${error ?? "Unknown error"}'),
+            backgroundColor: Colors.red,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    }
   }
 
   void _handleAudioState(dynamic event) {
@@ -91,6 +133,7 @@ class _QuickActionsState extends ConsumerState<QuickActions> {
   void dispose() {
     _volumeDebounce?.cancel();
     _audioStateSubscription?.cancel();
+    _uploadResultSubscription?.cancel();
     super.dispose();
   }
 
