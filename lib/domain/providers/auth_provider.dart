@@ -68,6 +68,11 @@ class AuthNotifier extends StateNotifier<AuthState> {
         token: token,
         email: email,
       );
+
+      // Build 32 fix: Reload dog profiles for restored user session
+      // This is critical - without this, dogs load before auth is ready
+      // and end up in the "anonymous" bucket
+      await _ref.read(dogProfilesProvider.notifier).reloadForCurrentUser();
     }
   }
 
@@ -167,15 +172,14 @@ class AuthNotifier extends StateNotifier<AuthState> {
     // Clear cloud-synced data like missions
     _ref.read(missionsProvider.notifier).clearState();
 
-    // Build 32: Clear selected dog (will be reloaded for next user)
+    // Build 32 fix: Clear both dog profiles and selected dog
+    // This prevents stale dogs from showing when another user logs in
+    _ref.read(dogProfilesProvider.notifier).clearState();
     _ref.read(selectedDogProvider.notifier).clearState();
 
     // Clear stored auth
     await _clearAuth();
     state = const AuthState();
-
-    // Note: Dog profiles are scoped by user email, so they'll be automatically
-    // loaded for the next user when they log in (via reloadForCurrentUser)
   }
 
   /// Clear error message

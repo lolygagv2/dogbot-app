@@ -134,3 +134,44 @@ class MissionProgress with _$MissionProgress {
     return statusLabel;
   }
 }
+
+/// Mission history entry for tracking past training sessions
+@freezed
+class MissionHistoryEntry with _$MissionHistoryEntry {
+  const factory MissionHistoryEntry({
+    required String id,
+    required String missionId,
+    required String missionName,
+    required String dogId,
+    required DateTime startedAt,
+    DateTime? completedAt,
+    @Default(0) int treatsGiven,
+    @Default(0) int stagesCompleted,
+    @Default(0) int totalStages,
+    @Default(false) bool wasCompleted,
+  }) = _MissionHistoryEntry;
+
+  factory MissionHistoryEntry.fromJson(Map<String, dynamic> json) =>
+      _$MissionHistoryEntryFromJson(json);
+}
+
+/// Mission statistics for a dog
+@freezed
+class MissionStats with _$MissionStats {
+  const MissionStats._();
+
+  const factory MissionStats({
+    required String dogId,
+    @Default(0) int totalMissions,
+    @Default(0) int completedMissions,
+    @Default(0) int totalTreats,
+    @Default(0.0) double successRate,
+    @Default({}) Map<String, int> missionCounts,
+  }) = _MissionStats;
+
+  factory MissionStats.fromJson(Map<String, dynamic> json) =>
+      _$MissionStatsFromJson(json);
+
+  /// Success rate as percentage string
+  String get successRatePercent => '${(successRate * 100).toInt()}%';
+}

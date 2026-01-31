@@ -1,9 +1,13 @@
 import 'dart:async';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'dart:convert';
 
 import '../../core/network/websocket_client.dart';
+import '../../data/datasources/robot_api.dart';
 import '../../data/models/mission.dart';
+import 'auth_provider.dart';
 
 /// Predefined training missions
 final _predefinedMissions = [
@@ -151,13 +155,89 @@ final missionByIdProvider = Provider.family<Mission?, String>((ref, id) {
   }
 });
 
+/// Cache key for offline fallback
+const _missionsCacheKey = 'cached_missions';
+
 /// Missions state notifier
 class MissionsNotifier extends StateNotifier<MissionsState> {
   final Ref _ref;
   StreamSubscription? _wsSubscription;
+  bool _isLoading = false;
 
   MissionsNotifier(this._ref) : super(MissionsState(missions: _predefinedMissions)) {
     _listenToWebSocket();
+    _loadMissions();
+  }
+
+  /// Load missions from server with offline fallback
+  Future<void> _loadMissions() async {
+    if (_isLoading) return;
+    _isLoading = true;
+
+    final token = _ref.read(authTokenProvider);
+    if (token == null) {
+      // Not logged in, use predefined missions
+      _isLoading = false;
+      return;
+    }
+
+    try {
+      final api = _ref.read(robotApiProvider);
+      final missions = await api.getMissions(token);
+
+      if (missions.isNotEmpty) {
+        state = state.copyWith(missions: missions);
+        // Cache for offline use
+        await _cacheMissions(missions);
+        print('Missions: Loaded ${missions.length} from server');
+      } else {
+        // Server returned empty, try cache
+        await _loadCachedMissions();
+      }
+    } catch (e) {
+      print('Missions: Failed to load from server: $e');
+      // Fallback to cache
+      await _loadCachedMissions();
+    }
+
+    _isLoading = false;
+  }
+
+  /// Cache missions for offline fallback
+  Future<void> _cacheMissions(List<Mission> missions) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final json = jsonEncode(missions.map((m) => m.toJson()).toList());
+      await prefs.setString(_missionsCacheKey, json);
+    } catch (e) {
+      print('Missions: Failed to cache: $e');
+    }
+  }
+
+  /// Load missions from local cache
+  Future<void> _loadCachedMissions() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final json = prefs.getString(_missionsCacheKey);
+      if (json != null && json.isNotEmpty) {
+        final List<dynamic> list = jsonDecode(json);
+        final missions = list.map((m) => Mission.fromJson(m as Map<String, dynamic>)).toList();
+        if (missions.isNotEmpty) {
+          state = state.copyWith(missions: missions);
+          print('Missions: Loaded ${missions.length} from cache');
+          return;
+        }
+      }
+    } catch (e) {
+      print('Missions: Failed to load from cache: $e');
+    }
+    // Fallback to predefined if cache fails
+    print('Missions: Using ${_predefinedMissions.length} predefined missions');
+  }
+
+  /// Reload missions from server
+  Future<void> refreshMissions() async {
+    await _loadMissions();
   }
 
   void _listenToWebSocket() {

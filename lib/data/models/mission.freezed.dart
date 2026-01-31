@@ -846,3 +846,638 @@ abstract class _MissionProgress extends MissionProgress {
   _$$MissionProgressImplCopyWith<_$MissionProgressImpl> get copyWith =>
       throw _privateConstructorUsedError;
 }
+
+MissionHistoryEntry _$MissionHistoryEntryFromJson(Map<String, dynamic> json) {
+  return _MissionHistoryEntry.fromJson(json);
+}
+
+/// @nodoc
+mixin _$MissionHistoryEntry {
+  String get id => throw _privateConstructorUsedError;
+  String get missionId => throw _privateConstructorUsedError;
+  String get missionName => throw _privateConstructorUsedError;
+  String get dogId => throw _privateConstructorUsedError;
+  DateTime get startedAt => throw _privateConstructorUsedError;
+  DateTime? get completedAt => throw _privateConstructorUsedError;
+  int get treatsGiven => throw _privateConstructorUsedError;
+  int get stagesCompleted => throw _privateConstructorUsedError;
+  int get totalStages => throw _privateConstructorUsedError;
+  bool get wasCompleted => throw _privateConstructorUsedError;
+
+  /// Serializes this MissionHistoryEntry to a JSON map.
+  Map<String, dynamic> toJson() => throw _privateConstructorUsedError;
+
+  /// Create a copy of MissionHistoryEntry
+  /// with the given fields replaced by the non-null parameter values.
+  @JsonKey(includeFromJson: false, includeToJson: false)
+  $MissionHistoryEntryCopyWith<MissionHistoryEntry> get copyWith =>
+      throw _privateConstructorUsedError;
+}
+
+/// @nodoc
+abstract class $MissionHistoryEntryCopyWith<$Res> {
+  factory $MissionHistoryEntryCopyWith(
+          MissionHistoryEntry value, $Res Function(MissionHistoryEntry) then) =
+      _$MissionHistoryEntryCopyWithImpl<$Res, MissionHistoryEntry>;
+  @useResult
+  $Res call(
+      {String id,
+      String missionId,
+      String missionName,
+      String dogId,
+      DateTime startedAt,
+      DateTime? completedAt,
+      int treatsGiven,
+      int stagesCompleted,
+      int totalStages,
+      bool wasCompleted});
+}
+
+/// @nodoc
+class _$MissionHistoryEntryCopyWithImpl<$Res, $Val extends MissionHistoryEntry>
+    implements $MissionHistoryEntryCopyWith<$Res> {
+  _$MissionHistoryEntryCopyWithImpl(this._value, this._then);
+
+  // ignore: unused_field
+  final $Val _value;
+  // ignore: unused_field
+  final $Res Function($Val) _then;
+
+  /// Create a copy of MissionHistoryEntry
+  /// with the given fields replaced by the non-null parameter values.
+  @pragma('vm:prefer-inline')
+  @override
+  $Res call({
+    Object? id = null,
+    Object? missionId = null,
+    Object? missionName = null,
+    Object? dogId = null,
+    Object? startedAt = null,
+    Object? completedAt = freezed,
+    Object? treatsGiven = null,
+    Object? stagesCompleted = null,
+    Object? totalStages = null,
+    Object? wasCompleted = null,
+  }) {
+    return _then(_value.copyWith(
+      id: null == id
+          ? _value.id
+          : id // ignore: cast_nullable_to_non_nullable
+              as String,
+      missionId: null == missionId
+          ? _value.missionId
+          : missionId // ignore: cast_nullable_to_non_nullable
+              as String,
+      missionName: null == missionName
+          ? _value.missionName
+          : missionName // ignore: cast_nullable_to_non_nullable
+              as String,
+      dogId: null == dogId
+          ? _value.dogId
+          : dogId // ignore: cast_nullable_to_non_nullable
+              as String,
+      startedAt: null == startedAt
+          ? _value.startedAt
+          : startedAt // ignore: cast_nullable_to_non_nullable
+              as DateTime,
+      completedAt: freezed == completedAt
+          ? _value.completedAt
+          : completedAt // ignore: cast_nullable_to_non_nullable
+              as DateTime?,
+      treatsGiven: null == treatsGiven
+          ? _value.treatsGiven
+          : treatsGiven // ignore: cast_nullable_to_non_nullable
+              as int,
+      stagesCompleted: null == stagesCompleted
+          ? _value.stagesCompleted
+          : stagesCompleted // ignore: cast_nullable_to_non_nullable
+              as int,
+      totalStages: null == totalStages
+          ? _value.totalStages
+          : totalStages // ignore: cast_nullable_to_non_nullable
+              as int,
+      wasCompleted: null == wasCompleted
+          ? _value.wasCompleted
+          : wasCompleted // ignore: cast_nullable_to_non_nullable
+              as bool,
+    ) as $Val);
+  }
+}
+
+/// @nodoc
+abstract class _$$MissionHistoryEntryImplCopyWith<$Res>
+    implements $MissionHistoryEntryCopyWith<$Res> {
+  factory _$$MissionHistoryEntryImplCopyWith(_$MissionHistoryEntryImpl value,
+          $Res Function(_$MissionHistoryEntryImpl) then) =
+      __$$MissionHistoryEntryImplCopyWithImpl<$Res>;
+  @override
+  @useResult
+  $Res call(
+      {String id,
+      String missionId,
+      String missionName,
+      String dogId,
+      DateTime startedAt,
+      DateTime? completedAt,
+      int treatsGiven,
+      int stagesCompleted,
+      int totalStages,
+      bool wasCompleted});
+}
+
+/// @nodoc
+class __$$MissionHistoryEntryImplCopyWithImpl<$Res>
+    extends _$MissionHistoryEntryCopyWithImpl<$Res, _$MissionHistoryEntryImpl>
+    implements _$$MissionHistoryEntryImplCopyWith<$Res> {
+  __$$MissionHistoryEntryImplCopyWithImpl(_$MissionHistoryEntryImpl _value,
+      $Res Function(_$MissionHistoryEntryImpl) _then)
+      : super(_value, _then);
+
+  /// Create a copy of MissionHistoryEntry
+  /// with the given fields replaced by the non-null parameter values.
+  @pragma('vm:prefer-inline')
+  @override
+  $Res call({
+    Object? id = null,
+    Object? missionId = null,
+    Object? missionName = null,
+    Object? dogId = null,
+    Object? startedAt = null,
+    Object? completedAt = freezed,
+    Object? treatsGiven = null,
+    Object? stagesCompleted = null,
+    Object? totalStages = null,
+    Object? wasCompleted = null,
+  }) {
+    return _then(_$MissionHistoryEntryImpl(
+      id: null == id
+          ? _value.id
+          : id // ignore: cast_nullable_to_non_nullable
+              as String,
+      missionId: null == missionId
+          ? _value.missionId
+          : missionId // ignore: cast_nullable_to_non_nullable
+              as String,
+      missionName: null == missionName
+          ? _value.missionName
+          : missionName // ignore: cast_nullable_to_non_nullable
+              as String,
+      dogId: null == dogId
+          ? _value.dogId
+          : dogId // ignore: cast_nullable_to_non_nullable
+              as String,
+      startedAt: null == startedAt
+          ? _value.startedAt
+          : startedAt // ignore: cast_nullable_to_non_nullable
+              as DateTime,
+      completedAt: freezed == completedAt
+          ? _value.completedAt
+          : completedAt // ignore: cast_nullable_to_non_nullable
+              as DateTime?,
+      treatsGiven: null == treatsGiven
+          ? _value.treatsGiven
+          : treatsGiven // ignore: cast_nullable_to_non_nullable
+              as int,
+      stagesCompleted: null == stagesCompleted
+          ? _value.stagesCompleted
+          : stagesCompleted // ignore: cast_nullable_to_non_nullable
+              as int,
+      totalStages: null == totalStages
+          ? _value.totalStages
+          : totalStages // ignore: cast_nullable_to_non_nullable
+              as int,
+      wasCompleted: null == wasCompleted
+          ? _value.wasCompleted
+          : wasCompleted // ignore: cast_nullable_to_non_nullable
+              as bool,
+    ));
+  }
+}
+
+/// @nodoc
+@JsonSerializable()
+class _$MissionHistoryEntryImpl implements _MissionHistoryEntry {
+  const _$MissionHistoryEntryImpl(
+      {required this.id,
+      required this.missionId,
+      required this.missionName,
+      required this.dogId,
+      required this.startedAt,
+      this.completedAt,
+      this.treatsGiven = 0,
+      this.stagesCompleted = 0,
+      this.totalStages = 0,
+      this.wasCompleted = false});
+
+  factory _$MissionHistoryEntryImpl.fromJson(Map<String, dynamic> json) =>
+      _$$MissionHistoryEntryImplFromJson(json);
+
+  @override
+  final String id;
+  @override
+  final String missionId;
+  @override
+  final String missionName;
+  @override
+  final String dogId;
+  @override
+  final DateTime startedAt;
+  @override
+  final DateTime? completedAt;
+  @override
+  @JsonKey()
+  final int treatsGiven;
+  @override
+  @JsonKey()
+  final int stagesCompleted;
+  @override
+  @JsonKey()
+  final int totalStages;
+  @override
+  @JsonKey()
+  final bool wasCompleted;
+
+  @override
+  String toString() {
+    return 'MissionHistoryEntry(id: $id, missionId: $missionId, missionName: $missionName, dogId: $dogId, startedAt: $startedAt, completedAt: $completedAt, treatsGiven: $treatsGiven, stagesCompleted: $stagesCompleted, totalStages: $totalStages, wasCompleted: $wasCompleted)';
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return identical(this, other) ||
+        (other.runtimeType == runtimeType &&
+            other is _$MissionHistoryEntryImpl &&
+            (identical(other.id, id) || other.id == id) &&
+            (identical(other.missionId, missionId) ||
+                other.missionId == missionId) &&
+            (identical(other.missionName, missionName) ||
+                other.missionName == missionName) &&
+            (identical(other.dogId, dogId) || other.dogId == dogId) &&
+            (identical(other.startedAt, startedAt) ||
+                other.startedAt == startedAt) &&
+            (identical(other.completedAt, completedAt) ||
+                other.completedAt == completedAt) &&
+            (identical(other.treatsGiven, treatsGiven) ||
+                other.treatsGiven == treatsGiven) &&
+            (identical(other.stagesCompleted, stagesCompleted) ||
+                other.stagesCompleted == stagesCompleted) &&
+            (identical(other.totalStages, totalStages) ||
+                other.totalStages == totalStages) &&
+            (identical(other.wasCompleted, wasCompleted) ||
+                other.wasCompleted == wasCompleted));
+  }
+
+  @JsonKey(includeFromJson: false, includeToJson: false)
+  @override
+  int get hashCode => Object.hash(
+      runtimeType,
+      id,
+      missionId,
+      missionName,
+      dogId,
+      startedAt,
+      completedAt,
+      treatsGiven,
+      stagesCompleted,
+      totalStages,
+      wasCompleted);
+
+  /// Create a copy of MissionHistoryEntry
+  /// with the given fields replaced by the non-null parameter values.
+  @JsonKey(includeFromJson: false, includeToJson: false)
+  @override
+  @pragma('vm:prefer-inline')
+  _$$MissionHistoryEntryImplCopyWith<_$MissionHistoryEntryImpl> get copyWith =>
+      __$$MissionHistoryEntryImplCopyWithImpl<_$MissionHistoryEntryImpl>(
+          this, _$identity);
+
+  @override
+  Map<String, dynamic> toJson() {
+    return _$$MissionHistoryEntryImplToJson(
+      this,
+    );
+  }
+}
+
+abstract class _MissionHistoryEntry implements MissionHistoryEntry {
+  const factory _MissionHistoryEntry(
+      {required final String id,
+      required final String missionId,
+      required final String missionName,
+      required final String dogId,
+      required final DateTime startedAt,
+      final DateTime? completedAt,
+      final int treatsGiven,
+      final int stagesCompleted,
+      final int totalStages,
+      final bool wasCompleted}) = _$MissionHistoryEntryImpl;
+
+  factory _MissionHistoryEntry.fromJson(Map<String, dynamic> json) =
+      _$MissionHistoryEntryImpl.fromJson;
+
+  @override
+  String get id;
+  @override
+  String get missionId;
+  @override
+  String get missionName;
+  @override
+  String get dogId;
+  @override
+  DateTime get startedAt;
+  @override
+  DateTime? get completedAt;
+  @override
+  int get treatsGiven;
+  @override
+  int get stagesCompleted;
+  @override
+  int get totalStages;
+  @override
+  bool get wasCompleted;
+
+  /// Create a copy of MissionHistoryEntry
+  /// with the given fields replaced by the non-null parameter values.
+  @override
+  @JsonKey(includeFromJson: false, includeToJson: false)
+  _$$MissionHistoryEntryImplCopyWith<_$MissionHistoryEntryImpl> get copyWith =>
+      throw _privateConstructorUsedError;
+}
+
+MissionStats _$MissionStatsFromJson(Map<String, dynamic> json) {
+  return _MissionStats.fromJson(json);
+}
+
+/// @nodoc
+mixin _$MissionStats {
+  String get dogId => throw _privateConstructorUsedError;
+  int get totalMissions => throw _privateConstructorUsedError;
+  int get completedMissions => throw _privateConstructorUsedError;
+  int get totalTreats => throw _privateConstructorUsedError;
+  double get successRate => throw _privateConstructorUsedError;
+  Map<String, int> get missionCounts => throw _privateConstructorUsedError;
+
+  /// Serializes this MissionStats to a JSON map.
+  Map<String, dynamic> toJson() => throw _privateConstructorUsedError;
+
+  /// Create a copy of MissionStats
+  /// with the given fields replaced by the non-null parameter values.
+  @JsonKey(includeFromJson: false, includeToJson: false)
+  $MissionStatsCopyWith<MissionStats> get copyWith =>
+      throw _privateConstructorUsedError;
+}
+
+/// @nodoc
+abstract class $MissionStatsCopyWith<$Res> {
+  factory $MissionStatsCopyWith(
+          MissionStats value, $Res Function(MissionStats) then) =
+      _$MissionStatsCopyWithImpl<$Res, MissionStats>;
+  @useResult
+  $Res call(
+      {String dogId,
+      int totalMissions,
+      int completedMissions,
+      int totalTreats,
+      double successRate,
+      Map<String, int> missionCounts});
+}
+
+/// @nodoc
+class _$MissionStatsCopyWithImpl<$Res, $Val extends MissionStats>
+    implements $MissionStatsCopyWith<$Res> {
+  _$MissionStatsCopyWithImpl(this._value, this._then);
+
+  // ignore: unused_field
+  final $Val _value;
+  // ignore: unused_field
+  final $Res Function($Val) _then;
+
+  /// Create a copy of MissionStats
+  /// with the given fields replaced by the non-null parameter values.
+  @pragma('vm:prefer-inline')
+  @override
+  $Res call({
+    Object? dogId = null,
+    Object? totalMissions = null,
+    Object? completedMissions = null,
+    Object? totalTreats = null,
+    Object? successRate = null,
+    Object? missionCounts = null,
+  }) {
+    return _then(_value.copyWith(
+      dogId: null == dogId
+          ? _value.dogId
+          : dogId // ignore: cast_nullable_to_non_nullable
+              as String,
+      totalMissions: null == totalMissions
+          ? _value.totalMissions
+          : totalMissions // ignore: cast_nullable_to_non_nullable
+              as int,
+      completedMissions: null == completedMissions
+          ? _value.completedMissions
+          : completedMissions // ignore: cast_nullable_to_non_nullable
+              as int,
+      totalTreats: null == totalTreats
+          ? _value.totalTreats
+          : totalTreats // ignore: cast_nullable_to_non_nullable
+              as int,
+      successRate: null == successRate
+          ? _value.successRate
+          : successRate // ignore: cast_nullable_to_non_nullable
+              as double,
+      missionCounts: null == missionCounts
+          ? _value.missionCounts
+          : missionCounts // ignore: cast_nullable_to_non_nullable
+              as Map<String, int>,
+    ) as $Val);
+  }
+}
+
+/// @nodoc
+abstract class _$$MissionStatsImplCopyWith<$Res>
+    implements $MissionStatsCopyWith<$Res> {
+  factory _$$MissionStatsImplCopyWith(
+          _$MissionStatsImpl value, $Res Function(_$MissionStatsImpl) then) =
+      __$$MissionStatsImplCopyWithImpl<$Res>;
+  @override
+  @useResult
+  $Res call(
+      {String dogId,
+      int totalMissions,
+      int completedMissions,
+      int totalTreats,
+      double successRate,
+      Map<String, int> missionCounts});
+}
+
+/// @nodoc
+class __$$MissionStatsImplCopyWithImpl<$Res>
+    extends _$MissionStatsCopyWithImpl<$Res, _$MissionStatsImpl>
+    implements _$$MissionStatsImplCopyWith<$Res> {
+  __$$MissionStatsImplCopyWithImpl(
+      _$MissionStatsImpl _value, $Res Function(_$MissionStatsImpl) _then)
+      : super(_value, _then);
+
+  /// Create a copy of MissionStats
+  /// with the given fields replaced by the non-null parameter values.
+  @pragma('vm:prefer-inline')
+  @override
+  $Res call({
+    Object? dogId = null,
+    Object? totalMissions = null,
+    Object? completedMissions = null,
+    Object? totalTreats = null,
+    Object? successRate = null,
+    Object? missionCounts = null,
+  }) {
+    return _then(_$MissionStatsImpl(
+      dogId: null == dogId
+          ? _value.dogId
+          : dogId // ignore: cast_nullable_to_non_nullable
+              as String,
+      totalMissions: null == totalMissions
+          ? _value.totalMissions
+          : totalMissions // ignore: cast_nullable_to_non_nullable
+              as int,
+      completedMissions: null == completedMissions
+          ? _value.completedMissions
+          : completedMissions // ignore: cast_nullable_to_non_nullable
+              as int,
+      totalTreats: null == totalTreats
+          ? _value.totalTreats
+          : totalTreats // ignore: cast_nullable_to_non_nullable
+              as int,
+      successRate: null == successRate
+          ? _value.successRate
+          : successRate // ignore: cast_nullable_to_non_nullable
+              as double,
+      missionCounts: null == missionCounts
+          ? _value._missionCounts
+          : missionCounts // ignore: cast_nullable_to_non_nullable
+              as Map<String, int>,
+    ));
+  }
+}
+
+/// @nodoc
+@JsonSerializable()
+class _$MissionStatsImpl extends _MissionStats {
+  const _$MissionStatsImpl(
+      {required this.dogId,
+      this.totalMissions = 0,
+      this.completedMissions = 0,
+      this.totalTreats = 0,
+      this.successRate = 0.0,
+      final Map<String, int> missionCounts = const {}})
+      : _missionCounts = missionCounts,
+        super._();
+
+  factory _$MissionStatsImpl.fromJson(Map<String, dynamic> json) =>
+      _$$MissionStatsImplFromJson(json);
+
+  @override
+  final String dogId;
+  @override
+  @JsonKey()
+  final int totalMissions;
+  @override
+  @JsonKey()
+  final int completedMissions;
+  @override
+  @JsonKey()
+  final int totalTreats;
+  @override
+  @JsonKey()
+  final double successRate;
+  final Map<String, int> _missionCounts;
+  @override
+  @JsonKey()
+  Map<String, int> get missionCounts {
+    if (_missionCounts is EqualUnmodifiableMapView) return _missionCounts;
+    // ignore: implicit_dynamic_type
+    return EqualUnmodifiableMapView(_missionCounts);
+  }
+
+  @override
+  String toString() {
+    return 'MissionStats(dogId: $dogId, totalMissions: $totalMissions, completedMissions: $completedMissions, totalTreats: $totalTreats, successRate: $successRate, missionCounts: $missionCounts)';
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return identical(this, other) ||
+        (other.runtimeType == runtimeType &&
+            other is _$MissionStatsImpl &&
+            (identical(other.dogId, dogId) || other.dogId == dogId) &&
+            (identical(other.totalMissions, totalMissions) ||
+                other.totalMissions == totalMissions) &&
+            (identical(other.completedMissions, completedMissions) ||
+                other.completedMissions == completedMissions) &&
+            (identical(other.totalTreats, totalTreats) ||
+                other.totalTreats == totalTreats) &&
+            (identical(other.successRate, successRate) ||
+                other.successRate == successRate) &&
+            const DeepCollectionEquality()
+                .equals(other._missionCounts, _missionCounts));
+  }
+
+  @JsonKey(includeFromJson: false, includeToJson: false)
+  @override
+  int get hashCode => Object.hash(
+      runtimeType,
+      dogId,
+      totalMissions,
+      completedMissions,
+      totalTreats,
+      successRate,
+      const DeepCollectionEquality().hash(_missionCounts));
+
+  /// Create a copy of MissionStats
+  /// with the given fields replaced by the non-null parameter values.
+  @JsonKey(includeFromJson: false, includeToJson: false)
+  @override
+  @pragma('vm:prefer-inline')
+  _$$MissionStatsImplCopyWith<_$MissionStatsImpl> get copyWith =>
+      __$$MissionStatsImplCopyWithImpl<_$MissionStatsImpl>(this, _$identity);
+
+  @override
+  Map<String, dynamic> toJson() {
+    return _$$MissionStatsImplToJson(
+      this,
+    );
+  }
+}
+
+abstract class _MissionStats extends MissionStats {
+  const factory _MissionStats(
+      {required final String dogId,
+      final int totalMissions,
+      final int completedMissions,
+      final int totalTreats,
+      final double successRate,
+      final Map<String, int> missionCounts}) = _$MissionStatsImpl;
+  const _MissionStats._() : super._();
+
+  factory _MissionStats.fromJson(Map<String, dynamic> json) =
+      _$MissionStatsImpl.fromJson;
+
+  @override
+  String get dogId;
+  @override
+  int get totalMissions;
+  @override
+  int get completedMissions;
+  @override
+  int get totalTreats;
+  @override
+  double get successRate;
+  @override
+  Map<String, int> get missionCounts;
+
+  /// Create a copy of MissionStats
+  /// with the given fields replaced by the non-null parameter values.
+  @override
+  @JsonKey(includeFromJson: false, includeToJson: false)
+  _$$MissionStatsImplCopyWith<_$MissionStatsImpl> get copyWith =>
+      throw _privateConstructorUsedError;
+}

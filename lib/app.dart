@@ -10,6 +10,9 @@ import 'presentation/screens/home/home_screen.dart';
 import 'presentation/screens/drive/drive_screen.dart';
 import 'presentation/screens/missions/missions_screen.dart';
 import 'presentation/screens/missions/mission_detail_screen.dart';
+import 'presentation/screens/programs/program_detail_screen.dart';
+import 'presentation/screens/coach/coach_screen.dart';
+import 'presentation/screens/history/history_screen.dart';
 import 'presentation/screens/settings/settings_screen.dart';
 import 'presentation/screens/settings/device_pairing_screen.dart';
 import 'presentation/screens/notifications/notifications_screen.dart';
@@ -17,6 +20,8 @@ import 'presentation/screens/dog_profile/dog_profile_screen.dart';
 import 'presentation/screens/dog_profile/add_dog_screen.dart';
 import 'presentation/screens/gallery/photo_gallery_screen.dart';
 import 'presentation/screens/voice/voice_setup_screen.dart';
+import 'presentation/screens/scheduler/scheduler_screen.dart';
+import 'presentation/screens/scheduler/schedule_edit_screen.dart';
 import 'presentation/theme/app_theme.dart';
 
 /// Navigation tab enum
@@ -107,6 +112,22 @@ final _router = GoRouter(
           ],
         ),
 
+        // Programs (multi-mission sequences)
+        GoRoute(
+          path: '/programs',
+          pageBuilder: (context, state) => const NoTransitionPage(
+            child: MissionsScreen(), // Programs shown in missions screen
+          ),
+          routes: [
+            GoRoute(
+              path: ':id',
+              builder: (context, state) => ProgramDetailScreen(
+                programId: state.pathParameters['id']!,
+              ),
+            ),
+          ],
+        ),
+
         // Photo Gallery tab
         GoRoute(
           path: '/gallery',
@@ -131,10 +152,44 @@ final _router = GoRouter(
       builder: (context, state) => const DriveScreen(),
     ),
 
+    // Coach mode screen (full screen, no bottom nav)
+    GoRoute(
+      path: '/coach',
+      builder: (context, state) => const CoachScreen(),
+    ),
+
+    // Training history screen
+    GoRoute(
+      path: '/history',
+      builder: (context, state) {
+        final extra = state.extra as Map<String, dynamic>?;
+        final dogId = extra?['dogId'] as String?;
+        return HistoryScreen(dogId: dogId);
+      },
+    ),
+
     // Settings screen (full screen, no bottom nav)
     GoRoute(
       path: '/settings',
       builder: (context, state) => const SettingsScreen(),
+    ),
+
+    // Scheduler screens
+    GoRoute(
+      path: '/scheduler',
+      builder: (context, state) => const SchedulerScreen(),
+      routes: [
+        GoRoute(
+          path: 'new',
+          builder: (context, state) => const ScheduleEditScreen(),
+        ),
+        GoRoute(
+          path: ':id',
+          builder: (context, state) => ScheduleEditScreen(
+            scheduleId: state.pathParameters['id'],
+          ),
+        ),
+      ],
     ),
 
     // Device pairing screen

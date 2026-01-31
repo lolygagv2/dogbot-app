@@ -93,10 +93,13 @@ class DogProfilesNotifier extends StateNotifier<List<DogProfile>> {
 
   Future<void> _saveProfiles() async {
     _prefs ??= await SharedPreferences.getInstance();
-    final key = _dogsKeyForUser(_currentUserEmail);
+    // Build 32 fix: Always use fresh email from auth, not cached value
+    // This prevents saving to wrong key if auth loaded after dogs
+    final email = _userEmail ?? _currentUserEmail;
+    final key = _dogsKeyForUser(email);
     final json = jsonEncode(state.map((p) => p.toJson()).toList());
     await _prefs?.setString(key, json);
-    print('DogProfiles: Saved ${state.length} profiles for user $_currentUserEmail');
+    print('DogProfiles: Saved ${state.length} profiles for user $email');
   }
 
   /// Reload profiles for current user (call after login/logout)

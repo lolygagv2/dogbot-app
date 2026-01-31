@@ -132,6 +132,13 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
 
           _SectionHeader('Training'),
           ListTile(
+            leading: const Icon(Icons.schedule),
+            title: const Text('Training Scheduler'),
+            subtitle: const Text('Schedule automatic training sessions'),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => context.push('/scheduler'),
+          ),
+          ListTile(
             leading: const Icon(Icons.mic),
             title: const Text('Voice Commands'),
             subtitle: const Text('Record custom voice commands for your dog'),

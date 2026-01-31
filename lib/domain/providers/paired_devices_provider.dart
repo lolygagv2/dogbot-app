@@ -189,15 +189,22 @@ class PairedDevicesNotifier extends StateNotifier<PairedDevicesState> {
   }
 
   String _parseError(dynamic e) {
-    final errorStr = e.toString();
+    final errorStr = e.toString().toLowerCase();
     if (errorStr.contains('401') || errorStr.contains('403')) {
       return 'Not authorized. Please log in again.';
     } else if (errorStr.contains('404')) {
-      return 'Device not found';
+      return 'Device not found. Check the device ID.';
     } else if (errorStr.contains('409')) {
-      return 'Device already paired';
-    } else if (errorStr.contains('SocketException') ||
-        errorStr.contains('Connection')) {
+      return 'Device already paired to your account.';
+    } else if (errorStr.contains('503') ||
+        errorStr.contains('unavailable') ||
+        errorStr.contains('offline')) {
+      // Issue 6b: Show "Robot unavailable" when robot is offline
+      return 'Robot unavailable. Make sure it is powered on and connected.';
+    } else if (errorStr.contains('timeout')) {
+      return 'Connection timed out. Robot may be unavailable.';
+    } else if (errorStr.contains('socketexception') ||
+        errorStr.contains('connection')) {
       return 'Network error. Check your connection.';
     }
     return 'An error occurred. Please try again.';

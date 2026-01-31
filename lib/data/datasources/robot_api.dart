@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/constants/api_endpoints.dart';
 import '../../core/network/dio_client.dart';
+import '../models/mission.dart';
+import '../models/schedule.dart';
 
 /// Provider for RobotApi
 final robotApiProvider = Provider<RobotApi>((ref) {
@@ -37,6 +39,178 @@ class RobotApi {
       return response.statusCode == 200;
     } catch (e) {
       print('RobotApi: Failed to delete dog $dogId: $e');
+      return false;
+    }
+  }
+
+  /// Fetch available missions from server
+  Future<List<Mission>> getMissions(String token) async {
+    try {
+      final response = await _dio.get(
+        ApiEndpoints.missions,
+        options: Options(headers: {'Authorization': 'Bearer $token'}),
+      );
+      if (response.statusCode == 200 && response.data is List) {
+        return (response.data as List)
+            .map((m) => Mission.fromJson(m as Map<String, dynamic>))
+            .toList();
+      }
+      return [];
+    } catch (e) {
+      print('RobotApi: Failed to fetch missions: $e');
+      return [];
+    }
+  }
+
+  /// Fetch mission history for a dog
+  Future<List<MissionHistoryEntry>> getMissionHistory({
+    required String token,
+    String? dogId,
+    int days = 7,
+  }) async {
+    try {
+      final queryParams = <String, dynamic>{'days': days};
+      if (dogId != null) queryParams['dog_id'] = dogId;
+
+      final response = await _dio.get(
+        ApiEndpoints.missionHistory,
+        queryParameters: queryParams,
+        options: Options(headers: {'Authorization': 'Bearer $token'}),
+      );
+      if (response.statusCode == 200 && response.data is List) {
+        return (response.data as List)
+            .map((h) => MissionHistoryEntry.fromJson(h as Map<String, dynamic>))
+            .toList();
+      }
+      return [];
+    } catch (e) {
+      print('RobotApi: Failed to fetch mission history: $e');
+      return [];
+    }
+  }
+
+  /// Fetch mission stats for a dog
+  Future<MissionStats?> getMissionStats({
+    required String token,
+    required String dogId,
+  }) async {
+    try {
+      final response = await _dio.get(
+        ApiEndpoints.missionStats,
+        queryParameters: {'dog_id': dogId},
+        options: Options(headers: {'Authorization': 'Bearer $token'}),
+      );
+      if (response.statusCode == 200 && response.data != null) {
+        return MissionStats.fromJson(response.data as Map<String, dynamic>);
+      }
+      return null;
+    } catch (e) {
+      print('RobotApi: Failed to fetch mission stats: $e');
+      return null;
+    }
+  }
+
+  // ============ Scheduling API ============
+
+  /// Fetch all schedules
+  Future<List<MissionSchedule>> getSchedules(String token) async {
+    try {
+      final response = await _dio.get(
+        ApiEndpoints.schedules,
+        options: Options(headers: {'Authorization': 'Bearer $token'}),
+      );
+      if (response.statusCode == 200 && response.data is List) {
+        return (response.data as List)
+            .map((s) => MissionSchedule.fromJson(s as Map<String, dynamic>))
+            .toList();
+      }
+      return [];
+    } catch (e) {
+      print('RobotApi: Failed to fetch schedules: $e');
+      return [];
+    }
+  }
+
+  /// Create a new schedule
+  Future<MissionSchedule?> createSchedule(String token, MissionSchedule schedule) async {
+    try {
+      final response = await _dio.post(
+        ApiEndpoints.schedules,
+        data: schedule.toJson(),
+        options: Options(headers: {'Authorization': 'Bearer $token'}),
+      );
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        if (response.data != null) {
+          return MissionSchedule.fromJson(response.data as Map<String, dynamic>);
+        }
+        return schedule;
+      }
+      return null;
+    } catch (e) {
+      print('RobotApi: Failed to create schedule: $e');
+      return null;
+    }
+  }
+
+  /// Update an existing schedule
+  Future<MissionSchedule?> updateSchedule(String token, MissionSchedule schedule) async {
+    try {
+      final response = await _dio.put(
+        ApiEndpoints.scheduleById(schedule.id),
+        data: schedule.toJson(),
+        options: Options(headers: {'Authorization': 'Bearer $token'}),
+      );
+      if (response.statusCode == 200) {
+        if (response.data != null) {
+          return MissionSchedule.fromJson(response.data as Map<String, dynamic>);
+        }
+        return schedule;
+      }
+      return null;
+    } catch (e) {
+      print('RobotApi: Failed to update schedule: $e');
+      return null;
+    }
+  }
+
+  /// Delete a schedule
+  Future<bool> deleteSchedule(String token, String scheduleId) async {
+    try {
+      final response = await _dio.delete(
+        ApiEndpoints.scheduleById(scheduleId),
+        options: Options(headers: {'Authorization': 'Bearer $token'}),
+      );
+      return response.statusCode == 200 || response.statusCode == 204;
+    } catch (e) {
+      print('RobotApi: Failed to delete schedule: $e');
+      return false;
+    }
+  }
+
+  /// Enable global scheduling
+  Future<bool> enableScheduling(String token) async {
+    try {
+      final response = await _dio.post(
+        ApiEndpoints.scheduleEnable,
+        options: Options(headers: {'Authorization': 'Bearer $token'}),
+      );
+      return response.statusCode == 200;
+    } catch (e) {
+      print('RobotApi: Failed to enable scheduling: $e');
+      return false;
+    }
+  }
+
+  /// Disable global scheduling
+  Future<bool> disableScheduling(String token) async {
+    try {
+      final response = await _dio.post(
+        ApiEndpoints.scheduleDisable,
+        options: Options(headers: {'Authorization': 'Bearer $token'}),
+      );
+      return response.statusCode == 200;
+    } catch (e) {
+      print('RobotApi: Failed to disable scheduling: $e');
       return false;
     }
   }

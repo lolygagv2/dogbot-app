@@ -44,6 +44,11 @@ class ApiEndpoints {
   static String missionStart(String id) => '/missions/$id/start';
   static String missionStop(String id) => '/missions/$id/stop';
   static const String missionActive = '/missions/active';
+  static const String missionHistory = '/missions/history';
+  static const String missionStats = '/missions/stats';
+
+  // Programs (multi-mission sequences)
+  static const String programs = '/programs';
 
   // Dog profiles
   static const String dogs = '/api/dogs';
@@ -53,6 +58,12 @@ class ApiEndpoints {
   static const String userDevices = '/api/user/devices';
   static const String pairDevice = '/api/user/pair-device';
   static const String unpairDevice = '/api/user/unpair-device';
+
+  // Scheduling
+  static const String schedules = '/missions/schedule';
+  static const String scheduleEnable = '/missions/schedule/enable';
+  static const String scheduleDisable = '/missions/schedule/disable';
+  static String scheduleById(String id) => '/missions/schedule/$id';
 }
 
 /// LED pattern names
