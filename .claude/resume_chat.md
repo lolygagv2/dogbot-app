@@ -55,10 +55,19 @@
 - Servo control (too fast, jerky)
 - Mode state sync (events not being sent)
 - Video overlay "????" characters
+- **NEW: Send `upload_complete` or `upload_error` event after receiving `upload_song` command**
+  - APP now listens for these events to show success/failure feedback
 
 ### Remaining for RELAY CLAUDE:
 - Connection stability (timeouts during uploads)
 - Event forwarding verification
+- **NEW: Implement `/missions/schedule` REST endpoints** (currently returns error)
+  - POST `/missions/schedule` - create schedule
+  - PUT `/missions/schedule/:id` - update schedule
+  - DELETE `/missions/schedule/:id` - delete schedule
+  - POST `/missions/schedule/enable` - enable scheduling
+  - POST `/missions/schedule/disable` - disable scheduling
+- **NEW: Forward `upload_complete`/`upload_error` events from robot to app**
 
 ---
 
