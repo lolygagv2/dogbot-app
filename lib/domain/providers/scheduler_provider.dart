@@ -112,29 +112,38 @@ class SchedulerNotifier extends StateNotifier<SchedulerState> {
     }
   }
 
-  /// Create a new schedule
+  /// Create a new schedule (Build 34: Updated for Robot API format)
   Future<bool> createSchedule({
-    required String missionId,
+    required String missionName,
     required String dogId,
     String name = '',
     required ScheduleType type,
     required int hour,
     required int minute,
     List<int> weekdays = const [],
+    int cooldownHours = 24,
   }) async {
     final token = _ref.read(authTokenProvider);
     if (token == null) return false;
 
+    // Convert hour/minute to time strings and weekdays to day names
+    final startTime = MissionSchedule.timeFromHourMinute(hour, minute);
+    // Default end time is 4 hours after start
+    final endHour = (hour + 4) % 24;
+    final endTime = MissionSchedule.timeFromHourMinute(endHour, minute);
+    final daysOfWeek = MissionSchedule.weekdaysToNames(weekdays);
+
     final schedule = MissionSchedule(
       id: const Uuid().v4(),
-      missionId: missionId,
+      missionName: missionName,
       dogId: dogId,
       name: name,
       type: type,
-      hour: hour,
-      minute: minute,
-      weekdays: weekdays,
+      startTime: startTime,
+      endTime: endTime,
+      daysOfWeek: daysOfWeek,
       enabled: true,
+      cooldownHours: cooldownHours,
     );
 
     // Optimistic update

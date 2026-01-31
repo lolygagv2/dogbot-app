@@ -5,7 +5,6 @@ import 'package:go_router/go_router.dart';
 import '../../../data/models/schedule.dart';
 import '../../../domain/providers/scheduler_provider.dart';
 import '../../../domain/providers/dog_profiles_provider.dart';
-import '../../../domain/providers/missions_provider.dart';
 import '../../theme/app_theme.dart';
 
 class SchedulerScreen extends ConsumerStatefulWidget {
@@ -220,7 +219,6 @@ class _ScheduleCard extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final dog = ref.watch(dogProfileProvider(schedule.dogId));
-    final mission = ref.watch(missionByIdProvider(schedule.missionId));
     final isActive = schedule.enabled && isGlobalEnabled;
 
     return Dismissible(
@@ -325,7 +323,7 @@ class _ScheduleCard extends ConsumerWidget {
                       ),
                       const SizedBox(height: 2),
                       Text(
-                        mission?.name ?? schedule.missionId,
+                        schedule.missionName,
                         style: TextStyle(
                           fontSize: 13,
                           color: isActive ? AppTheme.primary : AppTheme.textTertiary,

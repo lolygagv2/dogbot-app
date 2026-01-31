@@ -20,17 +20,48 @@ MissionSchedule _$MissionScheduleFromJson(Map<String, dynamic> json) {
 
 /// @nodoc
 mixin _$MissionSchedule {
+  /// Schedule ID (robot uses schedule_id)
+  @JsonKey(name: 'schedule_id')
   String get id => throw _privateConstructorUsedError;
-  String get missionId => throw _privateConstructorUsedError;
+
+  /// Mission name to run
+  @JsonKey(name: 'mission_name')
+  String get missionName => throw _privateConstructorUsedError;
+
+  /// Dog ID this schedule is for
+  @JsonKey(name: 'dog_id')
   String get dogId => throw _privateConstructorUsedError;
+
+  /// Display name for the schedule
   String get name => throw _privateConstructorUsedError;
+
+  /// Schedule type: once, daily, weekly
   ScheduleType get type => throw _privateConstructorUsedError;
-  int get hour => throw _privateConstructorUsedError; // 0-23
-  int get minute => throw _privateConstructorUsedError; // 0-59
-  List<int> get weekdays =>
-      throw _privateConstructorUsedError; // For weekly: 0=Sun, 1=Mon, ..., 6=Sat
+
+  /// Start time in HH:MM format (e.g., "08:00")
+  @JsonKey(name: 'start_time')
+  String get startTime => throw _privateConstructorUsedError;
+
+  /// End time in HH:MM format (e.g., "12:00")
+  @JsonKey(name: 'end_time')
+  String get endTime => throw _privateConstructorUsedError;
+
+  /// Days of week as strings: ["monday", "tuesday", ...]
+  @JsonKey(name: 'days_of_week')
+  List<String> get daysOfWeek => throw _privateConstructorUsedError;
+
+  /// Whether schedule is enabled
   bool get enabled => throw _privateConstructorUsedError;
-  DateTime? get nextRun => throw _privateConstructorUsedError;
+
+  /// Hours between runs (cooldown)
+  @JsonKey(name: 'cooldown_hours')
+  int get cooldownHours => throw _privateConstructorUsedError;
+
+  /// Server-provided timestamps
+  @JsonKey(name: 'created_at')
+  DateTime? get createdAt => throw _privateConstructorUsedError;
+  @JsonKey(name: 'updated_at')
+  DateTime? get updatedAt => throw _privateConstructorUsedError;
 
   /// Serializes this MissionSchedule to a JSON map.
   Map<String, dynamic> toJson() => throw _privateConstructorUsedError;
@@ -49,16 +80,18 @@ abstract class $MissionScheduleCopyWith<$Res> {
       _$MissionScheduleCopyWithImpl<$Res, MissionSchedule>;
   @useResult
   $Res call(
-      {String id,
-      String missionId,
-      String dogId,
+      {@JsonKey(name: 'schedule_id') String id,
+      @JsonKey(name: 'mission_name') String missionName,
+      @JsonKey(name: 'dog_id') String dogId,
       String name,
       ScheduleType type,
-      int hour,
-      int minute,
-      List<int> weekdays,
+      @JsonKey(name: 'start_time') String startTime,
+      @JsonKey(name: 'end_time') String endTime,
+      @JsonKey(name: 'days_of_week') List<String> daysOfWeek,
       bool enabled,
-      DateTime? nextRun});
+      @JsonKey(name: 'cooldown_hours') int cooldownHours,
+      @JsonKey(name: 'created_at') DateTime? createdAt,
+      @JsonKey(name: 'updated_at') DateTime? updatedAt});
 }
 
 /// @nodoc
@@ -77,24 +110,26 @@ class _$MissionScheduleCopyWithImpl<$Res, $Val extends MissionSchedule>
   @override
   $Res call({
     Object? id = null,
-    Object? missionId = null,
+    Object? missionName = null,
     Object? dogId = null,
     Object? name = null,
     Object? type = null,
-    Object? hour = null,
-    Object? minute = null,
-    Object? weekdays = null,
+    Object? startTime = null,
+    Object? endTime = null,
+    Object? daysOfWeek = null,
     Object? enabled = null,
-    Object? nextRun = freezed,
+    Object? cooldownHours = null,
+    Object? createdAt = freezed,
+    Object? updatedAt = freezed,
   }) {
     return _then(_value.copyWith(
       id: null == id
           ? _value.id
           : id // ignore: cast_nullable_to_non_nullable
               as String,
-      missionId: null == missionId
-          ? _value.missionId
-          : missionId // ignore: cast_nullable_to_non_nullable
+      missionName: null == missionName
+          ? _value.missionName
+          : missionName // ignore: cast_nullable_to_non_nullable
               as String,
       dogId: null == dogId
           ? _value.dogId
@@ -108,25 +143,33 @@ class _$MissionScheduleCopyWithImpl<$Res, $Val extends MissionSchedule>
           ? _value.type
           : type // ignore: cast_nullable_to_non_nullable
               as ScheduleType,
-      hour: null == hour
-          ? _value.hour
-          : hour // ignore: cast_nullable_to_non_nullable
-              as int,
-      minute: null == minute
-          ? _value.minute
-          : minute // ignore: cast_nullable_to_non_nullable
-              as int,
-      weekdays: null == weekdays
-          ? _value.weekdays
-          : weekdays // ignore: cast_nullable_to_non_nullable
-              as List<int>,
+      startTime: null == startTime
+          ? _value.startTime
+          : startTime // ignore: cast_nullable_to_non_nullable
+              as String,
+      endTime: null == endTime
+          ? _value.endTime
+          : endTime // ignore: cast_nullable_to_non_nullable
+              as String,
+      daysOfWeek: null == daysOfWeek
+          ? _value.daysOfWeek
+          : daysOfWeek // ignore: cast_nullable_to_non_nullable
+              as List<String>,
       enabled: null == enabled
           ? _value.enabled
           : enabled // ignore: cast_nullable_to_non_nullable
               as bool,
-      nextRun: freezed == nextRun
-          ? _value.nextRun
-          : nextRun // ignore: cast_nullable_to_non_nullable
+      cooldownHours: null == cooldownHours
+          ? _value.cooldownHours
+          : cooldownHours // ignore: cast_nullable_to_non_nullable
+              as int,
+      createdAt: freezed == createdAt
+          ? _value.createdAt
+          : createdAt // ignore: cast_nullable_to_non_nullable
+              as DateTime?,
+      updatedAt: freezed == updatedAt
+          ? _value.updatedAt
+          : updatedAt // ignore: cast_nullable_to_non_nullable
               as DateTime?,
     ) as $Val);
   }
@@ -141,16 +184,18 @@ abstract class _$$MissionScheduleImplCopyWith<$Res>
   @override
   @useResult
   $Res call(
-      {String id,
-      String missionId,
-      String dogId,
+      {@JsonKey(name: 'schedule_id') String id,
+      @JsonKey(name: 'mission_name') String missionName,
+      @JsonKey(name: 'dog_id') String dogId,
       String name,
       ScheduleType type,
-      int hour,
-      int minute,
-      List<int> weekdays,
+      @JsonKey(name: 'start_time') String startTime,
+      @JsonKey(name: 'end_time') String endTime,
+      @JsonKey(name: 'days_of_week') List<String> daysOfWeek,
       bool enabled,
-      DateTime? nextRun});
+      @JsonKey(name: 'cooldown_hours') int cooldownHours,
+      @JsonKey(name: 'created_at') DateTime? createdAt,
+      @JsonKey(name: 'updated_at') DateTime? updatedAt});
 }
 
 /// @nodoc
@@ -167,24 +212,26 @@ class __$$MissionScheduleImplCopyWithImpl<$Res>
   @override
   $Res call({
     Object? id = null,
-    Object? missionId = null,
+    Object? missionName = null,
     Object? dogId = null,
     Object? name = null,
     Object? type = null,
-    Object? hour = null,
-    Object? minute = null,
-    Object? weekdays = null,
+    Object? startTime = null,
+    Object? endTime = null,
+    Object? daysOfWeek = null,
     Object? enabled = null,
-    Object? nextRun = freezed,
+    Object? cooldownHours = null,
+    Object? createdAt = freezed,
+    Object? updatedAt = freezed,
   }) {
     return _then(_$MissionScheduleImpl(
       id: null == id
           ? _value.id
           : id // ignore: cast_nullable_to_non_nullable
               as String,
-      missionId: null == missionId
-          ? _value.missionId
-          : missionId // ignore: cast_nullable_to_non_nullable
+      missionName: null == missionName
+          ? _value.missionName
+          : missionName // ignore: cast_nullable_to_non_nullable
               as String,
       dogId: null == dogId
           ? _value.dogId
@@ -198,25 +245,33 @@ class __$$MissionScheduleImplCopyWithImpl<$Res>
           ? _value.type
           : type // ignore: cast_nullable_to_non_nullable
               as ScheduleType,
-      hour: null == hour
-          ? _value.hour
-          : hour // ignore: cast_nullable_to_non_nullable
-              as int,
-      minute: null == minute
-          ? _value.minute
-          : minute // ignore: cast_nullable_to_non_nullable
-              as int,
-      weekdays: null == weekdays
-          ? _value._weekdays
-          : weekdays // ignore: cast_nullable_to_non_nullable
-              as List<int>,
+      startTime: null == startTime
+          ? _value.startTime
+          : startTime // ignore: cast_nullable_to_non_nullable
+              as String,
+      endTime: null == endTime
+          ? _value.endTime
+          : endTime // ignore: cast_nullable_to_non_nullable
+              as String,
+      daysOfWeek: null == daysOfWeek
+          ? _value._daysOfWeek
+          : daysOfWeek // ignore: cast_nullable_to_non_nullable
+              as List<String>,
       enabled: null == enabled
           ? _value.enabled
           : enabled // ignore: cast_nullable_to_non_nullable
               as bool,
-      nextRun: freezed == nextRun
-          ? _value.nextRun
-          : nextRun // ignore: cast_nullable_to_non_nullable
+      cooldownHours: null == cooldownHours
+          ? _value.cooldownHours
+          : cooldownHours // ignore: cast_nullable_to_non_nullable
+              as int,
+      createdAt: freezed == createdAt
+          ? _value.createdAt
+          : createdAt // ignore: cast_nullable_to_non_nullable
+              as DateTime?,
+      updatedAt: freezed == updatedAt
+          ? _value.updatedAt
+          : updatedAt // ignore: cast_nullable_to_non_nullable
               as DateTime?,
     ));
   }
@@ -226,59 +281,91 @@ class __$$MissionScheduleImplCopyWithImpl<$Res>
 @JsonSerializable()
 class _$MissionScheduleImpl extends _MissionSchedule {
   const _$MissionScheduleImpl(
-      {required this.id,
-      required this.missionId,
-      required this.dogId,
+      {@JsonKey(name: 'schedule_id') required this.id,
+      @JsonKey(name: 'mission_name') required this.missionName,
+      @JsonKey(name: 'dog_id') required this.dogId,
       this.name = '',
       required this.type,
-      required this.hour,
-      required this.minute,
-      final List<int> weekdays = const [],
+      @JsonKey(name: 'start_time') required this.startTime,
+      @JsonKey(name: 'end_time') required this.endTime,
+      @JsonKey(name: 'days_of_week') final List<String> daysOfWeek = const [],
       this.enabled = true,
-      this.nextRun})
-      : _weekdays = weekdays,
+      @JsonKey(name: 'cooldown_hours') this.cooldownHours = 24,
+      @JsonKey(name: 'created_at') this.createdAt,
+      @JsonKey(name: 'updated_at') this.updatedAt})
+      : _daysOfWeek = daysOfWeek,
         super._();
 
   factory _$MissionScheduleImpl.fromJson(Map<String, dynamic> json) =>
       _$$MissionScheduleImplFromJson(json);
 
+  /// Schedule ID (robot uses schedule_id)
   @override
+  @JsonKey(name: 'schedule_id')
   final String id;
+
+  /// Mission name to run
   @override
-  final String missionId;
+  @JsonKey(name: 'mission_name')
+  final String missionName;
+
+  /// Dog ID this schedule is for
   @override
+  @JsonKey(name: 'dog_id')
   final String dogId;
+
+  /// Display name for the schedule
   @override
   @JsonKey()
   final String name;
+
+  /// Schedule type: once, daily, weekly
   @override
   final ScheduleType type;
+
+  /// Start time in HH:MM format (e.g., "08:00")
   @override
-  final int hour;
-// 0-23
+  @JsonKey(name: 'start_time')
+  final String startTime;
+
+  /// End time in HH:MM format (e.g., "12:00")
   @override
-  final int minute;
-// 0-59
-  final List<int> _weekdays;
-// 0-59
+  @JsonKey(name: 'end_time')
+  final String endTime;
+
+  /// Days of week as strings: ["monday", "tuesday", ...]
+  final List<String> _daysOfWeek;
+
+  /// Days of week as strings: ["monday", "tuesday", ...]
   @override
-  @JsonKey()
-  List<int> get weekdays {
-    if (_weekdays is EqualUnmodifiableListView) return _weekdays;
+  @JsonKey(name: 'days_of_week')
+  List<String> get daysOfWeek {
+    if (_daysOfWeek is EqualUnmodifiableListView) return _daysOfWeek;
     // ignore: implicit_dynamic_type
-    return EqualUnmodifiableListView(_weekdays);
+    return EqualUnmodifiableListView(_daysOfWeek);
   }
 
-// For weekly: 0=Sun, 1=Mon, ..., 6=Sat
+  /// Whether schedule is enabled
   @override
   @JsonKey()
   final bool enabled;
+
+  /// Hours between runs (cooldown)
   @override
-  final DateTime? nextRun;
+  @JsonKey(name: 'cooldown_hours')
+  final int cooldownHours;
+
+  /// Server-provided timestamps
+  @override
+  @JsonKey(name: 'created_at')
+  final DateTime? createdAt;
+  @override
+  @JsonKey(name: 'updated_at')
+  final DateTime? updatedAt;
 
   @override
   String toString() {
-    return 'MissionSchedule(id: $id, missionId: $missionId, dogId: $dogId, name: $name, type: $type, hour: $hour, minute: $minute, weekdays: $weekdays, enabled: $enabled, nextRun: $nextRun)';
+    return 'MissionSchedule(id: $id, missionName: $missionName, dogId: $dogId, name: $name, type: $type, startTime: $startTime, endTime: $endTime, daysOfWeek: $daysOfWeek, enabled: $enabled, cooldownHours: $cooldownHours, createdAt: $createdAt, updatedAt: $updatedAt)';
   }
 
   @override
@@ -287,16 +374,23 @@ class _$MissionScheduleImpl extends _MissionSchedule {
         (other.runtimeType == runtimeType &&
             other is _$MissionScheduleImpl &&
             (identical(other.id, id) || other.id == id) &&
-            (identical(other.missionId, missionId) ||
-                other.missionId == missionId) &&
+            (identical(other.missionName, missionName) ||
+                other.missionName == missionName) &&
             (identical(other.dogId, dogId) || other.dogId == dogId) &&
             (identical(other.name, name) || other.name == name) &&
             (identical(other.type, type) || other.type == type) &&
-            (identical(other.hour, hour) || other.hour == hour) &&
-            (identical(other.minute, minute) || other.minute == minute) &&
-            const DeepCollectionEquality().equals(other._weekdays, _weekdays) &&
+            (identical(other.startTime, startTime) ||
+                other.startTime == startTime) &&
+            (identical(other.endTime, endTime) || other.endTime == endTime) &&
+            const DeepCollectionEquality()
+                .equals(other._daysOfWeek, _daysOfWeek) &&
             (identical(other.enabled, enabled) || other.enabled == enabled) &&
-            (identical(other.nextRun, nextRun) || other.nextRun == nextRun));
+            (identical(other.cooldownHours, cooldownHours) ||
+                other.cooldownHours == cooldownHours) &&
+            (identical(other.createdAt, createdAt) ||
+                other.createdAt == createdAt) &&
+            (identical(other.updatedAt, updatedAt) ||
+                other.updatedAt == updatedAt));
   }
 
   @JsonKey(includeFromJson: false, includeToJson: false)
@@ -304,15 +398,17 @@ class _$MissionScheduleImpl extends _MissionSchedule {
   int get hashCode => Object.hash(
       runtimeType,
       id,
-      missionId,
+      missionName,
       dogId,
       name,
       type,
-      hour,
-      minute,
-      const DeepCollectionEquality().hash(_weekdays),
+      startTime,
+      endTime,
+      const DeepCollectionEquality().hash(_daysOfWeek),
       enabled,
-      nextRun);
+      cooldownHours,
+      createdAt,
+      updatedAt);
 
   /// Create a copy of MissionSchedule
   /// with the given fields replaced by the non-null parameter values.
@@ -333,41 +429,78 @@ class _$MissionScheduleImpl extends _MissionSchedule {
 
 abstract class _MissionSchedule extends MissionSchedule {
   const factory _MissionSchedule(
-      {required final String id,
-      required final String missionId,
-      required final String dogId,
-      final String name,
-      required final ScheduleType type,
-      required final int hour,
-      required final int minute,
-      final List<int> weekdays,
-      final bool enabled,
-      final DateTime? nextRun}) = _$MissionScheduleImpl;
+          {@JsonKey(name: 'schedule_id') required final String id,
+          @JsonKey(name: 'mission_name') required final String missionName,
+          @JsonKey(name: 'dog_id') required final String dogId,
+          final String name,
+          required final ScheduleType type,
+          @JsonKey(name: 'start_time') required final String startTime,
+          @JsonKey(name: 'end_time') required final String endTime,
+          @JsonKey(name: 'days_of_week') final List<String> daysOfWeek,
+          final bool enabled,
+          @JsonKey(name: 'cooldown_hours') final int cooldownHours,
+          @JsonKey(name: 'created_at') final DateTime? createdAt,
+          @JsonKey(name: 'updated_at') final DateTime? updatedAt}) =
+      _$MissionScheduleImpl;
   const _MissionSchedule._() : super._();
 
   factory _MissionSchedule.fromJson(Map<String, dynamic> json) =
       _$MissionScheduleImpl.fromJson;
 
+  /// Schedule ID (robot uses schedule_id)
   @override
+  @JsonKey(name: 'schedule_id')
   String get id;
+
+  /// Mission name to run
   @override
-  String get missionId;
+  @JsonKey(name: 'mission_name')
+  String get missionName;
+
+  /// Dog ID this schedule is for
   @override
+  @JsonKey(name: 'dog_id')
   String get dogId;
+
+  /// Display name for the schedule
   @override
   String get name;
+
+  /// Schedule type: once, daily, weekly
   @override
   ScheduleType get type;
+
+  /// Start time in HH:MM format (e.g., "08:00")
   @override
-  int get hour; // 0-23
+  @JsonKey(name: 'start_time')
+  String get startTime;
+
+  /// End time in HH:MM format (e.g., "12:00")
   @override
-  int get minute; // 0-59
+  @JsonKey(name: 'end_time')
+  String get endTime;
+
+  /// Days of week as strings: ["monday", "tuesday", ...]
   @override
-  List<int> get weekdays; // For weekly: 0=Sun, 1=Mon, ..., 6=Sat
+  @JsonKey(name: 'days_of_week')
+  List<String> get daysOfWeek;
+
+  /// Whether schedule is enabled
   @override
   bool get enabled;
+
+  /// Hours between runs (cooldown)
   @override
-  DateTime? get nextRun;
+  @JsonKey(name: 'cooldown_hours')
+  int get cooldownHours;
+
+  /// Server-provided timestamps
+  @override
+  @JsonKey(name: 'created_at')
+  DateTime? get createdAt;
+  @override
+  @JsonKey(name: 'updated_at')
+  DateTime? get updatedAt;
 
   /// Create a copy of MissionSchedule
   /// with the given fields replaced by the non-null parameter values.

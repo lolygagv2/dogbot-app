@@ -59,11 +59,11 @@ class ApiEndpoints {
   static const String pairDevice = '/api/user/pair-device';
   static const String unpairDevice = '/api/user/unpair-device';
 
-  // Scheduling
-  static const String schedules = '/missions/schedule';
-  static const String scheduleEnable = '/missions/schedule/enable';
-  static const String scheduleDisable = '/missions/schedule/disable';
-  static String scheduleById(String id) => '/missions/schedule/$id';
+  // Scheduling (Build 34: Updated to match Robot API)
+  static const String schedules = '/schedules';
+  static const String scheduleEnable = '/schedules/enable';
+  static const String scheduleDisable = '/schedules/disable';
+  static String scheduleById(String id) => '/schedules/$id';
 }
 
 /// LED pattern names

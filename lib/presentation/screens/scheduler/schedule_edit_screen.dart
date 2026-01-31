@@ -3,8 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../data/models/schedule.dart';
-import '../../../data/models/dog_profile.dart';
-import '../../../data/models/mission.dart';
 import '../../../domain/providers/scheduler_provider.dart';
 import '../../../domain/providers/dog_profiles_provider.dart';
 import '../../../domain/providers/missions_provider.dart';
@@ -42,14 +40,19 @@ class _ScheduleEditScreenState extends ConsumerState<ScheduleEditScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final schedule = ref.read(scheduleByIdProvider(widget.scheduleId!));
       if (schedule != null) {
+        // Find mission ID from mission name
+        final missions = ref.read(missionsProvider).missions;
+        final matchingMission = missions.where((m) => m.name == schedule.missionName).firstOrNull;
+
         setState(() {
           _existingSchedule = schedule;
           _selectedDogId = schedule.dogId;
-          _selectedMissionId = schedule.missionId;
+          _selectedMissionId = matchingMission?.id ?? missions.firstOrNull?.id;
           _selectedTime = TimeOfDay(hour: schedule.hour, minute: schedule.minute);
           _selectedType = schedule.type;
           _selectedWeekdays.clear();
-          _selectedWeekdays.addAll(schedule.weekdays);
+          // Convert day names back to integers
+          _selectedWeekdays.addAll(MissionSchedule.namesToWeekdays(schedule.daysOfWeek));
         });
       }
     });
@@ -106,22 +109,38 @@ class _ScheduleEditScreenState extends ConsumerState<ScheduleEditScreen> {
       return;
     }
 
+    // Look up mission name from selected ID
+    final missions = ref.read(missionsProvider).missions;
+    final selectedMission = missions.where((m) => m.id == _selectedMissionId).firstOrNull;
+    if (selectedMission == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Selected mission not found')),
+      );
+      return;
+    }
+
     setState(() => _isLoading = true);
 
     bool success;
     if (_isEditing && _existingSchedule != null) {
+      // Build updated schedule with new format
+      final startTime = MissionSchedule.timeFromHourMinute(_selectedTime.hour, _selectedTime.minute);
+      final endHour = (_selectedTime.hour + 4) % 24;
+      final endTime = MissionSchedule.timeFromHourMinute(endHour, _selectedTime.minute);
+      final daysOfWeek = MissionSchedule.weekdaysToNames(_selectedWeekdays.toList()..sort());
+
       final updated = _existingSchedule!.copyWith(
-        missionId: _selectedMissionId!,
+        missionName: selectedMission.name,
         dogId: _selectedDogId!,
         type: _selectedType,
-        hour: _selectedTime.hour,
-        minute: _selectedTime.minute,
-        weekdays: _selectedWeekdays.toList()..sort(),
+        startTime: startTime,
+        endTime: endTime,
+        daysOfWeek: daysOfWeek,
       );
       success = await ref.read(schedulerProvider.notifier).updateSchedule(updated);
     } else {
       success = await ref.read(schedulerProvider.notifier).createSchedule(
-            missionId: _selectedMissionId!,
+            missionName: selectedMission.name,
             dogId: _selectedDogId!,
             type: _selectedType,
             hour: _selectedTime.hour,
