@@ -75,6 +75,8 @@ class MissionProgress with _$MissionProgress {
     int? stageNumber,      // Current stage (1-based)
     int? totalStages,      // Total stages in mission
     String? dogName,       // Dog being trained
+    // Build 32 fields
+    String? missionName,   // Human-readable mission name from robot
   }) = _MissionProgress;
 
   factory MissionProgress.fromJson(Map<String, dynamic> json) =>
@@ -95,6 +97,7 @@ class MissionProgress with _$MissionProgress {
       stageNumber: data['stage'] as int?,
       totalStages: data['total_stages'] as int?,
       dogName: data['dog_name'] as String?,
+      missionName: data['mission_name'] as String?,  // Build 32: from robot
     );
   }
 

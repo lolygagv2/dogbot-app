@@ -528,6 +528,8 @@ class _DogHeader extends StatelessWidget {
             fit: BoxFit.cover,
             width: 100,
             height: 100,
+            // Build 32: Use photoVersion as key to force cache refresh
+            key: ValueKey('photo_${profile.id}_${profile.photoVersion}'),
             errorBuilder: (_, __, ___) => _buildPlaceholder(),
           ),
         );
@@ -538,6 +540,7 @@ class _DogHeader extends StatelessWidget {
         child: Image.network(
           profile.photoUrl!,
           fit: BoxFit.cover,
+          key: ValueKey('photo_url_${profile.id}_${profile.photoVersion}'),
           errorBuilder: (_, __, ___) => _buildPlaceholder(),
         ),
       );
@@ -1344,6 +1347,8 @@ class _DogListTile extends StatelessWidget {
             fit: BoxFit.cover,
             width: 56,
             height: 56,
+            // Build 32: Use photoVersion as key to force cache refresh
+            key: ValueKey('list_photo_${profile.id}_${profile.photoVersion}'),
             errorBuilder: (_, __, ___) => _buildAvatar(),
           ),
         );
@@ -1354,6 +1359,7 @@ class _DogListTile extends StatelessWidget {
         child: Image.network(
           profile.photoUrl!,
           fit: BoxFit.cover,
+          key: ValueKey('list_photo_url_${profile.id}_${profile.photoVersion}'),
           errorBuilder: (_, __, ___) => _buildAvatar(),
         ),
       );

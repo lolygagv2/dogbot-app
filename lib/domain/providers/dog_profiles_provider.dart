@@ -4,12 +4,15 @@ import 'dart:ui' show Color;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../../core/network/websocket_client.dart';
 import '../../data/datasources/robot_api.dart';
 import '../../data/models/dog_profile.dart';
 import 'auth_provider.dart';
 
-const String _dogsKey = 'dog_profiles';
-const String _selectedDogKey = 'selected_dog_id';
+// Build 32: Dogs scoped by user email to fix security issue (Issue 6)
+// Keys are now functions that include user scope
+String _dogsKeyForUser(String? email) => 'dog_profiles_${email ?? 'anonymous'}';
+String _selectedDogKeyForUser(String? email) => 'selected_dog_${email ?? 'anonymous'}';
 
 /// Provider for list of dog profiles
 final dogProfilesProvider =
@@ -17,11 +20,12 @@ final dogProfilesProvider =
   return DogProfilesNotifier(ref);
 });
 
-/// Provider for currently selected dog
+/// Provider for currently selected dog (Build 32: scoped by user)
 final selectedDogProvider =
     StateNotifierProvider<SelectedDogNotifier, DogProfile?>((ref) {
   final profiles = ref.watch(dogProfilesProvider);
-  return SelectedDogNotifier(profiles);
+  final userEmail = ref.watch(authProvider).email;
+  return SelectedDogNotifier(profiles, userEmail: userEmail);
 });
 
 /// Provider for a specific dog by ID
@@ -51,18 +55,26 @@ final dogDailySummaryProvider =
   );
 });
 
-/// Dog profiles state notifier with persistence
+/// Dog profiles state notifier with persistence (Build 32: scoped by user)
 class DogProfilesNotifier extends StateNotifier<List<DogProfile>> {
   final Ref _ref;
   SharedPreferences? _prefs;
+  String? _currentUserEmail;
 
   DogProfilesNotifier(this._ref) : super([]) {
     _loadProfiles();
   }
 
+  /// Get current user's email for scoped storage
+  String? get _userEmail => _ref.read(authProvider).email;
+
   Future<void> _loadProfiles() async {
     _prefs = await SharedPreferences.getInstance();
-    final json = _prefs?.getString(_dogsKey);
+    _currentUserEmail = _userEmail;
+    final key = _dogsKeyForUser(_currentUserEmail);
+    final json = _prefs?.getString(key);
+
+    print('DogProfiles: Loading for user $_currentUserEmail (key: $key)');
 
     if (json != null && json.isNotEmpty) {
       try {
@@ -73,14 +85,24 @@ class DogProfilesNotifier extends StateNotifier<List<DogProfile>> {
         print('DogProfiles: Failed to load profiles: $e');
         state = [];
       }
+    } else {
+      state = [];
+      print('DogProfiles: No profiles found for this user');
     }
   }
 
   Future<void> _saveProfiles() async {
     _prefs ??= await SharedPreferences.getInstance();
+    final key = _dogsKeyForUser(_currentUserEmail);
     final json = jsonEncode(state.map((p) => p.toJson()).toList());
-    await _prefs?.setString(_dogsKey, json);
-    print('DogProfiles: Saved ${state.length} profiles');
+    await _prefs?.setString(key, json);
+    print('DogProfiles: Saved ${state.length} profiles for user $_currentUserEmail');
+  }
+
+  /// Reload profiles for current user (call after login/logout)
+  Future<void> reloadForCurrentUser() async {
+    print('DogProfiles: Reloading for current user');
+    await _loadProfiles();
   }
 
   /// Clear all profiles (used on logout)
@@ -113,7 +135,7 @@ class DogProfilesNotifier extends StateNotifier<List<DogProfile>> {
     await _saveProfiles();
   }
 
-  /// Remove a dog profile
+  /// Remove a dog profile (Build 32: also sends delete_dog to robot)
   Future<void> removeProfile(String id) async {
     // Attempt server-side delete (offline-friendly: proceed locally even on failure)
     final token = _ref.read(authProvider).token;
@@ -129,6 +151,15 @@ class DogProfilesNotifier extends StateNotifier<List<DogProfile>> {
       }
     }
 
+    // Build 32: Send delete_dog command to robot to clean up voice files
+    try {
+      final ws = _ref.read(websocketClientProvider);
+      ws.sendCommand('delete_dog', {'dog_id': id});
+      print('DogProfiles: Sent delete_dog command to robot for $id');
+    } catch (e) {
+      print('DogProfiles: Failed to send delete_dog to robot: $e');
+    }
+
     state = state.where((p) => p.id != id).toList();
     await _saveProfiles();
 
@@ -139,42 +170,48 @@ class DogProfilesNotifier extends StateNotifier<List<DogProfile>> {
     }
   }
 
-  /// Update profile photo path
+  /// Update profile photo path (increments photoVersion for cache-busting)
   Future<void> updateProfilePhoto(String dogId, String photoPath) async {
     print('[PHOTO] updateProfilePhoto called: dogId=$dogId, path=$photoPath');
     print('[PHOTO] Current profiles: ${state.map((p) => '${p.id}:${p.name}').toList()}');
 
     final beforeProfile = state.firstWhere((p) => p.id == dogId, orElse: () => throw Exception('Dog not found'));
-    print('[PHOTO] Before update: localPhotoPath=${beforeProfile.localPhotoPath}');
+    print('[PHOTO] Before update: localPhotoPath=${beforeProfile.localPhotoPath}, photoVersion=${beforeProfile.photoVersion}');
 
     state = state.map((p) {
       if (p.id == dogId) {
-        print('[PHOTO] Updating profile for ${p.name}');
-        return p.copyWith(localPhotoPath: photoPath);
+        print('[PHOTO] Updating profile for ${p.name}, incrementing photoVersion');
+        // Increment photoVersion to force image cache refresh (Build 32 fix)
+        return p.copyWith(
+          localPhotoPath: photoPath,
+          photoVersion: p.photoVersion + 1,
+        );
       }
       return p;
     }).toList();
 
     final afterProfile = state.firstWhere((p) => p.id == dogId);
-    print('[PHOTO] After update: localPhotoPath=${afterProfile.localPhotoPath}');
+    print('[PHOTO] After update: localPhotoPath=${afterProfile.localPhotoPath}, photoVersion=${afterProfile.photoVersion}');
 
     await _saveProfiles();
     print('[PHOTO] Profiles saved to SharedPreferences');
   }
 }
 
-/// Selected dog notifier with persistence
+/// Selected dog notifier with persistence (Build 32: scoped by user)
 class SelectedDogNotifier extends StateNotifier<DogProfile?> {
   final List<DogProfile> _profiles;
   SharedPreferences? _prefs;
+  String? _userEmail;
 
-  SelectedDogNotifier(this._profiles) : super(null) {
+  SelectedDogNotifier(this._profiles, {String? userEmail}) : _userEmail = userEmail, super(null) {
     _loadSelectedDog();
   }
 
   Future<void> _loadSelectedDog() async {
     _prefs = await SharedPreferences.getInstance();
-    final selectedId = _prefs?.getString(_selectedDogKey);
+    final key = _selectedDogKeyForUser(_userEmail);
+    final selectedId = _prefs?.getString(key);
 
     if (selectedId != null && _profiles.isNotEmpty) {
       try {
@@ -195,7 +232,8 @@ class SelectedDogNotifier extends StateNotifier<DogProfile?> {
   Future<void> selectDog(DogProfile dog) async {
     state = dog;
     _prefs ??= await SharedPreferences.getInstance();
-    await _prefs?.setString(_selectedDogKey, dog.id);
+    final key = _selectedDogKeyForUser(_userEmail);
+    await _prefs?.setString(key, dog.id);
   }
 }
 

@@ -3,6 +3,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../data/datasources/auth_api.dart';
 import 'connection_provider.dart';
+import 'dog_profiles_provider.dart';
 import 'missions_provider.dart';
 
 /// Auth state
@@ -102,6 +103,10 @@ class AuthNotifier extends StateNotifier<AuthState> {
         token: response.token,
         email: email,
       );
+
+      // Build 32: Reload dog profiles for this user (scoped storage)
+      await _ref.read(dogProfilesProvider.notifier).reloadForCurrentUser();
+
       return true;
     } catch (e) {
       String errorMsg = 'Registration failed';
@@ -134,6 +139,10 @@ class AuthNotifier extends StateNotifier<AuthState> {
         token: response.token,
         email: email,
       );
+
+      // Build 32: Reload dog profiles for this user (scoped storage)
+      await _ref.read(dogProfilesProvider.notifier).reloadForCurrentUser();
+
       return true;
     } catch (e) {
       String errorMsg = 'Login failed';
@@ -150,18 +159,23 @@ class AuthNotifier extends StateNotifier<AuthState> {
     }
   }
 
-  /// Logout - clears auth state but preserves dog profiles
+  /// Logout - clears auth state and resets user-scoped data
   Future<void> logout() async {
     // Disconnect from relay/robot
     await _ref.read(connectionProvider.notifier).disconnect();
 
-    // NOTE: Dog profiles are NOT cleared - they're local data that persists across logins
-    // Only clear cloud-synced data like missions
+    // Clear cloud-synced data like missions
     _ref.read(missionsProvider.notifier).clearState();
+
+    // Build 32: Clear selected dog (will be reloaded for next user)
+    _ref.read(selectedDogProvider.notifier).clearState();
 
     // Clear stored auth
     await _clearAuth();
     state = const AuthState();
+
+    // Note: Dog profiles are scoped by user email, so they'll be automatically
+    // loaded for the next user when they log in (via reloadForCurrentUser)
   }
 
   /// Clear error message

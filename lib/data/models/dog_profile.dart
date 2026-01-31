@@ -40,6 +40,8 @@ class DogProfile with _$DogProfile {
     @Default([]) List<String> goals,
     String? lastMissionId,
     DateTime? createdAt,
+    // Build 32: Cache-busting version number for photo refresh
+    @Default(0) int photoVersion,
   }) = _DogProfile;
 
   factory DogProfile.fromJson(Map<String, dynamic> json) =>

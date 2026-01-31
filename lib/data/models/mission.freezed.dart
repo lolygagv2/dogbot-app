@@ -391,7 +391,10 @@ mixin _$MissionProgress {
       throw _privateConstructorUsedError; // Current stage (1-based)
   int? get totalStages =>
       throw _privateConstructorUsedError; // Total stages in mission
-  String? get dogName => throw _privateConstructorUsedError;
+  String? get dogName =>
+      throw _privateConstructorUsedError; // Dog being trained
+// Build 32 fields
+  String? get missionName => throw _privateConstructorUsedError;
 
   /// Serializes this MissionProgress to a JSON map.
   Map<String, dynamic> toJson() => throw _privateConstructorUsedError;
@@ -423,7 +426,8 @@ abstract class $MissionProgressCopyWith<$Res> {
       String? reason,
       int? stageNumber,
       int? totalStages,
-      String? dogName});
+      String? dogName,
+      String? missionName});
 }
 
 /// @nodoc
@@ -455,6 +459,7 @@ class _$MissionProgressCopyWithImpl<$Res, $Val extends MissionProgress>
     Object? stageNumber = freezed,
     Object? totalStages = freezed,
     Object? dogName = freezed,
+    Object? missionName = freezed,
   }) {
     return _then(_value.copyWith(
       missionId: null == missionId
@@ -513,6 +518,10 @@ class _$MissionProgressCopyWithImpl<$Res, $Val extends MissionProgress>
           ? _value.dogName
           : dogName // ignore: cast_nullable_to_non_nullable
               as String?,
+      missionName: freezed == missionName
+          ? _value.missionName
+          : missionName // ignore: cast_nullable_to_non_nullable
+              as String?,
     ) as $Val);
   }
 }
@@ -539,7 +548,8 @@ abstract class _$$MissionProgressImplCopyWith<$Res>
       String? reason,
       int? stageNumber,
       int? totalStages,
-      String? dogName});
+      String? dogName,
+      String? missionName});
 }
 
 /// @nodoc
@@ -569,6 +579,7 @@ class __$$MissionProgressImplCopyWithImpl<$Res>
     Object? stageNumber = freezed,
     Object? totalStages = freezed,
     Object? dogName = freezed,
+    Object? missionName = freezed,
   }) {
     return _then(_$MissionProgressImpl(
       missionId: null == missionId
@@ -627,6 +638,10 @@ class __$$MissionProgressImplCopyWithImpl<$Res>
           ? _value.dogName
           : dogName // ignore: cast_nullable_to_non_nullable
               as String?,
+      missionName: freezed == missionName
+          ? _value.missionName
+          : missionName // ignore: cast_nullable_to_non_nullable
+              as String?,
     ));
   }
 }
@@ -648,7 +663,8 @@ class _$MissionProgressImpl extends _MissionProgress {
       this.reason,
       this.stageNumber,
       this.totalStages,
-      this.dogName})
+      this.dogName,
+      this.missionName})
       : super._();
 
   factory _$MissionProgressImpl.fromJson(Map<String, dynamic> json) =>
@@ -689,10 +705,14 @@ class _$MissionProgressImpl extends _MissionProgress {
 // Total stages in mission
   @override
   final String? dogName;
+// Dog being trained
+// Build 32 fields
+  @override
+  final String? missionName;
 
   @override
   String toString() {
-    return 'MissionProgress(missionId: $missionId, progress: $progress, rewardsGiven: $rewardsGiven, successCount: $successCount, failCount: $failCount, status: $status, startedAt: $startedAt, trick: $trick, targetSec: $targetSec, holdTime: $holdTime, reason: $reason, stageNumber: $stageNumber, totalStages: $totalStages, dogName: $dogName)';
+    return 'MissionProgress(missionId: $missionId, progress: $progress, rewardsGiven: $rewardsGiven, successCount: $successCount, failCount: $failCount, status: $status, startedAt: $startedAt, trick: $trick, targetSec: $targetSec, holdTime: $holdTime, reason: $reason, stageNumber: $stageNumber, totalStages: $totalStages, dogName: $dogName, missionName: $missionName)';
   }
 
   @override
@@ -723,7 +743,9 @@ class _$MissionProgressImpl extends _MissionProgress {
                 other.stageNumber == stageNumber) &&
             (identical(other.totalStages, totalStages) ||
                 other.totalStages == totalStages) &&
-            (identical(other.dogName, dogName) || other.dogName == dogName));
+            (identical(other.dogName, dogName) || other.dogName == dogName) &&
+            (identical(other.missionName, missionName) ||
+                other.missionName == missionName));
   }
 
   @JsonKey(includeFromJson: false, includeToJson: false)
@@ -743,7 +765,8 @@ class _$MissionProgressImpl extends _MissionProgress {
       reason,
       stageNumber,
       totalStages,
-      dogName);
+      dogName,
+      missionName);
 
   /// Create a copy of MissionProgress
   /// with the given fields replaced by the non-null parameter values.
@@ -777,7 +800,8 @@ abstract class _MissionProgress extends MissionProgress {
       final String? reason,
       final int? stageNumber,
       final int? totalStages,
-      final String? dogName}) = _$MissionProgressImpl;
+      final String? dogName,
+      final String? missionName}) = _$MissionProgressImpl;
   const _MissionProgress._() : super._();
 
   factory _MissionProgress.fromJson(Map<String, dynamic> json) =
@@ -810,7 +834,10 @@ abstract class _MissionProgress extends MissionProgress {
   @override
   int? get totalStages; // Total stages in mission
   @override
-  String? get dogName;
+  String? get dogName; // Dog being trained
+// Build 32 fields
+  @override
+  String? get missionName;
 
   /// Create a copy of MissionProgress
   /// with the given fields replaced by the non-null parameter values.

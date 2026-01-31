@@ -53,6 +53,7 @@ _$MissionProgressImpl _$$MissionProgressImplFromJson(
       stageNumber: (json['stageNumber'] as num?)?.toInt(),
       totalStages: (json['totalStages'] as num?)?.toInt(),
       dogName: json['dogName'] as String?,
+      missionName: json['missionName'] as String?,
     );
 
 Map<String, dynamic> _$$MissionProgressImplToJson(
@@ -72,4 +73,5 @@ Map<String, dynamic> _$$MissionProgressImplToJson(
       'stageNumber': instance.stageNumber,
       'totalStages': instance.totalStages,
       'dogName': instance.dogName,
+      'missionName': instance.missionName,
     };

@@ -117,6 +117,9 @@ class MissionsState {
   /// Dog name being trained
   String? get activeDogName => currentProgress?.dogName;
 
+  /// Mission name from robot (Build 32)
+  String? get activeMissionName => currentProgress?.missionName;
+
   /// Target seconds for hold
   double? get targetSec => currentProgress?.targetSec;
 

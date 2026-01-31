@@ -32,7 +32,9 @@ mixin _$DogProfile {
   int? get arucoMarkerId => throw _privateConstructorUsedError;
   List<String> get goals => throw _privateConstructorUsedError;
   String? get lastMissionId => throw _privateConstructorUsedError;
-  DateTime? get createdAt => throw _privateConstructorUsedError;
+  DateTime? get createdAt =>
+      throw _privateConstructorUsedError; // Build 32: Cache-busting version number for photo refresh
+  int get photoVersion => throw _privateConstructorUsedError;
 
   /// Serializes this DogProfile to a JSON map.
   Map<String, dynamic> toJson() => throw _privateConstructorUsedError;
@@ -63,7 +65,8 @@ abstract class $DogProfileCopyWith<$Res> {
       int? arucoMarkerId,
       List<String> goals,
       String? lastMissionId,
-      DateTime? createdAt});
+      DateTime? createdAt,
+      int photoVersion});
 }
 
 /// @nodoc
@@ -94,6 +97,7 @@ class _$DogProfileCopyWithImpl<$Res, $Val extends DogProfile>
     Object? goals = null,
     Object? lastMissionId = freezed,
     Object? createdAt = freezed,
+    Object? photoVersion = null,
   }) {
     return _then(_value.copyWith(
       id: null == id
@@ -148,6 +152,10 @@ class _$DogProfileCopyWithImpl<$Res, $Val extends DogProfile>
           ? _value.createdAt
           : createdAt // ignore: cast_nullable_to_non_nullable
               as DateTime?,
+      photoVersion: null == photoVersion
+          ? _value.photoVersion
+          : photoVersion // ignore: cast_nullable_to_non_nullable
+              as int,
     ) as $Val);
   }
 }
@@ -173,7 +181,8 @@ abstract class _$$DogProfileImplCopyWith<$Res>
       int? arucoMarkerId,
       List<String> goals,
       String? lastMissionId,
-      DateTime? createdAt});
+      DateTime? createdAt,
+      int photoVersion});
 }
 
 /// @nodoc
@@ -202,6 +211,7 @@ class __$$DogProfileImplCopyWithImpl<$Res>
     Object? goals = null,
     Object? lastMissionId = freezed,
     Object? createdAt = freezed,
+    Object? photoVersion = null,
   }) {
     return _then(_$DogProfileImpl(
       id: null == id
@@ -256,6 +266,10 @@ class __$$DogProfileImplCopyWithImpl<$Res>
           ? _value.createdAt
           : createdAt // ignore: cast_nullable_to_non_nullable
               as DateTime?,
+      photoVersion: null == photoVersion
+          ? _value.photoVersion
+          : photoVersion // ignore: cast_nullable_to_non_nullable
+              as int,
     ));
   }
 }
@@ -276,7 +290,8 @@ class _$DogProfileImpl implements _DogProfile {
       this.arucoMarkerId,
       final List<String> goals = const [],
       this.lastMissionId,
-      this.createdAt})
+      this.createdAt,
+      this.photoVersion = 0})
       : _goals = goals;
 
   factory _$DogProfileImpl.fromJson(Map<String, dynamic> json) =>
@@ -316,10 +331,14 @@ class _$DogProfileImpl implements _DogProfile {
   final String? lastMissionId;
   @override
   final DateTime? createdAt;
+// Build 32: Cache-busting version number for photo refresh
+  @override
+  @JsonKey()
+  final int photoVersion;
 
   @override
   String toString() {
-    return 'DogProfile(id: $id, name: $name, breed: $breed, photoUrl: $photoUrl, localPhotoPath: $localPhotoPath, birthDate: $birthDate, weight: $weight, notes: $notes, color: $color, arucoMarkerId: $arucoMarkerId, goals: $goals, lastMissionId: $lastMissionId, createdAt: $createdAt)';
+    return 'DogProfile(id: $id, name: $name, breed: $breed, photoUrl: $photoUrl, localPhotoPath: $localPhotoPath, birthDate: $birthDate, weight: $weight, notes: $notes, color: $color, arucoMarkerId: $arucoMarkerId, goals: $goals, lastMissionId: $lastMissionId, createdAt: $createdAt, photoVersion: $photoVersion)';
   }
 
   @override
@@ -345,7 +364,9 @@ class _$DogProfileImpl implements _DogProfile {
             (identical(other.lastMissionId, lastMissionId) ||
                 other.lastMissionId == lastMissionId) &&
             (identical(other.createdAt, createdAt) ||
-                other.createdAt == createdAt));
+                other.createdAt == createdAt) &&
+            (identical(other.photoVersion, photoVersion) ||
+                other.photoVersion == photoVersion));
   }
 
   @JsonKey(includeFromJson: false, includeToJson: false)
@@ -364,7 +385,8 @@ class _$DogProfileImpl implements _DogProfile {
       arucoMarkerId,
       const DeepCollectionEquality().hash(_goals),
       lastMissionId,
-      createdAt);
+      createdAt,
+      photoVersion);
 
   /// Create a copy of DogProfile
   /// with the given fields replaced by the non-null parameter values.
@@ -396,7 +418,8 @@ abstract class _DogProfile implements DogProfile {
       final int? arucoMarkerId,
       final List<String> goals,
       final String? lastMissionId,
-      final DateTime? createdAt}) = _$DogProfileImpl;
+      final DateTime? createdAt,
+      final int photoVersion}) = _$DogProfileImpl;
 
   factory _DogProfile.fromJson(Map<String, dynamic> json) =
       _$DogProfileImpl.fromJson;
@@ -426,7 +449,10 @@ abstract class _DogProfile implements DogProfile {
   @override
   String? get lastMissionId;
   @override
-  DateTime? get createdAt;
+  DateTime?
+      get createdAt; // Build 32: Cache-busting version number for photo refresh
+  @override
+  int get photoVersion;
 
   /// Create a copy of DogProfile
   /// with the given fields replaced by the non-null parameter values.
