@@ -132,8 +132,24 @@ class _ScheduleEditScreenState extends ConsumerState<ScheduleEditScreen> {
 
     setState(() => _isLoading = false);
 
-    if (success && mounted) {
-      context.pop();
+    if (mounted) {
+      if (success) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(_isEditing ? 'Schedule updated' : 'Schedule created'),
+            backgroundColor: Colors.green,
+          ),
+        );
+        context.pop();
+      } else {
+        // Build 34: Show error feedback when save fails
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(_isEditing ? 'Failed to update schedule' : 'Failed to create schedule'),
+            backgroundColor: AppTheme.error,
+          ),
+        );
+      }
     }
   }
 

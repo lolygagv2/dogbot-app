@@ -54,21 +54,22 @@ class _MissionOverlayCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Build 34: Reduced overlay size by ~40% for less intrusive display
     return Container(
-      width: 200,
-      padding: const EdgeInsets.all(16),
+      width: 140,
+      padding: const EdgeInsets.all(10),
       decoration: BoxDecoration(
         color: Colors.black.withOpacity(0.75),
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(12),
         border: Border.all(
           color: _getStatusColor().withOpacity(0.5),
-          width: 2,
+          width: 1.5,
         ),
         boxShadow: [
           BoxShadow(
             color: _getStatusColor().withOpacity(0.3),
-            blurRadius: 20,
-            spreadRadius: 2,
+            blurRadius: 12,
+            spreadRadius: 1,
           ),
         ],
       ),
@@ -81,40 +82,41 @@ class _MissionOverlayCard extends StatelessWidget {
               progress.stageDisplay!,
               style: TextStyle(
                 color: AppTheme.textSecondary,
-                fontSize: 12,
+                fontSize: 10,
                 fontWeight: FontWeight.w500,
               ),
             ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 8),
 
           // Main content - icon/progress + status
           _buildMainContent(),
 
-          const SizedBox(height: 12),
+          const SizedBox(height: 8),
 
-          // Dog name and rewards
+          // Dog name and rewards (compact)
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               if (progress.dogName != null) ...[
-                const Icon(Icons.pets, size: 14, color: AppTheme.textSecondary),
-                const SizedBox(width: 4),
+                const Icon(Icons.pets, size: 10, color: AppTheme.textSecondary),
+                const SizedBox(width: 2),
                 Text(
                   progress.dogName!,
                   style: const TextStyle(
                     color: AppTheme.textSecondary,
-                    fontSize: 12,
+                    fontSize: 10,
                   ),
+                  overflow: TextOverflow.ellipsis,
                 ),
-                const SizedBox(width: 12),
+                const SizedBox(width: 6),
               ],
-              const Icon(Icons.cookie, size: 14, color: AppTheme.accent),
-              const SizedBox(width: 4),
+              const Icon(Icons.cookie, size: 10, color: AppTheme.accent),
+              const SizedBox(width: 2),
               Text(
                 '${progress.rewardsGiven}',
                 style: const TextStyle(
                   color: AppTheme.accent,
-                  fontSize: 12,
+                  fontSize: 10,
                   fontWeight: FontWeight.bold,
                 ),
               ),
@@ -180,7 +182,7 @@ class _MissionOverlayCard extends StatelessWidget {
   }
 }
 
-/// Circular pie progress indicator
+/// Circular pie progress indicator (Build 34: reduced size)
 class _CircularPieProgress extends StatelessWidget {
   final double progress;
   final Color color;
@@ -198,14 +200,14 @@ class _CircularPieProgress extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       children: [
         SizedBox(
-          width: 80,
-          height: 80,
+          width: 50,
+          height: 50,
           child: Stack(
             alignment: Alignment.center,
             children: [
               // Background circle
               CustomPaint(
-                size: const Size(80, 80),
+                size: const Size(50, 50),
                 painter: _PieProgressPainter(
                   progress: progress,
                   color: color,
@@ -217,21 +219,22 @@ class _CircularPieProgress extends StatelessWidget {
                 '${(progress * 100).toInt()}%',
                 style: TextStyle(
                   color: color,
-                  fontSize: 18,
+                  fontSize: 12,
                   fontWeight: FontWeight.bold,
                 ),
               ),
             ],
           ),
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: 4),
         Text(
           label,
           style: TextStyle(
             color: color,
-            fontSize: 14,
+            fontSize: 10,
             fontWeight: FontWeight.w600,
           ),
+          textAlign: TextAlign.center,
         ),
       ],
     );
@@ -286,7 +289,7 @@ class _PieProgressPainter extends CustomPainter {
   }
 }
 
-/// Success indicator with checkmark animation
+/// Success indicator with checkmark animation (Build 34: reduced size)
 class _SuccessIndicator extends StatelessWidget {
   final String label;
 
@@ -298,36 +301,37 @@ class _SuccessIndicator extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       children: [
         Container(
-          width: 60,
-          height: 60,
+          width: 40,
+          height: 40,
           decoration: BoxDecoration(
             shape: BoxShape.circle,
             color: Colors.green.withOpacity(0.2),
-            border: Border.all(color: Colors.green, width: 3),
+            border: Border.all(color: Colors.green, width: 2),
           ),
           child: const Icon(
             Icons.check,
             color: Colors.green,
-            size: 36,
+            size: 24,
           ),
         )
             .animate(onPlay: (c) => c.repeat(reverse: true))
             .scale(begin: const Offset(1, 1), end: const Offset(1.1, 1.1), duration: 600.ms),
-        const SizedBox(height: 8),
+        const SizedBox(height: 4),
         Text(
           label,
           style: const TextStyle(
             color: Colors.green,
-            fontSize: 16,
+            fontSize: 11,
             fontWeight: FontWeight.bold,
           ),
+          textAlign: TextAlign.center,
         ),
       ],
     );
   }
 }
 
-/// Failure indicator with X
+/// Failure indicator with X (Build 34: reduced size)
 class _FailureIndicator extends StatelessWidget {
   final String label;
 
@@ -339,34 +343,35 @@ class _FailureIndicator extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       children: [
         Container(
-          width: 60,
-          height: 60,
+          width: 40,
+          height: 40,
           decoration: BoxDecoration(
             shape: BoxShape.circle,
             color: Colors.red.withOpacity(0.2),
-            border: Border.all(color: Colors.red, width: 3),
+            border: Border.all(color: Colors.red, width: 2),
           ),
           child: const Icon(
             Icons.close,
             color: Colors.red,
-            size: 36,
+            size: 24,
           ),
         ).animate().shake(duration: 500.ms),
-        const SizedBox(height: 8),
+        const SizedBox(height: 4),
         Text(
           label,
           style: const TextStyle(
             color: Colors.red,
-            fontSize: 16,
+            fontSize: 11,
             fontWeight: FontWeight.bold,
           ),
+          textAlign: TextAlign.center,
         ),
       ],
     );
   }
 }
 
-/// Generic status indicator with pulsing animation
+/// Generic status indicator with pulsing animation (Build 34: reduced size)
 class _StatusIndicator extends StatelessWidget {
   final MissionStatus status;
   final String label;
@@ -384,28 +389,28 @@ class _StatusIndicator extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       children: [
         Container(
-          width: 60,
-          height: 60,
+          width: 40,
+          height: 40,
           decoration: BoxDecoration(
             shape: BoxShape.circle,
             color: _getStatusColor().withOpacity(0.2),
-            border: Border.all(color: _getStatusColor(), width: 2),
+            border: Border.all(color: _getStatusColor(), width: 1.5),
           ),
           child: Icon(
             _getStatusIcon(),
             color: _getStatusColor(),
-            size: 32,
+            size: 20,
           ),
         )
             .animate(onPlay: (c) => c.repeat(reverse: true))
             .scale(begin: const Offset(1, 1), end: const Offset(1.05, 1.05), duration: 800.ms),
-        const SizedBox(height: 8),
+        const SizedBox(height: 4),
         Text(
           label,
           textAlign: TextAlign.center,
           style: TextStyle(
             color: _getStatusColor(),
-            fontSize: 14,
+            fontSize: 10,
             fontWeight: FontWeight.w600,
           ),
         ),

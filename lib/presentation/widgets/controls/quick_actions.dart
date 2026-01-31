@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:file_picker/file_picker.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -256,6 +257,9 @@ class _QuickActionsState extends ConsumerState<QuickActions> {
     );
   }
 
+  // Build 34: Max file size for MP3 uploads (10MB)
+  static const _maxUploadSizeBytes = 10 * 1024 * 1024;
+
   Future<void> _pickAndUploadSong(BuildContext context, WidgetRef ref) async {
     try {
       print('[UPLOAD] Opening file picker...');
@@ -302,10 +306,50 @@ class _QuickActionsState extends ConsumerState<QuickActions> {
         return;
       }
 
-      final bytes = await File(file.path!).readAsBytes();
-      print('[UPLOAD] Read ${bytes.length} bytes from file');
+      // Build 34: Check file size BEFORE reading to avoid memory issues
+      if (file.size > _maxUploadSizeBytes) {
+        print('[UPLOAD] File too large: ${file.size} bytes > $_maxUploadSizeBytes');
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('File too large (max 10MB)'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+        return;
+      }
 
-      final base64Data = base64Encode(bytes);
+      // Build 34: Show uploading indicator early
+      if (mounted) {
+        ScaffoldMessenger.of(context).hideCurrentSnackBar();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                const SizedBox(
+                  width: 16,
+                  height: 16,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                ),
+                const SizedBox(width: 12),
+                Text('Reading "${file.name}"...'),
+              ],
+            ),
+            duration: const Duration(seconds: 30),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+
+      // Build 34: Read file in isolate to not block main thread
+      // This prevents WebSocket disconnects during large file reads
+      final filePath = file.path!;
+      final bytes = await compute(_readFileBytes, filePath);
+      print('[UPLOAD] Read ${bytes.length} bytes from file (via isolate)');
+
+      // Encode in isolate as well to prevent UI blocking
+      final base64Data = await compute(base64Encode, bytes);
       final filename = file.name;
       final format = file.extension ?? 'mp3';
 
@@ -316,23 +360,37 @@ class _QuickActionsState extends ConsumerState<QuickActions> {
       print('[UPLOAD]   base64 length: ${base64Data.length}');
       print('[UPLOAD] Sending upload_song command via WebSocket...');
 
-      ref.read(websocketClientProvider).sendUploadSong(filename, base64Data, format);
+      // Build 34: Wrap send in try-catch to prevent connection loss on send failure
+      try {
+        ref.read(websocketClientProvider).sendUploadSong(filename, base64Data, format);
+        print('[UPLOAD] Command sent - check robot logs for upload_song handling');
 
-      print('[UPLOAD] Command sent - check robot logs for upload_song handling');
-
-      if (mounted) {
-        ScaffoldMessenger.of(context).hideCurrentSnackBar();
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Uploading "$filename" to robot...'),
-            duration: const Duration(seconds: 2),
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
+        if (mounted) {
+          ScaffoldMessenger.of(context).hideCurrentSnackBar();
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Uploading "$filename" to robot...'),
+              duration: const Duration(seconds: 2),
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+        }
+      } catch (sendError) {
+        print('[UPLOAD] Send error (connection preserved): $sendError');
+        if (mounted) {
+          ScaffoldMessenger.of(context).hideCurrentSnackBar();
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Failed to send: $sendError'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
       }
     } on PlatformException catch (e) {
       print('[UPLOAD] Platform error: ${e.code} - ${e.message}');
       if (mounted) {
+        ScaffoldMessenger.of(context).hideCurrentSnackBar();
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Could not open file picker: ${e.message}'),
@@ -344,6 +402,7 @@ class _QuickActionsState extends ConsumerState<QuickActions> {
       print('[UPLOAD] Error: $e');
       print('[UPLOAD] Stack: $stackTrace');
       if (mounted) {
+        ScaffoldMessenger.of(context).hideCurrentSnackBar();
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Upload failed: $e'),
@@ -352,6 +411,11 @@ class _QuickActionsState extends ConsumerState<QuickActions> {
         );
       }
     }
+  }
+
+  /// Isolate function to read file bytes without blocking main thread
+  static List<int> _readFileBytes(String path) {
+    return File(path).readAsBytesSync();
   }
 
   void _showNoDogError(BuildContext context) {

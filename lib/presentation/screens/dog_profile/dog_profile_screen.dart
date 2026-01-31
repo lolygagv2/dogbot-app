@@ -197,6 +197,12 @@ class _DogSettingsSheetState extends ConsumerState<_DogSettingsSheet> {
         return;
       }
 
+      // Build 34: Clear Flutter's image cache BEFORE updating profile
+      // This forces Image.file to re-read the file from disk
+      print('[PHOTO] Clearing image cache to force refresh');
+      PaintingBinding.instance.imageCache.clear();
+      PaintingBinding.instance.imageCache.clearLiveImages();
+
       // Update the profile with new photo path
       print('[PHOTO] Calling updateProfilePhoto for dog $profileId');
       await notifier.updateProfilePhoto(profileId, permanentPath);

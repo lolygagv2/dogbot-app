@@ -163,6 +163,8 @@ class MissionsNotifier extends StateNotifier<MissionsState> {
   final Ref _ref;
   StreamSubscription? _wsSubscription;
   bool _isLoading = false;
+  Timer? _startVerificationTimer;
+  static const _startVerificationTimeout = Duration(seconds: 3);
 
   MissionsNotifier(this._ref) : super(MissionsState(missions: _predefinedMissions)) {
     _listenToWebSocket();
@@ -248,6 +250,9 @@ class MissionsNotifier extends StateNotifier<MissionsState> {
   void _onWsEvent(WsEvent event) {
     switch (event.type) {
       case 'mission_progress':
+        // Cancel verification timer - we got a real progress event
+        _startVerificationTimer?.cancel();
+
         final progress = MissionProgress.fromWsEvent(event.data);
         print('Missions: progress event - status=${progress.status}, mission=${progress.missionId}, stage=${progress.stageNumber}/${progress.totalStages}');
 
@@ -268,6 +273,7 @@ class MissionsNotifier extends StateNotifier<MissionsState> {
         break;
 
       case 'mission_complete':
+        _startVerificationTimer?.cancel();
         final missionId = event.data['mission_id'] as String? ?? event.data['id'] as String? ?? '';
         print('Missions: complete event - mission=$missionId');
         if (missionId == state.activeMissionId || state.activeMissionId == null) {
@@ -298,6 +304,7 @@ class MissionsNotifier extends StateNotifier<MissionsState> {
         break;
 
       case 'mission_stopped':
+        _startVerificationTimer?.cancel();
         final missionId = event.data['mission_id'] as String? ?? event.data['id'] as String? ?? '';
         print('Missions: stopped event - mission=$missionId');
         if (missionId == state.activeMissionId || state.activeMissionId == null) {
@@ -337,22 +344,48 @@ class MissionsNotifier extends StateNotifier<MissionsState> {
     state = MissionsState(missions: _predefinedMissions);
   }
 
-  /// Start a mission
+  /// Start a mission with verification
   void startMission(String missionId) {
+    // Cancel any existing verification timer
+    _startVerificationTimer?.cancel();
+
     final ws = _ref.read(websocketClientProvider);
     ws.sendCommand('start_mission', {
       'mission_id': missionId,
       'mission_name': missionId,
     });
 
-    // Optimistic update
+    // Optimistic update - show "starting" state
     state = state.copyWith(
       activeMissionId: missionId,
       activeProgress: 0.0,
       activeRewards: 0,
       clearError: true,
+      currentProgress: MissionProgress(
+        missionId: missionId,
+        status: 'starting',
+      ),
     );
     _updateMissionInList(missionId, isActive: true);
+
+    // Start verification timer - if no progress event received, mission failed to start
+    _startVerificationTimer = Timer(_startVerificationTimeout, () {
+      if (mounted && state.activeMissionId == missionId) {
+        // Check if we received any real progress (not just our 'starting' status)
+        final hasRealProgress = state.currentProgress != null &&
+            state.currentProgress!.status != 'starting';
+
+        if (!hasRealProgress) {
+          print('Missions: Mission $missionId failed to start (no progress received)');
+          state = state.copyWith(
+            clearActiveMission: true,
+            clearProgress: true,
+            error: 'Mission failed to start on robot',
+          );
+          _updateMissionInList(missionId, isActive: false);
+        }
+      }
+    });
   }
 
   /// Stop the active mission
@@ -374,6 +407,7 @@ class MissionsNotifier extends StateNotifier<MissionsState> {
   @override
   void dispose() {
     _wsSubscription?.cancel();
+    _startVerificationTimer?.cancel();
     super.dispose();
   }
 }

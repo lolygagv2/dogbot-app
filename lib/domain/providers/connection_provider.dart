@@ -126,10 +126,13 @@ class ConnectionNotifier extends StateNotifier<ConnectionState> {
   StreamSubscription? _deviceStatusSubscription;
   Timer? _reconnectTimer;
   Timer? _statusCheckTimer;
+  Timer? _statusDowngradeTimer; // Build 34: Debounce status downgrades
   int _reconnectAttempts = 0;
   static const int _maxReconnectAttempts = 10;
   static const Duration _reconnectDelay = Duration(seconds: 3);
   static const Duration _statusCheckInterval = Duration(seconds: 30);
+  // Build 34: Grace period before showing "Waiting for robot" after being online
+  static const Duration _statusDowngradeDelay = Duration(milliseconds: 1500);
 
   ConnectionNotifier(this._ref) : super(const ConnectionState()) {
     _loadSavedConnection();
@@ -287,11 +290,14 @@ class ConnectionNotifier extends StateNotifier<ConnectionState> {
     print('Connection: Device ${deviceId ?? currentDeviceId} - robot_online=$isOnline, device_paired=$isPaired');
 
     if (!isPaired) {
+      _statusDowngradeTimer?.cancel();
       state = state.copyWith(
         status: ConnectionStatus.relayConnected,
         pairingStatus: PairingStatus.notPaired,
       );
     } else if (isOnline) {
+      // Cancel any pending downgrade when robot comes online
+      _statusDowngradeTimer?.cancel();
       state = state.copyWith(
         status: ConnectionStatus.robotOnline,
         pairingStatus: PairingStatus.paired,
@@ -299,10 +305,26 @@ class ConnectionNotifier extends StateNotifier<ConnectionState> {
         errorMessage: null,
       );
     } else {
-      state = state.copyWith(
-        status: ConnectionStatus.relayConnected,
-        pairingStatus: PairingStatus.paired,
-      );
+      // Build 34: Debounce downgrade from robotOnline to relayConnected
+      // This prevents brief "Waiting for robot" flashes
+      if (state.status == ConnectionStatus.robotOnline) {
+        print('Connection: Robot went offline, starting grace period');
+        _statusDowngradeTimer?.cancel();
+        _statusDowngradeTimer = Timer(_statusDowngradeDelay, () {
+          if (mounted && state.status == ConnectionStatus.robotOnline) {
+            print('Connection: Grace period expired, showing "Waiting for robot"');
+            state = state.copyWith(
+              status: ConnectionStatus.relayConnected,
+              pairingStatus: PairingStatus.paired,
+            );
+          }
+        });
+      } else {
+        state = state.copyWith(
+          status: ConnectionStatus.relayConnected,
+          pairingStatus: PairingStatus.paired,
+        );
+      }
     }
   }
 
@@ -379,6 +401,7 @@ class ConnectionNotifier extends StateNotifier<ConnectionState> {
   Future<void> disconnect() async {
     _reconnectTimer?.cancel();
     _statusCheckTimer?.cancel();
+    _statusDowngradeTimer?.cancel();
     _reconnectAttempts = 0;
     _wsStateSubscription?.cancel();
     _wsEventSubscription?.cancel();
@@ -478,6 +501,7 @@ class ConnectionNotifier extends StateNotifier<ConnectionState> {
     _deviceStatusSubscription?.cancel();
     _reconnectTimer?.cancel();
     _statusCheckTimer?.cancel();
+    _statusDowngradeTimer?.cancel();
     super.dispose();
   }
 }

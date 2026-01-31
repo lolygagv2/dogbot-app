@@ -103,6 +103,9 @@ class ModeStateNotifier extends StateNotifier<ModeState> {
   Timer? _telemetrySyncTimer;
   StreamSubscription? _wsSubscription;
   static const Duration _confirmationTimeout = Duration(seconds: 10);
+  // Build 34: Debounce mode changes to prevent rapid flipping
+  static const Duration _modeChangeDebounce = Duration(milliseconds: 500);
+  DateTime? _lastModeChangeTime;
 
   ModeStateNotifier(this._ref) : super(const ModeState()) {
     _listenToModeEvents();
@@ -180,6 +183,7 @@ class ModeStateNotifier extends StateNotifier<ModeState> {
     if (mode != null) {
       final confirmedMode = RobotMode.fromString(mode);
       _cancelTimeout();
+      _lastModeChangeTime = DateTime.now();
 
       // Extract mission name from lock reason if available
       String? missionName;
@@ -210,6 +214,7 @@ class ModeStateNotifier extends StateNotifier<ModeState> {
       case 'started':
         // Mission started - lock mode to mission
         print('Mode: Mission started: $missionName, locking mode');
+        _lastModeChangeTime = DateTime.now();
         state = state.copyWith(
           currentMode: RobotMode.mission,
           activeMissionId: missionId,
@@ -230,6 +235,7 @@ class ModeStateNotifier extends StateNotifier<ModeState> {
         // and we have an active mission, set mode to mission
         if (missionId != null && state.currentMode != RobotMode.mission) {
           print('Mode: Progress update received, ensuring mission mode');
+          _lastModeChangeTime = DateTime.now();
           state = state.copyWith(
             currentMode: RobotMode.mission,
             activeMissionId: missionId,
@@ -245,6 +251,7 @@ class ModeStateNotifier extends StateNotifier<ModeState> {
   void _handleMissionEnded() {
     final wasActive = state.activeMissionName;
     print('Mode: Mission ended: $wasActive, unlocking mode');
+    _lastModeChangeTime = DateTime.now();
     state = state.copyWith(
       currentMode: RobotMode.idle,
       isModeLocked: false,
@@ -259,12 +266,22 @@ class ModeStateNotifier extends StateNotifier<ModeState> {
     final confirmedMode = RobotMode.fromString(modeValue);
     print('Mode: Received confirmation - mode=$modeValue, pending=${state.pendingMode?.value}');
 
+    // Build 34: Debounce rapid mode changes (unless we're waiting for a pending change)
+    if (!state.isChanging && _lastModeChangeTime != null) {
+      final timeSinceLastChange = DateTime.now().difference(_lastModeChangeTime!);
+      if (timeSinceLastChange < _modeChangeDebounce) {
+        print('Mode: Ignoring rapid change (${timeSinceLastChange.inMilliseconds}ms < ${_modeChangeDebounce.inMilliseconds}ms)');
+        return;
+      }
+    }
+
     // If we're waiting for a pending mode and this matches, confirm it
     if (state.isChanging && state.pendingMode != null) {
       if (confirmedMode == state.pendingMode) {
         // Success! Mode confirmed
         print('Mode: Confirmed ${confirmedMode.value}');
         _cancelTimeout();
+        _lastModeChangeTime = DateTime.now();
         state = state.copyWith(
           currentMode: confirmedMode,
           isChanging: false,
@@ -276,6 +293,7 @@ class ModeStateNotifier extends StateNotifier<ModeState> {
         print('Mode: Received ${confirmedMode.value} but expected ${state.pendingMode!.value}');
         // Update to what robot actually is in
         _cancelTimeout();
+        _lastModeChangeTime = DateTime.now();
         state = state.copyWith(
           currentMode: confirmedMode,
           isChanging: false,
@@ -286,8 +304,11 @@ class ModeStateNotifier extends StateNotifier<ModeState> {
         _scheduleErrorDismiss();
       }
     } else {
-      // Not waiting for confirmation - just update current mode
-      state = state.copyWith(currentMode: confirmedMode);
+      // Not waiting for confirmation - just update current mode if different
+      if (confirmedMode != state.currentMode) {
+        _lastModeChangeTime = DateTime.now();
+        state = state.copyWith(currentMode: confirmedMode);
+      }
     }
   }
 

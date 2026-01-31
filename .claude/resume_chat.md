@@ -1,5 +1,118 @@
 # WIM-Z Resume Chat Log
 
+## Session: 2026-01-31 (Build 34 - APP)
+**Goal:** Fix APP-side issues from Build 33 testing session
+**Status:** ✅ Complete (APP portion)
+
+### APP CLAUDE Tasks Completed:
+
+| Priority | Issue | Fix |
+|----------|-------|-----|
+| **P0** | Mission UI doesn't reflect robot state | Added 3s verification timer; shows "Mission failed to start" if no progress received |
+| **P0** | Mode display rapid flipping | Added 500ms debounce to mode changes; tracks lastModeChangeTime |
+| **P1** | MP3 upload causing disconnect | File read now in isolate via `compute()`; 10MB size limit; better error handling |
+| **P1** | Photo cache not clearing | Added `PaintingBinding.instance.imageCache.clear()` on photo change |
+| **P2** | "Waiting for robot" flash | Added 1.5s grace period before downgrading from robotOnline to relayConnected |
+| **P2** | Scheduler save no feedback | Added success/error snackbars when save completes or fails |
+
+### Key Files Modified:
+
+| File | Changes |
+|------|---------|
+| `lib/domain/providers/missions_provider.dart` | Added `_startVerificationTimer` for mission start verification |
+| `lib/domain/providers/mode_provider.dart` | Added `_modeChangeDebounce` (500ms) and `_lastModeChangeTime` tracking |
+| `lib/domain/providers/connection_provider.dart` | Added `_statusDowngradeDelay` (1.5s) grace period before showing "Waiting for robot" |
+| `lib/presentation/widgets/controls/quick_actions.dart` | MP3 upload uses isolate; added 10MB size limit; improved error handling |
+| `lib/presentation/screens/dog_profile/dog_profile_screen.dart` | Clear `imageCache` on photo update |
+| `lib/presentation/screens/scheduler/schedule_edit_screen.dart` | Added success/error snackbars for save |
+| `lib/presentation/widgets/mission/mission_progress_overlay.dart` | Reduced overlay size by ~40% (200px → 140px) |
+
+### Technical Details:
+
+1. **Mission Verification Timer:**
+   - Starts on `startMission()`
+   - Cancelled on `mission_progress`, `mission_complete`, or `mission_stopped` events
+   - After 3s with no real progress, shows error and clears mission state
+
+2. **Mode Debouncing:**
+   - Ignores mode changes within 500ms of last change (unless waiting for pending mode)
+   - All mode-changing paths now track `_lastModeChangeTime`
+
+3. **MP3 Upload Fix:**
+   - `compute(_readFileBytes, path)` reads file in isolate
+   - `compute(base64Encode, bytes)` encodes in isolate
+   - Shows "Reading..." indicator during file processing
+   - Catches send errors separately to preserve connection
+
+4. **Connection Status Debouncing:**
+   - When robot goes offline, starts 1.5s timer before showing "Waiting for robot"
+   - If robot comes back online during grace period, timer cancelled
+   - Prevents brief status flashes during momentary disconnects
+
+### Remaining for ROBOT CLAUDE:
+- Mission execution pipeline (missions don't run)
+- AI detection regression (wrong dog labeled)
+- Servo control (too fast, jerky)
+- Mode state sync (events not being sent)
+- Video overlay "????" characters
+
+### Remaining for RELAY CLAUDE:
+- Connection stability (timeouts during uploads)
+- Event forwarding verification
+
+---
+
+## Session: 2026-01-31 (Build 33)
+**Goal:** Implement Scheduler UI (Step 5 of Training Features)
+**Status:** ✅ Complete
+
+### Work Completed:
+1. **MissionSchedule Model** (`lib/data/models/schedule.dart`)
+   - ScheduleType enum (once, daily, weekly)
+   - Freezed class with hour, minute, weekdays, enabled, nextRun
+   - Helper methods for time formatting and schedule descriptions
+
+2. **Schedule API** (`lib/data/datasources/robot_api.dart`)
+   - getSchedules(), createSchedule(), updateSchedule(), deleteSchedule()
+   - enableScheduling(), disableScheduling() for master toggle
+
+3. **SchedulerProvider** (`lib/domain/providers/scheduler_provider.dart`)
+   - Full CRUD with optimistic updates
+   - Global enable/disable toggle
+   - Sorted schedules provider
+
+4. **Scheduler Screens**
+   - SchedulerScreen: List view with master toggle, swipe-to-delete
+   - ScheduleEditScreen: Dog/mission dropdowns, time picker, weekday selector
+
+5. **Integration**
+   - Added routes: /scheduler, /scheduler/new, /scheduler/:id
+   - Settings → Training Scheduler link
+
+### Key Files:
+| File | Purpose |
+|------|---------|
+| `lib/data/models/schedule.dart` | MissionSchedule Freezed model |
+| `lib/domain/providers/scheduler_provider.dart` | State + API calls |
+| `lib/presentation/screens/scheduler/scheduler_screen.dart` | List screen |
+| `lib/presentation/screens/scheduler/schedule_edit_screen.dart` | Create/edit |
+
+### Commit: 635aff2 - feat: Build 33 — Programs, Coach Mode, History & Scheduler UI
+
+### All Build 33 Features (Steps 1-5):
+- ✅ Step 1: Dynamic Mission List
+- ✅ Step 2: Programs
+- ✅ Step 3: Coach Mode
+- ✅ Step 4: History & Analytics
+- ✅ Step 5: Training Scheduler UI
+
+### Next Session:
+1. Test scheduler on physical device
+2. Verify robot endpoints work with app
+3. Live testing of schedule creation flow
+
+---
+
 ## Session: 2026-01-30 (Build 31 - Part 2)
 **Goal:** Add command debouncing, timestamps, and audio_state sync
 **Status:** ✅ Complete
