@@ -86,9 +86,8 @@ class _CoachScreenState extends ConsumerState<CoachScreen> {
                     IconButton(
                       icon: const Icon(Icons.arrow_back, color: Colors.white),
                       onPressed: () {
-                        if (coachState.isActive) {
-                          ref.read(coachProvider.notifier).stopCoaching();
-                        }
+                        // Build 37: Don't call stopCoaching here - PopScope handles it
+                        // This prevents duplicate stop_coach + set_mode commands
                         context.pop();
                       },
                     ),

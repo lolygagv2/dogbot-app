@@ -1,7 +1,7 @@
 # WIM-Z Resume Chat Log
 
-## Session: 2026-02-01 (Build 37 - APP)
-**Goal:** Fix mode cycling, mode mismatch, upload timeout, scheduler errors
+## Session: 2026-02-01 (Build 37.1 - APP)
+**Goal:** Fix mode cycling, mode mismatch, upload timeout, scheduler errors, duplicate commands
 **Status:** ✅ Complete (APP portion)
 
 ### Issues Addressed:
@@ -12,6 +12,14 @@
 | 2 | Scheduler "failed to create schedule" | RELAY doesn't implement endpoint | Added specific error messages (404→"not supported", 501→"not implemented") |
 | 3 | MP3 upload no feedback | RELAY doesn't send upload_complete event | Added 10s timeout with "may have failed" warning |
 | 4 | App says "Sit Training" but video says "idle" | Mode locked on ANY progress event | Now only locks mode on explicit `action: 'started'` event |
+| 5 | Duplicate stop_coach/set_mode commands | Back button AND PopScope both calling stopCoaching() | Removed call from back button, let PopScope handle it |
+
+### Log Analysis (see `.claude/WHY37BUILD_SUCKS.md` for full details):
+
+**MP3 Upload (02:54):** ROBOT disconnected when receiving 5MB WebSocket message - **ROBOT issue**
+**Mission mode "idle" overlay:** Robot's video_track.py not reading mode correctly - **ROBOT issue**
+**No bounding boxes:** Robot not drawing boxes on video frames - **ROBOT issue**
+**Scheduler disappears:** RELAY doesn't implement /schedules endpoints - **RELAY issue**
 
 ### Key Files Modified:
 
@@ -22,6 +30,8 @@
 | `lib/data/datasources/robot_api.dart` | Added specific error messages for schedule creation (404, 501, 503, 401) |
 | `lib/domain/providers/scheduler_provider.dart` | Show specific error from API instead of generic message |
 | `lib/presentation/screens/scheduler/schedule_edit_screen.dart` | Display error from scheduler state |
+| `lib/presentation/screens/coach/coach_screen.dart` | Removed duplicate stopCoaching() call from back button |
+| `.claude/WHY37BUILD_SUCKS.md` | **NEW** Comprehensive analysis of all Build 37 issues
 
 ### Technical Details:
 
