@@ -578,6 +578,76 @@ class WebSocketClient {
     send({'type': 'webrtc_ice', ...candidate});
   }
 
+  // ============ Schedule Commands (Build 38) ============
+  // Schedules are stored on robot for offline execution.
+  // All schedule operations go via WebSocket, not REST.
+
+  /// Request schedules from robot
+  void sendGetSchedules() {
+    print('WebSocket: sendGetSchedules');
+    sendCommand('get_schedules', {});
+  }
+
+  /// Create a new schedule on robot
+  void sendCreateSchedule({
+    required String scheduleId,
+    required String missionName,
+    required String dogId,
+    required String type,
+    required String startTime,
+    List<String> daysOfWeek = const [],
+    bool enabled = true,
+    int cooldownHours = 24,
+  }) {
+    print('WebSocket: sendCreateSchedule id=$scheduleId, mission=$missionName');
+    sendCommand('create_schedule', {
+      'schedule_id': scheduleId,
+      'mission_name': missionName,
+      'dog_id': dogId,
+      'type': type,
+      'start_time': startTime,
+      'days_of_week': daysOfWeek,
+      'enabled': enabled,
+      'cooldown_hours': cooldownHours,
+    });
+  }
+
+  /// Update an existing schedule on robot
+  void sendUpdateSchedule({
+    required String scheduleId,
+    String? missionName,
+    String? dogId,
+    String? type,
+    String? startTime,
+    List<String>? daysOfWeek,
+    bool? enabled,
+    int? cooldownHours,
+  }) {
+    print('WebSocket: sendUpdateSchedule id=$scheduleId');
+    sendCommand('update_schedule', {
+      'schedule_id': scheduleId,
+      if (missionName != null) 'mission_name': missionName,
+      if (dogId != null) 'dog_id': dogId,
+      if (type != null) 'type': type,
+      if (startTime != null) 'start_time': startTime,
+      if (daysOfWeek != null) 'days_of_week': daysOfWeek,
+      if (enabled != null) 'enabled': enabled,
+      if (cooldownHours != null) 'cooldown_hours': cooldownHours,
+    });
+  }
+
+  /// Delete a schedule from robot
+  void sendDeleteSchedule(String scheduleId) {
+    print('WebSocket: sendDeleteSchedule id=$scheduleId');
+    sendCommand('delete_schedule', {'schedule_id': scheduleId});
+  }
+
+  /// Enable/disable global scheduling on robot
+  void sendSetSchedulingEnabled(bool enabled) {
+    print('WebSocket: sendSetSchedulingEnabled enabled=$enabled');
+    sendCommand('set_scheduling_enabled', {'enabled': enabled});
+  }
+
   /// Disconnect from WebSocket server
   Future<void> disconnect() async {
     _pingTimer?.cancel();
