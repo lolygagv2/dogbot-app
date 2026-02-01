@@ -105,7 +105,10 @@ class ModeStateNotifier extends StateNotifier<ModeState> {
   static const Duration _confirmationTimeout = Duration(seconds: 10);
   // Build 34: Debounce mode changes to prevent rapid flipping
   static const Duration _modeChangeDebounce = Duration(milliseconds: 500);
+  // Build 36: User-initiated change cooldown - blocks ALL external mode updates
+  static const Duration _userChangeCooldown = Duration(seconds: 2);
   DateTime? _lastModeChangeTime;
+  DateTime? _userInitiatedChangeTime; // When user explicitly clicked a mode
 
   ModeStateNotifier(this._ref) : super(const ModeState()) {
     _listenToModeEvents();
@@ -124,6 +127,14 @@ class ModeStateNotifier extends StateNotifier<ModeState> {
   /// Sync mode from telemetry if we're not in the middle of a change
   void _syncFromTelemetry() {
     if (state.isChanging) return; // Don't override during pending change
+
+    // Build 36: Don't override during user-initiated change cooldown
+    if (_userInitiatedChangeTime != null) {
+      final timeSinceUserChange = DateTime.now().difference(_userInitiatedChangeTime!);
+      if (timeSinceUserChange < _userChangeCooldown) {
+        return; // User just clicked, don't sync from telemetry yet
+      }
+    }
 
     final telemetry = _ref.read(telemetryProvider);
     if (telemetry.mode.isEmpty) return;
@@ -231,18 +242,20 @@ class ModeStateNotifier extends StateNotifier<ModeState> {
         break;
       // For progress updates (no action field), don't change mode state
       default:
-        // If we get a progress update without action but we're not in mission mode,
-        // and we have an active mission, set mode to mission
-        if (missionId != null && state.currentMode != RobotMode.mission) {
-          print('Mode: Progress update received, ensuring mission mode');
-          _lastModeChangeTime = DateTime.now();
-          state = state.copyWith(
-            currentMode: RobotMode.mission,
-            activeMissionId: missionId,
-            activeMissionName: missionName,
-            isModeLocked: true,
-          );
+        // Build 36: Only update mission info if we're ALREADY in mission mode (confirmed by robot)
+        // Don't force mode change on progress events without 'started' action
+        // This prevents app showing "mission" when robot hasn't confirmed mode change
+        if (state.currentMode == RobotMode.mission && missionId != null) {
+          // Already in mission mode, just update mission info if needed
+          if (state.activeMissionId != missionId) {
+            print('Mode: Updating mission info for active mission');
+            state = state.copyWith(
+              activeMissionId: missionId,
+              activeMissionName: missionName,
+            );
+          }
         }
+        // Note: Don't force mission mode here - wait for explicit 'started' action
         break;
     }
   }
@@ -265,6 +278,28 @@ class ModeStateNotifier extends StateNotifier<ModeState> {
   void _handleModeConfirmation(String modeValue) {
     final confirmedMode = RobotMode.fromString(modeValue);
     print('Mode: Received confirmation - mode=$modeValue, pending=${state.pendingMode?.value}');
+
+    // Build 36: If user just initiated a change, only accept the expected mode (or wait for timeout)
+    if (_userInitiatedChangeTime != null && state.isChanging) {
+      final timeSinceUserChange = DateTime.now().difference(_userInitiatedChangeTime!);
+      if (timeSinceUserChange < _userChangeCooldown) {
+        // During cooldown, only accept the mode we're waiting for
+        if (state.pendingMode != null && confirmedMode == state.pendingMode) {
+          print('Mode: Confirmed user-requested ${confirmedMode.value}');
+          _cancelTimeout();
+          _lastModeChangeTime = DateTime.now();
+          state = state.copyWith(
+            currentMode: confirmedMode,
+            isChanging: false,
+            clearPending: true,
+            clearError: true,
+          );
+        } else {
+          print('Mode: Ignoring ${confirmedMode.value} during user cooldown (waiting for ${state.pendingMode?.value})');
+        }
+        return;
+      }
+    }
 
     // Build 34: Debounce rapid mode changes (unless we're waiting for a pending change)
     if (!state.isChanging && _lastModeChangeTime != null) {
@@ -343,7 +378,10 @@ class ModeStateNotifier extends StateNotifier<ModeState> {
     // Cancel any existing timeout
     _cancelTimeout();
 
-    print('Mode: Setting to ${mode.value} (optimistic)');
+    print('Mode: Setting to ${mode.value} (optimistic, user-initiated)');
+
+    // Build 36: Track user-initiated change to block external mode updates during cooldown
+    _userInitiatedChangeTime = DateTime.now();
 
     // Optimistic update - immediately show new mode in UI
     state = state.copyWith(

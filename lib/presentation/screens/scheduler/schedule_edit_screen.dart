@@ -172,11 +172,15 @@ class _ScheduleEditScreenState extends ConsumerState<ScheduleEditScreen> {
         );
         context.pop();
       } else {
-        // Build 34: Show error feedback when save fails
+        // Build 36: Show specific error from scheduler state
+        final schedulerState = ref.read(schedulerProvider);
+        final errorMsg = schedulerState.error ??
+            (_isEditing ? 'Failed to update schedule' : 'Failed to create schedule');
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(_isEditing ? 'Failed to update schedule' : 'Failed to create schedule'),
+            content: Text(errorMsg),
             backgroundColor: AppTheme.error,
+            duration: const Duration(seconds: 5),
           ),
         );
       }

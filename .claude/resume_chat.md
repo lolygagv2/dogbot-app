@@ -1,5 +1,66 @@
 # WIM-Z Resume Chat Log
 
+## Session: 2026-02-01 (Build 37 - APP)
+**Goal:** Fix mode cycling, mode mismatch, upload timeout, scheduler errors
+**Status:** ✅ Complete (APP portion)
+
+### Issues Addressed:
+
+| # | Issue | Root Cause | Fix |
+|---|-------|------------|-----|
+| 1 | Manual mode cycles idle→manual→idle | Telemetry sync (2s) overriding user click | Added 2s user-initiated cooldown that blocks ALL external mode updates |
+| 2 | Scheduler "failed to create schedule" | RELAY doesn't implement endpoint | Added specific error messages (404→"not supported", 501→"not implemented") |
+| 3 | MP3 upload no feedback | RELAY doesn't send upload_complete event | Added 10s timeout with "may have failed" warning |
+| 4 | App says "Sit Training" but video says "idle" | Mode locked on ANY progress event | Now only locks mode on explicit `action: 'started'` event |
+
+### Key Files Modified:
+
+| File | Changes |
+|------|---------|
+| `lib/domain/providers/mode_provider.dart` | Added `_userInitiatedChangeTime` + 2s cooldown; fixed mode locking to require explicit 'started' action |
+| `lib/presentation/widgets/controls/quick_actions.dart` | Added `_uploadTimeoutTimer` (10s) with warning message |
+| `lib/data/datasources/robot_api.dart` | Added specific error messages for schedule creation (404, 501, 503, 401) |
+| `lib/domain/providers/scheduler_provider.dart` | Show specific error from API instead of generic message |
+| `lib/presentation/screens/scheduler/schedule_edit_screen.dart` | Display error from scheduler state |
+
+### Technical Details:
+
+1. **User-Initiated Mode Change Cooldown:**
+   - When user clicks mode selector, `_userInitiatedChangeTime` is set
+   - For 2 seconds, ALL external mode updates are blocked:
+     - `_syncFromTelemetry()` returns early
+     - `_handleModeConfirmation()` only accepts the expected mode
+   - Prevents telemetry sync and stray events from cycling the mode
+
+2. **Conservative Mode Locking:**
+   - Previously: ANY `mission_progress` event would set mode to "mission"
+   - Now: Only `action: 'started'` event locks mode
+   - Progress events without 'started' only update mission info if ALREADY in mission mode
+
+3. **Upload Timeout:**
+   - 10-second timer starts after `sendUploadSong()`
+   - Cancelled if `upload_complete`/`upload_error` event received
+   - Shows orange warning "Upload may have failed - no response from server"
+
+4. **Scheduler Error Messages:**
+   - 404 → "Scheduling not supported by server"
+   - 501 → "Scheduling feature not implemented"
+   - 503 → "Robot offline - cannot create schedule"
+   - 401/403 → "Not authorized to create schedules"
+
+### Still Needs RELAY:
+- `/schedules` REST endpoints (POST, PUT, DELETE)
+- `/schedules/enable` and `/schedules/disable` endpoints
+- Forward `upload_complete`/`upload_error` events from robot
+- These will continue to fail until RELAY implements them
+
+### Still Needs ROBOT:
+- Send `upload_complete` event after processing `upload_song` command
+- Actually start missions when `start_mission` command received
+- Send `mission_progress` with `action: 'started'` when mission begins
+
+---
+
 ## Session: 2026-01-31 (Build 34 - APP)
 **Goal:** Fix APP-side issues from Build 33 testing session
 **Status:** ✅ Complete (APP portion)

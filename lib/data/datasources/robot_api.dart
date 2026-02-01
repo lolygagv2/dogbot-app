@@ -132,6 +132,7 @@ class RobotApi {
   }
 
   /// Create a new schedule
+  /// Returns the created schedule, or throws with specific error message
   Future<MissionSchedule?> createSchedule(String token, MissionSchedule schedule) async {
     try {
       final response = await _dio.post(
@@ -146,9 +147,26 @@ class RobotApi {
         return schedule;
       }
       return null;
+    } on DioException catch (e) {
+      // Build 36: More specific error messages
+      final statusCode = e.response?.statusCode;
+      String errorMsg;
+      if (statusCode == 404) {
+        errorMsg = 'Scheduling not supported by server';
+      } else if (statusCode == 501) {
+        errorMsg = 'Scheduling feature not implemented';
+      } else if (statusCode == 503) {
+        errorMsg = 'Robot offline - cannot create schedule';
+      } else if (statusCode == 401 || statusCode == 403) {
+        errorMsg = 'Not authorized to create schedules';
+      } else {
+        errorMsg = e.response?.data?['error'] ?? e.response?.data?['message'] ?? 'Server error ($statusCode)';
+      }
+      print('RobotApi: Failed to create schedule: $errorMsg');
+      throw Exception(errorMsg);
     } catch (e) {
       print('RobotApi: Failed to create schedule: $e');
-      return null;
+      throw Exception('Connection error');
     }
   }
 

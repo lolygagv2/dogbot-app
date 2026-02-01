@@ -56,6 +56,9 @@ class _QuickActionsState extends ConsumerState<QuickActions> {
   }
 
   StreamSubscription? _uploadResultSubscription;
+  // Build 36: Upload timeout tracking
+  Timer? _uploadTimeoutTimer;
+  String? _pendingUploadFilename;
 
   @override
   void initState() {
@@ -79,6 +82,11 @@ class _QuickActionsState extends ConsumerState<QuickActions> {
   }
 
   void _handleUploadResult(dynamic event) {
+    // Build 36: Cancel timeout timer when we get a result
+    _uploadTimeoutTimer?.cancel();
+    _uploadTimeoutTimer = null;
+    _pendingUploadFilename = null;
+
     final data = event.data as Map<String, dynamic>;
     final success = data['success'] as bool? ?? (event.type == 'upload_complete');
     final filename = data['filename'] as String? ?? 'file';
@@ -134,6 +142,7 @@ class _QuickActionsState extends ConsumerState<QuickActions> {
     _volumeDebounce?.cancel();
     _audioStateSubscription?.cancel();
     _uploadResultSubscription?.cancel();
+    _uploadTimeoutTimer?.cancel();
     super.dispose();
   }
 
@@ -408,6 +417,25 @@ class _QuickActionsState extends ConsumerState<QuickActions> {
         ref.read(websocketClientProvider).sendUploadSong(filename, base64Data, format);
         print('[UPLOAD] Command sent - check robot logs for upload_song handling');
 
+        // Build 36: Start timeout timer - show warning if no response in 10 seconds
+        _pendingUploadFilename = filename;
+        _uploadTimeoutTimer?.cancel();
+        _uploadTimeoutTimer = Timer(const Duration(seconds: 10), () {
+          if (mounted && _pendingUploadFilename != null) {
+            print('[UPLOAD] Timeout - no response received for $_pendingUploadFilename');
+            ScaffoldMessenger.of(context).hideCurrentSnackBar();
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('Upload of "$_pendingUploadFilename" may have failed - no response from server'),
+                backgroundColor: Colors.orange,
+                behavior: SnackBarBehavior.floating,
+                duration: const Duration(seconds: 5),
+              ),
+            );
+            _pendingUploadFilename = null;
+          }
+        });
+
         if (mounted) {
           ScaffoldMessenger.of(context).hideCurrentSnackBar();
           ScaffoldMessenger.of(context).showSnackBar(
@@ -420,6 +448,8 @@ class _QuickActionsState extends ConsumerState<QuickActions> {
         }
       } catch (sendError) {
         print('[UPLOAD] Send error (connection preserved): $sendError');
+        _uploadTimeoutTimer?.cancel();
+        _pendingUploadFilename = null;
         if (mounted) {
           ScaffoldMessenger.of(context).hideCurrentSnackBar();
           ScaffoldMessenger.of(context).showSnackBar(

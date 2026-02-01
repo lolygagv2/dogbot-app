@@ -173,10 +173,12 @@ class SchedulerNotifier extends StateNotifier<SchedulerState> {
         return false;
       }
     } catch (e) {
-      print('Scheduler: Failed to create schedule: $e');
+      // Build 36: Show specific error message from API
+      final errorMsg = e.toString().replaceFirst('Exception: ', '');
+      print('Scheduler: Failed to create schedule: $errorMsg');
       state = state.copyWith(
         schedules: state.schedules.where((s) => s.id != schedule.id).toList(),
-        error: 'Failed to create schedule',
+        error: errorMsg,
       );
       return false;
     }
