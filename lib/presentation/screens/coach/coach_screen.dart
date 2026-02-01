@@ -44,13 +44,10 @@ class _CoachScreenState extends ConsumerState<CoachScreen> {
     final selectedDog = ref.watch(selectedDogProvider);
     final isConnected = ref.watch(isRobotOnlineProvider);
 
-    return PopScope(
-      onPopInvokedWithResult: (didPop, _) {
-        if (didPop && coachState.isActive) {
-          ref.read(coachProvider.notifier).stopCoaching();
-        }
-      },
-      child: Scaffold(
+    // Build 38: NO commands in lifecycle handlers. Commands ONLY on explicit user tap.
+    // If user navigates away while coaching, coach mode stays active on robot.
+    // User must explicitly tap Stop to end coaching.
+    return Scaffold(
         backgroundColor: Colors.black,
         body: Stack(
           children: [
@@ -86,8 +83,8 @@ class _CoachScreenState extends ConsumerState<CoachScreen> {
                     IconButton(
                       icon: const Icon(Icons.arrow_back, color: Colors.white),
                       onPressed: () {
-                        // Build 37: Don't call stopCoaching here - PopScope handles it
-                        // This prevents duplicate stop_coach + set_mode commands
+                        // Build 38: Just navigate. No commands on back button.
+                        // Coach mode stays active on robot until user explicitly stops.
                         context.pop();
                       },
                     ),
@@ -303,7 +300,6 @@ class _CoachScreenState extends ConsumerState<CoachScreen> {
             ),
           ],
         ),
-      ),
     );
   }
 }

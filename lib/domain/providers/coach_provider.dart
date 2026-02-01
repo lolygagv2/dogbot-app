@@ -155,15 +155,15 @@ class CoachNotifier extends StateNotifier<CoachState> {
   }
 
   /// Stop coach mode
+  /// Build 38: Only send stop_coach command. Let robot handle mode transition.
+  /// App should NOT send set_mode(idle) - that caused duplicate commands.
   void stopCoaching() {
     final ws = _ref.read(websocketClientProvider);
     ws.sendCommand('stop_coach', {});
 
     _rewardClearTimer?.cancel();
     state = state.copyWith(isActive: false);
-
-    // Set mode back to idle
-    _ref.read(modeStateProvider.notifier).setMode(RobotMode.idle);
+    // Mode will update when robot sends mode_changed event
   }
 
   /// Update behaviors to watch for

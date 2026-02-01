@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 
-import '../../../core/network/websocket_client.dart';
 import '../../../domain/providers/control_provider.dart';
 import '../../../domain/providers/missions_provider.dart';
 import '../../../domain/providers/mode_provider.dart';
@@ -22,7 +21,6 @@ class DriveScreen extends ConsumerStatefulWidget {
 
 class _DriveScreenState extends ConsumerState<DriveScreen> {
   bool _modeChangeRequested = false;
-  bool _missionWasActive = false;
 
   @override
   void initState() {
@@ -31,28 +29,23 @@ class _DriveScreenState extends ConsumerState<DriveScreen> {
     WakelockPlus.enable();
     print('DriveScreen: Wakelock enabled');
 
-    // Only switch to manual if not in mission mode and mode is not locked
+    // Build 38: Only switch to manual if not in mission mode and mode is not locked
+    // Don't send ghost commands on screen navigation
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final modeState = ref.read(modeStateProvider);
       if (modeState.isMissionActive || modeState.isModeLocked) {
         print('DriveScreen: Mission active (${modeState.activeMissionName}), keeping mission mode');
-        _missionWasActive = true;
       } else if (modeState.currentMode == RobotMode.mission) {
         print('DriveScreen: In mission mode, keeping it');
-        _missionWasActive = true;
       } else {
         _ensureManualMode();
-        ref.read(websocketClientProvider).sendManualControlActive();
       }
     });
   }
 
   @override
   void dispose() {
-    // Only send manual control inactive if we activated it
-    if (!_missionWasActive) {
-      WebSocketClient.instance.sendManualControlInactive();
-    }
+    // Build 38: Removed sendManualControlInactive() - no commands on screen dispose
     // Allow screen to sleep again
     WakelockPlus.disable();
     print('DriveScreen: Wakelock disabled');
