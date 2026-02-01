@@ -247,4 +247,77 @@ class RobotApi {
       return false;
     }
   }
+
+  // ============ Music Upload API (Build 38) ============
+
+  /// Upload MP3 file via HTTP multipart (instead of WebSocket)
+  /// Returns error message on failure, null on success
+  Future<String?> uploadMusic({
+    required String token,
+    required String filePath,
+    required String filename,
+    required String dogId,
+    void Function(int sent, int total)? onProgress,
+  }) async {
+    try {
+      print('[MUSIC-UPLOAD] Starting HTTP multipart upload: $filename');
+      print('[MUSIC-UPLOAD] dogId: $dogId, path: $filePath');
+
+      final formData = FormData.fromMap({
+        'dog_id': dogId,
+        'file': await MultipartFile.fromFile(
+          filePath,
+          filename: filename,
+        ),
+      });
+
+      final response = await _dio.post(
+        ApiEndpoints.musicUpload,
+        data: formData,
+        options: Options(
+          headers: {'Authorization': 'Bearer $token'},
+          // Longer timeout for large files
+          sendTimeout: const Duration(minutes: 2),
+          receiveTimeout: const Duration(minutes: 2),
+        ),
+        onSendProgress: onProgress,
+      );
+
+      print('[MUSIC-UPLOAD] Response: status=${response.statusCode}');
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        print('[MUSIC-UPLOAD] Upload successful');
+        return null; // Success
+      }
+
+      final errorMsg = response.data?['error'] ?? 'Upload failed (${response.statusCode})';
+      print('[MUSIC-UPLOAD] Upload failed: $errorMsg');
+      return errorMsg;
+    } on DioException catch (e) {
+      final statusCode = e.response?.statusCode;
+      print('[MUSIC-UPLOAD] DioException: status=$statusCode, ${e.message}');
+
+      String errorMsg;
+      if (statusCode == 413) {
+        errorMsg = 'File too large for server';
+      } else if (statusCode == 415) {
+        errorMsg = 'Invalid file type - MP3 only';
+      } else if (statusCode == 401 || statusCode == 403) {
+        errorMsg = 'Not authorized to upload';
+      } else if (statusCode == 503) {
+        errorMsg = 'Robot offline';
+      } else if (e.type == DioExceptionType.connectionTimeout ||
+                 e.type == DioExceptionType.sendTimeout) {
+        errorMsg = 'Upload timed out - try a smaller file';
+      } else if (e.type == DioExceptionType.connectionError) {
+        errorMsg = 'Connection error - check network';
+      } else {
+        errorMsg = e.response?.data?['error'] ?? e.message ?? 'Upload failed';
+      }
+      return errorMsg;
+    } catch (e) {
+      print('[MUSIC-UPLOAD] Error: $e');
+      return 'Upload error: $e';
+    }
+  }
 }

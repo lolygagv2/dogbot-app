@@ -64,6 +64,9 @@ class ApiEndpoints {
   static const String scheduleEnable = '/schedules/enable';
   static const String scheduleDisable = '/schedules/disable';
   static String scheduleById(String id) => '/schedules/$id';
+
+  // Music upload (Build 38: HTTP multipart instead of WebSocket)
+  static const String musicUpload = '/api/music/upload';
 }
 
 /// LED pattern names

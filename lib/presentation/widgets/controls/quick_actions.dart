@@ -1,15 +1,14 @@
 import 'dart:async';
-import 'dart:convert';
-import 'dart:io';
 
 import 'package:file_picker/file_picker.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/constants/api_endpoints.dart';
 import '../../../core/network/websocket_client.dart';
+import '../../../data/datasources/robot_api.dart';
+import '../../../domain/providers/auth_provider.dart';
 import '../../../domain/providers/control_provider.dart';
 import '../../../domain/providers/dog_profiles_provider.dart';
 import '../../theme/app_theme.dart';
@@ -372,7 +371,39 @@ class _QuickActionsState extends ConsumerState<QuickActions> {
         return;
       }
 
-      // Build 34: Show uploading indicator early
+      // Build 38: Get auth token and dog ID for HTTP upload
+      final token = ref.read(authTokenProvider);
+      final selectedDog = ref.read(selectedDogProvider);
+
+      if (token == null) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Not authenticated - please login'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+        return;
+      }
+
+      if (selectedDog == null) {
+        if (mounted) {
+          _showNoDogError(context);
+        }
+        return;
+      }
+
+      final filePath = file.path!;
+      final filename = file.name;
+      final dogId = selectedDog.id;
+
+      print('[UPLOAD] Build 38: Starting HTTP multipart upload');
+      print('[UPLOAD]   filename: $filename');
+      print('[UPLOAD]   dogId: $dogId');
+      print('[UPLOAD]   size: ${file.size} bytes');
+
+      // Show initial upload indicator
       if (mounted) {
         ScaffoldMessenger.of(context).hideCurrentSnackBar();
         ScaffoldMessenger.of(context).showSnackBar(
@@ -385,80 +416,52 @@ class _QuickActionsState extends ConsumerState<QuickActions> {
                   child: CircularProgressIndicator(strokeWidth: 2),
                 ),
                 const SizedBox(width: 12),
-                Text('Reading "${file.name}"...'),
+                Text('Uploading "$filename"...'),
               ],
             ),
-            duration: const Duration(seconds: 30),
+            duration: const Duration(minutes: 2),
             behavior: SnackBarBehavior.floating,
           ),
         );
       }
 
-      // Build 34: Read file in isolate to not block main thread
-      // This prevents WebSocket disconnects during large file reads
-      final filePath = file.path!;
-      final bytes = await compute(_readFileBytes, filePath);
-      print('[UPLOAD] Read ${bytes.length} bytes from file (via isolate)');
+      // Build 38: Upload via HTTP multipart (not WebSocket)
+      final robotApi = ref.read(robotApiProvider);
+      final error = await robotApi.uploadMusic(
+        token: token,
+        filePath: filePath,
+        filename: filename,
+        dogId: dogId,
+        onProgress: (sent, total) {
+          final percent = (sent / total * 100).toStringAsFixed(0);
+          print('[UPLOAD] Progress: $percent% ($sent/$total bytes)');
+        },
+      );
 
-      // Encode in isolate as well to prevent UI blocking
-      final base64Data = await compute(base64Encode, bytes);
-      final filename = file.name;
-      final format = file.extension ?? 'mp3';
+      if (!mounted) return;
 
-      print('[UPLOAD] Preparing WebSocket command:');
-      print('[UPLOAD]   filename: $filename');
-      print('[UPLOAD]   format: $format');
-      print('[UPLOAD]   raw bytes: ${bytes.length}');
-      print('[UPLOAD]   base64 length: ${base64Data.length}');
-      print('[UPLOAD] Sending upload_song command via WebSocket...');
+      ScaffoldMessenger.of(context).hideCurrentSnackBar();
 
-      // Build 34: Wrap send in try-catch to prevent connection loss on send failure
-      try {
-        ref.read(websocketClientProvider).sendUploadSong(filename, base64Data, format);
-        print('[UPLOAD] Command sent - check robot logs for upload_song handling');
-
-        // Build 36: Start timeout timer - show warning if no response in 10 seconds
-        _pendingUploadFilename = filename;
-        _uploadTimeoutTimer?.cancel();
-        _uploadTimeoutTimer = Timer(const Duration(seconds: 10), () {
-          if (mounted && _pendingUploadFilename != null) {
-            print('[UPLOAD] Timeout - no response received for $_pendingUploadFilename');
-            ScaffoldMessenger.of(context).hideCurrentSnackBar();
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text('Upload of "$_pendingUploadFilename" may have failed - no response from server'),
-                backgroundColor: Colors.orange,
-                behavior: SnackBarBehavior.floating,
-                duration: const Duration(seconds: 5),
-              ),
-            );
-            _pendingUploadFilename = null;
-          }
-        });
-
-        if (mounted) {
-          ScaffoldMessenger.of(context).hideCurrentSnackBar();
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Uploading "$filename" to robot...'),
-              duration: const Duration(seconds: 2),
-              behavior: SnackBarBehavior.floating,
-            ),
-          );
-        }
-      } catch (sendError) {
-        print('[UPLOAD] Send error (connection preserved): $sendError');
-        _uploadTimeoutTimer?.cancel();
-        _pendingUploadFilename = null;
-        if (mounted) {
-          ScaffoldMessenger.of(context).hideCurrentSnackBar();
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Failed to send: $sendError'),
-              backgroundColor: Colors.red,
-            ),
-          );
-        }
+      if (error == null) {
+        // Success
+        print('[UPLOAD] HTTP upload successful');
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Uploaded "$filename" successfully'),
+            backgroundColor: Colors.green,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      } else {
+        // Error
+        print('[UPLOAD] HTTP upload failed: $error');
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Upload failed: $error'),
+            backgroundColor: Colors.red,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
       }
     } on PlatformException catch (e) {
       print('[UPLOAD] Platform error: ${e.code} - ${e.message}');
@@ -484,11 +487,6 @@ class _QuickActionsState extends ConsumerState<QuickActions> {
         );
       }
     }
-  }
-
-  /// Isolate function to read file bytes without blocking main thread
-  static List<int> _readFileBytes(String path) {
-    return File(path).readAsBytesSync();
   }
 
   void _showNoDogError(BuildContext context) {
