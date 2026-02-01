@@ -357,6 +357,10 @@ class _ModeSelector extends ConsumerWidget {
       initialValue: displayMode,
       onSelected: (mode) {
         ref.read(modeStateProvider.notifier).setMode(mode);
+        // Build 35 fix: Navigate to coach screen when coach mode selected
+        if (mode == RobotMode.coach) {
+          context.push('/coach');
+        }
       },
       offset: const Offset(0, 40),
       child: Stack(

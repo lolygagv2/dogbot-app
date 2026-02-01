@@ -315,6 +315,25 @@ class MissionsNotifier extends StateNotifier<MissionsState> {
           _updateMissionInList(missionId, isActive: false);
         }
         break;
+
+      // Build 35: Handle mission failures (e.g., mission not found on robot)
+      case 'mission_failed':
+      case 'mission_error':
+        _startVerificationTimer?.cancel();
+        final missionId = event.data['mission_id'] as String? ?? event.data['id'] as String? ?? '';
+        final errorMsg = event.data['error'] as String? ?? event.data['message'] as String? ?? 'Mission failed to start';
+        print('Missions: failed event - mission=$missionId, error=$errorMsg');
+
+        // Clear optimistic state and show error
+        state = state.copyWith(
+          clearActiveMission: true,
+          clearProgress: true,
+          error: errorMsg,
+        );
+        if (missionId.isNotEmpty) {
+          _updateMissionInList(missionId, isActive: false);
+        }
+        break;
     }
   }
 

@@ -121,6 +121,15 @@ class _ScheduleEditScreenState extends ConsumerState<ScheduleEditScreen> {
 
     setState(() => _isLoading = true);
 
+    // Build 35 fix: Use mission ID (robot's name) not display name
+    // Robot expects "sit_training" not "Sit Training"
+    final missionIdForRobot = selectedMission.id;
+
+    // Build 35 fix: Generate schedule name (robot requires non-empty)
+    final hour = _selectedTime.hourOfPeriod == 0 ? 12 : _selectedTime.hourOfPeriod;
+    final period = _selectedTime.period == DayPeriod.am ? 'AM' : 'PM';
+    final scheduleName = '${selectedMission.name} at $hour:${_selectedTime.minute.toString().padLeft(2, '0')} $period';
+
     bool success;
     if (_isEditing && _existingSchedule != null) {
       // Build updated schedule with new format
@@ -130,7 +139,8 @@ class _ScheduleEditScreenState extends ConsumerState<ScheduleEditScreen> {
       final daysOfWeek = MissionSchedule.weekdaysToNames(_selectedWeekdays.toList()..sort());
 
       final updated = _existingSchedule!.copyWith(
-        missionName: selectedMission.name,
+        missionName: missionIdForRobot,
+        name: scheduleName,
         dogId: _selectedDogId!,
         type: _selectedType,
         startTime: startTime,
@@ -140,7 +150,8 @@ class _ScheduleEditScreenState extends ConsumerState<ScheduleEditScreen> {
       success = await ref.read(schedulerProvider.notifier).updateSchedule(updated);
     } else {
       success = await ref.read(schedulerProvider.notifier).createSchedule(
-            missionName: selectedMission.name,
+            missionName: missionIdForRobot,
+            name: scheduleName,
             dogId: _selectedDogId!,
             type: _selectedType,
             hour: _selectedTime.hour,
