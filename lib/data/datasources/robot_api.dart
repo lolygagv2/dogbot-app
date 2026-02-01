@@ -115,18 +115,26 @@ class RobotApi {
   /// Fetch all schedules
   Future<List<MissionSchedule>> getSchedules(String token) async {
     try {
+      print('[SCHEDULE] GET /schedules...');
       final response = await _dio.get(
         ApiEndpoints.schedules,
         options: Options(headers: {'Authorization': 'Bearer $token'}),
       );
+      print('[SCHEDULE] GET response: status=${response.statusCode}, data=${response.data}');
       if (response.statusCode == 200 && response.data is List) {
-        return (response.data as List)
-            .map((s) => MissionSchedule.fromJson(s as Map<String, dynamic>))
+        final schedules = (response.data as List)
+            .map((s) {
+              print('[SCHEDULE] Parsing: $s');
+              return MissionSchedule.fromJson(s as Map<String, dynamic>);
+            })
             .toList();
+        print('[SCHEDULE] Parsed ${schedules.length} schedules');
+        return schedules;
       }
+      print('[SCHEDULE] GET returned non-list or error: ${response.data}');
       return [];
     } catch (e) {
-      print('RobotApi: Failed to fetch schedules: $e');
+      print('[SCHEDULE] Failed to fetch schedules: $e');
       return [];
     }
   }
@@ -135,21 +143,28 @@ class RobotApi {
   /// Returns the created schedule, or throws with specific error message
   Future<MissionSchedule?> createSchedule(String token, MissionSchedule schedule) async {
     try {
+      final json = schedule.toJson();
+      print('[SCHEDULE] POST /schedules with: $json');
       final response = await _dio.post(
         ApiEndpoints.schedules,
-        data: schedule.toJson(),
+        data: json,
         options: Options(headers: {'Authorization': 'Bearer $token'}),
       );
+      print('[SCHEDULE] POST response: status=${response.statusCode}, data=${response.data}');
       if (response.statusCode == 200 || response.statusCode == 201) {
         if (response.data != null) {
+          print('[SCHEDULE] Parsing response...');
           return MissionSchedule.fromJson(response.data as Map<String, dynamic>);
         }
+        print('[SCHEDULE] No response data, returning original schedule');
         return schedule;
       }
+      print('[SCHEDULE] Unexpected status: ${response.statusCode}');
       return null;
     } on DioException catch (e) {
       // Build 36: More specific error messages
       final statusCode = e.response?.statusCode;
+      print('[SCHEDULE] DioException: status=$statusCode, response=${e.response?.data}');
       String errorMsg;
       if (statusCode == 404) {
         errorMsg = 'Scheduling not supported by server';
@@ -162,10 +177,10 @@ class RobotApi {
       } else {
         errorMsg = e.response?.data?['error'] ?? e.response?.data?['message'] ?? 'Server error ($statusCode)';
       }
-      print('RobotApi: Failed to create schedule: $errorMsg');
+      print('[SCHEDULE] Failed to create: $errorMsg');
       throw Exception(errorMsg);
     } catch (e) {
-      print('RobotApi: Failed to create schedule: $e');
+      print('[SCHEDULE] Failed to create schedule: $e');
       throw Exception('Connection error');
     }
   }

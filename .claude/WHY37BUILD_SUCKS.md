@@ -131,34 +131,47 @@ onPressed: () {
 ### What Happened
 1. User creates schedule in UI
 2. UI shows "Schedule created" (optimistic)
-3. API call to POST `/schedules` fails silently
-4. On reload, schedule is gone
+3. User leaves schedule menu
+4. On return, schedule is gone
 
-### Root Cause
-**RELAY does not implement the `/schedules` REST endpoints.**
+### CORRECTION: Relay DOES Have Endpoints (per Relay Claude)
+```
+POST /schedules         - ✅ Implemented in Build 36
+GET /schedules          - ✅ Implemented in Build 36
+PUT /schedules/{id}     - ✅ Implemented in Build 36
+DELETE /schedules/{id}  - ✅ Implemented in Build 36
+POST /schedules/enable  - ✅ Implemented in Build 36
+POST /schedules/disable - ✅ Implemented in Build 36
+```
 
-The resume_chat.md clearly states:
-> **Remaining for RELAY CLAUDE:**
-> - **NEW: Implement `/missions/schedule` REST endpoints** (currently returns error)
+### Possible Root Causes:
+1. **Field name mismatch:** App sends `schedule_id`, relay might expect `id`
+2. **Storage issue:** Relay might be storing in-memory only
+3. **User auth issue:** Schedules might not be associated with user correctly
+4. **GET response parsing:** App expects `schedule_id` in response, relay might return `id`
 
-When the app calls `POST /schedules`:
-1. RELAY returns 404 or 500
-2. `robot_api.dart` catches the error
-3. `scheduler_provider.dart` reverts the optimistic update and sets error
-4. But the error message wasn't being displayed properly
+### APP's JSON Format:
+```json
+{
+  "schedule_id": "uuid-here",
+  "mission_name": "sit_training",
+  "dog_id": "dog-uuid",
+  "type": "daily",
+  "start_time": "08:00",
+  "end_time": "12:00",
+  "days_of_week": [],
+  "enabled": true,
+  "cooldown_hours": 24
+}
+```
 
-### Responsibility: **RELAY**
-The relay server needs to implement:
-- `POST /schedules` - create
-- `GET /schedules` - list all
-- `PUT /schedules/:id` - update
-- `DELETE /schedules/:id` - delete
-- `POST /schedules/enable` - enable scheduling
-- `POST /schedules/disable` - disable scheduling
+### Debug Needed:
+- Check relay logs at schedule creation time for any errors
+- Verify field names match between app and relay
+- Check if schedules are persisted to database or in-memory only
 
-### What APP Fixed in Build 37:
-- Now shows specific error messages: "Scheduling not supported by server" (404)
-- But the underlying issue is relay doesn't have the endpoints
+### Responsibility: **UNKNOWN - needs debug**
+Could be APP (wrong field names) or RELAY (storage/response format)
 
 ---
 
@@ -301,11 +314,23 @@ Actually looking closer, TWO `mission_stopped` events were sent:
 |-------|-----|-------|-------|
 | MP3 Upload Crash |  |  | **Must fix WebSocket large message handling** |
 | Video shows "idle" |  |  | **video_track.py needs to read mode correctly** |
-| Duplicate stop commands | **Fix back button** |  |  |
-| Scheduler disappears |  | **Implement /schedules endpoints** |  |
+| Duplicate stop commands | **Fixed Build 37.1** |  |  |
+| Scheduler disappears | Check field names | Check storage | |
 | No bounding boxes |  |  | **Draw boxes on video frames** |
 | Mission auto-stops | Investigate | | Investigate |
 | AI latency | Minor | Minor | Architecture |
+
+### CORRECTIONS from Relay Claude:
+1. **Scheduler endpoints** - RELAY says they ARE implemented in Build 36
+2. **Upload event forwarding** - RELAY says it IS implemented, but robot crashed before sending any events
+
+So the MP3 upload issue is 100% ROBOT - the robot disconnected/crashed when receiving the 5MB message:
+```
+07:54:44 - [SEND->ROBOT] command    ← relay sent upload
+07:54:44 - Robot disconnected       ← robot crashed 0.7 seconds later
+```
+
+The relay CAN'T forward an event the robot never sends.
 
 ---
 
