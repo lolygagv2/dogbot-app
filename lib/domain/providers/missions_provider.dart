@@ -164,7 +164,8 @@ class MissionsNotifier extends StateNotifier<MissionsState> {
   StreamSubscription? _wsSubscription;
   bool _isLoading = false;
   Timer? _startVerificationTimer;
-  static const _startVerificationTimeout = Duration(seconds: 3);
+  // Build 40: Extended verification timeout from 3s to 5s
+  static const _startVerificationTimeout = Duration(seconds: 5);
 
   MissionsNotifier(this._ref) : super(MissionsState(missions: _predefinedMissions)) {
     _listenToWebSocket();
@@ -254,7 +255,36 @@ class MissionsNotifier extends StateNotifier<MissionsState> {
         _startVerificationTimer?.cancel();
 
         final action = event.data['action'] as String?;
+        final status = event.data['status'] as String?;
         final failureReason = event.data['failure_reason'] as String?;
+
+        // Build 40: DEFENSIVE - If all key fields are null, robot sent incomplete data
+        // Show error instead of getting stuck on "Initializing" forever
+        if (action == null && status == null && failureReason == null) {
+          final isStarting = state.currentProgress?.status == 'starting';
+          final missionId = event.data['mission_id'] as String? ??
+              event.data['mission'] as String? ??
+              state.activeMissionId;
+
+          if (isStarting && missionId != null) {
+            // We just sent start_mission and got a progress event with all nulls
+            // This means robot responded but sent wrong field names
+            // Create a minimal progress so UI doesn't freeze
+            print('Missions: Got null fields while starting - robot may have sent wrong field names');
+            state = state.copyWith(
+              currentProgress: MissionProgress(
+                missionId: missionId,
+                status: 'error',
+              ),
+              error: 'Robot sent incomplete mission data - check robot logs',
+            );
+            return;
+          }
+
+          // Not in starting state but got all nulls - ignore this malformed event
+          print('Missions: Ignoring mission_progress with all null fields');
+          return;
+        }
 
         // Build 38: Handle mission start failure with reason
         if (action == 'failed') {

@@ -252,19 +252,23 @@ class RobotApi {
 
   /// Upload MP3 file via HTTP multipart (instead of WebSocket)
   /// Returns error message on failure, null on success
+  /// Build 40: Added device_id field - relay requires all 3 fields (file, dog_id, device_id)
   Future<String?> uploadMusic({
     required String token,
     required String filePath,
     required String filename,
     required String dogId,
+    required String deviceId,
     void Function(int sent, int total)? onProgress,
   }) async {
     try {
       print('[MUSIC-UPLOAD] Starting HTTP multipart upload: $filename');
-      print('[MUSIC-UPLOAD] dogId: $dogId, path: $filePath');
+      print('[MUSIC-UPLOAD] dogId: $dogId, deviceId: $deviceId, path: $filePath');
 
+      // Build 40: Relay requires all 3 form fields - file, dog_id, device_id
       final formData = FormData.fromMap({
         'dog_id': dogId,
+        'device_id': deviceId,
         'file': await MultipartFile.fromFile(
           filePath,
           filename: filename,

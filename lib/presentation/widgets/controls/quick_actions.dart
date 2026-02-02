@@ -10,6 +10,7 @@ import '../../../core/network/websocket_client.dart';
 import '../../../data/datasources/robot_api.dart';
 import '../../../domain/providers/auth_provider.dart';
 import '../../../domain/providers/control_provider.dart';
+import '../../../domain/providers/device_provider.dart';
 import '../../../domain/providers/dog_profiles_provider.dart';
 import '../../theme/app_theme.dart';
 
@@ -398,9 +399,13 @@ class _QuickActionsState extends ConsumerState<QuickActions> {
       final filename = file.name;
       final dogId = selectedDog.id;
 
-      print('[UPLOAD] Build 38: Starting HTTP multipart upload');
+      // Build 40: Get device_id - relay requires all 3 form fields
+      final deviceId = ref.read(deviceIdProvider);
+
+      print('[UPLOAD] Build 40: Starting HTTP multipart upload');
       print('[UPLOAD]   filename: $filename');
       print('[UPLOAD]   dogId: $dogId');
+      print('[UPLOAD]   deviceId: $deviceId');
       print('[UPLOAD]   size: ${file.size} bytes');
 
       // Show initial upload indicator
@@ -425,13 +430,14 @@ class _QuickActionsState extends ConsumerState<QuickActions> {
         );
       }
 
-      // Build 38: Upload via HTTP multipart (not WebSocket)
+      // Build 40: Upload via HTTP multipart with all 3 required fields
       final robotApi = ref.read(robotApiProvider);
       final error = await robotApi.uploadMusic(
         token: token,
         filePath: filePath,
         filename: filename,
         dogId: dogId,
+        deviceId: deviceId,
         onProgress: (sent, total) {
           final percent = (sent / total * 100).toStringAsFixed(0);
           print('[UPLOAD] Progress: $percent% ($sent/$total bytes)');
