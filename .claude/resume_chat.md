@@ -1,5 +1,68 @@
 # WIM-Z Resume Chat Log
 
+## Session: 2026-02-02 — Build 44 Complete
+**Goal:** Multiple bug fixes and feature additions
+**Status:** ✅ Complete
+
+### Problems Solved This Session:
+
+#### 1. Mission List Sync (Build 41.1)
+**Problem:** App had only 5 predefined missions but robot has 21.
+**Solution:** Updated `_predefinedMissions` list to match robot's full mission catalog.
+**File:** `lib/domain/providers/missions_provider.dart`
+
+#### 2. Scheduler Ghost Entry Fix (Build 41.1)
+**Problem:** App showed schedules that failed to create on robot (ghost entries).
+**Solution:** Check `success` field in `schedule_created` response; remove optimistic entry if `success: false`.
+**File:** `lib/domain/providers/scheduler_provider.dart`
+
+#### 3. BluLight Button (Build 42)
+**Problem:** No independent control for blue mood LED.
+**Solution:** Added BluLight toggle button to quick actions secondary row; sends `mood_led` relay command.
+**Files:** `lib/core/network/websocket_client.dart`, `lib/presentation/widgets/controls/quick_actions.dart`
+
+#### 4. Battery Display Fix (Build 42)
+**Problem:** Battery flashing between actual value (96%) and 0% every 5 seconds.
+**Solution:** Capture previous battery before event processing; triple fallback chain; only update if level > 0.
+**File:** `lib/domain/providers/telemetry_provider.dart`
+
+#### 5. Video Privacy Fix (Build 44) — CRITICAL
+**Problem:** Video from previous robot bleeding into new robot session when switching devices.
+**Solution:**
+- Clear renderer srcObject BEFORE closing connection
+- Stop all tracks on stream before clearing
+- Longer delay (1s) when switching devices
+- Update _lastDeviceId AFTER closing old session
+
+**File:** `lib/domain/providers/webrtc_provider.dart`
+
+### Commits This Session:
+```
+9b45ac2 fix: Build 41.1 — Mission button race condition, mission list sync, scheduler ghost fix
+4202c9a feat: Build 42 — Add BluLight button for blue mood LED control
+f7c70a4 fix: Build 42 — Prevent battery display from resetting to 0%
+262d4ac chore: Build 44 version bump
+76639cb fix: Build 44 — Prevent video bleeding when switching robots (privacy fix)
+```
+
+### Key Solutions:
+- **WebRTC cleanup sequence:** Clear renderer → Stop tracks → Close peer → Wait 1s → New request
+- **Battery preservation:** Never set to 0 unless explicitly sent by robot
+- **Scheduler:** Check success field in response, revert optimistic updates on failure
+
+### Next Steps:
+1. Test video switching between robots to verify privacy fix
+2. Test battery display stability
+3. Test BluLight button functionality
+4. Fix 30-second video lag (ROBOT-SIDE: `git pull && sudo systemctl restart treatbot` on treatbot2)
+
+### Important Notes:
+- Video lag is ROBOT-SIDE issue, not app-side
+- Robot code (dogbot repo) is separate from app code (wimzapp repo)
+- WebSocket telemetry "unhandled" logs are expected - events handled by other providers
+
+---
+
 ## Session: 2026-02-01 — Build 38 Complete
 **Goal:** Implement Build 38 fixes from BUILD38_APP_CLAUDE.md
 **Status:** ✅ Complete
@@ -55,27 +118,6 @@ e66db1f fix: Build 38 — Switch MP3 upload to HTTP multipart (P1-A4)
 c2fde4c fix: Build 38 — Remove ghost commands from lifecycle handlers (P0-A1)
 ```
 
-### Analysis Results:
-- `flutter analyze lib/` — No errors (337 info-level suggestions, mostly `withOpacity` deprecation)
-- Build requires Android SDK (not available in WSL environment)
-
-### Unresolved Issues/Warnings:
-- `withOpacity` deprecation warnings throughout codebase (non-blocking, cosmetic)
-- `wimz-app-theme/` directory has errors but is separate from main app
-
-### Next Steps:
-1. Build APK on machine with Android SDK: `flutter build apk --release`
-2. Test ghost command fixes: Start mission → navigate away → verify mission still running
-3. Test MP3 upload: Upload file → verify no robot disconnect
-4. Test scheduler: Create schedule → verify it persists on robot
-
-### Architecture Rules Enforced (from BUILD38_APP_CLAUDE.md):
-1. Robot state is authoritative — App displays what robot says
-2. App is thin display/command layer — No caching state, no autonomous commands
-3. Commands fire ONLY on explicit user tap — No lifecycle/navigation commands
-4. File transfers use HTTP, not WebSocket
-5. Schedules live on robot via WebSocket
-
 ---
 
 ## Session: 2026-02-01 (Earlier) — Build 37.1
@@ -91,15 +133,6 @@ c2fde4c fix: Build 38 — Remove ghost commands from lifecycle handlers (P0-A1)
 | 3 | MP3 upload no feedback | RELAY doesn't send upload_complete event | Added 10s timeout with "may have failed" warning |
 | 4 | App says "Sit Training" but video says "idle" | Mode locked on ANY progress event | Now only locks mode on explicit `action: 'started'` event |
 | 5 | Duplicate stop_coach/set_mode commands | Back button AND PopScope both calling stopCoaching() | Removed call from back button, let PopScope handle it |
-
-### Key Files Modified:
-
-| File | Changes |
-|------|---------|
-| `lib/domain/providers/mode_provider.dart` | Added `_userInitiatedChangeTime` + 2s cooldown; fixed mode locking to require explicit 'started' action |
-| `lib/presentation/widgets/controls/quick_actions.dart` | Added `_uploadTimeoutTimer` (10s) with warning message |
-| `lib/data/datasources/robot_api.dart` | Added specific error messages for schedule creation (404, 501, 503, 401) |
-| `.claude/WHY37BUILD_SUCKS.md` | Comprehensive analysis of all Build 37 issues |
 
 ---
 
