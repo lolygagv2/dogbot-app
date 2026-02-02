@@ -31,8 +31,11 @@ class TelemetryNotifier extends StateNotifier<Telemetry> {
   }
 
   void _handleWsEvent(WsEvent event) {
+    // Build 42: Capture current battery BEFORE any updates to ensure we never lose it
+    final previousBattery = state.battery;
+
     // Debug: log all events to trace battery data
-    print('Telemetry event: type=${event.type}, data=${event.data}');
+    print('Telemetry event: type=${event.type}, prevBattery=$previousBattery, data=${event.data}');
 
     // Check for battery data in ANY event (robot might send it in various formats)
     _extractBatteryFromAnyEvent(event.data);
@@ -46,21 +49,29 @@ class TelemetryNotifier extends StateNotifier<Telemetry> {
         final parsed = Telemetry.fromApiResponse(event.data);
         // Only update mode if it was actually in the event data (not defaulted to 'idle')
         final hasMode = event.data.containsKey('mode') && event.data['mode'] != null;
+
+        // Build 42: Check if battery was actually in this event's data
+        final hasBatteryData = event.data.containsKey('battery') ||
+                               event.data.containsKey('level') ||
+                               (event.data['battery'] is Map);
+        // Use parsed battery only if it's > 0, otherwise keep previous value
+        final newBattery = parsed.battery > 0 ? parsed.battery :
+                          (state.battery > 0 ? state.battery : previousBattery);
+
         state = state.copyWith(
-          // Only update battery if parsed value is non-zero (was actually in the data)
-          battery: parsed.battery > 0 ? parsed.battery : state.battery,
+          battery: newBattery,
           temperature: parsed.temperature > 0 ? parsed.temperature : state.temperature,
           // Preserve existing mode if not in this event
           mode: hasMode ? parsed.mode : state.mode,
           dogDetected: parsed.dogDetected,
           currentBehavior: parsed.currentBehavior,
           confidence: parsed.confidence,
-          isCharging: parsed.battery > 0 ? parsed.isCharging : state.isCharging,
+          isCharging: hasBatteryData ? parsed.isCharging : state.isCharging,
           treatsRemaining: parsed.treatsRemaining > 0 ? parsed.treatsRemaining : state.treatsRemaining,
           activeMissionId: parsed.activeMissionId,
           rawData: parsed.rawData,
         );
-        print('Telemetry updated (${event.type}): battery=${state.battery}, mode=${state.mode}, hasMode=$hasMode');
+        print('Telemetry updated (${event.type}): battery=${state.battery}, mode=${state.mode}, hasBattery=$hasBatteryData');
         break;
 
       case 'device_status':
@@ -125,6 +136,7 @@ class TelemetryNotifier extends StateNotifier<Telemetry> {
   }
 
   /// Extract telemetry data from any event - robot sends it in various formats
+  /// Build 42: Only updates if valid battery data found, never resets to 0
   void _extractBatteryFromAnyEvent(Map<String, dynamic> data) {
     // Format 1: {'level': 96, 'charging': true, 'voltage': 16.6, 'temperature': 73.25, 'treats_today': 0}
     if (data.containsKey('level')) {
@@ -132,8 +144,8 @@ class TelemetryNotifier extends StateNotifier<Telemetry> {
       final charging = data['charging'] as bool?;
       final temp = (data['temperature'] as num?)?.toDouble();
       final treats = data['treats_today'] as int?;
-      if (level != null) {
-        print('TELEMETRY EXTRACTED (level key): level=$level, charging=$charging, temp=$temp, treats=$treats');
+      if (level != null && level > 0) {
+        print('BATTERY EXTRACTED (level key): level=$level, charging=$charging, temp=$temp, treats=$treats');
         state = state.copyWith(
           battery: level,
           isCharging: charging ?? state.isCharging,
@@ -151,8 +163,8 @@ class TelemetryNotifier extends StateNotifier<Telemetry> {
       final charging = batteryData['charging'] as bool?;
       final temp = (batteryData['temperature'] as num?)?.toDouble();
       final treats = batteryData['treats_today'] as int?;
-      if (level != null) {
-        print('TELEMETRY EXTRACTED (nested): level=$level, temp=$temp');
+      if (level != null && level > 0) {
+        print('BATTERY EXTRACTED (nested): level=$level, temp=$temp');
         state = state.copyWith(
           battery: level,
           isCharging: charging ?? state.isCharging,
@@ -164,7 +176,7 @@ class TelemetryNotifier extends StateNotifier<Telemetry> {
     }
 
     // Format 3: {'battery': 96} (just a number)
-    if (batteryData is num) {
+    if (batteryData is num && batteryData > 0) {
       print('BATTERY EXTRACTED (number): level=$batteryData');
       state = state.copyWith(battery: batteryData.toDouble());
     }
