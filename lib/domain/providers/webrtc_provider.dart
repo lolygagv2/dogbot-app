@@ -90,21 +90,36 @@ class WebRTCNotifier extends StateNotifier<WebRTCConnectionState> {
   }
 
   /// Handle device switch - tear down old connection and establish new one
+  /// Build 44: More aggressive cleanup to prevent video bleeding between robots
   Future<void> _handleDeviceSwitch(String newDeviceId) async {
+    final oldDeviceId = _lastDeviceId;
+
     // Only switch if we have an active or pending connection
-    if (_lastDeviceId == null && state.state == WebRTCState.disconnected) {
+    if (oldDeviceId == null && state.state == WebRTCState.disconnected) {
       print('WebRTC: No active connection, just updating device ID');
       _lastDeviceId = newDeviceId;
       return;
     }
 
-    print('WebRTC: Switching video from $_lastDeviceId to $newDeviceId');
+    print('WebRTC: ⚠️ SWITCHING VIDEO from $oldDeviceId to $newDeviceId');
 
     // Cancel any pending reconnect
     _reconnectTimer?.cancel();
     _reconnectAttempts = 0;
 
-    // requestVideoStream handles closing existing session internally
+    // Build 44: Aggressively clear the renderer FIRST to prevent old frames showing
+    if (_renderer != null) {
+      print('WebRTC: Clearing renderer srcObject before switch');
+      _renderer!.srcObject = null;
+    }
+
+    // Build 44: Force close old session completely before requesting new
+    await _closeInternal();
+
+    // Build 44: Longer delay to ensure relay and robot have processed the close
+    await Future.delayed(const Duration(milliseconds: 1000));
+
+    // Now request new stream
     await requestVideoStream(newDeviceId);
   }
 
@@ -184,12 +199,17 @@ class WebRTCNotifier extends StateNotifier<WebRTCConnectionState> {
   }
 
   /// Request video stream from robot
+  /// Build 44: Enhanced to prevent video bleeding between devices
   Future<void> requestVideoStream(String deviceId) async {
-    // Skip if already connected to this device
-    if (_peerConnection != null &&
+    // Build 44: If switching to a DIFFERENT device, always close first
+    final switchingDevice = _lastDeviceId != null && _lastDeviceId != deviceId;
+
+    // Skip if already connected to THIS SAME device
+    if (!switchingDevice &&
+        _peerConnection != null &&
         _peerConnection!.connectionState ==
             RTCPeerConnectionState.RTCPeerConnectionStateConnected) {
-      print('WebRTC: Already connected, skipping request');
+      print('WebRTC: Already connected to $deviceId, skipping request');
       return;
     }
 
@@ -201,17 +221,21 @@ class WebRTCNotifier extends StateNotifier<WebRTCConnectionState> {
     _isRequesting = true;
 
     try {
-      _lastDeviceId = deviceId;  // Store for auto-reconnect
+      print('WebRTC: requestVideoStream for $deviceId (switching=$switchingDevice, prev=$_lastDeviceId)');
+
       _reconnectAttempts = 0;
       _reconnectTimer?.cancel();
 
-      // Close existing session before requesting new one
-      if (_peerConnection != null || state.sessionId != null) {
+      // Build 44: Always close existing session when switching devices or if we have one
+      if (switchingDevice || _peerConnection != null || state.sessionId != null) {
         print('WebRTC: Closing existing session ${state.sessionId} before new request');
         await _closeInternal();
-        // Small delay to ensure relay processes the close
-        await Future.delayed(const Duration(milliseconds: 500));
+        // Longer delay when switching devices to ensure relay processes the close
+        await Future.delayed(Duration(milliseconds: switchingDevice ? 1000 : 500));
       }
+
+      // Update device ID AFTER closing old session
+      _lastDeviceId = deviceId;
 
       state = state.copyWith(state: WebRTCState.connecting, errorMessage: null);
 
@@ -224,7 +248,7 @@ class WebRTCNotifier extends StateNotifier<WebRTCConnectionState> {
         'type': 'webrtc_request',
         'device_id': deviceId,
       });
-      print('WebRTC: Sent request for device $deviceId');
+      print('WebRTC: Sent webrtc_request for device $deviceId');
     } finally {
       _isRequesting = false;
     }
@@ -480,7 +504,25 @@ class WebRTCNotifier extends StateNotifier<WebRTCConnectionState> {
   }
 
   /// Internal close without clearing device ID (for reconnect)
+  /// Build 44: More thorough cleanup to prevent video bleeding
   Future<void> _closeInternal() async {
+    print('WebRTC: _closeInternal - stopping all streams and connections');
+
+    // Build 44: Clear renderer FIRST to immediately stop showing old video
+    if (_renderer != null && _renderer!.srcObject != null) {
+      print('WebRTC: Stopping and clearing renderer stream');
+      // Stop all tracks on the stream before clearing
+      final stream = _renderer!.srcObject;
+      if (stream != null) {
+        for (final track in stream.getTracks()) {
+          print('WebRTC: Stopping track ${track.kind}');
+          track.stop();
+        }
+      }
+      _renderer!.srcObject = null;
+    }
+
+    // Send close message to relay
     if (state.sessionId != null) {
       try {
         final wsClient = _ref.read(websocketClientProvider);
@@ -488,6 +530,7 @@ class WebRTCNotifier extends StateNotifier<WebRTCConnectionState> {
           'type': 'webrtc_close',
           'session_id': state.sessionId,
         });
+        print('WebRTC: Sent webrtc_close for session ${state.sessionId}');
       } catch (e) {
         print('WebRTC: Error sending close message: $e');
       }
@@ -497,6 +540,7 @@ class WebRTCNotifier extends StateNotifier<WebRTCConnectionState> {
     if (_dataChannel != null) {
       try {
         await _dataChannel!.close();
+        print('WebRTC: Data channel closed');
       } catch (_) {
         // Ignore - already closed or peer connection null
       }
@@ -508,18 +552,18 @@ class WebRTCNotifier extends StateNotifier<WebRTCConnectionState> {
     if (_peerConnection != null) {
       try {
         await _peerConnection!.close();
+        print('WebRTC: Peer connection closed');
       } catch (_) {
         // Ignore - already closed
       }
       _peerConnection = null;
     }
 
-    _renderer?.srcObject = null;
-
     state = state.copyWith(
       state: WebRTCState.disconnected,
       sessionId: null,
     );
+    print('WebRTC: _closeInternal complete - state is disconnected');
   }
 
   /// Pause WebRTC when app is backgrounded.
