@@ -176,6 +176,16 @@ class CoachNotifier extends StateNotifier<CoachState> {
     }
   }
 
+  /// Force a specific trick (Build 38)
+  /// Sends force_trick command to robot - robot will start session for this trick
+  void forceTrick(String trick) {
+    if (!state.isActive) return;
+
+    final ws = _ref.read(websocketClientProvider);
+    ws.sendForceTrick(trick);
+    print('Coach: Forcing trick: $trick');
+  }
+
   /// Clear state
   void clearState() {
     _rewardClearTimer?.cancel();

@@ -308,8 +308,8 @@ class _QuickActionsState extends ConsumerState<QuickActions> {
     );
   }
 
-  // Build 34: Max file size for MP3 uploads (10MB)
-  static const _maxUploadSizeBytes = 10 * 1024 * 1024;
+  // Build 38: Max file size for MP3 uploads (20MB to match robot download_song limit)
+  static const _maxUploadSizeBytes = 20 * 1024 * 1024;
 
   Future<void> _pickAndUploadSong(BuildContext context, WidgetRef ref) async {
     try {
@@ -357,13 +357,13 @@ class _QuickActionsState extends ConsumerState<QuickActions> {
         return;
       }
 
-      // Build 34: Check file size BEFORE reading to avoid memory issues
+      // Build 38: Check file size BEFORE reading to avoid memory issues
       if (file.size > _maxUploadSizeBytes) {
         print('[UPLOAD] File too large: ${file.size} bytes > $_maxUploadSizeBytes');
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-              content: Text('File too large (max 10MB)'),
+              content: Text('File too large (max 20MB)'),
               backgroundColor: Colors.red,
             ),
           );

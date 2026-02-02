@@ -253,6 +253,41 @@ class MissionsNotifier extends StateNotifier<MissionsState> {
         // Cancel verification timer - we got a real progress event
         _startVerificationTimer?.cancel();
 
+        final action = event.data['action'] as String?;
+        final failureReason = event.data['failure_reason'] as String?;
+
+        // Build 38: Handle mission start failure with reason
+        if (action == 'failed') {
+          print('Missions: Mission failed to start, reason: $failureReason');
+
+          String errorMsg;
+          if (failureReason == 'mission_already_active') {
+            // Mission IS running - sync to it instead of clearing
+            final activeMission = event.data['active_mission'] as String? ??
+                event.data['mission'] as String?;
+            errorMsg = 'A mission is already active${activeMission != null ? " ($activeMission)" : ""}';
+
+            // If we know which mission is active, sync to it
+            if (activeMission != null) {
+              state = state.copyWith(
+                activeMissionId: activeMission,
+                error: errorMsg,
+              );
+              _updateMissionInList(activeMission, isActive: true);
+              return;
+            }
+          } else {
+            errorMsg = failureReason ?? 'Mission failed to start';
+          }
+
+          state = state.copyWith(
+            clearActiveMission: true,
+            clearProgress: true,
+            error: errorMsg,
+          );
+          return;
+        }
+
         final progress = MissionProgress.fromWsEvent(event.data);
         print('Missions: progress event - status=${progress.status}, mission=${progress.missionId}, stage=${progress.stageNumber}/${progress.totalStages}');
 
@@ -267,6 +302,7 @@ class MissionsNotifier extends StateNotifier<MissionsState> {
             activeProgress: progress.effectiveProgress,
             activeRewards: progress.rewardsGiven,
             currentProgress: progress,
+            clearError: true,
           );
           _updateMissionInList(missionId, rewardsGiven: progress.rewardsGiven, isActive: true);
         }
@@ -334,6 +370,38 @@ class MissionsNotifier extends StateNotifier<MissionsState> {
           _updateMissionInList(missionId, isActive: false);
         }
         break;
+
+      // Build 38: Handle mission status response
+      case 'mission_status':
+        _startVerificationTimer?.cancel();
+        final isActive = event.data['active'] as bool? ?? false;
+        final missionId = event.data['mission_id'] as String? ?? event.data['mission'] as String? ?? '';
+        print('Missions: status event - active=$isActive, mission=$missionId');
+
+        if (isActive && missionId.isNotEmpty) {
+          // Robot has an active mission - sync to it
+          final progress = MissionProgress.fromWsEvent(event.data);
+          state = state.copyWith(
+            activeMissionId: missionId,
+            activeProgress: progress.effectiveProgress,
+            activeRewards: progress.rewardsGiven,
+            currentProgress: progress,
+            clearError: true,
+          );
+          _updateMissionInList(missionId, rewardsGiven: progress.rewardsGiven, isActive: true);
+        } else if (!isActive && state.hasActiveMission) {
+          // Robot reports no active mission but app thinks one is active
+          // Clear local state to sync
+          print('Missions: Robot reports no active mission, clearing local state');
+          state = state.copyWith(
+            clearActiveMission: true,
+            clearProgress: true,
+          );
+          if (state.activeMissionId != null) {
+            _updateMissionInList(state.activeMissionId!, isActive: false);
+          }
+        }
+        break;
     }
   }
 
@@ -364,7 +432,23 @@ class MissionsNotifier extends StateNotifier<MissionsState> {
   }
 
   /// Start a mission with verification
+  /// Build 38: Added check for already-active mission
   void startMission(String missionId) {
+    // Build 38: Check if mission already active locally
+    if (state.hasActiveMission && state.activeMissionId != missionId) {
+      print('Missions: Cannot start $missionId - ${state.activeMissionId} already active');
+      state = state.copyWith(
+        error: 'Stop current mission first (${state.activeMission?.name ?? state.activeMissionId})',
+      );
+      return;
+    }
+
+    // If same mission is already active, don't restart
+    if (state.hasActiveMission && state.activeMissionId == missionId) {
+      print('Missions: Mission $missionId already active, ignoring start');
+      return;
+    }
+
     // Cancel any existing verification timer
     _startVerificationTimer?.cancel();
 
@@ -405,6 +489,14 @@ class MissionsNotifier extends StateNotifier<MissionsState> {
         }
       }
     });
+  }
+
+  /// Request current mission status from robot (Build 38)
+  /// Used to sync UI when entering mission screen
+  void requestMissionStatus() {
+    final ws = _ref.read(websocketClientProvider);
+    ws.sendGetMissionStatus();
+    print('Missions: Requested mission status from robot');
   }
 
   /// Stop the active mission

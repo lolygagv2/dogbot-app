@@ -228,30 +228,13 @@ class _CoachScreenState extends ConsumerState<CoachScreen> {
                             runSpacing: 6,
                             children: coachState.watchingFor.map((behavior) {
                               final isHighlighted = coachState.lastRewardBehavior?.toLowerCase() == behavior.toLowerCase();
-                              return Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 12,
-                                  vertical: 6,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: isHighlighted
-                                      ? Colors.green.withOpacity(0.3)
-                                      : Colors.white.withOpacity(0.1),
-                                  borderRadius: BorderRadius.circular(16),
-                                  border: Border.all(
-                                    color: isHighlighted
-                                        ? Colors.green
-                                        : Colors.white.withOpacity(0.3),
-                                  ),
-                                ),
-                                child: Text(
-                                  behavior.toUpperCase(),
-                                  style: TextStyle(
-                                    color: isHighlighted ? Colors.green : Colors.white,
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
+                              return _TrickChip(
+                                behavior: behavior,
+                                isHighlighted: isHighlighted,
+                                isActive: coachState.isActive,
+                                onTap: coachState.isActive && isConnected
+                                    ? () => ref.read(coachProvider.notifier).forceTrick(behavior)
+                                    : null,
                               );
                             }).toList(),
                           ),
@@ -300,6 +283,70 @@ class _CoachScreenState extends ConsumerState<CoachScreen> {
             ),
           ],
         ),
+    );
+  }
+}
+
+/// Tappable trick chip - Build 38: sends force_trick command
+class _TrickChip extends StatelessWidget {
+  final String behavior;
+  final bool isHighlighted;
+  final bool isActive;
+  final VoidCallback? onTap;
+
+  const _TrickChip({
+    required this.behavior,
+    required this.isHighlighted,
+    required this.isActive,
+    this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(
+          horizontal: 12,
+          vertical: 6,
+        ),
+        decoration: BoxDecoration(
+          color: isHighlighted
+              ? Colors.green.withOpacity(0.3)
+              : Colors.white.withOpacity(0.1),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: isHighlighted
+                ? Colors.green
+                : onTap != null
+                    ? AppTheme.primary.withOpacity(0.5)
+                    : Colors.white.withOpacity(0.3),
+            width: onTap != null ? 2 : 1,
+          ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (onTap != null) ...[
+              Icon(
+                Icons.touch_app,
+                color: AppTheme.primary,
+                size: 14,
+              ),
+              const SizedBox(width: 4),
+            ],
+            Text(
+              behavior.toUpperCase(),
+              style: TextStyle(
+                color: isHighlighted ? Colors.green : Colors.white,
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

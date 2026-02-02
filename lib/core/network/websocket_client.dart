@@ -252,6 +252,7 @@ class WebSocketClient {
         case 'mission_progress':
         case 'mission_complete':
         case 'mission_stopped':
+        case 'mission_status':
           print('WS: Received $msgType: $json');
           final missionEvent = WsEvent.fromJson(json);
           _eventController.add(missionEvent);
@@ -646,6 +647,28 @@ class WebSocketClient {
   void sendSetSchedulingEnabled(bool enabled) {
     print('WebSocket: sendSetSchedulingEnabled enabled=$enabled');
     sendCommand('set_scheduling_enabled', {'enabled': enabled});
+  }
+
+  // ============ Coach Commands (Build 38) ============
+
+  /// Force a specific trick in coach mode
+  void sendForceTrick(String trick) {
+    print('WebSocket: sendForceTrick trick=$trick');
+    sendCommand('force_trick', {'trick': trick});
+  }
+
+  /// Enable/disable camera tracking
+  void sendSetTrackingEnabled(bool enabled) {
+    print('WebSocket: sendSetTrackingEnabled enabled=$enabled');
+    sendCommand('set_tracking_enabled', {'enabled': enabled});
+  }
+
+  // ============ Mission Commands (Build 38) ============
+
+  /// Request current mission status from robot
+  void sendGetMissionStatus() {
+    print('WebSocket: sendGetMissionStatus');
+    sendCommand('get_mission_status', {});
   }
 
   /// Disconnect from WebSocket server

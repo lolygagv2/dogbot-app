@@ -130,6 +130,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           _MotorTrimSlider(),
           const Divider(),
 
+          _SectionHeader('Camera'),
+          const _CameraTrackingTile(),
+          const Divider(),
+
           _SectionHeader('Training'),
           ListTile(
             leading: const Icon(Icons.schedule),
@@ -402,6 +406,34 @@ class _InlineDeviceList extends ConsumerWidget {
           onTap: () => context.push('/device-pairing'),
         ),
       ],
+    );
+  }
+}
+
+/// Camera tracking toggle (Build 38)
+class _CameraTrackingTile extends ConsumerWidget {
+  const _CameraTrackingTile();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final settings = ref.watch(settingsProvider);
+
+    return SwitchListTile(
+      secondary: Icon(
+        settings.cameraTrackingEnabled ? Icons.videocam : Icons.videocam_off,
+        color: settings.cameraTrackingEnabled ? AppTheme.accent : AppTheme.textTertiary,
+      ),
+      title: const Text('Camera Track Dog'),
+      subtitle: Text(
+        settings.cameraTrackingEnabled
+            ? 'Camera follows dog during coach/mission mode'
+            : 'Camera stays centered',
+        style: TextStyle(fontSize: 12, color: AppTheme.textTertiary),
+      ),
+      value: settings.cameraTrackingEnabled,
+      onChanged: (value) {
+        ref.read(settingsProvider.notifier).setCameraTrackingEnabled(value);
+      },
     );
   }
 }
