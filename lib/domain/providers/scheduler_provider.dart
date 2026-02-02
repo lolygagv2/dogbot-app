@@ -108,10 +108,35 @@ class SchedulerNotifier extends StateNotifier<SchedulerState> {
     // Build 41: Accept multiple field names for schedule_id
     final scheduleId = data['schedule_id'] as String? ??
                        data['id'] as String?;
-    print('Scheduler: schedule_created event, id=$scheduleId, data keys: ${data.keys}');
+    // Build 41.1: Check success field - robot may return success: false
+    final success = data['success'] as bool? ?? true;
+    print('Scheduler: schedule_created event, id=$scheduleId, success=$success, data keys: ${data.keys}');
 
-    // Build 41: If we have ANY pending create operation and got schedule_created,
-    // complete the first one (there should only be one at a time anyway)
+    // Build 41.1: If success is false, complete pending operation as failed and remove ghost entry
+    if (!success) {
+      final error = data['error'] as String? ?? 'Failed to create schedule';
+      print('Scheduler: Create failed - $error');
+
+      if (scheduleId != null && _pendingOperations.containsKey(scheduleId)) {
+        _completePendingOperation(scheduleId, false);
+        // Remove optimistically added schedule
+        state = state.copyWith(
+          schedules: state.schedules.where((s) => s.id != scheduleId).toList(),
+          error: error,
+        );
+      } else if (_pendingOperations.isNotEmpty) {
+        // Fallback: complete the first pending operation as failed
+        final firstPendingId = _pendingOperations.keys.first;
+        _completePendingOperation(firstPendingId, false);
+        state = state.copyWith(
+          schedules: state.schedules.where((s) => s.id != firstPendingId).toList(),
+          error: error,
+        );
+      }
+      return;
+    }
+
+    // Success case - complete pending operation
     if (scheduleId != null && _pendingOperations.containsKey(scheduleId)) {
       _completePendingOperation(scheduleId, true);
     } else if (_pendingOperations.isNotEmpty) {
