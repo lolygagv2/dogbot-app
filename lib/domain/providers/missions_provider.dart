@@ -420,6 +420,13 @@ class MissionsNotifier extends StateNotifier<MissionsState> {
           );
           _updateMissionInList(missionId, rewardsGiven: progress.rewardsGiven, isActive: true);
         } else if (!isActive && state.hasActiveMission) {
+          // Build 41.1: Don't clear if we're still in 'starting' state
+          // Robot often sends mission_status(inactive) before mission actually starts
+          if (state.currentProgress?.status == 'starting') {
+            print('Missions: Got mission_status(inactive) while starting - ignoring');
+            break;  // Let verification timer handle actual failures
+          }
+
           // Robot reports no active mission but app thinks one is active
           // Clear local state to sync
           print('Missions: Robot reports no active mission, clearing local state');
