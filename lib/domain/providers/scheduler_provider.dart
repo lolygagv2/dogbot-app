@@ -105,26 +105,47 @@ class SchedulerNotifier extends StateNotifier<SchedulerState> {
   }
 
   void _handleScheduleCreated(Map<String, dynamic> data) {
-    final scheduleId = data['schedule_id'] as String?;
-    print('Scheduler: schedule_created event, id=$scheduleId');
+    // Build 41: Accept multiple field names for schedule_id
+    final scheduleId = data['schedule_id'] as String? ??
+                       data['id'] as String?;
+    print('Scheduler: schedule_created event, id=$scheduleId, data keys: ${data.keys}');
 
-    // Complete pending operation if exists
-    _completePendingOperation(scheduleId, true);
+    // Build 41: If we have ANY pending create operation and got schedule_created,
+    // complete the first one (there should only be one at a time anyway)
+    if (scheduleId != null && _pendingOperations.containsKey(scheduleId)) {
+      _completePendingOperation(scheduleId, true);
+    } else if (_pendingOperations.isNotEmpty) {
+      // Fallback: complete the first pending operation
+      final firstPendingId = _pendingOperations.keys.first;
+      print('Scheduler: No exact ID match, completing pending operation $firstPendingId');
+      _completePendingOperation(firstPendingId, true);
+    }
 
-    // If we have the full schedule data, update state
-    if (data.containsKey('schedule')) {
+    // Update state with schedule data (try multiple structures)
+    if (data.containsKey('schedule') && data['schedule'] is Map) {
       final schedule = MissionSchedule.fromJson(data['schedule'] as Map<String, dynamic>);
-      // Update or add the schedule
-      final existing = state.schedules.any((s) => s.id == schedule.id);
-      if (existing) {
-        state = state.copyWith(
-          schedules: state.schedules.map((s) => s.id == schedule.id ? schedule : s).toList(),
-        );
-      } else {
-        state = state.copyWith(
-          schedules: [...state.schedules, schedule],
-        );
+      _addOrUpdateSchedule(schedule);
+    } else if (scheduleId != null) {
+      // Robot sent flat data, try to parse it directly
+      try {
+        final schedule = MissionSchedule.fromJson(data);
+        _addOrUpdateSchedule(schedule);
+      } catch (e) {
+        print('Scheduler: Could not parse schedule from flat data: $e');
       }
+    }
+  }
+
+  void _addOrUpdateSchedule(MissionSchedule schedule) {
+    final existing = state.schedules.any((s) => s.id == schedule.id);
+    if (existing) {
+      state = state.copyWith(
+        schedules: state.schedules.map((s) => s.id == schedule.id ? schedule : s).toList(),
+      );
+    } else {
+      state = state.copyWith(
+        schedules: [...state.schedules, schedule],
+      );
     }
   }
 

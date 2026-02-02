@@ -432,6 +432,26 @@ class MissionsNotifier extends StateNotifier<MissionsState> {
           }
         }
         break;
+
+      // Build 41: Accept mode_changed to mission mode as confirmation
+      case 'mode_changed':
+        final mode = event.data['mode'] as String?;
+        if (mode == 'mission' && state.currentProgress?.status == 'starting') {
+          // Robot confirmed mission mode - cancel verification timer
+          _startVerificationTimer?.cancel();
+          print('Missions: mode_changed to mission - treating as started');
+
+          // Update progress to indicate mission is running
+          final missionId = state.activeMissionId ?? 'unknown';
+          state = state.copyWith(
+            currentProgress: MissionProgress(
+              missionId: missionId,
+              status: 'running',
+            ),
+            clearError: true,
+          );
+        }
+        break;
     }
   }
 

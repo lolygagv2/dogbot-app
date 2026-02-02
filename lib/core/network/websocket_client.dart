@@ -548,6 +548,15 @@ class WebSocketClient {
     });
   }
 
+  /// Build 41: Delete a song from the robot playlist
+  void sendDeleteSong(String filename, {String? dogId}) {
+    print('WebSocket: sendDeleteSong filename=$filename, dogId=$dogId');
+    sendCommand('delete_song', {
+      'filename': filename,
+      if (dogId != null) 'dog_id': dogId,
+    });
+  }
+
   /// Send audio message to robot (push-to-talk)
   void sendAudioMessage(String base64Data, String format, int durationMs) {
     print('WebSocket: sendAudioMessage format=$format, duration=${durationMs}ms, dataLen=${base64Data.length}');

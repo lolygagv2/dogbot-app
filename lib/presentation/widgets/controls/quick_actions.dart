@@ -60,6 +60,9 @@ class _QuickActionsState extends ConsumerState<QuickActions> {
   Timer? _uploadTimeoutTimer;
   String? _pendingUploadFilename;
 
+  // Build 41: Listen for song deletion events
+  StreamSubscription? _songDeletedSubscription;
+
   @override
   void initState() {
     super.initState();
@@ -79,6 +82,41 @@ class _QuickActionsState extends ConsumerState<QuickActions> {
             event.type == 'upload_error' ||
             event.type == 'upload_result')
         .listen(_handleUploadResult);
+
+    // Build 41: Listen for song deleted events
+    _songDeletedSubscription = ref
+        .read(websocketClientProvider)
+        .eventStream
+        .where((event) => event.type == 'song_deleted')
+        .listen(_handleSongDeleted);
+  }
+
+  void _handleSongDeleted(dynamic event) {
+    final data = event.data as Map<String, dynamic>;
+    final success = data['success'] as bool? ?? true;
+    final filename = data['filename'] as String? ?? 'song';
+
+    if (mounted) {
+      ScaffoldMessenger.of(context).hideCurrentSnackBar();
+      if (success) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Deleted "$filename"'),
+            backgroundColor: Colors.green,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      } else {
+        final error = data['error'] as String? ?? 'Unknown error';
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Delete failed: $error'),
+            backgroundColor: Colors.red,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    }
   }
 
   void _handleUploadResult(dynamic event) {
@@ -143,6 +181,7 @@ class _QuickActionsState extends ConsumerState<QuickActions> {
     _audioStateSubscription?.cancel();
     _uploadResultSubscription?.cancel();
     _uploadTimeoutTimer?.cancel();
+    _songDeletedSubscription?.cancel();
     super.dispose();
   }
 
@@ -302,6 +341,8 @@ class _QuickActionsState extends ConsumerState<QuickActions> {
               },
               onVolumeChanged: _onVolumeChanged,
               onUpload: () => _pickAndUploadSong(context, ref),
+              // Build 41: Delete song on long-press of track name
+              onDeleteTrack: (trackPath) => _confirmDeleteSong(trackPath),
             ),
           ],
         ),
@@ -506,6 +547,54 @@ class _QuickActionsState extends ConsumerState<QuickActions> {
     );
   }
 
+  // Build 41: Delete current song with confirmation
+  void _confirmDeleteSong(String trackPath) {
+    final displayName = _extractTrackDisplayName(trackPath);
+    final selectedDog = ref.read(selectedDogProvider);
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Delete Song'),
+        content: Text('Delete "$displayName" from the playlist?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.of(ctx).pop();
+              // Extract filename from path (e.g., "default/song.mp3" -> "song.mp3")
+              final filename = trackPath.split('/').last;
+              ref.read(websocketClientProvider).sendDeleteSong(
+                filename,
+                dogId: selectedDog?.id,
+              );
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('Deleting "$displayName"...'),
+                  behavior: SnackBarBehavior.floating,
+                  duration: const Duration(seconds: 2),
+                ),
+              );
+            },
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  String _extractTrackDisplayName(String trackPath) {
+    if (trackPath.isEmpty) return '';
+    final parts = trackPath.split('/');
+    final filename = parts.last;
+    final dotIndex = filename.lastIndexOf('.');
+    return dotIndex > 0 ? filename.substring(0, dotIndex) : filename;
+  }
+
   String _getPatternDisplayName(String pattern) {
     switch (pattern) {
       case LedPatterns.rainbow:
@@ -644,6 +733,8 @@ class _MusicControlsWithVolume extends StatelessWidget {
   final VoidCallback onNext;
   final ValueChanged<int> onVolumeChanged;
   final VoidCallback? onUpload;
+  // Build 41: Callback for deleting current track
+  final void Function(String trackPath)? onDeleteTrack;
 
   const _MusicControlsWithVolume({
     required this.isPlaying,
@@ -654,6 +745,7 @@ class _MusicControlsWithVolume extends StatelessWidget {
     required this.onNext,
     required this.onVolumeChanged,
     this.onUpload,
+    this.onDeleteTrack,
   });
 
   /// Extract display name from track path (e.g., "default/Wimz_theme.mp3" → "Wimz_theme")
@@ -728,16 +820,35 @@ class _MusicControlsWithVolume extends StatelessWidget {
           ),
         ),
         // Track name display (when playing)
+        // Build 41: Long-press to delete the track
         if (displayName.isNotEmpty) ...[
           const SizedBox(height: 4),
-          Text(
-            displayName,
-            style: TextStyle(
-              fontSize: 10,
-              color: Theme.of(context).colorScheme.primary.withOpacity(0.8),
+          GestureDetector(
+            onLongPress: onDeleteTrack != null && trackName != null
+                ? () => onDeleteTrack!(trackName!)
+                : null,
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  displayName,
+                  style: TextStyle(
+                    fontSize: 10,
+                    color: Theme.of(context).colorScheme.primary.withOpacity(0.8),
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                  maxLines: 1,
+                ),
+                if (onDeleteTrack != null) ...[
+                  const SizedBox(width: 4),
+                  Icon(
+                    Icons.more_vert,
+                    size: 12,
+                    color: Theme.of(context).colorScheme.primary.withOpacity(0.5),
+                  ),
+                ],
+              ],
             ),
-            overflow: TextOverflow.ellipsis,
-            maxLines: 1,
           ),
         ],
         const SizedBox(height: 8),
