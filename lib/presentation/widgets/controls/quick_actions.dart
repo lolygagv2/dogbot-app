@@ -17,6 +17,9 @@ import '../../theme/app_theme.dart';
 /// Provider to track current lighting pattern index
 final _lightingIndexProvider = StateProvider<int>((ref) => 0);
 
+/// Provider to track blue mood LED state (Build 42)
+final _blueLedOnProvider = StateProvider<bool>((ref) => false);
+
 /// Provider to track if audio is playing (synced from robot)
 final _isPlayingProvider = StateProvider<bool>((ref) => false);
 
@@ -206,6 +209,7 @@ class _QuickActionsState extends ConsumerState<QuickActions> {
 
     final selectedDog = ref.watch(selectedDogProvider);
     final ws = ref.read(websocketClientProvider);
+    final blueLedOn = ref.watch(_blueLedOnProvider);
 
     return Column(
       mainAxisSize: MainAxisSize.min,
@@ -343,6 +347,18 @@ class _QuickActionsState extends ConsumerState<QuickActions> {
               onUpload: () => _pickAndUploadSong(context, ref),
               // Build 41: Delete song on long-press of track name
               onDeleteTrack: (trackPath) => _confirmDeleteSong(trackPath),
+            ),
+
+            const SizedBox(width: 24),
+
+            // Build 42: Blue mood LED toggle button
+            _BluLightButton(
+              isOn: blueLedOn,
+              onPressed: () {
+                final newState = !blueLedOn;
+                ref.read(_blueLedOnProvider.notifier).state = newState;
+                ws.sendMoodLed(newState ? 'on' : 'off');
+              },
             ),
           ],
         ),
@@ -716,6 +732,61 @@ class _LightingButton extends StatelessWidget {
                     : Colors.orange.withOpacity(0.3),
               ),
             ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// Build 42: Blue mood LED toggle button
+class _BluLightButton extends StatelessWidget {
+  final bool isOn;
+  final VoidCallback onPressed;
+
+  const _BluLightButton({
+    required this.isOn,
+    required this.onPressed,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Material(
+          color: Colors.blue.withOpacity(isOn ? 0.3 : 0.1),
+          shape: const CircleBorder(),
+          child: InkWell(
+            onTap: onPressed,
+            customBorder: const CircleBorder(),
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Icon(
+                isOn ? Icons.lightbulb : Icons.lightbulb_outline,
+                color: Colors.blue,
+                size: 28,
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          'BluLight',
+          style: TextStyle(
+            fontSize: 11,
+            color: Colors.blue,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+        // On/Off indicator
+        const SizedBox(height: 2),
+        Container(
+          width: 6,
+          height: 6,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: isOn ? Colors.blue : Colors.blue.withOpacity(0.3),
           ),
         ),
       ],

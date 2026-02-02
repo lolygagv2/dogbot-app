@@ -470,6 +470,12 @@ class WebSocketClient {
     sendCommand('led_off');
   }
 
+  /// Toggle blue mood LED on/off
+  /// action: 'on', 'off', or 'toggle'
+  void sendMoodLed(String action) {
+    sendCommand('mood_led', {'action': action});
+  }
+
   /// Send audio play command
   void sendAudioCommand(String file) {
     sendCommand('audio', {'file': file});
