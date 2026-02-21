@@ -520,3 +520,8 @@ final isRelayConnectedProvider = Provider<bool>((ref) {
 final isConnectedProvider = Provider<bool>((ref) {
   return ref.watch(connectionProvider).isRobotOnline;
 });
+
+/// Stream provider for rate limit errors from relay
+final rateLimitProvider = StreamProvider<String>((ref) {
+  return ref.read(websocketClientProvider).rateLimitStream;
+});

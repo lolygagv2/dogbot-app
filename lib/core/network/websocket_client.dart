@@ -97,6 +97,9 @@ class WebSocketClient {
   final _photoController =
       StreamController<Map<String, dynamic>>.broadcast();
 
+  // Rate limit stream (relay returns RATE_LIMITED error)
+  final _rateLimitController = StreamController<String>.broadcast();
+
   Stream<Map<String, dynamic>> get webrtcCredentialsStream =>
       _webrtcCredentialsController.stream;
   Stream<Map<String, dynamic>> get webrtcOfferStream =>
@@ -109,6 +112,7 @@ class WebSocketClient {
       _deviceStatusController.stream;
   Stream<Map<String, dynamic>> get photoStream =>
       _photoController.stream;
+  Stream<String> get rateLimitStream => _rateLimitController.stream;
 
   /// Get the current target device ID
   String? get targetDeviceId => _targetDeviceId;
@@ -291,6 +295,11 @@ class WebSocketClient {
         // Error messages - only log critical ones
         case 'error':
           final code = json['code'] as String?;
+          // Rate limit: emit to dedicated stream for UI snackbar
+          if (code == 'RATE_LIMITED') {
+            final msg = json['message'] as String? ?? 'Too many commands, slow down';
+            _rateLimitController.add(msg);
+          }
           // Ignore transient errors that don't affect operation
           if (code != 'NOT_AUTHORIZED' && code != 'NO_DEVICE') {
             print('WebSocket error: ${json['message']} ($code)');
@@ -710,5 +719,6 @@ class WebSocketClient {
     _webrtcCloseController.close();
     _deviceStatusController.close();
     _photoController.close();
+    _rateLimitController.close();
   }
 }

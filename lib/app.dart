@@ -230,6 +230,23 @@ class MainShell extends ConsumerWidget {
     final connState = ref.watch(connectionProvider);
     final location = GoRouterState.of(context).uri.path;
 
+    // Show snackbar when rate-limited by relay
+    ref.listen(rateLimitProvider, (previous, next) {
+      next.whenData((message) {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).hideCurrentSnackBar();
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: const Text('Too many commands, slow down'),
+              backgroundColor: Colors.orange.shade800,
+              behavior: SnackBarBehavior.floating,
+              duration: const Duration(seconds: 3),
+            ),
+          );
+        }
+      });
+    });
+
     // Determine current tab index from location
     final currentIndex = _getTabIndex(location);
 
