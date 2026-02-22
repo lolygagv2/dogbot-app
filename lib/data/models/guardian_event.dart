@@ -48,7 +48,7 @@ class GuardianEvent {
       id: json['id']?.toString() ?? DateTime.now().millisecondsSinceEpoch.toString(),
       type: GuardianEventType.fromString(json['event_type'] ?? json['type'] ?? 'unknown'),
       timestamp: json['timestamp'] != null
-          ? DateTime.tryParse(json['timestamp'].toString()) ?? DateTime.now()
+          ? (DateTime.tryParse(json['timestamp'].toString()) ?? DateTime.now()).toLocal()
           : DateTime.now(),
       details: json['details']?.toString() ?? json['message']?.toString(),
       metadata: json['metadata'] as Map<String, dynamic>?,

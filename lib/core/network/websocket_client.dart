@@ -281,10 +281,11 @@ class WebSocketClient {
           final barkEvent = WsEvent(
             type: 'event',
             data: {
+              ...json, // Spread robot data first
+              // Our overrides AFTER spread so they take precedence:
               'event_type': 'barking',
-              'timestamp': DateTime.now().toIso8601String(),
+              'timestamp': DateTime.now().toIso8601String(), // Always use local device time
               'details': json['details'] ?? json['message'] ?? 'Bark detected',
-              ...json,
             },
           );
           _eventController.add(barkEvent);

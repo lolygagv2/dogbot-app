@@ -69,6 +69,20 @@ class NotificationsNotifier extends StateNotifier<List<NotificationEvent>> {
         }
         break;
 
+      // Bark events (forwarded as 'event' type with event_type: 'barking')
+      case 'event':
+        final eventType = event.data['event_type'] as String?;
+        if (eventType == 'barking') {
+          notification = NotificationEvent(
+            id: DateTime.now().millisecondsSinceEpoch.toString(),
+            type: NotificationEventType.bark,
+            timestamp: DateTime.now(),
+            title: 'Barking Detected',
+            subtitle: event.data['details'] as String?,
+          );
+        }
+        break;
+
       case 'treat':
         notification = NotificationEvent(
           id: DateTime.now().millisecondsSinceEpoch.toString(),
