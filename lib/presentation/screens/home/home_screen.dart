@@ -87,13 +87,6 @@ class HomeScreen extends ConsumerWidget {
                       // Mission progress overlay
                       const MissionProgressOverlay(),
 
-                      // Mode selector (top-right)
-                      const Positioned(
-                        top: 16,
-                        right: 16,
-                        child: _ModeSelector(),
-                      ),
-
                       // Audio mute toggle (bottom-right)
                       const Positioned(
                         bottom: 16,
@@ -105,61 +98,31 @@ class HomeScreen extends ConsumerWidget {
                 ),
               ),
 
-              // Controls area
+              // Mode row — ALWAYS visible so user can always exit any mode
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                child: const _ModeAndDriveRow(),
+              ),
+
+              // Controls area (below mode row)
               if (ref.watch(displayModeProvider) == RobotMode.silentGuardian)
                 Expanded(
                   flex: isLandscape ? 1 : 3,
                   child: const EventFeed(),
                 )
               else if (isLandscape)
-                // Landscape: compact bar with quick actions + drive button
+                // Landscape: compact bar with quick actions
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                  child: Row(
-                    children: [
-                      const Expanded(child: QuickActions()),
-                      const SizedBox(width: 16),
-                      _CompactNavButton(
-                        icon: Icons.gamepad,
-                        label: 'Drive',
-                        onTap: () => context.push('/drive'),
-                      ),
-                    ],
-                  ),
+                  child: const QuickActions(),
                 )
               else
-                // Portrait: compact scrollable controls
+                // Portrait: scrollable quick actions
                 Expanded(
                   flex: 3,
                   child: SingleChildScrollView(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                    child: Column(
-                      children: [
-                        // Quick action buttons (now includes PTT)
-                        const QuickActions(),
-                        const SizedBox(height: 12),
-
-                        // Prominent Drive button
-                        SizedBox(
-                          width: double.infinity,
-                          child: ElevatedButton.icon(
-                            onPressed: () => context.push('/drive'),
-                            icon: const Icon(Icons.gamepad, size: 22),
-                            label: const Text('DRIVE',
-                              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, letterSpacing: 1),
-                            ),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: AppTheme.primary,
-                              foregroundColor: Colors.white,
-                              padding: const EdgeInsets.symmetric(vertical: 14),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                    child: const QuickActions(),
                   ),
                 ),
             ],
@@ -260,19 +223,19 @@ class _DetectionChipState extends State<_DetectionChip> {
   }
 }
 
-/// Mode selector with dropdown, loading state, lock indicator, and event badge
-class _ModeSelector extends ConsumerWidget {
-  const _ModeSelector();
+/// Mode buttons + Drive button row (replaces video overlay dropdown)
+class _ModeAndDriveRow extends ConsumerWidget {
+  const _ModeAndDriveRow();
+
+  static const _portraitModes = [RobotMode.idle, RobotMode.silentGuardian, RobotMode.coach];
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    // Use optimistic display mode instead of telemetry mode
     final modeState = ref.watch(modeStateProvider);
     final displayMode = modeState.displayMode;
     final isChanging = modeState.isChanging;
     final isLocked = modeState.isModeLocked;
     final unreadCount = ref.watch(unreadEventCountProvider);
-    final showBadge = displayMode == RobotMode.silentGuardian && unreadCount > 0;
 
     // Show error snackbar when mode change fails
     ref.listen<String?>(modeErrorProvider, (previous, error) {
@@ -297,159 +260,158 @@ class _ModeSelector extends ConsumerWidget {
       }
     });
 
-    // When locked, show a non-interactive badge with lock icon
-    if (isLocked) {
-      return Tooltip(
-        message: 'Mode locked: ${modeState.activeMissionName ?? "Mission active"}',
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-          decoration: BoxDecoration(
-            color: _getModeColor(displayMode).withOpacity(0.9),
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: Colors.white.withOpacity(0.3), width: 1),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Icon(Icons.lock, color: Colors.white70, size: 14),
-              const SizedBox(width: 6),
-              Icon(_getModeIcon(displayMode), color: Colors.white, size: 16),
-              const SizedBox(width: 6),
-              Text(
-                displayMode.label.toUpperCase(),
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.w500,
-                  fontSize: 12,
-                ),
-              ),
-            ],
-          ),
-        ),
-      );
-    }
-
-    // v1.3: Portrait dropdown only shows idle/guardian/coach
-    const portraitModes = [RobotMode.idle, RobotMode.silentGuardian, RobotMode.coach];
-
-    return PopupMenuButton<RobotMode>(
-      initialValue: displayMode,
-      onSelected: (mode) {
-        ref.read(modeStateProvider.notifier).setMode(mode, source: 'dropdown');
-      },
-      offset: const Offset(0, 40),
-      child: Stack(
-        clipBehavior: Clip.none,
-        children: [
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+    return Row(
+      children: [
+        // Mode buttons (segmented style)
+        Expanded(
+          child: Container(
+            height: 42,
             decoration: BoxDecoration(
-              color: _getModeColor(displayMode).withOpacity(isChanging ? 0.6 : 0.9),
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: Colors.white.withOpacity(0.2), width: 1),
+              color: AppTheme.surfaceLight,
+              borderRadius: BorderRadius.circular(10),
             ),
             child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                if (isChanging)
-                  const SizedBox(
-                    width: 16,
-                    height: 16,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      color: Colors.white,
+              children: _portraitModes.map((mode) {
+                final isSelected = displayMode == mode;
+                final isPending = isChanging && modeState.pendingMode == mode;
+                final color = _getModeColor(mode);
+                final showBadge = mode == RobotMode.silentGuardian && unreadCount > 0;
+
+                // When in a non-idle mode, Idle button shows as red "EXIT"
+                final isExitButton = mode == RobotMode.idle && displayMode != RobotMode.idle;
+                final buttonColor = isExitButton
+                    ? Colors.red
+                    : (isSelected ? color : Colors.transparent);
+                final buttonLabel = isExitButton ? 'EXIT' : _getModeShortLabel(mode);
+                final buttonIcon = isExitButton ? Icons.stop_circle : _getModeIcon(mode);
+
+                return Expanded(
+                  child: GestureDetector(
+                    onTap: isLocked
+                        ? null
+                        : () => ref.read(modeStateProvider.notifier).setMode(mode, source: 'dropdown'),
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 200),
+                      margin: const EdgeInsets.all(3),
+                      decoration: BoxDecoration(
+                        color: isExitButton
+                            ? buttonColor.withOpacity(0.85)
+                            : (isSelected ? buttonColor.withOpacity(0.9) : buttonColor),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Stack(
+                        clipBehavior: Clip.none,
+                        alignment: Alignment.center,
+                        children: [
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              if (isPending)
+                                const SizedBox(
+                                  width: 14,
+                                  height: 14,
+                                  child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                                )
+                              else if (isLocked && isSelected)
+                                Icon(Icons.lock, size: 14, color: isSelected ? Colors.white70 : Colors.white38)
+                              else
+                                Icon(
+                                  buttonIcon,
+                                  size: 16,
+                                  color: (isSelected || isExitButton) ? Colors.white : Colors.white54,
+                                ),
+                              const SizedBox(width: 4),
+                              Flexible(
+                                child: Text(
+                                  buttonLabel,
+                                  style: TextStyle(
+                                    color: (isSelected || isExitButton) ? Colors.white : Colors.white54,
+                                    fontWeight: (isSelected || isExitButton) ? FontWeight.bold : FontWeight.normal,
+                                    fontSize: 11,
+                                  ),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ],
+                          ),
+                          // Event count badge for guardian
+                          if (showBadge)
+                            Positioned(
+                              top: -4,
+                              right: -2,
+                              child: Container(
+                                padding: const EdgeInsets.all(3),
+                                decoration: const BoxDecoration(
+                                  color: Colors.red,
+                                  shape: BoxShape.circle,
+                                ),
+                                constraints: const BoxConstraints(minWidth: 16, minHeight: 16),
+                                child: Text(
+                                  unreadCount > 99 ? '99+' : unreadCount.toString(),
+                                  style: const TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.bold),
+                                  textAlign: TextAlign.center,
+                                ),
+                              ),
+                            ),
+                        ],
+                      ),
                     ),
-                  )
-                else
-                  Icon(_getModeIcon(displayMode), color: Colors.white, size: 16),
-                const SizedBox(width: 6),
-                Text(
-                  displayMode.label.toUpperCase(),
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w500,
-                    fontSize: 12,
                   ),
-                ),
-                const SizedBox(width: 4),
-                const Icon(Icons.arrow_drop_down, color: Colors.white, size: 16),
-              ],
+                );
+              }).toList(),
             ),
           ),
-          // Event count badge
-          if (showBadge)
-            Positioned(
-              top: -6,
-              right: -6,
-              child: Container(
-                padding: const EdgeInsets.all(4),
-                decoration: const BoxDecoration(
-                  color: Colors.red,
-                  shape: BoxShape.circle,
-                ),
-                constraints: const BoxConstraints(
-                  minWidth: 18,
-                  minHeight: 18,
-                ),
-                child: Text(
-                  unreadCount > 99 ? '99+' : unreadCount.toString(),
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 10,
-                    fontWeight: FontWeight.bold,
-                  ),
-                  textAlign: TextAlign.center,
-                ),
+        ),
+        const SizedBox(width: 10),
+        // Drive button (compact)
+        SizedBox(
+          height: 42,
+          child: ElevatedButton.icon(
+            onPressed: () => context.push('/drive'),
+            icon: const Icon(Icons.gamepad, size: 18),
+            label: const Text('DRIVE',
+              style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, letterSpacing: 1),
+            ),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppTheme.primary,
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
               ),
             ),
-        ],
-      ),
-      itemBuilder: (context) => portraitModes.map((mode) {
-        return PopupMenuItem<RobotMode>(
-          value: mode,
-          child: Row(
-            children: [
-              Icon(_getModeIcon(mode), size: 20),
-              const SizedBox(width: 12),
-              Text(mode.label),
-              if (mode == displayMode) ...[
-                const Spacer(),
-                const Icon(Icons.check, size: 20),
-              ],
-            ],
           ),
-        );
-      }).toList(),
+        ),
+      ],
     );
   }
 
-  Color _getModeColor(RobotMode mode) {
+  static String _getModeShortLabel(RobotMode mode) {
     switch (mode) {
-      case RobotMode.idle:
-        return Colors.grey;
-      case RobotMode.manual:
-        return Colors.blue;
-      case RobotMode.silentGuardian:
-        return Colors.purple;
-      case RobotMode.coach:
-        return Colors.orange;
-      case RobotMode.mission:
-        return Colors.green;
+      case RobotMode.idle: return 'Idle';
+      case RobotMode.silentGuardian: return 'Guard';
+      case RobotMode.coach: return 'Coach';
+      default: return mode.label;
     }
   }
 
-  IconData _getModeIcon(RobotMode mode) {
+  static Color _getModeColor(RobotMode mode) {
     switch (mode) {
-      case RobotMode.idle:
-        return Icons.pause_circle_outline;
-      case RobotMode.manual:
-        return Icons.gamepad;
-      case RobotMode.silentGuardian:
-        return Icons.visibility;
-      case RobotMode.coach:
-        return Icons.school;
-      case RobotMode.mission:
-        return Icons.flag;
+      case RobotMode.idle: return Colors.grey;
+      case RobotMode.manual: return Colors.blue;
+      case RobotMode.silentGuardian: return Colors.purple;
+      case RobotMode.coach: return Colors.orange;
+      case RobotMode.mission: return Colors.green;
+    }
+  }
+
+  static IconData _getModeIcon(RobotMode mode) {
+    switch (mode) {
+      case RobotMode.idle: return Icons.pause_circle_outline;
+      case RobotMode.manual: return Icons.gamepad;
+      case RobotMode.silentGuardian: return Icons.visibility;
+      case RobotMode.coach: return Icons.school;
+      case RobotMode.mission: return Icons.flag;
     }
   }
 }

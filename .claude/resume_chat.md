@@ -1,5 +1,77 @@
 # WIM-Z Resume Chat Log
 
+## Session: 2026-02-22 — Build 47 (v1.3 API Contract)
+**Goal:** Implement v1.3 API contract — audio streaming, mode restructure, UI overhaul, diagnostic audit
+**Status:** ✅ Complete
+
+### Problems Solved This Session:
+
+#### 1. Always-On Audio Streaming (Task 1)
+**Problem:** Robot now sends audio track via WebRTC alongside video. App had no audio handling.
+**Solution:**
+- `webrtc_provider.dart` — Accept audio track in `onTrack` callback, store `_audioStream`, control via `track.enabled`
+- `audio_mute_toggle.dart` (NEW) — Small speaker icon on video feed, tap to toggle
+- Mute state persists via SharedPreferences (key: `webrtc_audio_muted`), default MUTED
+- Removed "Tap to Listen" button entirely (replaced by streaming)
+- Added `PushToTalkMicOnly` widget (mic-only, no listen button) for drive screen
+
+#### 2. Mode/UX Restructure (Task 2)
+**Problem:** Mode dropdown showed all 5 modes everywhere. No restore-previous-mode logic.
+**Solution:**
+- Portrait dropdown: idle/guardian/coach only (3 options)
+- Landscape selector: manual/coach/mission (popup on drive screen)
+- `set_mode` command now includes `source` and `timestamp` per v1.3 contract
+- Added `previousPortraitMode` to ModeState — stored on Drive enter, restored on exit
+- Mission end restores previous portrait mode instead of defaulting to idle
+- "Switching to Manual" overlay changed from blocking to brief toast
+
+#### 3. UI Layout Fixes (Task 3)
+**Problem:** Cluttered portrait layout, duplicate nav entries, old audio buttons.
+**Solution:**
+- Removed Drive/Missions/Settings card row from portrait
+- Added prominent Drive button (full-width ElevatedButton)
+- PTT mic added to quick actions row (6 items: PTT/Good/Call/Treat/Want/No)
+- Consolidated lighting+blue buttons left, music player right in single row
+- Bottom nav now 6 items: Home/Dogs/Missions/Photos/Activity/Settings
+- Settings moved from standalone route into ShellRoute
+- Video area gets more flex space (5:3 ratio)
+
+#### 4. Mode Switching Diagnostic Audit (Task 4)
+**Problem:** Intermittent mode revert bugs reported but not currently manifesting.
+**Root cause:** Pre-Build-36 race condition — status_update with `mode:idle` would overwrite user's pending mode change. Build 36 added 2-second cooldown that blocks this.
+**Delivered:** `MODE_AUDIT_FINDINGS.md` with full code trace of all mode switching paths.
+
+### Files Changed:
+- `lib/domain/providers/webrtc_provider.dart` — Audio track handling, mute toggle, SharedPreferences
+- `lib/core/network/websocket_client.dart` — sendModeCommand with source+timestamp
+- `lib/domain/providers/mode_provider.dart` — previousPortraitMode, source param, mission end restore
+- `lib/presentation/screens/home/home_screen.dart` — Portrait dropdown (3 modes), removed nav cards, Drive button
+- `lib/presentation/screens/drive/drive_screen.dart` — Store/restore portrait mode, landscape mode selector, toast overlay
+- `lib/presentation/widgets/controls/quick_actions.dart` — PTT in action row, consolidated secondary row
+- `lib/presentation/widgets/controls/push_to_talk.dart` — Added PushToTalkMicOnly
+- `lib/presentation/widgets/video/audio_mute_toggle.dart` (NEW) — Mute toggle widget
+- `lib/app.dart` — 6-item bottom nav, Settings in ShellRoute
+- `MODE_AUDIT_FINDINGS.md` (NEW) — Diagnostic audit document
+
+### Commits This Session:
+```
+6f851b9 feat: Build 47 — v1.3 API contract (audio streaming, mode restructure, UI overhaul)
+```
+
+### Good Button Audio Fix Note:
+- App code is correct: `sendPlayVoice('good', dogId: selectedDog.id)` sends `play_voice` command
+- Robot resolves file path server-side — issue is likely robot-side, not app-side
+
+### Next Steps:
+1. Test audio streaming with real robot (verify audio track received)
+2. Test mode restore flow: portrait → drive → back → verify mode restored
+3. Test mission entry/exit with portrait mode restore
+4. Verify landscape mode selector (manual/coach/mission switching)
+5. Robot-side: verify `set_mode` handles new `source` and `timestamp` fields
+6. Robot-side: investigate Good button audio file path
+
+---
+
 ## Session: 2026-02-21 — Build 46 (Rate Limit Handling)
 **Goal:** Handle new RATE_LIMITED error code from relay
 **Status:** ✅ Complete

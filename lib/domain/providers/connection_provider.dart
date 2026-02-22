@@ -410,6 +410,7 @@ class ConnectionNotifier extends StateNotifier<ConnectionState> {
     state = state.copyWith(
       status: ConnectionStatus.disconnected,
       pairingStatus: PairingStatus.unknown,
+      isDemoMode: false,
       errorMessage: null,
     );
   }

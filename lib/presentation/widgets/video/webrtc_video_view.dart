@@ -239,10 +239,10 @@ class _WebRTCVideoViewState extends ConsumerState<WebRTCVideoView> {
           ),
         ),
 
-        // Camera button overlay
+        // Camera button overlay (bottom-left to avoid audio mute toggle on bottom-right)
         Positioned(
           bottom: 16,
-          right: 16,
+          left: 16,
           child: _CameraButton(),
         ),
       ],

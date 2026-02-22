@@ -473,53 +473,70 @@ class _MotorDpadState extends ConsumerState<_MotorDpad> {
         ),
         const SizedBox(height: 4),
         Container(
-          width: 140,
-          height: 140,
+          width: 148,
+          height: 148,
           decoration: BoxDecoration(
             color: Colors.black38,
-            borderRadius: BorderRadius.circular(75),
+            borderRadius: BorderRadius.circular(78),
           ),
           child: Stack(
+            clipBehavior: Clip.none,
             alignment: Alignment.center,
             children: [
               // Up button (forward)
               Positioned(
-                top: 8,
-                child: _MotorDpadButton(
-                  icon: Icons.keyboard_arrow_up,
-                  isActive: _activeDirection == _MotorDirection.forward,
-                  onPressStart: () => _onDirectionStart(_MotorDirection.forward),
-                  onPressEnd: _onDirectionEnd,
+                top: -4,
+                left: 0,
+                right: 0,
+                child: Center(
+                  child: _MotorDpadButton(
+                    icon: Icons.keyboard_arrow_up,
+                    isActive: _activeDirection == _MotorDirection.forward,
+                    onPressStart: () => _onDirectionStart(_MotorDirection.forward),
+                    onPressEnd: _onDirectionEnd,
+                  ),
                 ),
               ),
               // Down button (backward)
               Positioned(
-                bottom: 8,
-                child: _MotorDpadButton(
-                  icon: Icons.keyboard_arrow_down,
-                  isActive: _activeDirection == _MotorDirection.backward,
-                  onPressStart: () => _onDirectionStart(_MotorDirection.backward),
-                  onPressEnd: _onDirectionEnd,
+                bottom: -4,
+                left: 0,
+                right: 0,
+                child: Center(
+                  child: _MotorDpadButton(
+                    icon: Icons.keyboard_arrow_down,
+                    isActive: _activeDirection == _MotorDirection.backward,
+                    onPressStart: () => _onDirectionStart(_MotorDirection.backward),
+                    onPressEnd: _onDirectionEnd,
+                  ),
                 ),
               ),
               // Left button (turn left)
               Positioned(
-                left: 8,
-                child: _MotorDpadButton(
-                  icon: Icons.keyboard_arrow_left,
-                  isActive: _activeDirection == _MotorDirection.left,
-                  onPressStart: () => _onDirectionStart(_MotorDirection.left),
-                  onPressEnd: _onDirectionEnd,
+                left: -4,
+                top: 0,
+                bottom: 0,
+                child: Center(
+                  child: _MotorDpadButton(
+                    icon: Icons.keyboard_arrow_left,
+                    isActive: _activeDirection == _MotorDirection.left,
+                    onPressStart: () => _onDirectionStart(_MotorDirection.left),
+                    onPressEnd: _onDirectionEnd,
+                  ),
                 ),
               ),
               // Right button (turn right)
               Positioned(
-                right: 8,
-                child: _MotorDpadButton(
-                  icon: Icons.keyboard_arrow_right,
-                  isActive: _activeDirection == _MotorDirection.right,
-                  onPressStart: () => _onDirectionStart(_MotorDirection.right),
-                  onPressEnd: _onDirectionEnd,
+                right: -4,
+                top: 0,
+                bottom: 0,
+                child: Center(
+                  child: _MotorDpadButton(
+                    icon: Icons.keyboard_arrow_right,
+                    isActive: _activeDirection == _MotorDirection.right,
+                    onPressStart: () => _onDirectionStart(_MotorDirection.right),
+                    onPressEnd: _onDirectionEnd,
+                  ),
                 ),
               ),
               // Center button (emergency stop)
@@ -579,22 +596,29 @@ class _MotorDpadButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
+      behavior: HitTestBehavior.opaque,
       onTapDown: (_) => onPressStart(),
       onTapUp: (_) => onPressEnd(),
       onTapCancel: onPressEnd,
       child: Container(
-        width: 40,
-        height: 40,
-        decoration: BoxDecoration(
-          color: isActive
-              ? AppTheme.primary
-              : AppTheme.primary.withOpacity(0.7),
-          shape: BoxShape.circle,
-          boxShadow: isActive
-              ? [BoxShadow(color: AppTheme.primary.withOpacity(0.5), blurRadius: 8)]
-              : null,
+        width: 56,
+        height: 56,
+        color: Colors.transparent,
+        alignment: Alignment.center,
+        child: Container(
+          width: 44,
+          height: 44,
+          decoration: BoxDecoration(
+            color: isActive
+                ? AppTheme.primary
+                : AppTheme.primary.withOpacity(0.7),
+            shape: BoxShape.circle,
+            boxShadow: isActive
+                ? [BoxShadow(color: AppTheme.primary.withOpacity(0.5), blurRadius: 8)]
+                : null,
+          ),
+          child: Icon(icon, color: Colors.white, size: 28),
         ),
-        child: Icon(icon, color: Colors.white, size: 28),
       ),
     );
   }
@@ -626,45 +650,62 @@ class _OverlayCameraControl extends ConsumerWidget {
         ),
         const SizedBox(height: 4),
         Container(
-          width: 140,
-          height: 140,
+          width: 148,
+          height: 148,
           decoration: BoxDecoration(
             color: Colors.black38,
-            borderRadius: BorderRadius.circular(75),
+            borderRadius: BorderRadius.circular(78),
           ),
           child: Stack(
+            clipBehavior: Clip.none,
             alignment: Alignment.center,
             children: [
               // Up button (tilt up)
               Positioned(
-                top: 8,
-                child: _DpadButton(
-                  icon: Icons.keyboard_arrow_up,
-                  onTap: () => servoControl.adjustTilt(_increment),
+                top: -4,
+                left: 0,
+                right: 0,
+                child: Center(
+                  child: _DpadButton(
+                    icon: Icons.keyboard_arrow_up,
+                    onTap: () => servoControl.adjustTilt(_increment),
+                  ),
                 ),
               ),
               // Down button (tilt down)
               Positioned(
-                bottom: 8,
-                child: _DpadButton(
-                  icon: Icons.keyboard_arrow_down,
-                  onTap: () => servoControl.adjustTilt(-_increment),
+                bottom: -4,
+                left: 0,
+                right: 0,
+                child: Center(
+                  child: _DpadButton(
+                    icon: Icons.keyboard_arrow_down,
+                    onTap: () => servoControl.adjustTilt(-_increment),
+                  ),
                 ),
               ),
               // Left button (pan left) - positive increment moves camera left
               Positioned(
-                left: 8,
-                child: _DpadButton(
-                  icon: Icons.keyboard_arrow_left,
-                  onTap: () => servoControl.adjustPan(_increment),
+                left: -4,
+                top: 0,
+                bottom: 0,
+                child: Center(
+                  child: _DpadButton(
+                    icon: Icons.keyboard_arrow_left,
+                    onTap: () => servoControl.adjustPan(_increment),
+                  ),
                 ),
               ),
               // Right button (pan right) - negative increment moves camera right
               Positioned(
-                right: 8,
-                child: _DpadButton(
-                  icon: Icons.keyboard_arrow_right,
-                  onTap: () => servoControl.adjustPan(-_increment),
+                right: -4,
+                top: 0,
+                bottom: 0,
+                child: Center(
+                  child: _DpadButton(
+                    icon: Icons.keyboard_arrow_right,
+                    onTap: () => servoControl.adjustPan(-_increment),
+                  ),
                 ),
               ),
               // Center indicator showing current position
@@ -708,15 +749,22 @@ class _DpadButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
+      behavior: HitTestBehavior.opaque,
       onTap: onTap,
       child: Container(
-        width: 40,
-        height: 40,
-        decoration: BoxDecoration(
-          color: Colors.orange.withOpacity(0.7),
-          shape: BoxShape.circle,
+        width: 56,
+        height: 56,
+        color: Colors.transparent,
+        alignment: Alignment.center,
+        child: Container(
+          width: 44,
+          height: 44,
+          decoration: BoxDecoration(
+            color: Colors.orange.withOpacity(0.7),
+            shape: BoxShape.circle,
+          ),
+          child: Icon(icon, color: Colors.white, size: 28),
         ),
-        child: Icon(icon, color: Colors.white, size: 28),
       ),
     );
   }

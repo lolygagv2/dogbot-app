@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../core/config/environment.dart';
 import '../../../core/constants/app_constants.dart';
@@ -26,14 +27,36 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   bool _isLogin = true;
   bool _obscurePassword = true;
 
+  static const _keyLastEmail = 'last_login_email';
+  static const _keyLastHost = 'last_login_host';
+  static const _keyLastPort = 'last_login_port';
+
   @override
   void initState() {
     super.initState();
     _hostController.text = AppConstants.defaultHost;
     _portController.text = AppConstants.defaultPort.toString();
-    // Default test credentials
-    _emailController.text = 'test@wimz.com';
-    _passwordController.text = 'test1234';
+    _loadSavedCredentials();
+  }
+
+  Future<void> _loadSavedCredentials() async {
+    final prefs = await SharedPreferences.getInstance();
+    final savedEmail = prefs.getString(_keyLastEmail);
+    final savedHost = prefs.getString(_keyLastHost);
+    final savedPort = prefs.getInt(_keyLastPort);
+    if (mounted) {
+      setState(() {
+        if (savedEmail != null && savedEmail.isNotEmpty) {
+          _emailController.text = savedEmail;
+        }
+        if (savedHost != null && savedHost.isNotEmpty) {
+          _hostController.text = savedHost;
+        }
+        if (savedPort != null) {
+          _portController.text = savedPort.toString();
+        }
+      });
+    }
   }
 
   @override
@@ -66,6 +89,12 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     }
 
     if (success && mounted) {
+      // Save last login credentials for next time
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(_keyLastEmail, email);
+      await prefs.setString(_keyLastHost, host);
+      await prefs.setInt(_keyLastPort, port);
+
       // Connect to WebSocket and go directly to home
       // Robot connection status is handled within the app (reconnect banner, device pairing)
       await ref.read(connectionProvider.notifier).connect(host, port);

@@ -332,19 +332,11 @@ class ModeStateNotifier extends StateNotifier<ModeState> {
           clearError: true,
         );
       } else {
-        // Received different mode - robot might have overridden our request
-        print('Mode: Received ${confirmedMode.value} but expected ${state.pendingMode!.value}');
-        // Update to what robot actually is in
-        _cancelTimeout();
-        _lastModeChangeTime = DateTime.now();
-        state = state.copyWith(
-          currentMode: confirmedMode,
-          isChanging: false,
-          clearPending: true,
-          error: 'Mode changed to ${confirmedMode.label} instead',
-          errorTime: DateTime.now(),
-        );
-        _scheduleErrorDismiss();
+        // Received different mode from status/battery/telemetry event while pending.
+        // These events may be stale — only explicit mode_changed events (handled by
+        // _handleModeChangedEvent) should override a pending change. Let timeout handle
+        // genuine failures.
+        print('Mode: Ignoring stale ${confirmedMode.value} while waiting for ${state.pendingMode!.value}');
       }
     } else {
       // Not waiting for confirmation - just update current mode if different
