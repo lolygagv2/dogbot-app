@@ -31,6 +31,7 @@ enum NavTab {
   missions,
   gallery,
   activity,
+  settings,
 }
 
 /// Key for the navigator in the shell
@@ -143,6 +144,14 @@ final _router = GoRouter(
             child: NotificationsScreen(),
           ),
         ),
+
+        // Settings tab (v1.3: moved to bottom nav)
+        GoRoute(
+          path: '/settings',
+          pageBuilder: (context, state) => const NoTransitionPage(
+            child: SettingsScreen(),
+          ),
+        ),
       ],
     ),
 
@@ -166,12 +175,6 @@ final _router = GoRouter(
         final dogId = extra?['dogId'] as String?;
         return HistoryScreen(dogId: dogId);
       },
-    ),
-
-    // Settings screen (full screen, no bottom nav)
-    GoRoute(
-      path: '/settings',
-      builder: (context, state) => const SettingsScreen(),
     ),
 
     // Scheduler screens
@@ -354,6 +357,12 @@ class MainShell extends ConsumerWidget {
                   badgeCount: unreadCount,
                   onTap: () => context.go('/activity'),
                 ),
+                _NavBarItem(
+                  icon: Icons.settings,
+                  label: 'Settings',
+                  isSelected: currentIndex == 5,
+                  onTap: () => context.go('/settings'),
+                ),
               ],
             ),
           ),
@@ -368,6 +377,7 @@ class MainShell extends ConsumerWidget {
     if (location.startsWith('/missions')) return 2;
     if (location.startsWith('/gallery')) return 3;
     if (location.startsWith('/activity')) return 4;
+    if (location.startsWith('/settings')) return 5;
     return 0;
   }
 }

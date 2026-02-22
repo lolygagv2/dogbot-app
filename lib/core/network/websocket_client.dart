@@ -427,10 +427,14 @@ class WebSocketClient {
     sendCommand('emergency_stop');
   }
 
-  /// Send mode change command
-  /// Format: {"type": "command", "device_id": "<id>", "command": "set_mode", "data": {"mode": "<mode>"}}
-  void sendModeCommand(String mode) {
-    sendCommand('set_mode', {'mode': mode});
+  /// Send mode change command (v1.3: includes source and timestamp)
+  /// Format: {"type": "command", "device_id": "<id>", "command": "set_mode", "data": {"mode": "<mode>", "source": "<source>", "timestamp": "ISO8601"}}
+  void sendModeCommand(String mode, {String source = 'dropdown'}) {
+    sendCommand('set_mode', {
+      'mode': mode,
+      'source': source,
+      'timestamp': DateTime.now().toUtc().toIso8601String(),
+    });
   }
 
   /// Notify robot that manual control (drive screen) is active

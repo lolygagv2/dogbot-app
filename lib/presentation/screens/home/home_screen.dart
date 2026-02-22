@@ -12,10 +12,10 @@ import '../../../domain/providers/missions_provider.dart';
 import '../../../domain/providers/mode_provider.dart';
 import '../../../domain/providers/telemetry_provider.dart';
 import '../../widgets/video/webrtc_video_view.dart';
+import '../../widgets/video/audio_mute_toggle.dart';
 import '../../widgets/status/battery_indicator.dart';
 import '../../widgets/status/connection_badge.dart';
 import '../../widgets/controls/quick_actions.dart';
-import '../../widgets/controls/push_to_talk.dart';
 import '../../widgets/guardian/event_feed.dart';
 import '../../widgets/mission/mission_progress_overlay.dart';
 import '../../theme/app_theme.dart';
@@ -61,18 +61,17 @@ class HomeScreen extends ConsumerWidget {
 
           return Column(
             children: [
-              // Video stream
+              // Video stream — fills available space
               Expanded(
-                flex: isLandscape ? 4 : 3,
+                flex: isLandscape ? 4 : 5,
                 child: Container(
                   color: Colors.black,
                   child: Stack(
                     fit: StackFit.expand,
                     children: [
-                      // Use WebRTC for video streaming via relay
                       const WebRTCVideoView(),
 
-                      // Detection overlay (hidden during mission to avoid clutter)
+                      // Detection overlay (hidden during mission)
                       if (telemetry.dogDetected && !ref.watch(missionsProvider).hasActiveMission)
                         Positioned(
                           top: 16,
@@ -85,102 +84,79 @@ class HomeScreen extends ConsumerWidget {
                           ),
                         ),
 
-                      // Mission progress overlay (Build 31)
+                      // Mission progress overlay
                       const MissionProgressOverlay(),
 
-                      // Mode selector (uses optimistic state)
+                      // Mode selector (top-right)
                       const Positioned(
                         top: 16,
                         right: 16,
                         child: _ModeSelector(),
                       ),
 
-                      // Push-to-talk controls
-                      const PushToTalkOverlay(
-                        alignment: Alignment.bottomLeft,
+                      // Audio mute toggle (bottom-right)
+                      const Positioned(
+                        bottom: 16,
+                        right: 16,
+                        child: AudioMuteToggle(),
                       ),
                     ],
                   ),
                 ),
               ),
 
-              // Quick controls or Event Feed (depending on mode)
-              // In landscape: compact single row, In portrait: full controls
-              // Use optimistic mode for immediate UI response
+              // Controls area
               if (ref.watch(displayModeProvider) == RobotMode.silentGuardian)
                 Expanded(
-                  flex: isLandscape ? 1 : 2,
+                  flex: isLandscape ? 1 : 3,
                   child: const EventFeed(),
                 )
               else if (isLandscape)
-                // Landscape: compact navigation bar
+                // Landscape: compact bar with quick actions + drive button
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                   child: Row(
                     children: [
-                      // Compact quick actions
                       const Expanded(child: QuickActions()),
                       const SizedBox(width: 16),
-                      // Navigation icons - Drive hidden in silent_guardian
                       _CompactNavButton(
                         icon: Icons.gamepad,
                         label: 'Drive',
                         onTap: () => context.push('/drive'),
                       ),
-                      const SizedBox(width: 8),
-                      _CompactNavButton(
-                        icon: Icons.school,
-                        label: 'Missions',
-                        onTap: () => context.push('/missions'),
-                      ),
-                      const SizedBox(width: 8),
-                      _CompactNavButton(
-                        icon: Icons.settings,
-                        label: 'Settings',
-                        onTap: () => context.push('/settings'),
-                      ),
                     ],
                   ),
                 )
               else
-                // Portrait: full controls
+                // Portrait: compact scrollable controls
                 Expanded(
-                  flex: 2,
-                  child: Padding(
-                    padding: const EdgeInsets.all(16),
+                  flex: 3,
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                     child: Column(
                       children: [
-                        // Quick action buttons
+                        // Quick action buttons (now includes PTT)
                         const QuickActions(),
-                        const SizedBox(height: 16),
+                        const SizedBox(height: 12),
 
-                        // Navigation buttons - Drive available in manual/idle/coach/mission
-                        Row(
-                          children: [
-                            Expanded(
-                              child: _NavButton(
-                                icon: Icons.gamepad,
-                                label: 'Drive',
-                                onTap: () => context.push('/drive'),
+                        // Prominent Drive button
+                        SizedBox(
+                          width: double.infinity,
+                          child: ElevatedButton.icon(
+                            onPressed: () => context.push('/drive'),
+                            icon: const Icon(Icons.gamepad, size: 22),
+                            label: const Text('DRIVE',
+                              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, letterSpacing: 1),
+                            ),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppTheme.primary,
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(vertical: 14),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
                               ),
                             ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: _NavButton(
-                                icon: Icons.school,
-                                label: 'Missions',
-                                onTap: () => context.push('/missions'),
-                              ),
-                            ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: _NavButton(
-                                icon: Icons.settings,
-                                label: 'Settings',
-                                onTap: () => context.push('/settings'),
-                              ),
-                            ),
-                          ],
+                          ),
                         ),
                       ],
                     ),
@@ -353,14 +329,13 @@ class _ModeSelector extends ConsumerWidget {
       );
     }
 
+    // v1.3: Portrait dropdown only shows idle/guardian/coach
+    const portraitModes = [RobotMode.idle, RobotMode.silentGuardian, RobotMode.coach];
+
     return PopupMenuButton<RobotMode>(
       initialValue: displayMode,
       onSelected: (mode) {
-        ref.read(modeStateProvider.notifier).setMode(mode);
-        // Build 35 fix: Navigate to coach screen when coach mode selected
-        if (mode == RobotMode.coach) {
-          context.push('/coach');
-        }
+        ref.read(modeStateProvider.notifier).setMode(mode, source: 'dropdown');
       },
       offset: const Offset(0, 40),
       child: Stack(
@@ -371,6 +346,7 @@ class _ModeSelector extends ConsumerWidget {
             decoration: BoxDecoration(
               color: _getModeColor(displayMode).withOpacity(isChanging ? 0.6 : 0.9),
               borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: Colors.white.withOpacity(0.2), width: 1),
             ),
             child: Row(
               mainAxisSize: MainAxisSize.min,
@@ -428,7 +404,7 @@ class _ModeSelector extends ConsumerWidget {
             ),
         ],
       ),
-      itemBuilder: (context) => RobotMode.values.map((mode) {
+      itemBuilder: (context) => portraitModes.map((mode) {
         return PopupMenuItem<RobotMode>(
           value: mode,
           child: Row(
@@ -475,43 +451,6 @@ class _ModeSelector extends ConsumerWidget {
       case RobotMode.mission:
         return Icons.flag;
     }
-  }
-}
-
-/// Navigation button (portrait)
-class _NavButton extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final VoidCallback onTap;
-
-  const _NavButton({
-    required this.icon,
-    required this.label,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Card(
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(12),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 16),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(icon, size: 28),
-              const SizedBox(height: 4),
-              Text(
-                label,
-                style: Theme.of(context).textTheme.labelMedium,
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
   }
 }
 

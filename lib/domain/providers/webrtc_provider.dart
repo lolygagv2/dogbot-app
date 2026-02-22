@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_webrtc/flutter_webrtc.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../core/network/websocket_client.dart';
 import 'device_provider.dart';
@@ -15,12 +16,14 @@ class WebRTCConnectionState {
   final RTCVideoRenderer? renderer;
   final String? sessionId;
   final String? errorMessage;
+  final bool isAudioMuted;
 
   const WebRTCConnectionState({
     this.state = WebRTCState.disconnected,
     this.renderer,
     this.sessionId,
     this.errorMessage,
+    this.isAudioMuted = true, // Default muted on first use per contract
   });
 
   WebRTCConnectionState copyWith({
@@ -28,12 +31,14 @@ class WebRTCConnectionState {
     RTCVideoRenderer? renderer,
     String? sessionId,
     String? errorMessage,
+    bool? isAudioMuted,
   }) {
     return WebRTCConnectionState(
       state: state ?? this.state,
       renderer: renderer ?? this.renderer,
       sessionId: sessionId ?? this.sessionId,
       errorMessage: errorMessage,
+      isAudioMuted: isAudioMuted ?? this.isAudioMuted,
     );
   }
 
@@ -51,12 +56,18 @@ final webrtcStateProvider = Provider<WebRTCState>((ref) {
   return ref.watch(webrtcProvider).state;
 });
 
+/// Provider for audio mute state (for UI binding)
+final webrtcAudioMutedProvider = Provider<bool>((ref) {
+  return ref.watch(webrtcProvider).isAudioMuted;
+});
+
 /// WebRTC state notifier - manages peer connection and video rendering
 class WebRTCNotifier extends StateNotifier<WebRTCConnectionState> {
   final Ref _ref;
   RTCPeerConnection? _peerConnection;
   RTCVideoRenderer? _renderer;
   RTCDataChannel? _dataChannel;
+  MediaStream? _audioStream; // Remote audio stream from robot
   final List<StreamSubscription> _subscriptions = [];
   bool _rendererInitialized = false;
   bool _dataChannelOpen = false;
@@ -67,6 +78,7 @@ class WebRTCNotifier extends StateNotifier<WebRTCConnectionState> {
   bool _isRequesting = false;  // Guard against concurrent requestVideoStream calls
   static const int _maxReconnectAttempts = 3;
   static const Duration _reconnectDelay = Duration(seconds: 5);
+  static const String _mutePrefsKey = 'webrtc_audio_muted';
 
   /// Whether the data channel is ready for sending
   bool get isDataChannelOpen => _dataChannelOpen;
@@ -75,8 +87,41 @@ class WebRTCNotifier extends StateNotifier<WebRTCConnectionState> {
   bool get isPaused => _isPaused;
 
   WebRTCNotifier(this._ref) : super(const WebRTCConnectionState()) {
+    _loadMutePreference();
     _setupWebSocketListeners();
     _setupDeviceIdListener();
+  }
+
+  /// Load saved mute preference from SharedPreferences
+  Future<void> _loadMutePreference() async {
+    final prefs = await SharedPreferences.getInstance();
+    // Default to true (muted) if not set — per v1.3 contract
+    final isMuted = prefs.getBool(_mutePrefsKey) ?? true;
+    state = state.copyWith(isAudioMuted: isMuted);
+  }
+
+  /// Toggle audio mute state (purely app-side, no command to robot)
+  Future<void> toggleAudioMute() async {
+    final newMuted = !state.isAudioMuted;
+    state = state.copyWith(isAudioMuted: newMuted);
+
+    // Apply to audio track immediately
+    _applyAudioMuteState(newMuted);
+
+    // Persist preference
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_mutePrefsKey, newMuted);
+    print('WebRTC: Audio ${newMuted ? "muted" : "unmuted"} (persisted)');
+  }
+
+  /// Apply mute state to the remote audio track
+  void _applyAudioMuteState(bool muted) {
+    if (_audioStream != null) {
+      for (final track in _audioStream!.getAudioTracks()) {
+        track.enabled = !muted;
+        print('WebRTC: Audio track enabled=${!muted}');
+      }
+    }
   }
 
   /// Listen for device ID changes and switch video stream accordingly
@@ -268,7 +313,7 @@ class WebRTCNotifier extends StateNotifier<WebRTCConnectionState> {
 
       _peerConnection = await createPeerConnection(config);
 
-      // Handle incoming video track from robot
+      // Handle incoming tracks from robot (video + audio)
       _peerConnection!.onTrack = (RTCTrackEvent event) {
         print('WebRTC: Received track: ${event.track.kind}');
         if (event.track.kind == 'video' && event.streams.isNotEmpty) {
@@ -292,6 +337,14 @@ class WebRTCNotifier extends StateNotifier<WebRTCConnectionState> {
             renderer: _renderer,
           );
           print('WebRTC: Video connected, state updated');
+        } else if (event.track.kind == 'audio' && event.streams.isNotEmpty) {
+          // v1.3: Accept always-on audio track from robot
+          _audioStream = event.streams[0];
+          print('WebRTC: Audio track received, stream id=${_audioStream!.id}');
+
+          // Apply current mute state to the audio track
+          _applyAudioMuteState(state.isAudioMuted);
+          print('WebRTC: Audio track initial mute=${state.isAudioMuted}');
         }
       };
 
@@ -535,6 +588,9 @@ class WebRTCNotifier extends StateNotifier<WebRTCConnectionState> {
         print('WebRTC: Error sending close message: $e');
       }
     }
+
+    // Clear audio stream reference
+    _audioStream = null;
 
     // Close data channel first (before peer connection)
     if (_dataChannel != null) {

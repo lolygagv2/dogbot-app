@@ -286,6 +286,45 @@ class _ListenButton extends ConsumerWidget {
   }
 }
 
+/// Mic-only PTT widget (no listen button — replaced by always-on audio streaming)
+class PushToTalkMicOnly extends ConsumerStatefulWidget {
+  final bool compact;
+
+  const PushToTalkMicOnly({super.key, this.compact = false});
+
+  @override
+  ConsumerState<PushToTalkMicOnly> createState() => _PushToTalkMicOnlyState();
+}
+
+class _PushToTalkMicOnlyState extends ConsumerState<PushToTalkMicOnly> {
+  String? _lastShownError;
+
+  @override
+  Widget build(BuildContext context) {
+    final pttState = ref.watch(pushToTalkProvider);
+
+    if (pttState.error != null && pttState.error != _lastShownError) {
+      _lastShownError = pttState.error;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(pttState.error!),
+              backgroundColor: Colors.red.shade700,
+              behavior: SnackBarBehavior.floating,
+              duration: const Duration(seconds: 3),
+            ),
+          );
+        }
+      });
+    } else if (pttState.error == null) {
+      _lastShownError = null;
+    }
+
+    return _MicButton(state: pttState, compact: widget.compact);
+  }
+}
+
 /// Floating push-to-talk overlay for video screens
 class PushToTalkOverlay extends StatelessWidget {
   final Alignment alignment;

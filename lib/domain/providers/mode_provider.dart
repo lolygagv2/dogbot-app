@@ -36,6 +36,7 @@ class ModeState {
   final String? activeMissionId;     // ID of active mission (if any)
   final String? activeMissionName;   // Name of active mission (if any)
   final bool isModeLocked;           // True when mission is active (mode can't change)
+  final RobotMode previousPortraitMode; // v1.3: Stored when entering landscape/mission
 
   const ModeState({
     this.currentMode = RobotMode.idle,
@@ -46,6 +47,7 @@ class ModeState {
     this.activeMissionId,
     this.activeMissionName,
     this.isModeLocked = false,
+    this.previousPortraitMode = RobotMode.idle,
   });
 
   ModeState copyWith({
@@ -57,6 +59,7 @@ class ModeState {
     String? activeMissionId,
     String? activeMissionName,
     bool? isModeLocked,
+    RobotMode? previousPortraitMode,
     bool clearPending = false,
     bool clearError = false,
     bool clearMission = false,
@@ -70,6 +73,7 @@ class ModeState {
       activeMissionId: clearMission ? null : (activeMissionId ?? this.activeMissionId),
       activeMissionName: clearMission ? null : (activeMissionName ?? this.activeMissionName),
       isModeLocked: isModeLocked ?? this.isModeLocked,
+      previousPortraitMode: previousPortraitMode ?? this.previousPortraitMode,
     );
   }
 
@@ -261,17 +265,21 @@ class ModeStateNotifier extends StateNotifier<ModeState> {
   }
 
   /// Handle mission ended (completed or stopped)
+  /// v1.3: Restores previous portrait mode instead of defaulting to idle
   void _handleMissionEnded() {
     final wasActive = state.activeMissionName;
-    print('Mode: Mission ended: $wasActive, unlocking mode');
+    final restoreMode = state.previousPortraitMode;
+    print('Mode: Mission ended: $wasActive, unlocking mode, restoring to ${restoreMode.value}');
     _lastModeChangeTime = DateTime.now();
     state = state.copyWith(
-      currentMode: RobotMode.idle,
+      currentMode: restoreMode,
       isModeLocked: false,
       clearMission: true,
       isChanging: false,
       clearPending: true,
     );
+    // Send the restored mode to robot
+    _ref.read(websocketClientProvider).sendModeCommand(restoreMode.value, source: 'mission_end');
   }
 
   /// Handle mode confirmation from telemetry/status_update
@@ -347,8 +355,8 @@ class ModeStateNotifier extends StateNotifier<ModeState> {
     }
   }
 
-  /// Set mode with optimistic update
-  Future<void> setMode(RobotMode mode) async {
+  /// Set mode with optimistic update (v1.3: includes source context)
+  Future<void> setMode(RobotMode mode, {String source = 'dropdown'}) async {
     if (!_ref.read(connectionProvider).isConnected) {
       state = state.copyWith(
         error: 'Not connected to robot',
@@ -378,7 +386,7 @@ class ModeStateNotifier extends StateNotifier<ModeState> {
     // Cancel any existing timeout
     _cancelTimeout();
 
-    print('Mode: Setting to ${mode.value} (optimistic, user-initiated)');
+    print('Mode: Setting to ${mode.value} (optimistic, source=$source)');
 
     // Build 36: Track user-initiated change to block external mode updates during cooldown
     _userInitiatedChangeTime = DateTime.now();
@@ -390,11 +398,31 @@ class ModeStateNotifier extends StateNotifier<ModeState> {
       clearError: true,
     );
 
-    // Send command to robot
-    _ref.read(websocketClientProvider).sendModeCommand(mode.value);
+    // Send command to robot (v1.3: includes source)
+    _ref.read(websocketClientProvider).sendModeCommand(mode.value, source: source);
 
     // Start confirmation timeout
     _timeoutTimer = Timer(_confirmationTimeout, _onTimeout);
+  }
+
+  /// v1.3: Store current portrait mode before entering landscape/mission
+  void storePortraitMode() {
+    final current = state.currentMode;
+    // Only store portrait-valid modes
+    final toStore = (current == RobotMode.idle ||
+        current == RobotMode.silentGuardian ||
+        current == RobotMode.coach)
+        ? current
+        : RobotMode.idle;
+    print('Mode: Storing portrait mode: ${toStore.value}');
+    state = state.copyWith(previousPortraitMode: toStore);
+  }
+
+  /// v1.3: Restore previous portrait mode when exiting landscape/mission
+  Future<void> restorePortraitMode({String source = 'drive_exit_restore'}) async {
+    final restoreMode = state.previousPortraitMode;
+    print('Mode: Restoring portrait mode: ${restoreMode.value} (source=$source)');
+    await setMode(restoreMode, source: source);
   }
 
   /// Handle timeout - check if mode actually changed before showing error
@@ -444,14 +472,14 @@ class ModeStateNotifier extends StateNotifier<ModeState> {
   }
 
   /// Set mode by string value
-  Future<void> setModeByString(String modeValue) async {
+  Future<void> setModeByString(String modeValue, {String source = 'dropdown'}) async {
     final mode = RobotMode.fromString(modeValue);
-    await setMode(mode);
+    await setMode(mode, source: source);
   }
 
-  /// Set to manual mode
-  Future<void> setManualMode() async {
-    await setMode(RobotMode.manual);
+  /// Set to manual mode (v1.3: accepts source)
+  Future<void> setManualMode({String source = 'drive_enter'}) async {
+    await setMode(RobotMode.manual, source: source);
   }
 
   /// Clear error manually
@@ -502,17 +530,17 @@ class ModeControl {
   ModeControl(this._ref);
 
   /// Set robot mode
-  void setMode(RobotMode mode) {
-    _ref.read(modeStateProvider.notifier).setMode(mode);
+  void setMode(RobotMode mode, {String source = 'dropdown'}) {
+    _ref.read(modeStateProvider.notifier).setMode(mode, source: source);
   }
 
   /// Set mode by string value
-  void setModeByString(String modeValue) {
-    _ref.read(modeStateProvider.notifier).setModeByString(modeValue);
+  void setModeByString(String modeValue, {String source = 'dropdown'}) {
+    _ref.read(modeStateProvider.notifier).setModeByString(modeValue, source: source);
   }
 
   /// Set to manual mode (default on connect)
-  void setManualMode() {
-    _ref.read(modeStateProvider.notifier).setManualMode();
+  void setManualMode({String source = 'drive_enter'}) {
+    _ref.read(modeStateProvider.notifier).setManualMode(source: source);
   }
 }

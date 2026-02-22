@@ -9,6 +9,7 @@ import '../../../domain/providers/missions_provider.dart';
 import '../../../domain/providers/mode_provider.dart';
 import '../../../domain/providers/telemetry_provider.dart';
 import '../../widgets/video/webrtc_video_view.dart';
+import '../../widgets/video/audio_mute_toggle.dart';
 import '../../widgets/controls/push_to_talk.dart';
 import '../../theme/app_theme.dart';
 
@@ -29,8 +30,7 @@ class _DriveScreenState extends ConsumerState<DriveScreen> {
     WakelockPlus.enable();
     print('DriveScreen: Wakelock enabled');
 
-    // Build 38: Only switch to manual if not in mission mode and mode is not locked
-    // Don't send ghost commands on screen navigation
+    // v1.3: Store portrait mode before switching to manual
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final modeState = ref.read(modeStateProvider);
       if (modeState.isMissionActive || modeState.isModeLocked) {
@@ -38,6 +38,8 @@ class _DriveScreenState extends ConsumerState<DriveScreen> {
       } else if (modeState.currentMode == RobotMode.mission) {
         print('DriveScreen: In mission mode, keeping it');
       } else {
+        // Store current portrait mode before entering landscape
+        ref.read(modeStateProvider.notifier).storePortraitMode();
         _ensureManualMode();
       }
     });
@@ -84,7 +86,14 @@ class _DriveScreenState extends ConsumerState<DriveScreen> {
         backgroundColor: Colors.transparent,
         elevation: 0,
         leading: IconButton(
-          onPressed: () => Navigator.of(context).pop(),
+          onPressed: () {
+            // v1.3: Restore previous portrait mode on exit
+            final modeState = ref.read(modeStateProvider);
+            if (!modeState.isMissionActive && !modeState.isModeLocked) {
+              ref.read(modeStateProvider.notifier).restorePortraitMode();
+            }
+            Navigator.of(context).pop();
+          },
           icon: Container(
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
@@ -132,38 +141,11 @@ class _DriveScreenState extends ConsumerState<DriveScreen> {
                   leftSpeed: motorState.left,
                   rightSpeed: motorState.right,
                 ),
-                // Mode indicator
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: isMissionActive
-                        ? Colors.orange
-                        : (isReady ? Colors.green : Colors.orange),
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        isMissionActive
-                            ? Icons.flag
-                            : (isReady ? Icons.check_circle : Icons.hourglass_empty),
-                        color: Colors.white,
-                        size: 14,
-                      ),
-                      const SizedBox(width: 4),
-                      Text(
-                        isMissionActive
-                            ? 'MISSION ACTIVE'
-                            : (isReady ? 'MANUAL' : 'SWITCHING...'),
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 11,
-                        ),
-                      ),
-                    ],
-                  ),
+                // v1.3: Landscape mode selector (manual/coach/mission)
+                _LandscapeModeSelector(
+                  currentMode: modeState.displayMode,
+                  isChanging: modeState.isChanging,
+                  isMissionActive: isMissionActive,
                 ),
                 // Detection indicator
                 if (telemetry.dogDetected)
@@ -219,12 +201,12 @@ class _DriveScreenState extends ConsumerState<DriveScreen> {
                     // Drive D-pad (left) - press and hold to accelerate
                     const _MotorDpad(),
 
-                    // Center controls - treat, center, and push-to-talk
+                    // Center controls - treat, center, PTT mic
                     Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        // Push-to-talk controls
-                        const PushToTalkControls(compact: true),
+                        // PTT mic button only (listen replaced by streaming)
+                        const PushToTalkMicOnly(compact: true),
                         const SizedBox(height: 16),
                         // Action buttons
                         Row(
@@ -260,42 +242,47 @@ class _DriveScreenState extends ConsumerState<DriveScreen> {
             ),
           ),
 
-          // "Not Ready" overlay
-          if (!isReady)
-            Positioned.fill(
-              child: AbsorbPointer(
+          // Audio mute toggle (top-left, below status bar)
+          Positioned(
+            top: MediaQuery.of(context).padding.top + 56,
+            left: 16,
+            child: const AudioMuteToggle(),
+          ),
+
+          // v1.3: Brief toast overlay during mode transition (auto-dismisses)
+          if (!isReady && _modeChangeRequested)
+            Positioned(
+              top: MediaQuery.of(context).padding.top + 88,
+              left: 0,
+              right: 0,
+              child: Center(
                 child: Container(
-                  color: Colors.black.withOpacity(0.3),
-                  child: Center(
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-                      decoration: BoxDecoration(
-                        color: Colors.black87,
-                        borderRadius: BorderRadius.circular(16),
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                  decoration: BoxDecoration(
+                    color: Colors.black87,
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: const Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          valueColor: AlwaysStoppedAnimation(Colors.orange),
+                        ),
                       ),
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const SizedBox(
-                            width: 24,
-                            height: 24,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              valueColor: AlwaysStoppedAnimation(Colors.orange),
-                            ),
-                          ),
-                          const SizedBox(height: 12),
-                          const Text(
-                            'Switching to Manual Mode...',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 14,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                        ],
+                      SizedBox(width: 10),
+                      Text(
+                        'Switching mode...',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w500,
+                        ),
                       ),
-                    ),
+                    ],
                   ),
                 ),
               ),
@@ -768,6 +755,109 @@ class _ActiveMissionBanner extends ConsumerWidget {
         ],
       ),
     );
+  }
+}
+
+/// v1.3: Landscape mode selector — Manual / Coach / Mission
+class _LandscapeModeSelector extends ConsumerWidget {
+  final RobotMode currentMode;
+  final bool isChanging;
+  final bool isMissionActive;
+
+  const _LandscapeModeSelector({
+    required this.currentMode,
+    required this.isChanging,
+    required this.isMissionActive,
+  });
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final modeLabel = currentMode.label.toUpperCase();
+    final color = _getModeColor(currentMode);
+
+    return PopupMenuButton<RobotMode>(
+      onSelected: (mode) {
+        if (mode == currentMode) return;
+        ref.read(modeStateProvider.notifier).setMode(mode, source: 'landscape_selector');
+      },
+      offset: const Offset(0, 36),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        decoration: BoxDecoration(
+          color: color.withOpacity(isChanging ? 0.6 : 0.9),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: Colors.white.withOpacity(0.2), width: 1),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (isChanging)
+              const SizedBox(
+                width: 14,
+                height: 14,
+                child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+              )
+            else
+              Icon(_getModeIcon(currentMode), color: Colors.white, size: 14),
+            const SizedBox(width: 4),
+            Text(
+              modeLabel,
+              style: const TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+                fontSize: 11,
+              ),
+            ),
+            const SizedBox(width: 2),
+            const Icon(Icons.arrow_drop_down, color: Colors.white, size: 16),
+          ],
+        ),
+      ),
+      itemBuilder: (context) {
+        // Landscape options: Manual, Coach, Mission (mission only if active)
+        final options = <RobotMode>[
+          RobotMode.manual,
+          RobotMode.coach,
+          if (isMissionActive) RobotMode.mission,
+        ];
+        return options.map((mode) {
+          return PopupMenuItem<RobotMode>(
+            value: mode,
+            child: Row(
+              children: [
+                Icon(_getModeIcon(mode), size: 20, color: _getModeColor(mode)),
+                const SizedBox(width: 12),
+                Text(mode.label),
+                if (mode == currentMode) ...[
+                  const Spacer(),
+                  const Icon(Icons.check, size: 20),
+                ],
+              ],
+            ),
+          );
+        }).toList();
+      },
+    );
+  }
+
+  Color _getModeColor(RobotMode mode) {
+    switch (mode) {
+      case RobotMode.idle: return Colors.grey;
+      case RobotMode.manual: return Colors.blue;
+      case RobotMode.silentGuardian: return Colors.purple;
+      case RobotMode.coach: return Colors.orange;
+      case RobotMode.mission: return Colors.green;
+    }
+  }
+
+  IconData _getModeIcon(RobotMode mode) {
+    switch (mode) {
+      case RobotMode.idle: return Icons.pause_circle_outline;
+      case RobotMode.manual: return Icons.gamepad;
+      case RobotMode.silentGuardian: return Icons.visibility;
+      case RobotMode.coach: return Icons.school;
+      case RobotMode.mission: return Icons.flag;
+    }
   }
 }
 

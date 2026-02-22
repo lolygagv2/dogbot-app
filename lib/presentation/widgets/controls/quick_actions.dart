@@ -12,6 +12,7 @@ import '../../../domain/providers/auth_provider.dart';
 import '../../../domain/providers/control_provider.dart';
 import '../../../domain/providers/device_provider.dart';
 import '../../../domain/providers/dog_profiles_provider.dart';
+import '../../../domain/providers/push_to_talk_provider.dart';
 import '../../theme/app_theme.dart';
 
 /// Provider to track current lighting pattern index
@@ -211,81 +212,67 @@ class _QuickActionsState extends ConsumerState<QuickActions> {
     final ws = ref.read(websocketClientProvider);
     final blueLedOn = ref.watch(_blueLedOnProvider);
 
+    final pttState = ref.watch(pushToTalkProvider);
+
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        // Main action buttons row
+        // Main action row: PTT / Good / Call Dog / Give Treat / Want Treat / No
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceEvenly,
           children: [
-            // Good button - plays voice command on robot (debounced)
+            // PTT mic button (hold to talk)
+            _PttActionButton(state: pttState),
+
             _ActionButton(
               icon: Icons.thumb_up,
               label: 'Good',
               color: Colors.green,
               onPressed: () {
-                if (selectedDog == null) {
-                  _showNoDogError(context);
-                  return;
-                }
+                if (selectedDog == null) { _showNoDogError(context); return; }
                 if (!_canExecuteVoice(_lastGood)) return;
                 _lastGood = DateTime.now();
                 ws.sendPlayVoice('good', dogId: selectedDog.id);
               },
             ),
 
-            // Call Dog button - plays recall sound (debounced)
             _ActionButton(
               icon: Icons.campaign,
               label: 'Call Dog',
               color: Colors.deepOrange,
               onPressed: () {
-                if (selectedDog == null) {
-                  _showNoDogError(context);
-                  return;
-                }
+                if (selectedDog == null) { _showNoDogError(context); return; }
                 if (!_canExecuteVoice(_lastCallDog)) return;
                 _lastCallDog = DateTime.now();
                 ws.sendCallDog(dogId: selectedDog.id, dogName: selectedDog.name);
               },
             ),
 
-            // Give Treat button - dispenses treat only (debounced in provider)
             _ActionButton(
               icon: Icons.pets,
-              label: 'Give Treat',
+              label: 'Treat',
               color: AppTheme.accent,
-              onPressed: () {
-                treatControl.dispense();
-              },
+              onPressed: () => treatControl.dispense(),
             ),
 
-            // Want Treat? button - plays voice command on robot (debounced)
             _ActionButton(
               icon: Icons.restaurant,
-              label: 'Want Treat?',
+              label: 'Want?',
               color: Colors.amber,
               onPressed: () {
-                if (selectedDog == null) {
-                  _showNoDogError(context);
-                  return;
-                }
+                if (selectedDog == null) { _showNoDogError(context); return; }
                 if (!_canExecuteVoice(_lastWantTreat)) return;
                 _lastWantTreat = DateTime.now();
                 ws.sendPlayVoice('treat', dogId: selectedDog.id);
               },
             ),
 
-            // No button - warning LED + voice command on robot (debounced)
             _ActionButton(
               icon: Icons.block,
               label: 'No',
               color: Colors.red,
               onPressed: () {
-                if (selectedDog == null) {
-                  _showNoDogError(context);
-                  return;
-                }
+                if (selectedDog == null) { _showNoDogError(context); return; }
                 if (!_canExecuteVoice(_lastNo)) return;
                 _lastNo = DateTime.now();
                 ledControl.setPattern(LedPatterns.warning);
@@ -295,13 +282,12 @@ class _QuickActionsState extends ConsumerState<QuickActions> {
           ],
         ),
 
-        const SizedBox(height: 12),
+        const SizedBox(height: 10),
 
-        // Secondary row - Lighting and Music controls
+        // Consolidated secondary row: [Lighting | BluLight] — [Music controls]
         Row(
-          mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            // Lighting button - cycles through patterns
+            // Light controls (left side)
             _LightingButton(
               currentIndex: lightingIndex,
               onPressed: () {
@@ -309,8 +295,6 @@ class _QuickActionsState extends ConsumerState<QuickActions> {
                 final newIndex = (lightingIndex + 1) % patterns.length;
                 ref.read(_lightingIndexProvider.notifier).state = newIndex;
                 ledControl.setPattern(patterns[newIndex]);
-
-                // Show pattern name briefly
                 ScaffoldMessenger.of(context).hideCurrentSnackBar();
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
@@ -322,36 +306,7 @@ class _QuickActionsState extends ConsumerState<QuickActions> {
                 );
               },
             ),
-
-            const SizedBox(width: 24),
-
-            // Music controls row with volume
-            // State synced from robot via audio_state WebSocket events
-            _MusicControlsWithVolume(
-              isPlaying: isPlaying,
-              volume: ref.watch(_volumeProvider),
-              trackName: ref.watch(_currentTrackProvider),
-              onPrev: () {
-                audioControl.prev();
-                // Don't set local state - wait for audio_state event from robot
-              },
-              onToggle: () {
-                audioControl.toggle();
-                // Don't set local state - wait for audio_state event from robot
-              },
-              onNext: () {
-                audioControl.next();
-                // Don't set local state - wait for audio_state event from robot
-              },
-              onVolumeChanged: _onVolumeChanged,
-              onUpload: () => _pickAndUploadSong(context, ref),
-              // Build 41: Delete song on long-press of track name
-              onDeleteTrack: (trackPath) => _confirmDeleteSong(trackPath),
-            ),
-
-            const SizedBox(width: 24),
-
-            // Build 42: Blue mood LED toggle button
+            const SizedBox(width: 8),
             _BluLightButton(
               isOn: blueLedOn,
               onPressed: () {
@@ -359,6 +314,23 @@ class _QuickActionsState extends ConsumerState<QuickActions> {
                 ref.read(_blueLedOnProvider.notifier).state = newState;
                 ws.sendMoodLed(newState ? 'on' : 'off');
               },
+            ),
+
+            const SizedBox(width: 12),
+
+            // Music controls (right side, takes remaining space)
+            Expanded(
+              child: _MusicControlsWithVolume(
+                isPlaying: isPlaying,
+                volume: ref.watch(_volumeProvider),
+                trackName: ref.watch(_currentTrackProvider),
+                onPrev: () => audioControl.prev(),
+                onToggle: () => audioControl.toggle(),
+                onNext: () => audioControl.next(),
+                onVolumeChanged: _onVolumeChanged,
+                onUpload: () => _pickAndUploadSong(context, ref),
+                onDeleteTrack: (trackPath) => _confirmDeleteSong(trackPath),
+              ),
             ),
           ],
         ),
@@ -628,6 +600,61 @@ class _QuickActionsState extends ConsumerState<QuickActions> {
       default:
         return pattern;
     }
+  }
+}
+
+/// PTT action button (hold to record) for the main action row
+class _PttActionButton extends ConsumerWidget {
+  final PttStateData state;
+
+  const _PttActionButton({required this.state});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final isRecording = state.isRecording;
+    final isBusy = state.isBusy && !isRecording;
+
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        GestureDetector(
+          onTapDown: isBusy ? null : (_) async {
+            HapticFeedback.mediumImpact();
+            await ref.read(pushToTalkProvider.notifier).startRecording();
+          },
+          onTapUp: isRecording ? (_) async {
+            HapticFeedback.lightImpact();
+            await ref.read(pushToTalkProvider.notifier).stopRecordingAndSend();
+          } : null,
+          onTapCancel: isRecording ? () async {
+            await ref.read(pushToTalkProvider.notifier).cancelRecording();
+          } : null,
+          child: Material(
+            color: isRecording
+                ? Colors.red.withOpacity(0.3)
+                : (isBusy ? Colors.grey.withOpacity(0.1) : Colors.cyan.withOpacity(0.1)),
+            shape: const CircleBorder(),
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Icon(
+                isRecording ? Icons.mic : Icons.mic_none,
+                color: isRecording ? Colors.red : (isBusy ? Colors.grey : Colors.cyan),
+                size: 28,
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          isRecording ? 'Recording' : 'Talk',
+          style: TextStyle(
+            fontSize: 11,
+            color: isRecording ? Colors.red : Colors.cyan,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+      ],
+    );
   }
 }
 

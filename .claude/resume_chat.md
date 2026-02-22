@@ -1,5 +1,41 @@
 # WIM-Z Resume Chat Log
 
+## Session: 2026-02-21 — Build 46 (Rate Limit Handling)
+**Goal:** Handle new RATE_LIMITED error code from relay
+**Status:** ✅ Complete
+
+### Problems Solved This Session:
+
+#### 1. Rate Limit Error Handling (Build 46)
+**Problem:** Relay now rate-limits app-to-robot commands (30 per 60s). Returns `{"type": "error", "code": "RATE_LIMITED", ...}` — app had no handling for this.
+**Solution:**
+- Added `rateLimitStream` to `WebSocketClient` — emits when RATE_LIMITED error received
+- Added `rateLimitProvider` (StreamProvider) in `connection_provider.dart`
+- `MainShell` listens via `ref.listen` and shows floating orange snackbar: "Too many commands, slow down" (3s duration)
+- No command retry on rate limit
+
+**Files Changed:**
+- `lib/core/network/websocket_client.dart` — rateLimitStream + emit in error handler
+- `lib/domain/providers/connection_provider.dart` — rateLimitProvider
+- `lib/app.dart` — snackbar listener in MainShell
+
+### Commits This Session:
+```
+e57a521 feat: Handle RATE_LIMITED error from relay with snackbar
+62889ba chore: Build 46 version bump
+```
+
+### Investigation Notes:
+- Login screen pre-fills `test@wimz.com` / `test1234` — hardcoded in `login_screen.dart:35-36`
+- Default robot ID `wimz_robot_01` hardcoded in `app_constants.dart:38` as fallback
+- Device ID persists via SharedPreferences (`paired_device_id` key) after pairing
+
+### Next Steps:
+1. Consider removing hardcoded test credentials before production
+2. Test rate limit snackbar with real relay
+
+---
+
 ## Session: 2026-02-02 — Build 44 Complete
 **Goal:** Multiple bug fixes and feature additions
 **Status:** ✅ Complete
