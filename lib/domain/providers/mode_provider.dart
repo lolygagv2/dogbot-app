@@ -110,7 +110,9 @@ class ModeStateNotifier extends StateNotifier<ModeState> {
   // Build 34: Debounce mode changes to prevent rapid flipping
   static const Duration _modeChangeDebounce = Duration(milliseconds: 500);
   // Build 36: User-initiated change cooldown - blocks ALL external mode updates
-  static const Duration _userChangeCooldown = Duration(seconds: 2);
+  static const Duration _userChangeCooldown = Duration(seconds: 5);
+  // Build 48: Grace period after ANY confirmed mode change before telemetry can override
+  static const Duration _postChangeCooldown = Duration(seconds: 8);
   DateTime? _lastModeChangeTime;
   DateTime? _userInitiatedChangeTime; // When user explicitly clicked a mode
 
@@ -131,6 +133,14 @@ class ModeStateNotifier extends StateNotifier<ModeState> {
   /// Sync mode from telemetry if we're not in the middle of a change
   void _syncFromTelemetry() {
     if (state.isChanging) return; // Don't override during pending change
+
+    // Build 48: Don't override recently confirmed mode changes — telemetry may be stale
+    if (_lastModeChangeTime != null) {
+      final timeSinceLastChange = DateTime.now().difference(_lastModeChangeTime!);
+      if (timeSinceLastChange < _postChangeCooldown) {
+        return; // Recent mode change, wait for telemetry to catch up
+      }
+    }
 
     // Build 36: Don't override during user-initiated change cooldown
     if (_userInitiatedChangeTime != null) {
@@ -197,6 +207,21 @@ class ModeStateNotifier extends StateNotifier<ModeState> {
 
     if (mode != null) {
       final confirmedMode = RobotMode.fromString(mode);
+
+      // Build 48: If we're waiting for a specific mode, only accept matching mode
+      // or locked modes (mission overrides). Stale/transitional mode_changed events
+      // for the wrong mode are ignored — let timeout handle genuine failures.
+      if (state.isChanging && state.pendingMode != null) {
+        if (confirmedMode == state.pendingMode || locked) {
+          // Expected mode confirmed, or mission lock override — accept it
+          print('Mode: mode_changed confirmed ${confirmedMode.value}');
+        } else {
+          // Different mode during pending change — likely stale/transitional
+          print('Mode: Ignoring mode_changed ${confirmedMode.value} while waiting for ${state.pendingMode!.value}');
+          return;
+        }
+      }
+
       _cancelTimeout();
       _lastModeChangeTime = DateTime.now();
 
