@@ -334,11 +334,13 @@ class ModeStateNotifier extends StateNotifier<ModeState> {
       }
     }
 
-    // Build 34: Debounce rapid mode changes (unless we're waiting for a pending change)
-    if (!state.isChanging && _lastModeChangeTime != null) {
+    // Build 49: Post-change cooldown — protect recently accepted/confirmed mode from stale events.
+    // Critical after timeout-trust accepts a mode: without this, the next battery/status_update
+    // event carrying stale mode:idle would immediately override the trusted mode back to idle.
+    if (_lastModeChangeTime != null && !state.isChanging) {
       final timeSinceLastChange = DateTime.now().difference(_lastModeChangeTime!);
-      if (timeSinceLastChange < _modeChangeDebounce) {
-        print('Mode: Ignoring rapid change (${timeSinceLastChange.inMilliseconds}ms < ${_modeChangeDebounce.inMilliseconds}ms)');
+      if (timeSinceLastChange < _postChangeCooldown && confirmedMode != state.currentMode) {
+        print('Mode: Ignoring stale ${confirmedMode.value} during post-change cooldown (${timeSinceLastChange.inSeconds}s < ${_postChangeCooldown.inSeconds}s, current: ${state.currentMode.value})');
         return;
       }
     }

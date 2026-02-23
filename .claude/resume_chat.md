@@ -1,5 +1,68 @@
 # WIM-Z Resume Chat Log
 
+## Session: 2026-02-22 — Build 48/49 (Bug Fixes + Mode Sync)
+**Goal:** Fix 6 UI/UX bugs (Build 48) + mode timeout trust fix (Build 49)
+**Status:** ✅ Complete — awaiting user test of Build 49
+
+### Problems Solved This Session:
+
+#### Build 48 — 6 Bug Fixes + 3 Mode Sync Holes + Bark Events
+
+| # | Bug | Fix | File |
+|---|-----|-----|------|
+| 1 | "DEMO" label persists after logout/login | Added `isDemoMode: false` to disconnect() copyWith | `connection_provider.dart` |
+| 2 | D-pad touch areas too small on drive screen | Enlarged to 56x56 hit area, 44x44 visual, Clip.none + HitTestBehavior.opaque | `drive_screen.dart` |
+| 3 | Mode dropdown stuck after switching to SG/Coach | Ignore stale non-matching modes during pending state | `mode_provider.dart` |
+| 4 | Sound icon overlaps photo icon on video | Moved camera button from bottom-right to bottom-left | `webrtc_video_view.dart` |
+| 5 | Mode selector taking up video space | Removed overlay, created _ModeAndDriveRow with segmented buttons below video | `home_screen.dart` |
+| 6 | Hardcoded test@wimz.com login | SharedPreferences to save/load last email, host, port | `login_screen.dart` |
+
+**Additional Build 48 fixes:**
+- **Bark timestamps:** Fixed spread order in websocket_client.dart so local timestamp wins over relay server time; added `.toLocal()` in guardian_event.dart
+- **Bark activity:** Added 'event' type handler in notifications_provider.dart so barks appear in Activity tab
+- **3 mode sync holes closed:**
+  1. `_handleModeChangedEvent` — added pending-state protection
+  2. `_syncFromTelemetry` — now checks `_lastModeChangeTime` with 8s post-change cooldown
+  3. Extended user cooldown from 2s to 5s
+
+#### Build 49 — Mode Timeout Trust Fix
+**Problem:** After Build 48 mode sync fixes, mode changes worked but showed "mode change timed out" error. Robot-side bugs (relay_client.py uses state.set_mode() instead of mode_fsm.set_mode_override(), battery events send stale mode) mean confirmation never arrives.
+**Solution:** Changed `_onTimeout()` to trust the command instead of reverting — if no error/rejection came back, accept the pending mode. Telemetry sync will correct if robot disagrees after cooldown.
+**File:** `lib/domain/providers/mode_provider.dart`
+
+### Files Changed:
+- `lib/domain/providers/connection_provider.dart` — isDemoMode clear on disconnect
+- `lib/domain/providers/mode_provider.dart` — 4 iterations of mode sync fixes + timeout trust
+- `lib/presentation/screens/auth/login_screen.dart` — Persist login credentials
+- `lib/presentation/screens/drive/drive_screen.dart` — Enlarged D-pad touch targets
+- `lib/presentation/screens/home/home_screen.dart` — Mode row below video, EXIT button
+- `lib/presentation/widgets/video/webrtc_video_view.dart` — Camera button repositioned
+- `lib/core/network/websocket_client.dart` — Bark event spread order fix
+- `lib/data/models/guardian_event.dart` — .toLocal() for UTC timestamps
+- `lib/domain/providers/notifications_provider.dart` — Bark events in Activity tab
+- `pubspec.yaml` — Version 1.0.0+49
+
+### Commits This Session:
+```
+e0207b4 fix: Build 49 — Trust mode command on timeout instead of reverting
+20891bb chore: Build 49 version bump
+38ac08e fix: Build 48 — Close 3 mode sync holes causing revert to Idle
+f99fc4f fix: Build 48 — Bark event timestamp uses local time, barks show in Activity tab
+8624be1 fix: Build 48 — 6 bug fixes (DEMO label, D-pad touch, mode sync, icon overlap, mode exit UX, login persist)
+```
+
+### Robot-Side Bugs Identified (not yet fixed):
+- `relay_client.py:537` — uses `state.set_mode()` instead of `mode_fsm.set_mode_override()`
+- `main_treatbot.py:766` — battery events sent every 30s with stale mode
+- Fix: use `mode_fsm.set_mode_override()` in relay handler
+
+### Next Steps:
+1. User to test Build 49 mode switching (trust-on-timeout fix)
+2. Deploy robot-side fix (mode_fsm.set_mode_override in relay_client.py)
+3. Once robot fix deployed, app should receive proper mode confirmations
+
+---
+
 ## Session: 2026-02-22 — Build 47 (v1.3 API Contract)
 **Goal:** Implement v1.3 API contract — audio streaming, mode restructure, UI overhaul, diagnostic audit
 **Status:** ✅ Complete
