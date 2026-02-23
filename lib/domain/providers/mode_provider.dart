@@ -101,110 +101,67 @@ final modeStateProvider =
 
 /// Mode state notifier - handles optimistic updates and confirmations
 ///
-/// Build 50: Complete rewrite of mode protection. Previous builds (36-49) added
-/// patchwork cooldowns to individual handlers, but stale events kept finding
-/// unprotected paths. Now uses a SINGLE unified guard: when the user clicks a
-/// mode, ALL external mode overrides are blocked for 15 seconds. Only the
-/// target mode (or mission locks) can break through.
+/// Build 50v2: User mode selection is SOVEREIGN. Once the user clicks a mode,
+/// no external event (battery, status_update, telemetry sync, mode_changed)
+/// can override it. Only the user clicking a different mode or a mission lock
+/// can change the displayed mode.
+///
+/// WHY: The robot's telemetry endpoint and battery events report stale
+/// mode:idle because relay_client.py uses state.set_mode() instead of
+/// mode_fsm.set_mode_override(). Until that robot-side bug is fixed, the
+/// app cannot trust ANY external mode data. The robot IS in the correct
+/// mode (visible on video overlay), but reports idle in telemetry/events.
+///
+/// Previous approaches (Builds 36-50) tried timed cooldowns (5s, 8s, 15s)
+/// but the robot sends stale data indefinitely, so any timer eventually
+/// expires and the mode reverts. The only correct fix: don't let external
+/// events override user mode selections. Period.
 class ModeStateNotifier extends StateNotifier<ModeState> {
   final Ref _ref;
   Timer? _timeoutTimer;
   Timer? _errorDismissTimer;
-  Timer? _telemetrySyncTimer;
   StreamSubscription? _wsSubscription;
 
   static const Duration _confirmationTimeout = Duration(seconds: 10);
 
-  /// Build 50: Single unified block duration. When user clicks a mode, ALL
-  /// external mode updates that don't match the target are blocked for this
-  /// duration. Covers: battery events, status_update, mode_changed, telemetry
-  /// sync — every possible path.
-  static const Duration _externalBlockDuration = Duration(seconds: 15);
-  DateTime? _externalBlockUntil;
+  /// The mode the user explicitly selected. While set, ALL external mode
+  /// updates that don't match this mode are rejected. Cleared only when:
+  /// - User clicks a different mode (replaced with new selection)
+  /// - Mission starts (mission overrides user selection)
+  /// - Provider is disposed (reconnect/restart)
+  RobotMode? _userSelectedMode;
 
   ModeStateNotifier(this._ref) : super(const ModeState()) {
     _listenToModeEvents();
     _getInitialMode();
-    _startTelemetrySync();
   }
 
   // ─────────────────────────────────────────────────────────────────────────
-  // BUILD 50: UNIFIED EXTERNAL MODE GUARD
+  // BUILD 50v2: SOVEREIGN USER MODE GUARD
   // ─────────────────────────────────────────────────────────────────────────
 
   /// Returns true if the incoming mode should be BLOCKED.
-  /// Called by every handler that can change currentMode from external events.
-  ///
-  /// During the block window:
-  /// - Target mode (pending or current) passes through → confirms the change
-  /// - Mission locks (locked=true) pass through → authoritative override
-  /// - Everything else is blocked → stale battery/status/mode_changed events
+  /// When user has selected a mode, ONLY that mode (or mission locks) pass.
   bool _shouldBlockExternalMode(RobotMode incomingMode, {bool isLocked = false}) {
-    // Mission locks are always authoritative
+    // Mission locks are always authoritative — robot is running a mission
     if (isLocked) return false;
 
-    // No block active — allow everything
-    if (_externalBlockUntil == null) return false;
+    // No user selection active — allow everything (initial state, pre-first-click)
+    if (_userSelectedMode == null) return false;
 
-    // Block expired — resume normal behavior
-    if (DateTime.now().isAfter(_externalBlockUntil!)) {
-      print('Mode: External block expired, resuming normal sync');
-      _externalBlockUntil = null;
-      return false;
-    }
+    // Incoming mode matches user selection — allow (confirms the change)
+    if (incomingMode == _userSelectedMode) return false;
 
-    // During block: only accept the mode we're targeting
-    final targetMode = state.pendingMode ?? state.currentMode;
-    if (incomingMode == targetMode) return false;
-
-    // Block this update
-    final remainingSec = _externalBlockUntil!.difference(DateTime.now()).inSeconds;
-    print('Mode: BLOCKED ${incomingMode.value} (target: ${targetMode.value}, ${remainingSec}s remaining)');
+    // Block: stale external data trying to override user's mode choice
+    print('Mode: BLOCKED ${incomingMode.value} (user selected: ${_userSelectedMode!.value})');
     return true;
   }
 
-  /// Activate the external mode block (called when user initiates a mode change)
-  void _activateExternalBlock() {
-    _externalBlockUntil = DateTime.now().add(_externalBlockDuration);
-    print('Mode: External block activated for ${_externalBlockDuration.inSeconds}s');
-  }
-
-  /// Extend the external mode block (called after timeout-trust or confirmation)
-  void _extendExternalBlock() {
-    _externalBlockUntil = DateTime.now().add(_externalBlockDuration);
-  }
-
   // ─────────────────────────────────────────────────────────────────────────
-  // TELEMETRY SYNC
+  // INITIALIZATION
   // ─────────────────────────────────────────────────────────────────────────
 
-  /// Periodically sync mode from telemetry (catches missed WebSocket events)
-  void _startTelemetrySync() {
-    _telemetrySyncTimer = Timer.periodic(const Duration(seconds: 2), (_) {
-      if (!mounted) return;
-      _syncFromTelemetry();
-    });
-  }
-
-  /// Sync mode from telemetry if we're not in the middle of a change
-  void _syncFromTelemetry() {
-    if (state.isChanging) return;
-
-    final telemetry = _ref.read(telemetryProvider);
-    if (telemetry.mode.isEmpty) return;
-
-    final telemetryMode = RobotMode.fromString(telemetry.mode);
-
-    // Unified guard
-    if (_shouldBlockExternalMode(telemetryMode)) return;
-
-    if (telemetryMode != state.currentMode) {
-      print('Mode: Syncing from telemetry - ${telemetry.mode} (was ${state.currentMode.value})');
-      state = state.copyWith(currentMode: telemetryMode);
-    }
-  }
-
-  /// Get initial mode from telemetry
+  /// Get initial mode from telemetry (only on startup, before user interacts)
   void _getInitialMode() {
     final telemetry = _ref.read(telemetryProvider);
     if (telemetry.mode.isNotEmpty && telemetry.mode != 'idle') {
@@ -254,7 +211,7 @@ class ModeStateNotifier extends StateNotifier<ModeState> {
 
     final confirmedMode = RobotMode.fromString(mode);
 
-    // Unified guard — blocks stale mode_changed events too
+    // Sovereign guard
     if (_shouldBlockExternalMode(confirmedMode, isLocked: locked)) return;
 
     _cancelTimeout();
@@ -265,10 +222,8 @@ class ModeStateNotifier extends StateNotifier<ModeState> {
       missionName = lockReason.split(':').last.trim();
     }
 
-    // If this confirms our pending mode, extend the block to protect it
     if (state.isChanging && state.pendingMode == confirmedMode) {
       print('Mode: mode_changed confirmed ${confirmedMode.value}');
-      _extendExternalBlock();
     }
 
     state = state.copyWith(
@@ -285,7 +240,7 @@ class ModeStateNotifier extends StateNotifier<ModeState> {
   void _handleModeConfirmation(String modeValue) {
     final confirmedMode = RobotMode.fromString(modeValue);
 
-    // Unified guard
+    // Sovereign guard
     if (_shouldBlockExternalMode(confirmedMode)) return;
 
     if (state.isChanging && state.pendingMode != null) {
@@ -293,7 +248,6 @@ class ModeStateNotifier extends StateNotifier<ModeState> {
         // Confirmed our pending mode
         print('Mode: Confirmed ${confirmedMode.value}');
         _cancelTimeout();
-        _extendExternalBlock();
         state = state.copyWith(
           currentMode: confirmedMode,
           isChanging: false,
@@ -301,9 +255,10 @@ class ModeStateNotifier extends StateNotifier<ModeState> {
           clearError: true,
         );
       }
-      // Non-matching modes during pending state are already blocked by the guard above
-    } else {
-      // Not waiting for confirmation - update if different
+      // Non-matching modes are blocked by the guard above
+    } else if (!state.isChanging) {
+      // Not waiting for confirmation — update if different
+      // (only reachable if _userSelectedMode is null or matches)
       if (confirmedMode != state.currentMode) {
         state = state.copyWith(currentMode: confirmedMode);
       }
@@ -324,9 +279,9 @@ class ModeStateNotifier extends StateNotifier<ModeState> {
 
     switch (action) {
       case 'started':
-        // Mission started - lock mode to mission (authoritative, bypasses guard)
+        // Mission started — authoritative, overrides user selection
         print('Mode: Mission started: $missionName, locking mode');
-        _externalBlockUntil = null; // Clear any user block — mission overrides
+        _userSelectedMode = null; // Clear user selection — mission takes over
         state = state.copyWith(
           currentMode: RobotMode.mission,
           activeMissionId: missionId,
@@ -362,6 +317,7 @@ class ModeStateNotifier extends StateNotifier<ModeState> {
     final wasActive = state.activeMissionName;
     final restoreMode = state.previousPortraitMode;
     print('Mode: Mission ended: $wasActive, unlocking mode, restoring to ${restoreMode.value}');
+    _userSelectedMode = restoreMode; // Protect restored mode
     state = state.copyWith(
       currentMode: restoreMode,
       isModeLocked: false,
@@ -409,8 +365,8 @@ class ModeStateNotifier extends StateNotifier<ModeState> {
 
     print('Mode: Setting to ${mode.value} (optimistic, source=$source)');
 
-    // Build 50: Activate unified external block — blocks ALL stale mode overrides
-    _activateExternalBlock();
+    // Build 50v2: User selection is sovereign — persists until user clicks different mode
+    _userSelectedMode = mode;
 
     // Optimistic update - immediately show new mode in UI
     state = state.copyWith(
@@ -451,32 +407,12 @@ class ModeStateNotifier extends StateNotifier<ModeState> {
   // ─────────────────────────────────────────────────────────────────────────
 
   /// Handle timeout — no confirmation received.
-  /// Build 49+50: Trust the user's command. No error/rejection came back, so
-  /// accept the pending mode. The external block continues to protect it.
+  /// Trust the user's command. The sovereign guard will protect it indefinitely.
   void _onTimeout() {
     if (!state.isChanging) return;
 
     if (state.pendingMode != null) {
-      // First check: does telemetry already confirm it?
-      final telemetry = _ref.read(telemetryProvider);
-      if (telemetry.mode.isNotEmpty) {
-        final actualMode = RobotMode.fromString(telemetry.mode);
-        if (actualMode == state.pendingMode) {
-          print('Mode: Timeout but telemetry confirms ${actualMode.value}');
-          _extendExternalBlock();
-          state = state.copyWith(
-            currentMode: actualMode,
-            isChanging: false,
-            clearPending: true,
-            clearError: true,
-          );
-          return;
-        }
-      }
-
-      // No telemetry confirmation, but no error either — trust the command
-      print('Mode: Timeout — accepting ${state.pendingMode!.value} (no error received)');
-      _extendExternalBlock();
+      print('Mode: Timeout — accepting ${state.pendingMode!.value} (sovereign, no error received)');
       state = state.copyWith(
         currentMode: state.pendingMode!,
         isChanging: false,
@@ -527,7 +463,6 @@ class ModeStateNotifier extends StateNotifier<ModeState> {
   void dispose() {
     _cancelTimeout();
     _errorDismissTimer?.cancel();
-    _telemetrySyncTimer?.cancel();
     _wsSubscription?.cancel();
     super.dispose();
   }
