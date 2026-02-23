@@ -100,27 +100,83 @@ final modeStateProvider =
 });
 
 /// Mode state notifier - handles optimistic updates and confirmations
+///
+/// Build 50: Complete rewrite of mode protection. Previous builds (36-49) added
+/// patchwork cooldowns to individual handlers, but stale events kept finding
+/// unprotected paths. Now uses a SINGLE unified guard: when the user clicks a
+/// mode, ALL external mode overrides are blocked for 15 seconds. Only the
+/// target mode (or mission locks) can break through.
 class ModeStateNotifier extends StateNotifier<ModeState> {
   final Ref _ref;
   Timer? _timeoutTimer;
   Timer? _errorDismissTimer;
   Timer? _telemetrySyncTimer;
   StreamSubscription? _wsSubscription;
+
   static const Duration _confirmationTimeout = Duration(seconds: 10);
-  // Build 34: Debounce mode changes to prevent rapid flipping
-  static const Duration _modeChangeDebounce = Duration(milliseconds: 500);
-  // Build 36: User-initiated change cooldown - blocks ALL external mode updates
-  static const Duration _userChangeCooldown = Duration(seconds: 5);
-  // Build 48: Grace period after ANY confirmed mode change before telemetry can override
-  static const Duration _postChangeCooldown = Duration(seconds: 8);
-  DateTime? _lastModeChangeTime;
-  DateTime? _userInitiatedChangeTime; // When user explicitly clicked a mode
+
+  /// Build 50: Single unified block duration. When user clicks a mode, ALL
+  /// external mode updates that don't match the target are blocked for this
+  /// duration. Covers: battery events, status_update, mode_changed, telemetry
+  /// sync — every possible path.
+  static const Duration _externalBlockDuration = Duration(seconds: 15);
+  DateTime? _externalBlockUntil;
 
   ModeStateNotifier(this._ref) : super(const ModeState()) {
     _listenToModeEvents();
     _getInitialMode();
     _startTelemetrySync();
   }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // BUILD 50: UNIFIED EXTERNAL MODE GUARD
+  // ─────────────────────────────────────────────────────────────────────────
+
+  /// Returns true if the incoming mode should be BLOCKED.
+  /// Called by every handler that can change currentMode from external events.
+  ///
+  /// During the block window:
+  /// - Target mode (pending or current) passes through → confirms the change
+  /// - Mission locks (locked=true) pass through → authoritative override
+  /// - Everything else is blocked → stale battery/status/mode_changed events
+  bool _shouldBlockExternalMode(RobotMode incomingMode, {bool isLocked = false}) {
+    // Mission locks are always authoritative
+    if (isLocked) return false;
+
+    // No block active — allow everything
+    if (_externalBlockUntil == null) return false;
+
+    // Block expired — resume normal behavior
+    if (DateTime.now().isAfter(_externalBlockUntil!)) {
+      print('Mode: External block expired, resuming normal sync');
+      _externalBlockUntil = null;
+      return false;
+    }
+
+    // During block: only accept the mode we're targeting
+    final targetMode = state.pendingMode ?? state.currentMode;
+    if (incomingMode == targetMode) return false;
+
+    // Block this update
+    final remainingSec = _externalBlockUntil!.difference(DateTime.now()).inSeconds;
+    print('Mode: BLOCKED ${incomingMode.value} (target: ${targetMode.value}, ${remainingSec}s remaining)');
+    return true;
+  }
+
+  /// Activate the external mode block (called when user initiates a mode change)
+  void _activateExternalBlock() {
+    _externalBlockUntil = DateTime.now().add(_externalBlockDuration);
+    print('Mode: External block activated for ${_externalBlockDuration.inSeconds}s');
+  }
+
+  /// Extend the external mode block (called after timeout-trust or confirmation)
+  void _extendExternalBlock() {
+    _externalBlockUntil = DateTime.now().add(_externalBlockDuration);
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // TELEMETRY SYNC
+  // ─────────────────────────────────────────────────────────────────────────
 
   /// Periodically sync mode from telemetry (catches missed WebSocket events)
   void _startTelemetrySync() {
@@ -132,28 +188,16 @@ class ModeStateNotifier extends StateNotifier<ModeState> {
 
   /// Sync mode from telemetry if we're not in the middle of a change
   void _syncFromTelemetry() {
-    if (state.isChanging) return; // Don't override during pending change
-
-    // Build 48: Don't override recently confirmed mode changes — telemetry may be stale
-    if (_lastModeChangeTime != null) {
-      final timeSinceLastChange = DateTime.now().difference(_lastModeChangeTime!);
-      if (timeSinceLastChange < _postChangeCooldown) {
-        return; // Recent mode change, wait for telemetry to catch up
-      }
-    }
-
-    // Build 36: Don't override during user-initiated change cooldown
-    if (_userInitiatedChangeTime != null) {
-      final timeSinceUserChange = DateTime.now().difference(_userInitiatedChangeTime!);
-      if (timeSinceUserChange < _userChangeCooldown) {
-        return; // User just clicked, don't sync from telemetry yet
-      }
-    }
+    if (state.isChanging) return;
 
     final telemetry = _ref.read(telemetryProvider);
     if (telemetry.mode.isEmpty) return;
 
     final telemetryMode = RobotMode.fromString(telemetry.mode);
+
+    // Unified guard
+    if (_shouldBlockExternalMode(telemetryMode)) return;
+
     if (telemetryMode != state.currentMode) {
       print('Mode: Syncing from telemetry - ${telemetry.mode} (was ${state.currentMode.value})');
       state = state.copyWith(currentMode: telemetryMode);
@@ -168,23 +212,24 @@ class ModeStateNotifier extends StateNotifier<ModeState> {
     }
   }
 
+  // ─────────────────────────────────────────────────────────────────────────
+  // WEBSOCKET EVENT HANDLERS
+  // ─────────────────────────────────────────────────────────────────────────
+
   /// Listen to WebSocket events for mode confirmations
   void _listenToModeEvents() {
     final ws = _ref.read(websocketClientProvider);
     _wsSubscription = ws.eventStream.listen((event) {
-      // Handle mode-related events
       if (event.type == 'mode') {
         final mode = event.data['mode'] as String?;
         if (mode != null) {
           _handleModeConfirmation(mode);
         }
       } else if (event.type == 'mode_changed') {
-        // Build 31: mode_changed event with locked state
         _handleModeChangedEvent(event.data);
       } else if (event.type == 'status_update' ||
                  event.type == 'battery' ||
                  event.type == 'telemetry') {
-        // These events may contain mode field
         final mode = event.data['mode'] as String?;
         if (mode != null) {
           _handleModeConfirmation(mode);
@@ -197,7 +242,7 @@ class ModeStateNotifier extends StateNotifier<ModeState> {
     });
   }
 
-  /// Handle Build 31 mode_changed events
+  /// Handle mode_changed events (explicit mode change broadcasts from robot)
   void _handleModeChangedEvent(Map<String, dynamic> data) {
     final mode = data['mode'] as String?;
     final locked = data['locked'] as bool? ?? false;
@@ -205,42 +250,69 @@ class ModeStateNotifier extends StateNotifier<ModeState> {
 
     print('Mode: mode_changed event - mode=$mode, locked=$locked, reason=$lockReason');
 
-    if (mode != null) {
-      final confirmedMode = RobotMode.fromString(mode);
+    if (mode == null) return;
 
-      // Build 48: If we're waiting for a specific mode, only accept matching mode
-      // or locked modes (mission overrides). Stale/transitional mode_changed events
-      // for the wrong mode are ignored — let timeout handle genuine failures.
-      if (state.isChanging && state.pendingMode != null) {
-        if (confirmedMode == state.pendingMode || locked) {
-          // Expected mode confirmed, or mission lock override — accept it
-          print('Mode: mode_changed confirmed ${confirmedMode.value}');
-        } else {
-          // Different mode during pending change — likely stale/transitional
-          print('Mode: Ignoring mode_changed ${confirmedMode.value} while waiting for ${state.pendingMode!.value}');
-          return;
-        }
+    final confirmedMode = RobotMode.fromString(mode);
+
+    // Unified guard — blocks stale mode_changed events too
+    if (_shouldBlockExternalMode(confirmedMode, isLocked: locked)) return;
+
+    _cancelTimeout();
+
+    // Extract mission name from lock reason if available
+    String? missionName;
+    if (locked && lockReason != null && lockReason.contains(':')) {
+      missionName = lockReason.split(':').last.trim();
+    }
+
+    // If this confirms our pending mode, extend the block to protect it
+    if (state.isChanging && state.pendingMode == confirmedMode) {
+      print('Mode: mode_changed confirmed ${confirmedMode.value}');
+      _extendExternalBlock();
+    }
+
+    state = state.copyWith(
+      currentMode: confirmedMode,
+      isChanging: false,
+      clearPending: true,
+      clearError: true,
+      isModeLocked: locked,
+      activeMissionName: locked ? missionName : null,
+    );
+  }
+
+  /// Handle mode confirmation from status_update/battery/telemetry/mode events
+  void _handleModeConfirmation(String modeValue) {
+    final confirmedMode = RobotMode.fromString(modeValue);
+
+    // Unified guard
+    if (_shouldBlockExternalMode(confirmedMode)) return;
+
+    if (state.isChanging && state.pendingMode != null) {
+      if (confirmedMode == state.pendingMode) {
+        // Confirmed our pending mode
+        print('Mode: Confirmed ${confirmedMode.value}');
+        _cancelTimeout();
+        _extendExternalBlock();
+        state = state.copyWith(
+          currentMode: confirmedMode,
+          isChanging: false,
+          clearPending: true,
+          clearError: true,
+        );
       }
-
-      _cancelTimeout();
-      _lastModeChangeTime = DateTime.now();
-
-      // Extract mission name from lock reason if available
-      String? missionName;
-      if (locked && lockReason != null && lockReason.contains(':')) {
-        missionName = lockReason.split(':').last.trim();
+      // Non-matching modes during pending state are already blocked by the guard above
+    } else {
+      // Not waiting for confirmation - update if different
+      if (confirmedMode != state.currentMode) {
+        state = state.copyWith(currentMode: confirmedMode);
       }
-
-      state = state.copyWith(
-        currentMode: confirmedMode,
-        isChanging: false,
-        clearPending: true,
-        clearError: true,
-        isModeLocked: locked,
-        activeMissionName: locked ? missionName : null,
-      );
     }
   }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // MISSION HANDLING
+  // ─────────────────────────────────────────────────────────────────────────
 
   /// Handle mission_progress events to lock/unlock mode
   void _handleMissionProgress(Map<String, dynamic> data) {
@@ -252,9 +324,9 @@ class ModeStateNotifier extends StateNotifier<ModeState> {
 
     switch (action) {
       case 'started':
-        // Mission started - lock mode to mission
+        // Mission started - lock mode to mission (authoritative, bypasses guard)
         print('Mode: Mission started: $missionName, locking mode');
-        _lastModeChangeTime = DateTime.now();
+        _externalBlockUntil = null; // Clear any user block — mission overrides
         state = state.copyWith(
           currentMode: RobotMode.mission,
           activeMissionId: missionId,
@@ -269,13 +341,9 @@ class ModeStateNotifier extends StateNotifier<ModeState> {
       case 'stopped':
         _handleMissionEnded();
         break;
-      // For progress updates (no action field), don't change mode state
       default:
-        // Build 36: Only update mission info if we're ALREADY in mission mode (confirmed by robot)
-        // Don't force mode change on progress events without 'started' action
-        // This prevents app showing "mission" when robot hasn't confirmed mode change
+        // Only update mission info if already in mission mode
         if (state.currentMode == RobotMode.mission && missionId != null) {
-          // Already in mission mode, just update mission info if needed
           if (state.activeMissionId != missionId) {
             print('Mode: Updating mission info for active mission');
             state = state.copyWith(
@@ -284,7 +352,6 @@ class ModeStateNotifier extends StateNotifier<ModeState> {
             );
           }
         }
-        // Note: Don't force mission mode here - wait for explicit 'started' action
         break;
     }
   }
@@ -295,7 +362,6 @@ class ModeStateNotifier extends StateNotifier<ModeState> {
     final wasActive = state.activeMissionName;
     final restoreMode = state.previousPortraitMode;
     print('Mode: Mission ended: $wasActive, unlocking mode, restoring to ${restoreMode.value}');
-    _lastModeChangeTime = DateTime.now();
     state = state.copyWith(
       currentMode: restoreMode,
       isModeLocked: false,
@@ -307,72 +373,9 @@ class ModeStateNotifier extends StateNotifier<ModeState> {
     _ref.read(websocketClientProvider).sendModeCommand(restoreMode.value, source: 'mission_end');
   }
 
-  /// Handle mode confirmation from telemetry/status_update
-  void _handleModeConfirmation(String modeValue) {
-    final confirmedMode = RobotMode.fromString(modeValue);
-    print('Mode: Received confirmation - mode=$modeValue, pending=${state.pendingMode?.value}');
-
-    // Build 36: If user just initiated a change, only accept the expected mode (or wait for timeout)
-    if (_userInitiatedChangeTime != null && state.isChanging) {
-      final timeSinceUserChange = DateTime.now().difference(_userInitiatedChangeTime!);
-      if (timeSinceUserChange < _userChangeCooldown) {
-        // During cooldown, only accept the mode we're waiting for
-        if (state.pendingMode != null && confirmedMode == state.pendingMode) {
-          print('Mode: Confirmed user-requested ${confirmedMode.value}');
-          _cancelTimeout();
-          _lastModeChangeTime = DateTime.now();
-          state = state.copyWith(
-            currentMode: confirmedMode,
-            isChanging: false,
-            clearPending: true,
-            clearError: true,
-          );
-        } else {
-          print('Mode: Ignoring ${confirmedMode.value} during user cooldown (waiting for ${state.pendingMode?.value})');
-        }
-        return;
-      }
-    }
-
-    // Build 49: Post-change cooldown — protect recently accepted/confirmed mode from stale events.
-    // Critical after timeout-trust accepts a mode: without this, the next battery/status_update
-    // event carrying stale mode:idle would immediately override the trusted mode back to idle.
-    if (_lastModeChangeTime != null && !state.isChanging) {
-      final timeSinceLastChange = DateTime.now().difference(_lastModeChangeTime!);
-      if (timeSinceLastChange < _postChangeCooldown && confirmedMode != state.currentMode) {
-        print('Mode: Ignoring stale ${confirmedMode.value} during post-change cooldown (${timeSinceLastChange.inSeconds}s < ${_postChangeCooldown.inSeconds}s, current: ${state.currentMode.value})');
-        return;
-      }
-    }
-
-    // If we're waiting for a pending mode and this matches, confirm it
-    if (state.isChanging && state.pendingMode != null) {
-      if (confirmedMode == state.pendingMode) {
-        // Success! Mode confirmed
-        print('Mode: Confirmed ${confirmedMode.value}');
-        _cancelTimeout();
-        _lastModeChangeTime = DateTime.now();
-        state = state.copyWith(
-          currentMode: confirmedMode,
-          isChanging: false,
-          clearPending: true,
-          clearError: true,
-        );
-      } else {
-        // Received different mode from status/battery/telemetry event while pending.
-        // These events may be stale — only explicit mode_changed events (handled by
-        // _handleModeChangedEvent) should override a pending change. Let timeout handle
-        // genuine failures.
-        print('Mode: Ignoring stale ${confirmedMode.value} while waiting for ${state.pendingMode!.value}');
-      }
-    } else {
-      // Not waiting for confirmation - just update current mode if different
-      if (confirmedMode != state.currentMode) {
-        _lastModeChangeTime = DateTime.now();
-        state = state.copyWith(currentMode: confirmedMode);
-      }
-    }
-  }
+  // ─────────────────────────────────────────────────────────────────────────
+  // USER-INITIATED MODE CHANGE
+  // ─────────────────────────────────────────────────────────────────────────
 
   /// Set mode with optimistic update (v1.3: includes source context)
   Future<void> setMode(RobotMode mode, {String source = 'dropdown'}) async {
@@ -402,13 +405,12 @@ class ModeStateNotifier extends StateNotifier<ModeState> {
       return;
     }
 
-    // Cancel any existing timeout
     _cancelTimeout();
 
     print('Mode: Setting to ${mode.value} (optimistic, source=$source)');
 
-    // Build 36: Track user-initiated change to block external mode updates during cooldown
-    _userInitiatedChangeTime = DateTime.now();
+    // Build 50: Activate unified external block — blocks ALL stale mode overrides
+    _activateExternalBlock();
 
     // Optimistic update - immediately show new mode in UI
     state = state.copyWith(
@@ -444,10 +446,13 @@ class ModeStateNotifier extends StateNotifier<ModeState> {
     await setMode(restoreMode, source: source);
   }
 
-  /// Handle timeout — no confirmation received
-  /// Build 49: Trust the user's command. The command was sent, no error/rejection
-  /// came back, so accept the pending mode. If the robot actually disagrees,
-  /// telemetry sync will correct it after the post-change cooldown expires.
+  // ─────────────────────────────────────────────────────────────────────────
+  // TIMEOUT HANDLING
+  // ─────────────────────────────────────────────────────────────────────────
+
+  /// Handle timeout — no confirmation received.
+  /// Build 49+50: Trust the user's command. No error/rejection came back, so
+  /// accept the pending mode. The external block continues to protect it.
   void _onTimeout() {
     if (!state.isChanging) return;
 
@@ -458,7 +463,7 @@ class ModeStateNotifier extends StateNotifier<ModeState> {
         final actualMode = RobotMode.fromString(telemetry.mode);
         if (actualMode == state.pendingMode) {
           print('Mode: Timeout but telemetry confirms ${actualMode.value}');
-          _lastModeChangeTime = DateTime.now();
+          _extendExternalBlock();
           state = state.copyWith(
             currentMode: actualMode,
             isChanging: false,
@@ -470,8 +475,8 @@ class ModeStateNotifier extends StateNotifier<ModeState> {
       }
 
       // No telemetry confirmation, but no error either — trust the command
-      print('Mode: Timeout — no confirmation, accepting ${state.pendingMode!.value} (no error received)');
-      _lastModeChangeTime = DateTime.now();
+      print('Mode: Timeout — accepting ${state.pendingMode!.value} (no error received)');
+      _extendExternalBlock();
       state = state.copyWith(
         currentMode: state.pendingMode!,
         isChanging: false,
