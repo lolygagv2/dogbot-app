@@ -442,36 +442,48 @@ class ModeStateNotifier extends StateNotifier<ModeState> {
     await setMode(restoreMode, source: source);
   }
 
-  /// Handle timeout - check if mode actually changed before showing error
+  /// Handle timeout — no confirmation received
+  /// Build 49: Trust the user's command. The command was sent, no error/rejection
+  /// came back, so accept the pending mode. If the robot actually disagrees,
+  /// telemetry sync will correct it after the post-change cooldown expires.
   void _onTimeout() {
     if (!state.isChanging) return;
 
-    // Check latest telemetry - mode may have changed without explicit confirmation event
-    final telemetry = _ref.read(telemetryProvider);
-    if (state.pendingMode != null && telemetry.mode.isNotEmpty) {
-      final actualMode = RobotMode.fromString(telemetry.mode);
-      if (actualMode == state.pendingMode) {
-        // Mode actually changed, just didn't get explicit confirmation event
-        print('Mode: Timeout but telemetry shows mode=${actualMode.value} — confirming');
-        state = state.copyWith(
-          currentMode: actualMode,
-          isChanging: false,
-          clearPending: true,
-          clearError: true,
-        );
-        return;
+    if (state.pendingMode != null) {
+      // First check: does telemetry already confirm it?
+      final telemetry = _ref.read(telemetryProvider);
+      if (telemetry.mode.isNotEmpty) {
+        final actualMode = RobotMode.fromString(telemetry.mode);
+        if (actualMode == state.pendingMode) {
+          print('Mode: Timeout but telemetry confirms ${actualMode.value}');
+          _lastModeChangeTime = DateTime.now();
+          state = state.copyWith(
+            currentMode: actualMode,
+            isChanging: false,
+            clearPending: true,
+            clearError: true,
+          );
+          return;
+        }
       }
+
+      // No telemetry confirmation, but no error either — trust the command
+      print('Mode: Timeout — no confirmation, accepting ${state.pendingMode!.value} (no error received)');
+      _lastModeChangeTime = DateTime.now();
+      state = state.copyWith(
+        currentMode: state.pendingMode!,
+        isChanging: false,
+        clearPending: true,
+        clearError: true,
+      );
+      return;
     }
 
-    print('Mode: Timeout waiting for confirmation, reverting from ${state.pendingMode?.value} to ${state.currentMode.value}');
-
+    // Fallback: no pending mode (shouldn't happen)
     state = state.copyWith(
       isChanging: false,
       clearPending: true,
-      error: 'Mode change timed out',
-      errorTime: DateTime.now(),
     );
-    _scheduleErrorDismiss();
   }
 
   void _cancelTimeout() {
