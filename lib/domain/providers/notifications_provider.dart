@@ -139,7 +139,7 @@ class NotificationsNotifier extends StateNotifier<List<NotificationEvent>> {
     final type = switch (behavior.toLowerCase()) {
       'sit' || 'sitting' => NotificationEventType.sit,
       'lie' || 'lying' || 'down' || 'lie_down' => NotificationEventType.lieDown,
-      'stand' || 'standing' => NotificationEventType.stand,
+      'stand' || 'standing' || 'come' => NotificationEventType.stand,
       'bark' || 'barking' => NotificationEventType.bark,
       _ => null,
     };
@@ -164,8 +164,8 @@ class NotificationsNotifier extends StateNotifier<List<NotificationEvent>> {
     return switch (type) {
       NotificationEventType.bark => 'Barking Detected',
       NotificationEventType.sit => 'Sitting Detected',
-      NotificationEventType.lieDown => 'Lying Down',
-      NotificationEventType.stand => 'Standing',
+      NotificationEventType.lieDown => 'Lay Down',
+      NotificationEventType.stand => 'Come',
       NotificationEventType.treatDispensed => 'Treat Dispensed',
       NotificationEventType.missionStarted => 'Mission Started',
       NotificationEventType.missionCompleted => 'Mission Completed',
@@ -321,7 +321,7 @@ List<NotificationEvent> _generateMockData() {
       id: '12',
       type: NotificationEventType.lieDown,
       timestamp: now.subtract(const Duration(days: 4)),
-      title: 'Lying Down',
+      title: 'Lay Down',
       subtitle: '87% confidence',
       dogId: 'dog_1',
     ),
@@ -329,7 +329,7 @@ List<NotificationEvent> _generateMockData() {
       id: '13',
       type: NotificationEventType.stand,
       timestamp: now.subtract(const Duration(days: 5)),
-      title: 'Standing',
+      title: 'Come',
       subtitle: '91% confidence',
       dogId: 'dog_1',
     ),

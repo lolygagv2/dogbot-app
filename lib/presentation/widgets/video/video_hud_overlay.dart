@@ -209,7 +209,7 @@ class VideoHudOverlay extends StatelessWidget {
                   borderRadius: BorderRadius.circular(2),
                 ),
                 child: Text(
-                  '${behavior?.toUpperCase() ?? "DOG"} ${((confidence ?? 0) * 100).toInt()}%',
+                  '${AppTheme.getBehaviorDisplayName(behavior).toUpperCase()} ${((confidence ?? 0) * 100).toInt()}%',
                   style: const TextStyle(
                     color: AppTheme.background,
                     fontSize: 10,
@@ -298,7 +298,7 @@ class _DetectionBadge extends StatelessWidget {
           PulseIndicator(color: color, size: 8),
           const SizedBox(width: 8),
           Text(
-            behavior?.toUpperCase() ?? 'DETECTED',
+            AppTheme.getBehaviorDisplayName(behavior).toUpperCase(),
             style: TextStyle(
               color: color,
               fontSize: 12,

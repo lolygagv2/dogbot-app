@@ -429,7 +429,8 @@ class _MissionCard extends StatelessWidget {
       case 'sit': return Icons.airline_seat_recline_normal;
       case 'down':
       case 'lie': return Icons.hotel;
-      case 'stand': return Icons.accessibility_new;
+      case 'stand':
+      case 'come': return Icons.accessibility_new;
       case 'stay': return Icons.timer;
       case 'quiet':
       case 'bark': return Icons.volume_off;

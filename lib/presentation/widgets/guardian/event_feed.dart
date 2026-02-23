@@ -24,6 +24,12 @@ class _EventFeedState extends ConsumerState<EventFeed> {
   }
 
   @override
+  void dispose() {
+    ref.read(guardianEventsProvider.notifier).stopListening();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     final eventsState = ref.watch(guardianEventsProvider);
     final events = eventsState.sortedEvents;

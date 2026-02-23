@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../../domain/providers/coach_provider.dart';
 import '../../../domain/providers/connection_provider.dart';
 import '../../../domain/providers/dog_profiles_provider.dart';
+import '../../../domain/providers/telemetry_provider.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/video/webrtc_video_view.dart';
 
@@ -43,6 +44,7 @@ class _CoachScreenState extends ConsumerState<CoachScreen> {
     final coachState = ref.watch(coachProvider);
     final selectedDog = ref.watch(selectedDogProvider);
     final isConnected = ref.watch(isRobotOnlineProvider);
+    final telemetry = ref.watch(telemetryProvider);
 
     // Build 38: NO commands in lifecycle handlers. Commands ONLY on explicit user tap.
     // If user navigates away while coaching, coach mode stays active on robot.
@@ -55,6 +57,47 @@ class _CoachScreenState extends ConsumerState<CoachScreen> {
             const Positioned.fill(
               child: WebRTCVideoView(),
             ),
+
+            // Detection chip with confidence %
+            if (telemetry.dogDetected)
+              Positioned(
+                top: MediaQuery.of(context).padding.top + 60,
+                left: 16,
+                child: IgnorePointer(
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: AppTheme.getBehaviorColor(telemetry.currentBehavior).withOpacity(0.9),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(Icons.pets, color: Colors.white, size: 16),
+                        const SizedBox(width: 6),
+                        Text(
+                          AppTheme.getBehaviorDisplayName(telemetry.currentBehavior).toUpperCase(),
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 12,
+                          ),
+                        ),
+                        if (telemetry.confidence != null) ...[
+                          const SizedBox(width: 6),
+                          Text(
+                            '${(telemetry.confidence! * 100).toInt()}%',
+                            style: const TextStyle(
+                              color: Colors.white70,
+                              fontSize: 12,
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                ),
+              ),
 
             // Top bar with back and stop buttons
             Positioned(
@@ -337,7 +380,7 @@ class _TrickChip extends StatelessWidget {
               const SizedBox(width: 4),
             ],
             Text(
-              behavior.toUpperCase(),
+              AppTheme.getBehaviorDisplayName(behavior).toUpperCase(),
               style: TextStyle(
                 color: isHighlighted ? Colors.green : Colors.white,
                 fontSize: 12,
@@ -390,7 +433,7 @@ class _RewardFlash extends StatelessWidget {
             const Icon(Icons.celebration, color: Colors.white, size: 24),
             const SizedBox(width: 8),
             Text(
-              behavior != null ? '${behavior!.toUpperCase()}!' : 'GOOD!',
+              behavior != null ? '${AppTheme.getBehaviorDisplayName(behavior!).toUpperCase()}!' : 'GOOD!',
               style: const TextStyle(
                 color: Colors.white,
                 fontSize: 20,

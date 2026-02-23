@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/network/websocket_client.dart';
 import '../../data/models/guardian_event.dart';
+import 'mode_provider.dart';
 
 /// Maximum number of events to keep in memory
 const int _maxEvents = 100;
@@ -75,6 +76,10 @@ class GuardianEventsNotifier extends StateNotifier<GuardianEventsState> {
 
   /// Handle incoming WebSocket events
   void _handleWsEvent(WsEvent wsEvent) {
+    // Only process events when in Silent Guardian mode
+    final currentMode = _ref.read(modeStateProvider).currentMode;
+    if (currentMode != RobotMode.silentGuardian) return;
+
     // Look for guardian/event type messages
     if (wsEvent.type == 'event' ||
         wsEvent.type == 'guardian_event' ||

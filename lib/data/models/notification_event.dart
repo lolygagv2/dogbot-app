@@ -79,9 +79,9 @@ String _getDefaultTitle(NotificationEventType type) {
     case NotificationEventType.sit:
       return 'Sitting Detected';
     case NotificationEventType.lieDown:
-      return 'Lying Down';
+      return 'Lay Down';
     case NotificationEventType.stand:
-      return 'Standing';
+      return 'Come';
     case NotificationEventType.treatDispensed:
       return 'Treat Dispensed';
     case NotificationEventType.missionStarted:

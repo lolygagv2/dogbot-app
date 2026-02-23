@@ -199,7 +199,7 @@ class _DetectionChipState extends State<_DetectionChip> {
             const Icon(Icons.pets, color: Colors.white, size: 16),
             const SizedBox(width: 6),
             Text(
-              widget.behavior?.toUpperCase() ?? 'DETECTED',
+              AppTheme.getBehaviorDisplayName(widget.behavior).toUpperCase(),
               style: const TextStyle(
                 color: Colors.white,
                 fontWeight: FontWeight.bold,
@@ -289,7 +289,12 @@ class _ModeAndDriveRow extends ConsumerWidget {
                   child: GestureDetector(
                     onTap: isLocked
                         ? null
-                        : () => ref.read(modeStateProvider.notifier).setMode(mode, source: 'dropdown'),
+                        : () {
+                            ref.read(modeStateProvider.notifier).setMode(mode, source: 'dropdown');
+                            if (mode == RobotMode.coach) {
+                              context.push('/coach');
+                            }
+                          },
                     child: AnimatedContainer(
                       duration: const Duration(milliseconds: 200),
                       margin: const EdgeInsets.all(3),

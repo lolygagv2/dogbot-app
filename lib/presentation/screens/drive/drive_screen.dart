@@ -37,6 +37,8 @@ class _DriveScreenState extends ConsumerState<DriveScreen> {
         print('DriveScreen: Mission active (${modeState.activeMissionName}), keeping mission mode');
       } else if (modeState.currentMode == RobotMode.mission) {
         print('DriveScreen: In mission mode, keeping it');
+      } else if (modeState.currentMode == RobotMode.coach) {
+        print('DriveScreen: In coach mode, keeping it');
       } else {
         // Store current portrait mode before entering landscape
         ref.read(modeStateProvider.notifier).storePortraitMode();
@@ -73,7 +75,8 @@ class _DriveScreenState extends ConsumerState<DriveScreen> {
     // Check if we're ready to drive (in manual mode and not pending)
     final isMissionActive = modeState.isMissionActive || modeState.currentMode == RobotMode.mission;
     final isReady = (modeState.currentMode == RobotMode.manual &&
-        modeState.pendingMode == null) || isMissionActive;
+        modeState.pendingMode == null) || isMissionActive ||
+        modeState.currentMode == RobotMode.coach;
 
     // Clear mode change request flag when confirmed
     if (_modeChangeRequested && isReady) {
@@ -89,7 +92,8 @@ class _DriveScreenState extends ConsumerState<DriveScreen> {
           onPressed: () {
             // v1.3: Restore previous portrait mode on exit
             final modeState = ref.read(modeStateProvider);
-            if (!modeState.isMissionActive && !modeState.isModeLocked) {
+            if (!modeState.isMissionActive && !modeState.isModeLocked &&
+                modeState.currentMode != RobotMode.coach) {
               ref.read(modeStateProvider.notifier).restorePortraitMode();
             }
             Navigator.of(context).pop();
@@ -161,7 +165,7 @@ class _DriveScreenState extends ConsumerState<DriveScreen> {
                         const Icon(Icons.pets, color: Colors.white, size: 16),
                         const SizedBox(width: 4),
                         Text(
-                          telemetry.currentBehavior?.toUpperCase() ?? 'DETECTED',
+                          AppTheme.getBehaviorDisplayName(telemetry.currentBehavior).toUpperCase(),
                           style: const TextStyle(
                             color: Colors.white,
                             fontWeight: FontWeight.bold,

@@ -306,6 +306,29 @@ class AppTheme {
 
   // ============ Helper Methods ============
 
+  /// Get display name for behavior (dog training terminology)
+  static String getBehaviorDisplayName(String? behavior) {
+    switch (behavior?.toLowerCase()) {
+      case 'sit':
+      case 'sitting':
+        return 'Sit';
+      case 'stand':
+      case 'standing':
+      case 'come':
+        return 'Come';
+      case 'down':
+      case 'lying':
+      case 'lie':
+      case 'lie_down':
+        return 'Lay Down';
+      case 'bark':
+      case 'barking':
+        return 'Bark';
+      default:
+        return behavior ?? 'Unknown';
+    }
+  }
+
   /// Get color for behavior type with glow effect
   static Color getBehaviorColor(String? behavior) {
     switch (behavior?.toLowerCase()) {
@@ -314,6 +337,7 @@ class AppTheme {
         return behaviorSitting;
       case 'standing':
       case 'stand':
+      case 'come':
         return behaviorStanding;
       case 'lying':
       case 'lie':
