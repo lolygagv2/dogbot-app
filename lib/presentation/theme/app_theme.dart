@@ -308,7 +308,8 @@ class AppTheme {
 
   /// Get display name for behavior (dog training terminology)
   static String getBehaviorDisplayName(String? behavior) {
-    switch (behavior?.toLowerCase()) {
+    if (behavior == null) return 'Dog';
+    switch (behavior.toLowerCase()) {
       case 'sit':
       case 'sitting':
         return 'Sit';
@@ -325,7 +326,7 @@ class AppTheme {
       case 'barking':
         return 'Bark';
       default:
-        return behavior ?? 'Unknown';
+        return behavior;
     }
   }
 

@@ -4,6 +4,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 
+import 'package:go_router/go_router.dart';
+
+import '../../../domain/providers/coach_provider.dart';
+import '../../../domain/providers/connection_provider.dart';
 import '../../../domain/providers/control_provider.dart';
 import '../../../domain/providers/missions_provider.dart';
 import '../../../domain/providers/mode_provider.dart';
@@ -92,11 +96,15 @@ class _DriveScreenState extends ConsumerState<DriveScreen> {
           onPressed: () {
             // v1.3: Restore previous portrait mode on exit
             final modeState = ref.read(modeStateProvider);
-            if (!modeState.isMissionActive && !modeState.isModeLocked &&
-                modeState.currentMode != RobotMode.coach) {
-              ref.read(modeStateProvider.notifier).restorePortraitMode();
+            if (modeState.currentMode == RobotMode.coach) {
+              // Return to coach screen (portrait) — keep coach mode active
+              context.go('/coach');
+            } else {
+              if (!modeState.isMissionActive && !modeState.isModeLocked) {
+                ref.read(modeStateProvider.notifier).restorePortraitMode();
+              }
+              Navigator.of(context).pop();
             }
-            Navigator.of(context).pop();
           },
           icon: Container(
             padding: const EdgeInsets.all(8),
@@ -252,6 +260,10 @@ class _DriveScreenState extends ConsumerState<DriveScreen> {
             left: 16,
             child: const AudioMuteToggle(),
           ),
+
+          // Coach mode trick buttons (landscape overlay)
+          if (modeState.currentMode == RobotMode.coach)
+            _DriveCoachOverlay(),
 
           // v1.3: Brief toast overlay during mode transition (auto-dismisses)
           if (!isReady && _modeChangeRequested)
@@ -769,6 +781,120 @@ class _DpadButton extends StatelessWidget {
           ),
           child: Icon(icon, color: Colors.white, size: 28),
         ),
+      ),
+    );
+  }
+}
+
+/// Coach mode trick buttons overlay for drive screen (landscape)
+class _DriveCoachOverlay extends ConsumerWidget {
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final coachState = ref.watch(coachProvider);
+    final isConnected = ref.watch(isRobotOnlineProvider);
+    final telemetry = ref.watch(telemetryProvider);
+
+    return Positioned(
+      top: MediaQuery.of(context).padding.top + 88,
+      right: 16,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          // Detection chip
+          if (telemetry.dogDetected)
+            Container(
+              margin: const EdgeInsets.only(bottom: 8),
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+              decoration: BoxDecoration(
+                color: AppTheme.getBehaviorColor(telemetry.currentBehavior).withOpacity(0.9),
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Icons.pets, color: Colors.white, size: 14),
+                  const SizedBox(width: 4),
+                  Text(
+                    AppTheme.getBehaviorDisplayName(telemetry.currentBehavior).toUpperCase(),
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 11,
+                    ),
+                  ),
+                  if (telemetry.confidence != null) ...[
+                    const SizedBox(width: 4),
+                    Text(
+                      '${(telemetry.confidence! * 100).toInt()}%',
+                      style: const TextStyle(color: Colors.white70, fontSize: 11),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          // Trick buttons
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: Colors.black.withOpacity(0.7),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: Colors.orange.withOpacity(0.4)),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text(
+                  'COACH',
+                  style: TextStyle(
+                    color: Colors.orange,
+                    fontSize: 10,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 1,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Wrap(
+                  spacing: 6,
+                  runSpacing: 4,
+                  children: coachState.watchingFor.map((behavior) {
+                    final isHighlighted = coachState.lastRewardBehavior?.toLowerCase() == behavior.toLowerCase();
+                    return GestureDetector(
+                      onTap: coachState.isActive && isConnected
+                          ? () => ref.read(coachProvider.notifier).forceTrick(behavior)
+                          : null,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                        decoration: BoxDecoration(
+                          color: isHighlighted
+                              ? Colors.green.withOpacity(0.3)
+                              : Colors.white.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: isHighlighted
+                                ? Colors.green
+                                : coachState.isActive && isConnected
+                                    ? AppTheme.primary.withOpacity(0.5)
+                                    : Colors.white.withOpacity(0.3),
+                            width: coachState.isActive && isConnected ? 2 : 1,
+                          ),
+                        ),
+                        child: Text(
+                          AppTheme.getBehaviorDisplayName(behavior).toUpperCase(),
+                          style: TextStyle(
+                            color: isHighlighted ? Colors.green : Colors.white,
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    );
+                  }).toList(),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }

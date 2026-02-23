@@ -259,7 +259,7 @@ class _CoachScreenState extends ConsumerState<CoachScreen> {
                           ),
                           const SizedBox(height: 12),
                           const Text(
-                            'Watching for:',
+                            'When dog visible:',
                             style: TextStyle(
                               color: Colors.white70,
                               fontSize: 12,
