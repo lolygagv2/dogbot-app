@@ -30,6 +30,8 @@ mixin _$Telemetry {
   int get treatsRemaining => throw _privateConstructorUsedError;
   DateTime? get lastTreatTime => throw _privateConstructorUsedError;
   String? get activeMissionId => throw _privateConstructorUsedError;
+  String? get connectionType =>
+      throw _privateConstructorUsedError; // "LAN" (P2P), "WAN" (TURN relay), or null
   Map<String, dynamic> get rawData => throw _privateConstructorUsedError;
 
   /// Serializes this Telemetry to a JSON map.
@@ -58,6 +60,7 @@ abstract class $TelemetryCopyWith<$Res> {
       int treatsRemaining,
       DateTime? lastTreatTime,
       String? activeMissionId,
+      String? connectionType,
       Map<String, dynamic> rawData});
 }
 
@@ -86,6 +89,7 @@ class _$TelemetryCopyWithImpl<$Res, $Val extends Telemetry>
     Object? treatsRemaining = null,
     Object? lastTreatTime = freezed,
     Object? activeMissionId = freezed,
+    Object? connectionType = freezed,
     Object? rawData = null,
   }) {
     return _then(_value.copyWith(
@@ -129,6 +133,10 @@ class _$TelemetryCopyWithImpl<$Res, $Val extends Telemetry>
           ? _value.activeMissionId
           : activeMissionId // ignore: cast_nullable_to_non_nullable
               as String?,
+      connectionType: freezed == connectionType
+          ? _value.connectionType
+          : connectionType // ignore: cast_nullable_to_non_nullable
+              as String?,
       rawData: null == rawData
           ? _value.rawData
           : rawData // ignore: cast_nullable_to_non_nullable
@@ -156,6 +164,7 @@ abstract class _$$TelemetryImplCopyWith<$Res>
       int treatsRemaining,
       DateTime? lastTreatTime,
       String? activeMissionId,
+      String? connectionType,
       Map<String, dynamic> rawData});
 }
 
@@ -182,6 +191,7 @@ class __$$TelemetryImplCopyWithImpl<$Res>
     Object? treatsRemaining = null,
     Object? lastTreatTime = freezed,
     Object? activeMissionId = freezed,
+    Object? connectionType = freezed,
     Object? rawData = null,
   }) {
     return _then(_$TelemetryImpl(
@@ -225,6 +235,10 @@ class __$$TelemetryImplCopyWithImpl<$Res>
           ? _value.activeMissionId
           : activeMissionId // ignore: cast_nullable_to_non_nullable
               as String?,
+      connectionType: freezed == connectionType
+          ? _value.connectionType
+          : connectionType // ignore: cast_nullable_to_non_nullable
+              as String?,
       rawData: null == rawData
           ? _value._rawData
           : rawData // ignore: cast_nullable_to_non_nullable
@@ -247,6 +261,7 @@ class _$TelemetryImpl implements _Telemetry {
       this.treatsRemaining = 0,
       this.lastTreatTime,
       this.activeMissionId,
+      this.connectionType,
       final Map<String, dynamic> rawData = const {}})
       : _rawData = rawData;
 
@@ -279,7 +294,11 @@ class _$TelemetryImpl implements _Telemetry {
   final DateTime? lastTreatTime;
   @override
   final String? activeMissionId;
+  @override
+  final String? connectionType;
+// "LAN" (P2P), "WAN" (TURN relay), or null
   final Map<String, dynamic> _rawData;
+// "LAN" (P2P), "WAN" (TURN relay), or null
   @override
   @JsonKey()
   Map<String, dynamic> get rawData {
@@ -290,7 +309,7 @@ class _$TelemetryImpl implements _Telemetry {
 
   @override
   String toString() {
-    return 'Telemetry(battery: $battery, temperature: $temperature, mode: $mode, dogDetected: $dogDetected, currentBehavior: $currentBehavior, confidence: $confidence, isCharging: $isCharging, treatsRemaining: $treatsRemaining, lastTreatTime: $lastTreatTime, activeMissionId: $activeMissionId, rawData: $rawData)';
+    return 'Telemetry(battery: $battery, temperature: $temperature, mode: $mode, dogDetected: $dogDetected, currentBehavior: $currentBehavior, confidence: $confidence, isCharging: $isCharging, treatsRemaining: $treatsRemaining, lastTreatTime: $lastTreatTime, activeMissionId: $activeMissionId, connectionType: $connectionType, rawData: $rawData)';
   }
 
   @override
@@ -316,6 +335,8 @@ class _$TelemetryImpl implements _Telemetry {
                 other.lastTreatTime == lastTreatTime) &&
             (identical(other.activeMissionId, activeMissionId) ||
                 other.activeMissionId == activeMissionId) &&
+            (identical(other.connectionType, connectionType) ||
+                other.connectionType == connectionType) &&
             const DeepCollectionEquality().equals(other._rawData, _rawData));
   }
 
@@ -333,6 +354,7 @@ class _$TelemetryImpl implements _Telemetry {
       treatsRemaining,
       lastTreatTime,
       activeMissionId,
+      connectionType,
       const DeepCollectionEquality().hash(_rawData));
 
   /// Create a copy of Telemetry
@@ -363,6 +385,7 @@ abstract class _Telemetry implements Telemetry {
       final int treatsRemaining,
       final DateTime? lastTreatTime,
       final String? activeMissionId,
+      final String? connectionType,
       final Map<String, dynamic> rawData}) = _$TelemetryImpl;
 
   factory _Telemetry.fromJson(Map<String, dynamic> json) =
@@ -388,6 +411,8 @@ abstract class _Telemetry implements Telemetry {
   DateTime? get lastTreatTime;
   @override
   String? get activeMissionId;
+  @override
+  String? get connectionType; // "LAN" (P2P), "WAN" (TURN relay), or null
   @override
   Map<String, dynamic> get rawData;
 

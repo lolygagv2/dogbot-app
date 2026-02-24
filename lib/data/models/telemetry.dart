@@ -17,6 +17,7 @@ class Telemetry with _$Telemetry {
     @Default(0) int treatsRemaining,
     DateTime? lastTreatTime,
     String? activeMissionId,
+    String? connectionType, // "LAN" (P2P), "WAN" (TURN relay), or null
     @Default({}) Map<String, dynamic> rawData,
   }) = _Telemetry;
 
@@ -67,6 +68,7 @@ class Telemetry with _$Telemetry {
           0,
       activeMissionId: json['active_mission_id'] as String? ??
           json['activeMission'] as String?,
+      connectionType: json['connection_type'] as String?,
       rawData: json,
     );
   }

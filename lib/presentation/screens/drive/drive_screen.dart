@@ -12,7 +12,6 @@ import '../../../domain/providers/control_provider.dart';
 import '../../../domain/providers/missions_provider.dart';
 import '../../../domain/providers/mode_provider.dart';
 import '../../../domain/providers/telemetry_provider.dart';
-import '../../../domain/providers/webrtc_provider.dart';
 import '../../widgets/video/webrtc_video_view.dart';
 import '../../widgets/video/audio_mute_toggle.dart';
 import '../../widgets/controls/push_to_talk.dart';
@@ -1044,34 +1043,28 @@ class _LandscapeModeSelector extends ConsumerWidget {
   }
 }
 
-/// WebRTC ICE connection path diagnostic badge
-/// Shows whether video is using direct P2P, NAT traversal, or TURN relay
+/// WebRTC connection type badge — reads from robot telemetry
+/// "LAN" = direct P2P (same WiFi), "WAN" = TURN relay
 class _IcePathBadge extends ConsumerWidget {
   const _IcePathBadge();
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final webrtcState = ref.watch(webrtcProvider);
-    final path = webrtcState.connectionPath;
+    final connectionType = ref.watch(telemetryProvider).connectionType;
 
-    // Only show when we have connection path info
-    if (path == null) return const SizedBox.shrink();
+    // Only show when robot reports connection type
+    if (connectionType == null) return const SizedBox.shrink();
 
     final Color badgeColor;
     final IconData badgeIcon;
-    if (path.contains('RELAY')) {
+    if (connectionType == 'LAN') {
+      badgeColor = Colors.green;
+      badgeIcon = Icons.wifi;
+    } else {
+      // WAN / TURN relay
       badgeColor = Colors.orange;
       badgeIcon = Icons.cloud;
-    } else if (path == 'P2P') {
-      badgeColor = Colors.green;
-      badgeIcon = Icons.swap_horiz;
-    } else {
-      // NAT traversal — show candidate types (e.g. srflx→host)
-      badgeColor = AppTheme.primary; // cyan
-      badgeIcon = Icons.swap_horiz;
     }
-
-    final rttStr = webrtcState.rttMs != null ? ' · ${webrtcState.rttMs}ms' : '';
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
@@ -1086,7 +1079,7 @@ class _IcePathBadge extends ConsumerWidget {
           Icon(badgeIcon, color: badgeColor, size: 12),
           const SizedBox(width: 4),
           Text(
-            '$path$rttStr',
+            connectionType,
             style: TextStyle(
               color: badgeColor,
               fontSize: 10,

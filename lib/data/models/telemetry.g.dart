@@ -20,6 +20,7 @@ _$TelemetryImpl _$$TelemetryImplFromJson(Map<String, dynamic> json) =>
           ? null
           : DateTime.parse(json['lastTreatTime'] as String),
       activeMissionId: json['activeMissionId'] as String?,
+      connectionType: json['connectionType'] as String?,
       rawData: json['rawData'] as Map<String, dynamic>? ?? const {},
     );
 
@@ -35,6 +36,7 @@ Map<String, dynamic> _$$TelemetryImplToJson(_$TelemetryImpl instance) =>
       'treatsRemaining': instance.treatsRemaining,
       'lastTreatTime': instance.lastTreatTime?.toIso8601String(),
       'activeMissionId': instance.activeMissionId,
+      'connectionType': instance.connectionType,
       'rawData': instance.rawData,
     };
 

@@ -64,6 +64,7 @@ class TelemetryNotifier extends StateNotifier<Telemetry> {
           isCharging: parsed.battery > 0 ? parsed.isCharging : state.isCharging,
           treatsRemaining: parsed.treatsRemaining > 0 ? parsed.treatsRemaining : state.treatsRemaining,
           activeMissionId: parsed.activeMissionId,
+          connectionType: parsed.connectionType ?? state.connectionType,
           rawData: parsed.rawData,
         );
         print('Telemetry updated (${event.type}): battery=${state.battery}, mode=${state.mode}');
