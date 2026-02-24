@@ -12,6 +12,7 @@ import '../../../domain/providers/control_provider.dart';
 import '../../../domain/providers/missions_provider.dart';
 import '../../../domain/providers/mode_provider.dart';
 import '../../../domain/providers/telemetry_provider.dart';
+import '../../../domain/providers/webrtc_provider.dart';
 import '../../widgets/video/webrtc_video_view.dart';
 import '../../widgets/video/audio_mute_toggle.dart';
 import '../../widgets/controls/push_to_talk.dart';
@@ -261,6 +262,13 @@ class _DriveScreenState extends ConsumerState<DriveScreen> {
           // Coach mode trick buttons (landscape overlay)
           if (modeState.currentMode == RobotMode.coach)
             _DriveCoachOverlay(),
+
+          // WebRTC ICE path diagnostic badge
+          const Positioned(
+            bottom: 180,
+            left: 24,
+            child: _IcePathBadge(),
+          ),
 
           // v1.3: Brief toast overlay during mode transition (auto-dismisses)
           if (!isReady && _modeChangeRequested)
@@ -1033,6 +1041,61 @@ class _LandscapeModeSelector extends ConsumerWidget {
       case RobotMode.coach: return Icons.school;
       case RobotMode.mission: return Icons.flag;
     }
+  }
+}
+
+/// WebRTC ICE connection path diagnostic badge
+/// Shows whether video is using direct P2P, NAT traversal, or TURN relay
+class _IcePathBadge extends ConsumerWidget {
+  const _IcePathBadge();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final webrtcState = ref.watch(webrtcProvider);
+    final path = webrtcState.connectionPath;
+
+    // Only show when we have connection path info
+    if (path == null) return const SizedBox.shrink();
+
+    final Color badgeColor;
+    final IconData badgeIcon;
+    if (path.contains('DIRECT')) {
+      badgeColor = Colors.green;
+      badgeIcon = Icons.swap_horiz;
+    } else if (path.contains('NAT')) {
+      badgeColor = AppTheme.primary; // cyan
+      badgeIcon = Icons.swap_horiz;
+    } else {
+      // RELAY
+      badgeColor = Colors.orange;
+      badgeIcon = Icons.cloud;
+    }
+
+    final rttStr = webrtcState.rttMs != null ? ' · ${webrtcState.rttMs}ms' : '';
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: Colors.black.withOpacity(0.7),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: badgeColor.withOpacity(0.6), width: 1),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(badgeIcon, color: badgeColor, size: 12),
+          const SizedBox(width: 4),
+          Text(
+            '$path$rttStr',
+            style: TextStyle(
+              color: badgeColor,
+              fontSize: 10,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }
 

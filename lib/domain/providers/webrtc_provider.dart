@@ -17,6 +17,8 @@ class WebRTCConnectionState {
   final String? sessionId;
   final String? errorMessage;
   final bool isAudioMuted;
+  final String? connectionPath; // e.g. "DIRECT", "NAT", "RELAY"
+  final int? rttMs; // Round-trip time in milliseconds
 
   const WebRTCConnectionState({
     this.state = WebRTCState.disconnected,
@@ -24,6 +26,8 @@ class WebRTCConnectionState {
     this.sessionId,
     this.errorMessage,
     this.isAudioMuted = true, // Default muted on first use per contract
+    this.connectionPath,
+    this.rttMs,
   });
 
   WebRTCConnectionState copyWith({
@@ -32,6 +36,8 @@ class WebRTCConnectionState {
     String? sessionId,
     String? errorMessage,
     bool? isAudioMuted,
+    Object? connectionPath = _sentinel,
+    Object? rttMs = _sentinel,
   }) {
     return WebRTCConnectionState(
       state: state ?? this.state,
@@ -39,8 +45,14 @@ class WebRTCConnectionState {
       sessionId: sessionId ?? this.sessionId,
       errorMessage: errorMessage,
       isAudioMuted: isAudioMuted ?? this.isAudioMuted,
+      connectionPath: connectionPath == _sentinel
+          ? this.connectionPath
+          : connectionPath as String?,
+      rttMs: rttMs == _sentinel ? this.rttMs : rttMs as int?,
     );
   }
+
+  static const Object _sentinel = Object();
 
   bool get isConnected => state == WebRTCState.connected;
 }
@@ -555,6 +567,13 @@ class WebRTCNotifier extends StateNotifier<WebRTCConnectionState> {
               ? '✅ DIRECT P2P (host-to-host)'
               : '✅ P2P via NAT traversal ($localType → $remoteType)';
 
+      // Determine UI-friendly path label
+      final uiPath = isRelay
+          ? 'RELAY'
+          : localType == 'host' && remoteType == 'host'
+              ? 'DIRECT'
+              : 'NAT';
+
       print('');
       print('╔══════════════════════════════════════════╗');
       print('║  WebRTC CONNECTION PATH DIAGNOSTIC       ║');
@@ -567,6 +586,9 @@ class WebRTCNotifier extends StateNotifier<WebRTCConnectionState> {
       }
       print('╚══════════════════════════════════════════╝');
       print('');
+
+      // Update state so the UI badge can display the connection path
+      state = state.copyWith(connectionPath: uiPath, rttMs: rtt);
     } catch (e) {
       print('WebRTC: Error reading stats for candidate pair: $e');
     }
@@ -727,6 +749,8 @@ class WebRTCNotifier extends StateNotifier<WebRTCConnectionState> {
     state = state.copyWith(
       state: WebRTCState.disconnected,
       sessionId: null,
+      connectionPath: null,
+      rttMs: null,
     );
     print('WebRTC: _closeInternal complete - state is disconnected');
   }
