@@ -1059,16 +1059,16 @@ class _IcePathBadge extends ConsumerWidget {
 
     final Color badgeColor;
     final IconData badgeIcon;
-    if (path.contains('DIRECT')) {
-      badgeColor = Colors.green;
-      badgeIcon = Icons.swap_horiz;
-    } else if (path.contains('NAT')) {
-      badgeColor = AppTheme.primary; // cyan
-      badgeIcon = Icons.swap_horiz;
-    } else {
-      // RELAY
+    if (path.contains('RELAY')) {
       badgeColor = Colors.orange;
       badgeIcon = Icons.cloud;
+    } else if (path == 'P2P') {
+      badgeColor = Colors.green;
+      badgeIcon = Icons.swap_horiz;
+    } else {
+      // NAT traversal — show candidate types (e.g. srflx→host)
+      badgeColor = AppTheme.primary; // cyan
+      badgeIcon = Icons.swap_horiz;
     }
 
     final rttStr = webrtcState.rttMs != null ? ' · ${webrtcState.rttMs}ms' : '';

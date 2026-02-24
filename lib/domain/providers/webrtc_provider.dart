@@ -567,12 +567,12 @@ class WebRTCNotifier extends StateNotifier<WebRTCConnectionState> {
               ? '✅ DIRECT P2P (host-to-host)'
               : '✅ P2P via NAT traversal ($localType → $remoteType)';
 
-      // Determine UI-friendly path label
+      // Determine UI-friendly path label with candidate types for debugging
       final uiPath = isRelay
-          ? 'RELAY'
+          ? 'RELAY ($localType→$remoteType)'
           : localType == 'host' && remoteType == 'host'
-              ? 'DIRECT'
-              : 'NAT';
+              ? 'P2P'
+              : '$localType→$remoteType';
 
       print('');
       print('╔══════════════════════════════════════════╗');
