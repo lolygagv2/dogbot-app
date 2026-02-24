@@ -350,6 +350,8 @@ class WebRTCNotifier extends StateNotifier<WebRTCConnectionState> {
 
       // Handle ICE candidates - send to relay for forwarding to robot
       _peerConnection!.onIceCandidate = (RTCIceCandidate candidate) {
+        final candidateType = _parseIceCandidateType(candidate.candidate);
+        print('WebRTC: Local ICE candidate: $candidateType');
         final wsClient = _ref.read(websocketClientProvider);
         wsClient.send({
           'type': 'webrtc_ice',
@@ -378,6 +380,8 @@ class WebRTCNotifier extends StateNotifier<WebRTCConnectionState> {
           // Reset reconnect attempts on successful connection
           _reconnectAttempts = 0;
           _reconnectTimer?.cancel();
+          // Log the active ICE candidate pair to diagnose relay vs P2P
+          _logSelectedCandidatePair();
         }
       };
 
@@ -450,6 +454,9 @@ class WebRTCNotifier extends StateNotifier<WebRTCConnectionState> {
       return;
     }
 
+    final candidateType = _parseIceCandidateType(candidate['candidate'] as String?);
+    print('WebRTC: Remote ICE candidate: $candidateType');
+
     try {
       final iceCandidate = RTCIceCandidate(
         candidate['candidate'] as String,
@@ -460,6 +467,108 @@ class WebRTCNotifier extends StateNotifier<WebRTCConnectionState> {
       await _peerConnection!.addCandidate(iceCandidate);
     } catch (e) {
       print('WebRTC: Error adding ICE candidate: $e');
+    }
+  }
+
+  /// Parse ICE candidate type from SDP candidate string
+  /// Returns human-readable type: host, srflx (STUN), relay (TURN), or prflx
+  String _parseIceCandidateType(String? candidateStr) {
+    if (candidateStr == null || candidateStr.isEmpty) return 'empty';
+    final match = RegExp(r'typ\s+(\w+)').firstMatch(candidateStr);
+    if (match == null) return 'unknown';
+    final type = match.group(1)!;
+    switch (type) {
+      case 'host':
+        return 'host (direct LAN)';
+      case 'srflx':
+        return 'srflx (STUN/NAT traversal)';
+      case 'relay':
+        return 'relay (TURN server)';
+      case 'prflx':
+        return 'prflx (peer reflexive)';
+      default:
+        return type;
+    }
+  }
+
+  /// Log the selected ICE candidate pair after connection is established.
+  /// This tells us whether we're on a direct P2P path or going through TURN relay.
+  Future<void> _logSelectedCandidatePair() async {
+    if (_peerConnection == null) return;
+
+    try {
+      final stats = await _peerConnection!.getStats();
+      String? localType;
+      String? remoteType;
+      String? localAddress;
+      String? remoteAddress;
+      int? rtt;
+
+      // Collect candidate info from stats
+      final localCandidates = <String, Map<String, dynamic>>{};
+      final remoteCandidates = <String, Map<String, dynamic>>{};
+
+      for (final report in stats) {
+        final values = report.values;
+        final type = values['type'] as String?;
+
+        if (type == 'local-candidate') {
+          final id = values['id'] as String? ?? report.id;
+          localCandidates[id] = values;
+        } else if (type == 'remote-candidate') {
+          final id = values['id'] as String? ?? report.id;
+          remoteCandidates[id] = values;
+        }
+      }
+
+      // Find the active candidate pair
+      for (final report in stats) {
+        final values = report.values;
+        final type = values['type'] as String?;
+
+        if (type == 'candidate-pair' && values['state'] == 'succeeded') {
+          final localId = values['localCandidateId'] as String?;
+          final remoteId = values['remoteCandidateId'] as String?;
+          rtt = values['currentRoundTripTime'] is num
+              ? ((values['currentRoundTripTime'] as num) * 1000).round()
+              : null;
+
+          if (localId != null && localCandidates.containsKey(localId)) {
+            final local = localCandidates[localId]!;
+            localType = local['candidateType'] as String?;
+            localAddress = '${local['address'] ?? local['ip']}:${local['port']}';
+          }
+          if (remoteId != null && remoteCandidates.containsKey(remoteId)) {
+            final remote = remoteCandidates[remoteId]!;
+            remoteType = remote['candidateType'] as String?;
+            remoteAddress = '${remote['address'] ?? remote['ip']}:${remote['port']}';
+          }
+          break; // Only care about the succeeded pair
+        }
+      }
+
+      // Determine the connection path
+      final isRelay = localType == 'relay' || remoteType == 'relay';
+      final pathLabel = isRelay
+          ? '⚠️ TURN RELAY (adds latency!)'
+          : localType == 'host' && remoteType == 'host'
+              ? '✅ DIRECT P2P (host-to-host)'
+              : '✅ P2P via NAT traversal ($localType → $remoteType)';
+
+      print('');
+      print('╔══════════════════════════════════════════╗');
+      print('║  WebRTC CONNECTION PATH DIAGNOSTIC       ║');
+      print('╠══════════════════════════════════════════╣');
+      print('║  Path: $pathLabel');
+      print('║  Local:  $localType @ $localAddress');
+      print('║  Remote: $remoteType @ $remoteAddress');
+      if (rtt != null) {
+        print('║  RTT:    ${rtt}ms');
+      }
+      print('╚══════════════════════════════════════════╝');
+      print('');
+    } catch (e) {
+      print('WebRTC: Error reading stats for candidate pair: $e');
     }
   }
 

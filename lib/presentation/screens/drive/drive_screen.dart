@@ -94,17 +94,14 @@ class _DriveScreenState extends ConsumerState<DriveScreen> {
         elevation: 0,
         leading: IconButton(
           onPressed: () {
-            // v1.3: Restore previous portrait mode on exit
             final modeState = ref.read(modeStateProvider);
-            if (modeState.currentMode == RobotMode.coach) {
-              // Return to coach screen (portrait) — keep coach mode active
-              context.go('/coach');
-            } else {
-              if (!modeState.isMissionActive && !modeState.isModeLocked) {
-                ref.read(modeStateProvider.notifier).restorePortraitMode();
-              }
-              Navigator.of(context).pop();
+            // Only restore portrait mode when NOT in coach/mission
+            // (Coach stays active, user can re-enter coach screen from home)
+            if (modeState.currentMode != RobotMode.coach &&
+                !modeState.isMissionActive && !modeState.isModeLocked) {
+              ref.read(modeStateProvider.notifier).restorePortraitMode();
             }
+            context.pop();
           },
           icon: Container(
             padding: const EdgeInsets.all(8),
