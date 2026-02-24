@@ -67,6 +67,7 @@ class MissionsScreen extends ConsumerWidget {
               trick: missionsState.activeTrick,
               dogName: missionsState.activeDogName,
               onStop: () => ref.read(missionsProvider.notifier).stopMission(),
+              onDrive: () => context.push('/drive'),
             ),
             const SizedBox(height: 24),
           ],
@@ -163,6 +164,7 @@ class _ActiveMissionCard extends StatelessWidget {
   final String? trick;
   final String? dogName;
   final VoidCallback onStop;
+  final VoidCallback onDrive;
 
   const _ActiveMissionCard({
     required this.mission,
@@ -174,6 +176,7 @@ class _ActiveMissionCard extends StatelessWidget {
     this.trick,
     this.dogName,
     required this.onStop,
+    required this.onDrive,
   });
 
   Color _progressColorForStatus() {
@@ -241,6 +244,20 @@ class _ActiveMissionCard extends StatelessWidget {
                   ),
                 ),
                 const Spacer(),
+                TextButton.icon(
+                  onPressed: onDrive,
+                  icon: const Icon(Icons.videocam, color: Colors.white, size: 18),
+                  label: const Text(
+                    'DRIVE',
+                    style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                  ),
+                  style: TextButton.styleFrom(
+                    backgroundColor: Colors.green.shade600,
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                ),
+                const SizedBox(width: 4),
                 TextButton.icon(
                   onPressed: onStop,
                   icon: const Icon(Icons.stop, color: Colors.white70, size: 18),

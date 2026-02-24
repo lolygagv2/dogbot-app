@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../data/models/mission.dart';
 import '../../../domain/providers/connection_provider.dart';
@@ -227,9 +228,9 @@ class MissionDetailScreen extends ConsumerWidget {
                     ? null
                     : () {
                         ref.read(missionsProvider.notifier).startMission(missionId);
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(content: Text('${mission.name} started')),
-                        );
+                        // Navigate to drive screen to see the mission in action
+                        context.go('/home');
+                        context.push('/drive');
                       },
                 icon: const Icon(Icons.play_arrow),
                 label: Text(

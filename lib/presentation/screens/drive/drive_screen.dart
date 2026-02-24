@@ -184,12 +184,11 @@ class _DriveScreenState extends ConsumerState<DriveScreen> {
             ),
           ),
 
-          // Active mission banner
+          // Active mission banner (compact, left-pinned)
           if (isMissionActive)
             Positioned(
               top: MediaQuery.of(context).padding.top + 88,
               left: 16,
-              right: 16,
               child: _ActiveMissionBanner(),
             ),
 

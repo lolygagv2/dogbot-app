@@ -315,6 +315,8 @@ class MissionsNotifier extends StateNotifier<MissionsState> {
   StreamSubscription? _wsSubscription;
   bool _isLoading = false;
   Timer? _startVerificationTimer;
+  // Build 56: Guard against stale progress events after mission completion
+  String? _completedMissionId;
   // Build 40: Extended verification timeout from 3s to 5s
   static const _startVerificationTimeout = Duration(seconds: 5);
 
@@ -405,6 +407,14 @@ class MissionsNotifier extends StateNotifier<MissionsState> {
         // Cancel verification timer - we got a real progress event
         _startVerificationTimer?.cancel();
 
+        // Build 56: Skip stale progress events for a mission that just completed
+        final progressMissionId = event.data['mission_id'] as String? ??
+            event.data['mission'] as String?;
+        if (_completedMissionId != null && progressMissionId == _completedMissionId) {
+          print('Missions: Ignoring stale progress for completed mission $_completedMissionId');
+          return;
+        }
+
         final action = event.data['action'] as String?;
         final status = event.data['status'] as String?;
         final failureReason = event.data['failure_reason'] as String?;
@@ -494,6 +504,9 @@ class MissionsNotifier extends StateNotifier<MissionsState> {
         final missionId = event.data['mission_id'] as String? ?? event.data['id'] as String? ?? '';
         print('Missions: complete event - mission=$missionId');
         if (missionId == state.activeMissionId || state.activeMissionId == null) {
+          // Build 56: Guard against stale progress events re-activating this mission
+          _completedMissionId = missionId;
+
           final treatsGiven = event.data['treats_given'] as int? ?? event.data['rewards'] as int?;
           // Create final progress with completed status
           final finalProgress = MissionProgress(
@@ -513,8 +526,9 @@ class MissionsNotifier extends StateNotifier<MissionsState> {
 
           // Clear after delay so user sees completion
           Future.delayed(const Duration(seconds: 3), () {
-            if (mounted && state.activeStatus == MissionStatus.completed) {
+            if (mounted && state.activeMissionId == missionId) {
               state = state.copyWith(clearActiveMission: true, clearProgress: true);
+              _completedMissionId = null;
             }
           });
         }
@@ -659,6 +673,8 @@ class MissionsNotifier extends StateNotifier<MissionsState> {
 
     // Cancel any existing verification timer
     _startVerificationTimer?.cancel();
+    // Build 56: Clear completed guard so new mission can receive progress events
+    _completedMissionId = null;
 
     final ws = _ref.read(websocketClientProvider);
     ws.sendCommand('start_mission', {
