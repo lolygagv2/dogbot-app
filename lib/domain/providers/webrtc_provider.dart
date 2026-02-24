@@ -526,10 +526,10 @@ class WebRTCNotifier extends StateNotifier<WebRTCConnectionState> {
 
         if (type == 'local-candidate') {
           final id = values['id'] as String? ?? report.id;
-          localCandidates[id] = values;
+          localCandidates[id] = Map<String, dynamic>.from(values);
         } else if (type == 'remote-candidate') {
           final id = values['id'] as String? ?? report.id;
-          remoteCandidates[id] = values;
+          remoteCandidates[id] = Map<String, dynamic>.from(values);
         }
       }
 
