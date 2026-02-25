@@ -37,8 +37,9 @@ class _DriveScreenState extends ConsumerState<DriveScreen> {
     // v1.3: Store portrait mode before switching to manual
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final modeState = ref.read(modeStateProvider);
-      if (modeState.isMissionActive || modeState.isModeLocked) {
-        print('DriveScreen: Mission active (${modeState.activeMissionName}), keeping mission mode');
+      final hasMission = ref.read(missionsProvider).hasActiveMission;
+      if (modeState.isMissionActive || modeState.isModeLocked || hasMission) {
+        print('DriveScreen: Mission active (${modeState.activeMissionName ?? 'starting'}), keeping mission mode');
       } else if (modeState.currentMode == RobotMode.mission) {
         print('DriveScreen: In mission mode, keeping it');
       } else if (modeState.currentMode == RobotMode.coach) {
@@ -77,7 +78,9 @@ class _DriveScreenState extends ConsumerState<DriveScreen> {
     final modeState = ref.watch(modeStateProvider);
 
     // Check if we're ready to drive (in manual mode and not pending)
-    final isMissionActive = modeState.isMissionActive || modeState.currentMode == RobotMode.mission;
+    // Build 56: Also check missionsProvider for optimistic mission state (before robot confirms)
+    final missionsState = ref.watch(missionsProvider);
+    final isMissionActive = modeState.isMissionActive || modeState.currentMode == RobotMode.mission || missionsState.hasActiveMission;
     final isReady = (modeState.currentMode == RobotMode.manual &&
         modeState.pendingMode == null) || isMissionActive ||
         modeState.currentMode == RobotMode.coach;
