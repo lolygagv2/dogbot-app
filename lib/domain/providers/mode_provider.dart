@@ -18,11 +18,19 @@ enum RobotMode {
   final String label;
   const RobotMode(this.value, this.label);
 
+  /// Robot sends different names than the app uses internally.
+  static const _aliases = {
+    'guardian': RobotMode.silentGuardian,
+    'training': RobotMode.coach,
+  };
+
   static RobotMode fromString(String value) {
-    return RobotMode.values.firstWhere(
-      (mode) => mode.value == value.toLowerCase(),
-      orElse: () => RobotMode.idle,
-    );
+    final lower = value.toLowerCase();
+    return _aliases[lower] ??
+        RobotMode.values.firstWhere(
+          (mode) => mode.value == lower,
+          orElse: () => RobotMode.idle,
+        );
   }
 
   /// Returns null instead of defaulting to idle for unrecognized strings.
@@ -30,6 +38,7 @@ enum RobotMode {
   static RobotMode? tryFromString(String? value) {
     if (value == null || value.isEmpty) return null;
     final lower = value.toLowerCase();
+    if (_aliases.containsKey(lower)) return _aliases[lower];
     for (final mode in RobotMode.values) {
       if (mode.value == lower) return mode;
     }
