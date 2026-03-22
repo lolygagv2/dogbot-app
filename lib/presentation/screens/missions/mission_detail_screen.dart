@@ -27,6 +27,35 @@ class MissionDetailScreen extends ConsumerWidget {
 
     final isThisActive = missionsState.activeMissionId == missionId;
     final hasOtherActive = missionsState.hasActiveMission && !isThisActive;
+    final isStarting = isThisActive && missionsState.currentProgress?.status == 'starting';
+
+    // Navigate to drive only when robot confirms mission started (not optimistically)
+    ref.listen<MissionsState>(missionsProvider, (prev, next) {
+      final wasStarting = prev?.activeMissionId == missionId &&
+          prev?.currentProgress?.status == 'starting';
+      final isNowRunning = next.activeMissionId == missionId &&
+          next.currentProgress?.status != 'starting' &&
+          next.currentProgress?.status != 'error' &&
+          next.hasActiveMission;
+
+      if (wasStarting && isNowRunning && context.mounted) {
+        context.go('/home');
+        context.push('/drive');
+      }
+
+      // Show error snackbar if mission failed to start
+      if (next.error != null && prev?.error != next.error && context.mounted) {
+        ScaffoldMessenger.of(context).hideCurrentSnackBar();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(next.error!),
+            backgroundColor: AppTheme.error,
+            behavior: SnackBarBehavior.floating,
+            duration: const Duration(seconds: 5),
+          ),
+        );
+      }
+    });
 
     return Scaffold(
       appBar: AppBar(
@@ -224,21 +253,27 @@ class MissionDetailScreen extends ConsumerWidget {
               )
             else
               FilledButton.icon(
-                onPressed: (!isConnected || hasOtherActive)
+                onPressed: (!isConnected || hasOtherActive || isStarting)
                     ? null
                     : () {
                         ref.read(missionsProvider.notifier).startMission(missionId);
-                        // Navigate to drive screen to see the mission in action
-                        context.go('/home');
-                        context.push('/drive');
+                        // Don't navigate — ref.listen above will navigate
+                        // when robot confirms mission started
                       },
-                icon: const Icon(Icons.play_arrow),
+                icon: isStarting
+                    ? const SizedBox(
+                        width: 20, height: 20,
+                        child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                      )
+                    : const Icon(Icons.play_arrow),
                 label: Text(
                   !isConnected
                       ? 'Robot Not Connected'
                       : hasOtherActive
                           ? 'Another Mission Active'
-                          : 'Start Mission',
+                          : isStarting
+                              ? 'Starting...'
+                              : 'Start Mission',
                 ),
                 style: FilledButton.styleFrom(
                   backgroundColor: Colors.green,

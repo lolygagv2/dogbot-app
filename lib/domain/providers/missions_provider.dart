@@ -468,7 +468,8 @@ class MissionsNotifier extends StateNotifier<MissionsState> {
               return;
             }
           } else {
-            errorMsg = failureReason ?? 'Mission failed to start';
+            // Use human-readable message from robot if available, else failure_reason
+            errorMsg = event.data['message'] as String? ?? failureReason ?? 'Mission failed to start';
           }
 
           state = state.copyWith(

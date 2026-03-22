@@ -279,6 +279,8 @@ class WebSocketClient {
         case 'mission_complete':
         case 'mission_stopped':
         case 'mission_status':
+        case 'mission_error':
+        case 'mission_failed':
           print('WS: Received $msgType: $json');
           final missionEvent = WsEvent.fromJson(json);
           _eventController.add(missionEvent);
