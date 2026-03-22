@@ -564,12 +564,17 @@ class WebSocketClient {
     print('WebSocket: take_photo command sent');
   }
 
-  /// Start recording video on the robot camera
-  void sendStartRecording({int? maxSeconds}) {
-    sendCommand('start_recording', {if (maxSeconds != null) 'max_seconds': maxSeconds});
+  /// Record video on the robot camera
+  /// Robot records for [duration] seconds then sends video_ready with download_url.
+  /// Use sendStopRecording() to stop early before duration expires.
+  void sendRecordVideo({int duration = 15, String resolution = '1080p'}) {
+    sendCommand('record_video', {
+      'duration': duration,
+      'resolution': resolution,
+    });
   }
 
-  /// Stop recording video on the robot camera
+  /// Stop video recording early (before duration expires)
   void sendStopRecording() {
     sendCommand('stop_recording');
   }

@@ -150,8 +150,10 @@ class VideoNotifier extends StateNotifier<VideoState> {
     }
   }
 
-  /// Start recording video
-  void startRecording() {
+  /// Start recording video — sends record_video command with duration.
+  /// Robot records for the duration then sends video_ready with download_url.
+  /// User can tap again to stop early via stop_recording command.
+  void startRecording({int durationSeconds = 15}) {
     if (state.isRecording || state.isProcessing) return;
 
     if (!_ref.read(connectionProvider).isConnected) {
@@ -159,7 +161,11 @@ class VideoNotifier extends StateNotifier<VideoState> {
       return;
     }
 
-    print('VIDEO: Sending start_recording command (max ${_maxRecordingSeconds}s)');
+    print('VIDEO: Sending record_video command (duration=${durationSeconds}s)');
+
+    _ref.read(websocketClientProvider).sendRecordVideo(
+      duration: durationSeconds,
+    );
 
     state = state.copyWith(
       isRecording: true,
@@ -168,37 +174,41 @@ class VideoNotifier extends StateNotifier<VideoState> {
       clearError: true,
     );
 
-    _ref.read(websocketClientProvider).sendStartRecording(
-      maxSeconds: _maxRecordingSeconds,
-    );
-
-    // Auto-stop after max duration
+    // After the recording duration, robot will encode and send video_ready.
+    // Switch UI from "recording" to "processing" when duration expires.
     _maxDurationTimer?.cancel();
     _maxDurationTimer = Timer(
-      const Duration(seconds: _maxRecordingSeconds),
+      Duration(seconds: durationSeconds),
       () {
-        if (state.isRecording) {
-          print('VIDEO: Auto-stopping after ${_maxRecordingSeconds}s max duration');
-          stopRecording();
+        if (state.isRecording && mounted) {
+          print('VIDEO: Recording duration complete, waiting for video_ready...');
+          state = state.copyWith(isRecording: false, isProcessing: true);
+          _startResponseTimeout();
         }
       },
     );
   }
 
-  /// Stop recording video
+  /// Stop recording early (before duration expires) — sends stop_recording.
+  /// Robot will encode what was recorded and send video_ready.
   void stopRecording() {
     if (!state.isRecording) return;
 
     _maxDurationTimer?.cancel();
-    print('VIDEO: Sending stop_recording command');
-    state = state.copyWith(isRecording: false, isProcessing: true, downloadProgress: 0);
+    print('VIDEO: Sending stop_recording command (early stop)');
 
     _ref.read(websocketClientProvider).sendStopRecording();
-    print('VIDEO: Waiting for video_ready response (timeout: ${_videoResponseTimeoutSeconds}s)...');
 
-    // Timeout waiting for video_ready — encoding on Pi takes time
+    state = state.copyWith(isRecording: false, isProcessing: true, downloadProgress: 0);
+    _startResponseTimeout();
+  }
+
+  /// Start timeout waiting for video_ready response after recording stops
+  void _startResponseTimeout() {
+    print('VIDEO: Waiting for video_ready (timeout: ${_videoResponseTimeoutSeconds}s)...');
+    _maxDurationTimer?.cancel();
     _maxDurationTimer = Timer(Duration(seconds: _videoResponseTimeoutSeconds), () {
-      if (state.isProcessing) {
+      if (state.isProcessing && mounted) {
         print('VIDEO: TIMEOUT — no video_ready after ${_videoResponseTimeoutSeconds}s');
         state = state.copyWith(
           isProcessing: false,

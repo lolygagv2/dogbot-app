@@ -4,6 +4,8 @@ import 'package:dio/dio.dart';
 import 'package:gal/gal.dart';
 import 'package:path_provider/path_provider.dart';
 
+import '../../core/network/dio_client.dart';
+
 /// Model for a captured video
 class CapturedVideo {
   final String id;
@@ -68,12 +70,19 @@ class VideoService {
 
     final localPath = '${dir.path}/$finalFilename';
 
-    print('VideoService: Downloading from $downloadUrl');
+    // Resolve relative URLs against robot base URL
+    String resolvedUrl = downloadUrl;
+    if (downloadUrl.startsWith('/')) {
+      final baseUrl = DioClient.instance.options.baseUrl;
+      resolvedUrl = '$baseUrl$downloadUrl';
+    }
+
+    print('VideoService: Downloading from $resolvedUrl');
     print('VideoService: Saving to $localPath');
 
     // Download with progress
     await _dio.download(
-      downloadUrl,
+      resolvedUrl,
       localPath,
       onReceiveProgress: (received, total) {
         if (total > 0 && onProgress != null) {
