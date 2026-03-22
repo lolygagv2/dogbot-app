@@ -253,7 +253,7 @@ class _$TelemetryImpl implements _Telemetry {
   const _$TelemetryImpl(
       {this.battery = 0.0,
       this.temperature = 0.0,
-      this.mode = 'idle',
+      this.mode = '',
       this.dogDetected = false,
       this.currentBehavior,
       this.confidence,

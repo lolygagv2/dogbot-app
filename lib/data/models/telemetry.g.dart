@@ -10,7 +10,7 @@ _$TelemetryImpl _$$TelemetryImplFromJson(Map<String, dynamic> json) =>
     _$TelemetryImpl(
       battery: (json['battery'] as num?)?.toDouble() ?? 0.0,
       temperature: (json['temperature'] as num?)?.toDouble() ?? 0.0,
-      mode: json['mode'] as String? ?? 'idle',
+      mode: json['mode'] as String? ?? '',
       dogDetected: json['dogDetected'] as bool? ?? false,
       currentBehavior: json['currentBehavior'] as String?,
       confidence: (json['confidence'] as num?)?.toDouble(),

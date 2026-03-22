@@ -24,6 +24,18 @@ enum RobotMode {
       orElse: () => RobotMode.idle,
     );
   }
+
+  /// Returns null instead of defaulting to idle for unrecognized strings.
+  /// Use this for external data where an unrecognized mode should be ignored.
+  static RobotMode? tryFromString(String? value) {
+    if (value == null || value.isEmpty) return null;
+    final lower = value.toLowerCase();
+    for (final mode in RobotMode.values) {
+      if (mode.value == lower) return mode;
+    }
+    print('APP_MODE: WARNING unrecognized mode string: "$value"');
+    return null;
+  }
 }
 
 /// Mode state with optimistic update support
@@ -83,8 +95,11 @@ class ModeState {
   /// Check if mode change is allowed
   bool canChangeMode() => !isModeLocked;
 
-  /// The mode to display in UI (optimistic - shows pending if changing)
-  RobotMode get displayMode => pendingMode ?? currentMode;
+  /// The mode to display in UI (confirmed mode only — no optimistic updates)
+  RobotMode get displayMode => currentMode;
+
+  /// True if a mode switch is in progress (pending confirmation)
+  bool get isSwitching => isChanging && pendingMode != null;
 
   /// True if there's a recent error (within 5 seconds)
   bool get hasRecentError {
@@ -137,6 +152,14 @@ class ModeStateNotifier extends StateNotifier<ModeState> {
   }
 
   // ─────────────────────────────────────────────────────────────────────────
+  // STRUCTURED MODE LOGGING
+  // ─────────────────────────────────────────────────────────────────────────
+
+  void _logModeChange(RobotMode oldMode, RobotMode newMode, String source) {
+    print('APP_MODE: ${oldMode.value} -> ${newMode.value} | source=$source');
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
   // BUILD 50v2: SOVEREIGN USER MODE GUARD
   // ─────────────────────────────────────────────────────────────────────────
 
@@ -164,8 +187,12 @@ class ModeStateNotifier extends StateNotifier<ModeState> {
   /// Get initial mode from telemetry (only on startup, before user interacts)
   void _getInitialMode() {
     final telemetry = _ref.read(telemetryProvider);
-    if (telemetry.mode.isNotEmpty && telemetry.mode != 'idle') {
-      state = state.copyWith(currentMode: RobotMode.fromString(telemetry.mode));
+    if (telemetry.mode.isNotEmpty) {
+      final initialMode = RobotMode.tryFromString(telemetry.mode);
+      if (initialMode != null && initialMode != state.currentMode) {
+        _logModeChange(state.currentMode, initialMode, 'init_telemetry');
+        state = state.copyWith(currentMode: initialMode);
+      }
     }
   }
 
@@ -209,7 +236,8 @@ class ModeStateNotifier extends StateNotifier<ModeState> {
 
     if (mode == null) return;
 
-    final confirmedMode = RobotMode.fromString(mode);
+    final confirmedMode = RobotMode.tryFromString(mode);
+    if (confirmedMode == null) return; // Don't default to idle for unrecognized strings
 
     // Sovereign guard
     if (_shouldBlockExternalMode(confirmedMode, isLocked: locked)) return;
@@ -223,7 +251,9 @@ class ModeStateNotifier extends StateNotifier<ModeState> {
     }
 
     if (state.isChanging && state.pendingMode == confirmedMode) {
-      print('Mode: mode_changed confirmed ${confirmedMode.value}');
+      _logModeChange(state.currentMode, confirmedMode, 'ws_confirmed');
+    } else {
+      _logModeChange(state.currentMode, confirmedMode, 'ws_mode_changed');
     }
 
     state = state.copyWith(
@@ -238,7 +268,8 @@ class ModeStateNotifier extends StateNotifier<ModeState> {
 
   /// Handle mode confirmation from status_update/battery/telemetry/mode events
   void _handleModeConfirmation(String modeValue) {
-    final confirmedMode = RobotMode.fromString(modeValue);
+    final confirmedMode = RobotMode.tryFromString(modeValue);
+    if (confirmedMode == null) return; // Don't default to idle for unrecognized strings
 
     // Sovereign guard
     if (_shouldBlockExternalMode(confirmedMode)) return;
@@ -246,7 +277,7 @@ class ModeStateNotifier extends StateNotifier<ModeState> {
     if (state.isChanging && state.pendingMode != null) {
       if (confirmedMode == state.pendingMode) {
         // Confirmed our pending mode
-        print('Mode: Confirmed ${confirmedMode.value}');
+        _logModeChange(state.currentMode, confirmedMode, 'ws_confirmed');
         _cancelTimeout();
         state = state.copyWith(
           currentMode: confirmedMode,
@@ -260,6 +291,7 @@ class ModeStateNotifier extends StateNotifier<ModeState> {
       // Not waiting for confirmation — update if different
       // (only reachable if _userSelectedMode is null or matches)
       if (confirmedMode != state.currentMode) {
+        _logModeChange(state.currentMode, confirmedMode, 'ws_external');
         state = state.copyWith(currentMode: confirmedMode);
       }
     }
@@ -280,7 +312,7 @@ class ModeStateNotifier extends StateNotifier<ModeState> {
     switch (action) {
       case 'started':
         // Mission started — authoritative, overrides user selection
-        print('Mode: Mission started: $missionName, locking mode');
+        _logModeChange(state.currentMode, RobotMode.mission, 'mission_started');
         _userSelectedMode = null; // Clear user selection — mission takes over
         state = state.copyWith(
           currentMode: RobotMode.mission,
@@ -314,9 +346,8 @@ class ModeStateNotifier extends StateNotifier<ModeState> {
   /// Handle mission ended (completed or stopped)
   /// v1.3: Restores previous portrait mode instead of defaulting to idle
   void _handleMissionEnded() {
-    final wasActive = state.activeMissionName;
     final restoreMode = state.previousPortraitMode;
-    print('Mode: Mission ended: $wasActive, unlocking mode, restoring to ${restoreMode.value}');
+    _logModeChange(state.currentMode, restoreMode, 'mission_ended');
     _userSelectedMode = restoreMode; // Protect restored mode
     state = state.copyWith(
       currentMode: restoreMode,
@@ -412,7 +443,7 @@ class ModeStateNotifier extends StateNotifier<ModeState> {
     if (!state.isChanging) return;
 
     if (state.pendingMode != null) {
-      print('Mode: Timeout — accepting ${state.pendingMode!.value} (sovereign, no error received)');
+      _logModeChange(state.currentMode, state.pendingMode!, 'timeout_accepted');
       state = state.copyWith(
         currentMode: state.pendingMode!,
         isChanging: false,
@@ -445,7 +476,8 @@ class ModeStateNotifier extends StateNotifier<ModeState> {
 
   /// Set mode by string value
   Future<void> setModeByString(String modeValue, {String source = 'dropdown'}) async {
-    final mode = RobotMode.fromString(modeValue);
+    final mode = RobotMode.tryFromString(modeValue);
+    if (mode == null) return; // Ignore unrecognized mode strings
     await setMode(mode, source: source);
   }
 

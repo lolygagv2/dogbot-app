@@ -9,7 +9,7 @@ class Telemetry with _$Telemetry {
   const factory Telemetry({
     @Default(0.0) double battery,
     @Default(0.0) double temperature,
-    @Default('idle') String mode,
+    @Default('') String mode,
     @Default(false) bool dogDetected,
     String? currentBehavior,
     double? confidence,
@@ -55,7 +55,7 @@ class Telemetry with _$Telemetry {
       temperature: (json['temperature'] as num?)?.toDouble() ??
           (json['temp'] as num?)?.toDouble() ??
           0.0,
-      mode: json['mode'] as String? ?? 'idle',
+      mode: json['mode'] as String? ?? '',
       dogDetected: json['dog_detected'] as bool? ??
           json['dogDetected'] as bool? ??
           false,

@@ -155,8 +155,8 @@ class _DriveScreenState extends ConsumerState<DriveScreen> {
                 ),
                 // v1.3: Landscape mode selector (manual/coach/mission)
                 _LandscapeModeSelector(
-                  currentMode: modeState.displayMode,
-                  isChanging: modeState.isChanging,
+                  currentMode: modeState.currentMode,
+                  isChanging: modeState.isSwitching,
                   isMissionActive: isMissionActive,
                 ),
                 // Detection indicator

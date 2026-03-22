@@ -105,7 +105,7 @@ class HomeScreen extends ConsumerWidget {
               ),
 
               // Controls area (below mode row)
-              if (ref.watch(displayModeProvider) == RobotMode.silentGuardian)
+              if (ref.watch(modeStateProvider).currentMode == RobotMode.silentGuardian)
                 Expanded(
                   flex: isLandscape ? 1 : 3,
                   child: const EventFeed(),
@@ -232,8 +232,8 @@ class _ModeAndDriveRow extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final modeState = ref.watch(modeStateProvider);
-    final displayMode = modeState.displayMode;
-    final isChanging = modeState.isChanging;
+    final displayMode = modeState.currentMode;
+    final isChanging = modeState.isSwitching;
     final isLocked = modeState.isModeLocked;
     final unreadCount = ref.watch(unreadEventCountProvider);
 
