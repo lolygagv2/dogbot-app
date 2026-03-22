@@ -1,8 +1,10 @@
 import 'dart:async';
+import 'dart:math';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/network/websocket_client.dart';
+import '../../data/models/dog_profile.dart';
 import 'dog_profiles_provider.dart';
 
 /// Analytics time range
@@ -173,3 +175,34 @@ class DogAnalyticsNotifier extends StateNotifier<AnalyticsData> {
     super.dispose();
   }
 }
+
+/// Tab index for the Activity screen (0=Dashboard, 1=Events)
+final activityTabIndexProvider = StateProvider<int>((ref) => 0);
+
+/// 7-day demo data for the dashboard chart, keyed by dogId
+final dogWeeklyStatsProvider =
+    Provider.family<List<DogDailySummary>, String>((ref, dogId) {
+  final now = DateTime.now();
+  final rng = Random(dogId.hashCode); // deterministic per-dog
+
+  return List.generate(7, (i) {
+    final day = now.subtract(Duration(days: 6 - i));
+    // Trending upward: base values increase with i
+    final treats = 3 + rng.nextInt(3) + (i ~/ 2);
+    final sits = 2 + rng.nextInt(3) + (i ~/ 3);
+    final barks = max(1, 12 - i - rng.nextInt(3));
+    final missions = 1 + rng.nextInt(2);
+    final missionSuccess = rng.nextDouble() > 0.3 ? missions : missions - 1;
+
+    return DogDailySummary(
+      dogId: dogId,
+      date: day,
+      treatCount: treats,
+      sitCount: sits,
+      barkCount: barks,
+      missionCount: missions,
+      missionSuccessCount: max(0, missionSuccess),
+      goalProgress: min(1.0, 0.4 + (i * 0.08) + rng.nextDouble() * 0.1),
+    );
+  });
+});

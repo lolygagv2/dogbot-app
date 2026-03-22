@@ -114,6 +114,7 @@ class DogProfilesNotifier extends StateNotifier<List<DogProfile>> {
   }
 
   /// Add a new dog profile (rejects duplicate names)
+  /// Saves locally, syncs to relay server, and tells robot to reload.
   Future<bool> addProfile(DogProfile profile) async {
     // Check for duplicate name (case-insensitive)
     final duplicate = state.any(
@@ -126,6 +127,28 @@ class DogProfilesNotifier extends StateNotifier<List<DogProfile>> {
 
     state = [...state, profile];
     await _saveProfiles();
+
+    // Sync to relay server (offline-friendly: don't block local save)
+    final token = _ref.read(authProvider).token;
+    if (token != null) {
+      try {
+        final api = _ref.read(robotApiProvider);
+        final success = await api.createDog(profile.toJson(), token);
+        print('DogProfiles: Relay sync ${success ? 'succeeded' : 'failed'} for "${profile.name}"');
+      } catch (e) {
+        print('DogProfiles: Relay sync error for "${profile.name}": $e');
+      }
+    }
+
+    // Tell robot to reload dog list
+    try {
+      final ws = _ref.read(websocketClientProvider);
+      ws.sendCommand('reload_dogs');
+      print('DogProfiles: Sent reload_dogs command to robot');
+    } catch (e) {
+      print('DogProfiles: Failed to send reload_dogs: $e');
+    }
+
     return true;
   }
 

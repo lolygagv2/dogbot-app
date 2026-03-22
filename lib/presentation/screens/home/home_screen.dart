@@ -15,6 +15,7 @@ import '../../widgets/video/webrtc_video_view.dart';
 import '../../widgets/video/audio_mute_toggle.dart';
 import '../../widgets/status/battery_indicator.dart';
 import '../../widgets/status/connection_badge.dart';
+import '../../widgets/status/treat_counter_indicator.dart';
 import '../../widgets/controls/quick_actions.dart';
 import '../../widgets/guardian/event_feed.dart';
 import '../../widgets/mission/mission_progress_overlay.dart';
@@ -50,6 +51,8 @@ class HomeScreen extends ConsumerWidget {
         ),
         actions: [
           const ConnectionBadge(),
+          const SizedBox(width: 8),
+          const TreatCounterIndicator(),
           const SizedBox(width: 8),
           BatteryIndicator(level: telemetry.battery),
           const SizedBox(width: 16),

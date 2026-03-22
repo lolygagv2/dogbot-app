@@ -163,7 +163,9 @@ class _MicButton extends ConsumerWidget {
   Future<void> _startRecording(WidgetRef ref) async {
     HapticFeedback.mediumImpact();
     final success = await ref.read(pushToTalkProvider.notifier).startRecording();
-    if (!success) {
+    if (success) {
+      HapticFeedback.selectionClick();
+    } else {
       HapticFeedback.heavyImpact();
     }
   }

@@ -97,6 +97,10 @@ class WebSocketClient {
   final _photoController =
       StreamController<Map<String, dynamic>>.broadcast();
 
+  // Video capture stream
+  final _videoController =
+      StreamController<Map<String, dynamic>>.broadcast();
+
   // Rate limit stream (relay returns RATE_LIMITED error)
   final _rateLimitController = StreamController<String>.broadcast();
 
@@ -112,6 +116,8 @@ class WebSocketClient {
       _deviceStatusController.stream;
   Stream<Map<String, dynamic>> get photoStream =>
       _photoController.stream;
+  Stream<Map<String, dynamic>> get videoStream =>
+      _videoController.stream;
   Stream<String> get rateLimitStream => _rateLimitController.stream;
 
   /// Get the current target device ID
@@ -207,6 +213,20 @@ class WebSocketClient {
           print('WebSocket: Received photo response, keys: ${json.keys}');
           print('WebSocket: Photo data length: ${(json['data'] as String?)?.length ?? 0}');
           _photoController.add(json);
+          break;
+
+        // Video capture response
+        case 'video':
+          print('WebSocket: Received video response, keys: ${json.keys}');
+          _videoController.add(json);
+          break;
+
+        // Recording state events — forward to event stream
+        case 'recording_started':
+        case 'recording_stopped':
+          print('WebSocket: Received $msgType');
+          final recEvent = WsEvent.fromJson(json);
+          _eventController.add(recEvent);
           break;
 
         // Device status - emit to dedicated stream AND event stream
@@ -469,6 +489,16 @@ class WebSocketClient {
     sendCommand('carousel_rotate');
   }
 
+  /// Set treat counter to a specific count
+  void sendTreatCounterSet(int count) {
+    sendCommand('treat_counter_set', {'count': count});
+  }
+
+  /// Reset treat counter to full
+  void sendTreatCounterReset() {
+    sendCommand('treat_counter_reset');
+  }
+
   /// Send LED pattern command
   void sendLedCommand(String pattern) {
     sendCommand('led', {'pattern': pattern});
@@ -528,6 +558,16 @@ class WebSocketClient {
     print('WebSocket: targetDeviceId=$_targetDeviceId, state=$_state');
     sendCommand('take_photo', {'with_hud': withHud});
     print('WebSocket: take_photo command sent');
+  }
+
+  /// Start recording video on the robot camera
+  void sendStartRecording({int? maxSeconds}) {
+    sendCommand('start_recording', {if (maxSeconds != null) 'max_seconds': maxSeconds});
+  }
+
+  /// Stop recording video on the robot camera
+  void sendStopRecording() {
+    sendCommand('stop_recording');
   }
 
   /// Call dog - plays attention/recall sound on robot
@@ -724,6 +764,7 @@ class WebSocketClient {
     _webrtcCloseController.close();
     _deviceStatusController.close();
     _photoController.close();
+    _videoController.close();
     _rateLimitController.close();
   }
 }

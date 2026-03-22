@@ -4,6 +4,7 @@ import 'package:flutter_webrtc/flutter_webrtc.dart';
 
 import '../../../domain/providers/device_provider.dart';
 import '../../../domain/providers/photo_provider.dart';
+import '../../../domain/providers/video_provider.dart';
 import '../../../domain/providers/webrtc_provider.dart';
 import '../../theme/app_theme.dart';
 
@@ -245,7 +246,142 @@ class _WebRTCVideoViewState extends ConsumerState<WebRTCVideoView> {
           left: 16,
           child: _CameraButton(),
         ),
+
+        // Video record button (next to camera button)
+        Positioned(
+          bottom: 16,
+          left: 72,
+          child: _VideoRecordButton(),
+        ),
       ],
+    );
+  }
+}
+
+/// Video record button widget with pulsing red indicator
+class _VideoRecordButton extends ConsumerStatefulWidget {
+  @override
+  ConsumerState<_VideoRecordButton> createState() => _VideoRecordButtonState();
+}
+
+class _VideoRecordButtonState extends ConsumerState<_VideoRecordButton>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _pulseController;
+
+  @override
+  void initState() {
+    super.initState();
+    _pulseController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 800),
+    );
+    _pulseController.addListener(() {
+      if (mounted) setState(() {});
+    });
+  }
+
+  @override
+  void dispose() {
+    _pulseController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final videoState = ref.watch(videoProvider);
+    final isRecording = videoState.isRecording;
+    final isProcessing = videoState.isProcessing;
+
+    // Drive pulse animation
+    if (isRecording && !_pulseController.isAnimating) {
+      _pulseController.repeat(reverse: true);
+    } else if (!isRecording && _pulseController.isAnimating) {
+      _pulseController.stop();
+      _pulseController.reset();
+    }
+
+    // Show toast when video is saved
+    ref.listen<VideoState>(videoProvider, (previous, next) {
+      if (next.lastCaptured != null &&
+          previous?.lastCaptured?.id != next.lastCaptured?.id) {
+        ScaffoldMessenger.of(context).hideCurrentSnackBar();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                Icon(
+                  next.lastCaptured!.savedToGallery
+                      ? Icons.check_circle
+                      : Icons.videocam,
+                  color: Colors.white,
+                  size: 20,
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  next.lastCaptured!.savedToGallery
+                      ? 'Video saved to gallery!'
+                      : 'Video saved!',
+                ),
+              ],
+            ),
+            duration: const Duration(seconds: 2),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+        ref.read(videoProvider.notifier).clearLastCaptured();
+      }
+
+      if (next.error != null && previous?.error != next.error) {
+        ScaffoldMessenger.of(context).hideCurrentSnackBar();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(next.error!),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 3),
+          ),
+        );
+        ref.read(videoProvider.notifier).clearError();
+      }
+    });
+
+    final opacity = isRecording
+        ? 0.4 + (_pulseController.value * 0.6)
+        : 1.0;
+
+    return Material(
+      color: isRecording
+          ? Colors.red.withOpacity(opacity * 0.6)
+          : Colors.black54,
+      borderRadius: BorderRadius.circular(24),
+      child: InkWell(
+        onTap: isProcessing
+            ? null
+            : () {
+                if (isRecording) {
+                  ref.read(videoProvider.notifier).stopRecording();
+                } else {
+                  ref.read(videoProvider.notifier).startRecording();
+                }
+              },
+        borderRadius: BorderRadius.circular(24),
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: isProcessing
+              ? const SizedBox(
+                  width: 24,
+                  height: 24,
+                  child: CircularProgressIndicator(
+                    color: Colors.white,
+                    strokeWidth: 2,
+                  ),
+                )
+              : Icon(
+                  isRecording ? Icons.stop : Icons.videocam,
+                  color: Colors.white,
+                  size: 24,
+                ),
+        ),
+      ),
     );
   }
 }

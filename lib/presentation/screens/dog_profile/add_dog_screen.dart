@@ -529,7 +529,7 @@ class _AddDogScreenState extends ConsumerState<AddDogScreen> {
 
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('${profile.name} added!')),
+        SnackBar(content: Text('Robot will now recognize ${profile.name}')),
       );
       context.pop();
     }

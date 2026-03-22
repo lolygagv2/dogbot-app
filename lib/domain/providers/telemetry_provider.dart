@@ -229,3 +229,8 @@ final batteryProvider = Provider<double>((ref) {
 final modeProvider = Provider<String>((ref) {
   return ref.watch(telemetryProvider).mode;
 });
+
+/// Provider for treats remaining count
+final treatsRemainingProvider = Provider<int>((ref) {
+  return ref.watch(telemetryProvider).treatsRemaining;
+});

@@ -53,5 +53,9 @@
 	<string>WIM-Z needs access to your photo library to save photos of your dog.</string>
 	<key>NSPhotoLibraryAddUsageDescription</key>
 	<string>WIM-Z needs permission to save photos to your library.</string>
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>audio</string>
+	</array>
 </dict>
 </plist>

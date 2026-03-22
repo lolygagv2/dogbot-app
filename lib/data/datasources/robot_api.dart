@@ -29,6 +29,21 @@ class RobotApi {
     }
   }
 
+  /// Create a dog profile on the relay server
+  Future<bool> createDog(Map<String, dynamic> profileJson, String token) async {
+    try {
+      final response = await _dio.post(
+        ApiEndpoints.dogs,
+        data: profileJson,
+        options: Options(headers: {'Authorization': 'Bearer $token'}),
+      );
+      return response.statusCode == 200 || response.statusCode == 201;
+    } catch (e) {
+      print('RobotApi: Failed to create dog: $e');
+      return false;
+    }
+  }
+
   /// Delete a dog profile from the relay server
   Future<bool> deleteDog(String dogId, String token) async {
     try {

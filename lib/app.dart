@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import 'domain/providers/connection_provider.dart';
 import 'domain/providers/notifications_provider.dart';
+import 'domain/providers/settings_provider.dart';
 import 'domain/providers/webrtc_provider.dart';
 import 'presentation/screens/auth/login_screen.dart';
 import 'presentation/screens/home/home_screen.dart';
@@ -499,8 +500,14 @@ class _WimzAppState extends ConsumerState<WimzApp> with WidgetsBindingObserver {
     switch (state) {
       case AppLifecycleState.paused:
       case AppLifecycleState.inactive:
-        print('App: Lifecycle → $state — pausing WebRTC');
-        ref.read(webrtcProvider.notifier).pause();
+        final bgAudio = ref.read(settingsProvider).backgroundAudioEnabled;
+        if (bgAudio) {
+          print('App: Lifecycle → $state — pausing video only (background audio ON)');
+          ref.read(webrtcProvider.notifier).pauseVideoOnly();
+        } else {
+          print('App: Lifecycle → $state — pausing WebRTC');
+          ref.read(webrtcProvider.notifier).pause();
+        }
         break;
       case AppLifecycleState.resumed:
         print('App: Lifecycle → resumed — resuming WebRTC');

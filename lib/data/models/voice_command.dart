@@ -13,7 +13,8 @@ enum VoiceCommandType {
   come('come', 'Come', 'Say "Come" or "Come here"'),
   treat('treat', 'Want a treat?', 'Say "Want a treat?" playfully'),
   goodDog('good', 'Good dog!', 'Say "Good dog!" with praise'),
-  no('no', 'No / Bad', 'Say "No" or "Bad" firmly');
+  no('no', 'No / Bad', 'Say "No" or "Bad" firmly'),
+  quiet('quiet', 'Quiet', 'Say "Quiet" calmly but firmly');
 
   final String id;
   final String label;

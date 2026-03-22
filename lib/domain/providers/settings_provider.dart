@@ -7,6 +7,7 @@ import '../../core/network/websocket_client.dart';
 class SettingsKeys {
   static const motorTrimRight = 'motor_trim_right';
   static const cameraTrackingEnabled = 'camera_tracking_enabled';
+  static const backgroundAudioEnabled = 'background_audio_enabled';
 }
 
 /// App settings state
@@ -20,18 +21,25 @@ class AppSettings {
   /// When true, camera follows detected dog in coach/mission mode
   final bool cameraTrackingEnabled;
 
+  /// Background audio enabled
+  /// When true, WebRTC audio continues when app is backgrounded
+  final bool backgroundAudioEnabled;
+
   const AppSettings({
     this.motorTrimRight = 0.0,
     this.cameraTrackingEnabled = false,
+    this.backgroundAudioEnabled = true,
   });
 
   AppSettings copyWith({
     double? motorTrimRight,
     bool? cameraTrackingEnabled,
+    bool? backgroundAudioEnabled,
   }) {
     return AppSettings(
       motorTrimRight: motorTrimRight ?? this.motorTrimRight,
       cameraTrackingEnabled: cameraTrackingEnabled ?? this.cameraTrackingEnabled,
+      backgroundAudioEnabled: backgroundAudioEnabled ?? this.backgroundAudioEnabled,
     );
   }
 }
@@ -56,10 +64,12 @@ class SettingsNotifier extends StateNotifier<AppSettings> {
 
     final motorTrim = _prefs?.getDouble(SettingsKeys.motorTrimRight) ?? 0.0;
     final cameraTracking = _prefs?.getBool(SettingsKeys.cameraTrackingEnabled) ?? false;
+    final backgroundAudio = _prefs?.getBool(SettingsKeys.backgroundAudioEnabled) ?? true;
 
     state = AppSettings(
       motorTrimRight: motorTrim.clamp(-0.5, 0.5),
       cameraTrackingEnabled: cameraTracking,
+      backgroundAudioEnabled: backgroundAudio,
     );
   }
 
@@ -92,9 +102,21 @@ class SettingsNotifier extends StateNotifier<AppSettings> {
   Future<void> toggleCameraTracking() async {
     await setCameraTrackingEnabled(!state.cameraTrackingEnabled);
   }
+
+  /// Set background audio enabled
+  Future<void> setBackgroundAudioEnabled(bool enabled) async {
+    state = state.copyWith(backgroundAudioEnabled: enabled);
+    await _prefs?.setBool(SettingsKeys.backgroundAudioEnabled, enabled);
+    print('Settings: Background audio set to $enabled');
+  }
 }
 
 /// Provider for just the motor trim value
 final motorTrimProvider = Provider<double>((ref) {
   return ref.watch(settingsProvider).motorTrimRight;
+});
+
+/// Provider for background audio setting
+final backgroundAudioProvider = Provider<bool>((ref) {
+  return ref.watch(settingsProvider).backgroundAudioEnabled;
 });

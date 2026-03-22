@@ -17,12 +17,14 @@ class WebRTCConnectionState {
   final String? sessionId;
   final String? errorMessage;
   final bool isAudioMuted;
+  final bool isAutoListening;
   const WebRTCConnectionState({
     this.state = WebRTCState.disconnected,
     this.renderer,
     this.sessionId,
     this.errorMessage,
     this.isAudioMuted = true, // Default muted on first use per contract
+    this.isAutoListening = false,
   });
 
   WebRTCConnectionState copyWith({
@@ -31,6 +33,7 @@ class WebRTCConnectionState {
     String? sessionId,
     String? errorMessage,
     bool? isAudioMuted,
+    bool? isAutoListening,
   }) {
     return WebRTCConnectionState(
       state: state ?? this.state,
@@ -38,6 +41,7 @@ class WebRTCConnectionState {
       sessionId: sessionId ?? this.sessionId,
       errorMessage: errorMessage,
       isAudioMuted: isAudioMuted ?? this.isAudioMuted,
+      isAutoListening: isAutoListening ?? this.isAutoListening,
     );
   }
 
@@ -60,6 +64,11 @@ final webrtcAudioMutedProvider = Provider<bool>((ref) {
   return ref.watch(webrtcProvider).isAudioMuted;
 });
 
+/// Provider for auto-listen state (for UI binding)
+final webrtcAutoListeningProvider = Provider<bool>((ref) {
+  return ref.watch(webrtcProvider).isAutoListening;
+});
+
 /// WebRTC state notifier - manages peer connection and video rendering
 class WebRTCNotifier extends StateNotifier<WebRTCConnectionState> {
   final Ref _ref;
@@ -74,7 +83,9 @@ class WebRTCNotifier extends StateNotifier<WebRTCConnectionState> {
   Timer? _reconnectTimer;
   int _reconnectAttempts = 0;
   bool _isPaused = false;  // True when app is backgrounded
+  bool _isVideoOnlyPause = false;  // True when only video is paused (background audio)
   bool _isRequesting = false;  // Guard against concurrent requestVideoStream calls
+  Timer? _autoListenTimer;  // Auto-listen after PTT send
   static const int _maxReconnectAttempts = 3;
   static const Duration _reconnectDelay = Duration(seconds: 5);
   static const String _mutePrefsKey = 'webrtc_audio_muted';
@@ -101,6 +112,14 @@ class WebRTCNotifier extends StateNotifier<WebRTCConnectionState> {
 
   /// Toggle audio mute state (purely app-side, no command to robot)
   Future<void> toggleAudioMute() async {
+    // User manual toggle overrides auto-listen
+    if (_autoListenTimer?.isActive ?? false) {
+      _autoListenTimer!.cancel();
+      _autoListenTimer = null;
+      state = state.copyWith(isAutoListening: false);
+      print('WebRTC: Auto-listen cancelled by manual toggle');
+    }
+
     final newMuted = !state.isAudioMuted;
     state = state.copyWith(isAudioMuted: newMuted);
 
@@ -111,6 +130,42 @@ class WebRTCNotifier extends StateNotifier<WebRTCConnectionState> {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(_mutePrefsKey, newMuted);
     print('WebRTC: Audio ${newMuted ? "muted" : "unmuted"} (persisted)');
+  }
+
+  /// Temporarily force-unmute audio for [duration] after PTT send,
+  /// then restore the user's persisted mute preference.
+  void startAutoListen(Duration duration) {
+    _autoListenTimer?.cancel();
+
+    // Force-unmute audio tracks
+    _applyAudioMuteState(false);
+    state = state.copyWith(isAutoListening: true);
+    print('WebRTC: Auto-listen started for ${duration.inSeconds}s');
+
+    _autoListenTimer = Timer(duration, () {
+      // Restore to persisted mute state
+      _applyAudioMuteState(state.isAudioMuted);
+      state = state.copyWith(isAutoListening: false);
+      _autoListenTimer = null;
+      print('WebRTC: Auto-listen ended, restored mute=${state.isAudioMuted}');
+    });
+  }
+
+  /// Cancel auto-listen and restore persisted mute state.
+  void cancelAutoListen() {
+    if (_autoListenTimer?.isActive ?? false) {
+      _autoListenTimer!.cancel();
+      _autoListenTimer = null;
+      _applyAudioMuteState(state.isAudioMuted);
+      state = state.copyWith(isAutoListening: false);
+      print('WebRTC: Auto-listen cancelled');
+    }
+  }
+
+  /// Temporarily enable/disable audio track without persisting preference.
+  /// Used by PTT to avoid iOS audio session conflict during recording.
+  void setAudioTrackEnabled(bool enabled) {
+    _applyAudioMuteState(!enabled);
   }
 
   /// Apply mute state to the remote audio track
@@ -614,8 +669,8 @@ class WebRTCNotifier extends StateNotifier<WebRTCConnectionState> {
 
   /// Schedule auto-reconnect with exponential backoff
   void _scheduleReconnect() {
-    if (_isPaused) {
-      print('WebRTC: Skipping reconnect - app is backgrounded');
+    if (_isPaused && !_isVideoOnlyPause) {
+      print('WebRTC: Skipping reconnect - app is fully paused');
       return;
     }
     if (_lastDeviceId == null) {
@@ -641,8 +696,8 @@ class WebRTCNotifier extends StateNotifier<WebRTCConnectionState> {
     print('WebRTC: Auto-reconnecting in ${delay.inSeconds}s (attempt $_reconnectAttempts/$_maxReconnectAttempts)');
 
     _reconnectTimer = Timer(delay, () async {
-      if (_isPaused) {
-        print('WebRTC: Reconnect timer fired but app is backgrounded, skipping');
+      if (_isPaused && !_isVideoOnlyPause) {
+        print('WebRTC: Reconnect timer fired but app is fully paused, skipping');
         return;
       }
       if (_isRequesting) {
@@ -668,6 +723,7 @@ class WebRTCNotifier extends StateNotifier<WebRTCConnectionState> {
   /// Build 44: More thorough cleanup to prevent video bleeding
   Future<void> _closeInternal() async {
     print('WebRTC: _closeInternal - stopping all streams and connections');
+    cancelAutoListen();
 
     // Build 44: Clear renderer FIRST to immediately stop showing old video
     if (_renderer != null && _renderer!.srcObject != null) {
@@ -736,6 +792,7 @@ class WebRTCNotifier extends StateNotifier<WebRTCConnectionState> {
   Future<void> pause() async {
     if (_isPaused) return;
     _isPaused = true;
+    _isVideoOnlyPause = false;
     _reconnectTimer?.cancel();
     _reconnectAttempts = 0;
     _isRequesting = false;
@@ -743,18 +800,54 @@ class WebRTCNotifier extends StateNotifier<WebRTCConnectionState> {
     await _closeInternal();
   }
 
+  /// Pause only video tracks when app is backgrounded (background audio mode).
+  /// Keeps peer connection, audio tracks, and data channel alive.
+  void pauseVideoOnly() {
+    if (_isPaused) return;
+    _isPaused = true;
+    _isVideoOnlyPause = true;
+    _reconnectTimer?.cancel();
+    _reconnectAttempts = 0;
+
+    // Disable video tracks only — keep audio alive
+    if (_renderer?.srcObject != null) {
+      for (final track in _renderer!.srcObject!.getVideoTracks()) {
+        track.enabled = false;
+        print('WebRTC: Disabled video track for background');
+      }
+    }
+
+    print('WebRTC: Video paused (background audio active)');
+  }
+
   /// Resume WebRTC when app returns to foreground.
-  /// Reconnects to the last device if we had an active session.
+  /// Re-enables video tracks if video-only pause, or reconnects if full pause.
   Future<void> resume() async {
     if (!_isPaused) return;
-    _isPaused = false;
-    print('WebRTC: Resumed (app foregrounded)');
 
-    // Reconnect if we had a previous device
-    if (_lastDeviceId != null) {
-      print('WebRTC: Reconnecting to $_lastDeviceId');
-      _reconnectAttempts = 0;
-      await requestVideoStream(_lastDeviceId!);
+    if (_isVideoOnlyPause) {
+      // Video-only pause: just re-enable video tracks
+      _isPaused = false;
+      _isVideoOnlyPause = false;
+
+      if (_renderer?.srcObject != null) {
+        for (final track in _renderer!.srcObject!.getVideoTracks()) {
+          track.enabled = true;
+          print('WebRTC: Re-enabled video track');
+        }
+      }
+
+      print('WebRTC: Resumed video (was background audio)');
+    } else {
+      // Full pause: reconnect
+      _isPaused = false;
+      print('WebRTC: Resumed (app foregrounded)');
+
+      if (_lastDeviceId != null) {
+        print('WebRTC: Reconnecting to $_lastDeviceId');
+        _reconnectAttempts = 0;
+        await requestVideoStream(_lastDeviceId!);
+      }
     }
   }
 
@@ -770,6 +863,7 @@ class WebRTCNotifier extends StateNotifier<WebRTCConnectionState> {
   @override
   void dispose() {
     _reconnectTimer?.cancel();
+    _autoListenTimer?.cancel();
     for (final sub in _subscriptions) {
       sub.cancel();
     }

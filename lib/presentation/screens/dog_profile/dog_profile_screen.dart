@@ -910,6 +910,21 @@ class _MetricsDashboard extends ConsumerWidget {
             const Expanded(child: SizedBox()),
           ],
         ),
+        const SizedBox(height: 12),
+        Align(
+          alignment: Alignment.centerLeft,
+          child: TextButton.icon(
+            onPressed: () {
+              ref.read(activityTabIndexProvider.notifier).state = 0;
+              context.go('/activity');
+            },
+            icon: const Icon(Icons.bar_chart, size: 18),
+            label: const Text('View Dashboard'),
+            style: TextButton.styleFrom(
+              foregroundColor: AppTheme.primary,
+            ),
+          ),
+        ),
       ],
     );
   }

@@ -620,7 +620,12 @@ class _PttActionButton extends ConsumerWidget {
         GestureDetector(
           onTapDown: isBusy ? null : (_) async {
             HapticFeedback.mediumImpact();
-            await ref.read(pushToTalkProvider.notifier).startRecording();
+            final success = await ref.read(pushToTalkProvider.notifier).startRecording();
+            if (success) {
+              HapticFeedback.selectionClick();
+            } else {
+              HapticFeedback.heavyImpact();
+            }
           },
           onTapUp: isRecording ? (_) async {
             HapticFeedback.lightImpact();

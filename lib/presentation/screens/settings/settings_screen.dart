@@ -134,6 +134,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           const _CameraTrackingTile(),
           const Divider(),
 
+          _SectionHeader('Audio'),
+          const _BackgroundAudioTile(),
+          const Divider(),
+
           _SectionHeader('Training'),
           ListTile(
             leading: const Icon(Icons.schedule),
@@ -433,6 +437,34 @@ class _CameraTrackingTile extends ConsumerWidget {
       value: settings.cameraTrackingEnabled,
       onChanged: (value) {
         ref.read(settingsProvider.notifier).setCameraTrackingEnabled(value);
+      },
+    );
+  }
+}
+
+/// Background audio toggle
+class _BackgroundAudioTile extends ConsumerWidget {
+  const _BackgroundAudioTile();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final settings = ref.watch(settingsProvider);
+
+    return SwitchListTile(
+      secondary: Icon(
+        Icons.headphones,
+        color: settings.backgroundAudioEnabled ? AppTheme.accent : AppTheme.textTertiary,
+      ),
+      title: const Text('Background Audio'),
+      subtitle: Text(
+        settings.backgroundAudioEnabled
+            ? 'Keep listening when app is in background'
+            : 'Audio stops when app is backgrounded',
+        style: TextStyle(fontSize: 12, color: AppTheme.textTertiary),
+      ),
+      value: settings.backgroundAudioEnabled,
+      onChanged: (value) {
+        ref.read(settingsProvider.notifier).setBackgroundAudioEnabled(value);
       },
     );
   }

@@ -309,6 +309,18 @@ class TreatControl {
     if (!_ref.read(connectionProvider).isConnected) return;
     _ref.read(websocketClientProvider).sendCarouselRotate();
   }
+
+  /// Set treat counter to a specific count
+  void setCount(int count) {
+    if (!_ref.read(connectionProvider).isConnected) return;
+    _ref.read(websocketClientProvider).sendTreatCounterSet(count);
+  }
+
+  /// Reset treat counter to full
+  void resetCount() {
+    if (!_ref.read(connectionProvider).isConnected) return;
+    _ref.read(websocketClientProvider).sendTreatCounterReset();
+  }
 }
 
 /// Provider for call dog action

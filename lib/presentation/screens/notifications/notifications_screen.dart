@@ -2,10 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../data/models/notification_event.dart';
+import '../../../domain/providers/analytics_provider.dart';
+import '../../../domain/providers/dog_profiles_provider.dart';
 import '../../../domain/providers/notifications_provider.dart';
 import '../../theme/app_theme.dart';
+import 'activity_dashboard.dart';
 
-/// Notifications center screen showing chronological event feed
+/// Activity screen with Dashboard and Events tabs
 class NotificationsScreen extends ConsumerStatefulWidget {
   const NotificationsScreen({super.key});
 
@@ -13,74 +16,156 @@ class NotificationsScreen extends ConsumerStatefulWidget {
   ConsumerState<NotificationsScreen> createState() => _NotificationsScreenState();
 }
 
-class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
+class _NotificationsScreenState extends ConsumerState<NotificationsScreen>
+    with SingleTickerProviderStateMixin {
+  late TabController _tabController;
   Set<NotificationEventType>? _activeFilter;
 
   @override
-  Widget build(BuildContext context) {
-    final notifications = _activeFilter != null
-        ? ref.watch(filteredNotificationsProvider(_activeFilter))
-        : ref.watch(notificationsProvider);
-    final unreadCount = ref.watch(unreadCountProvider);
+  void initState() {
+    super.initState();
+    final initialIndex = ref.read(activityTabIndexProvider);
+    _tabController = TabController(length: 2, vsync: this, initialIndex: initialIndex);
+    _tabController.addListener(() {
+      if (!_tabController.indexIsChanging) {
+        ref.read(activityTabIndexProvider.notifier).state = _tabController.index;
+      }
+    });
+  }
 
-    // Group notifications by day
-    final grouped = _groupByDay(notifications);
+  @override
+  void dispose() {
+    _tabController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final unreadCount = ref.watch(unreadCountProvider);
+    final selectedDog = ref.watch(selectedDogProvider);
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Notifications'),
+        title: const Text('Activity'),
         actions: [
-          if (unreadCount > 0)
+          // Events tab actions only
+          if (_tabController.index == 1 && unreadCount > 0)
             TextButton(
               onPressed: () {
                 ref.read(notificationsProvider.notifier).markAllAsRead();
               },
               child: const Text('Mark all read'),
             ),
-          PopupMenuButton<String>(
-            icon: const Icon(Icons.filter_list),
-            onSelected: (value) {
-              if (value == 'clear_all') {
-                ref.read(notificationsProvider.notifier).clearAll();
-                return;
-              }
-              setState(() {
-                if (value == 'all') {
-                  _activeFilter = null;
-                } else {
-                  _activeFilter = _getFilterSet(value);
+          if (_tabController.index == 1)
+            PopupMenuButton<String>(
+              icon: const Icon(Icons.filter_list),
+              onSelected: (value) {
+                if (value == 'clear_all') {
+                  ref.read(notificationsProvider.notifier).clearAll();
+                  return;
                 }
-              });
-            },
-            itemBuilder: (context) => [
-              const PopupMenuItem(value: 'all', child: Text('All')),
-              const PopupMenuItem(value: 'behaviors', child: Text('Behaviors')),
-              const PopupMenuItem(value: 'missions', child: Text('Missions')),
-              const PopupMenuItem(value: 'alerts', child: Text('Alerts')),
-              const PopupMenuItem(value: 'treats', child: Text('Treats')),
-              const PopupMenuDivider(),
-              const PopupMenuItem(
-                value: 'clear_all',
-                child: Text('Clear all', style: TextStyle(color: Colors.red)),
-              ),
-            ],
+                setState(() {
+                  if (value == 'all') {
+                    _activeFilter = null;
+                  } else {
+                    _activeFilter = _getFilterSet(value);
+                  }
+                });
+              },
+              itemBuilder: (context) => [
+                const PopupMenuItem(value: 'all', child: Text('All')),
+                const PopupMenuItem(value: 'behaviors', child: Text('Behaviors')),
+                const PopupMenuItem(value: 'missions', child: Text('Missions')),
+                const PopupMenuItem(value: 'alerts', child: Text('Alerts')),
+                const PopupMenuItem(value: 'treats', child: Text('Treats')),
+                const PopupMenuDivider(),
+                const PopupMenuItem(
+                  value: 'clear_all',
+                  child: Text('Clear all', style: TextStyle(color: Colors.red)),
+                ),
+              ],
+            ),
+        ],
+        bottom: TabBar(
+          controller: _tabController,
+          onTap: (_) => setState(() {}), // rebuild actions
+          indicatorColor: AppTheme.primary,
+          labelColor: AppTheme.primary,
+          unselectedLabelColor: AppTheme.textTertiary,
+          tabs: const [
+            Tab(icon: Icon(Icons.bar_chart, size: 20), text: 'Dashboard'),
+            Tab(icon: Icon(Icons.notifications, size: 20), text: 'Events'),
+          ],
+        ),
+      ),
+      body: TabBarView(
+        controller: _tabController,
+        children: [
+          ActivityDashboard(dogId: selectedDog?.id),
+          _EventsTab(
+            activeFilter: _activeFilter,
           ),
         ],
       ),
-      body: notifications.isEmpty
-          ? _buildEmptyState()
-          : RefreshIndicator(
-              onRefresh: () =>
-                  ref.read(notificationsProvider.notifier).refresh(),
-              child: ListView.builder(
-                padding: const EdgeInsets.only(bottom: 16),
-                itemCount: grouped.length,
-                itemBuilder: (context, index) {
-                  final entry = grouped.entries.elementAt(index);
-                  return _buildDaySection(entry.key, entry.value);
-                },
-              ),
-            ),
+    );
+  }
+
+  Set<NotificationEventType> _getFilterSet(String filter) {
+    return switch (filter) {
+      'behaviors' => {
+          NotificationEventType.sit,
+          NotificationEventType.lieDown,
+          NotificationEventType.stand,
+          NotificationEventType.bark,
+          NotificationEventType.happy,
+        },
+      'missions' => {
+          NotificationEventType.missionStarted,
+          NotificationEventType.missionCompleted,
+          NotificationEventType.missionFailed,
+        },
+      'alerts' => {
+          NotificationEventType.lowBattery,
+          NotificationEventType.alert,
+          NotificationEventType.connected,
+          NotificationEventType.disconnected,
+        },
+      'treats' => {
+          NotificationEventType.treatDispensed,
+        },
+      _ => {},
+    };
+  }
+}
+
+/// Events tab — the original notifications list
+class _EventsTab extends ConsumerWidget {
+  final Set<NotificationEventType>? activeFilter;
+
+  const _EventsTab({this.activeFilter});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final notifications = activeFilter != null
+        ? ref.watch(filteredNotificationsProvider(activeFilter))
+        : ref.watch(notificationsProvider);
+
+    if (notifications.isEmpty) {
+      return _buildEmptyState();
+    }
+
+    final grouped = _groupByDay(notifications);
+
+    return RefreshIndicator(
+      onRefresh: () => ref.read(notificationsProvider.notifier).refresh(),
+      child: ListView.builder(
+        padding: const EdgeInsets.only(bottom: 16),
+        itemCount: grouped.length,
+        itemBuilder: (context, index) {
+          final entry = grouped.entries.elementAt(index);
+          return _buildDaySection(context, ref, entry.key, entry.value);
+        },
+      ),
     );
   }
 
@@ -115,7 +200,12 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
     );
   }
 
-  Widget _buildDaySection(String dayLabel, List<NotificationEvent> events) {
+  Widget _buildDaySection(
+    BuildContext context,
+    WidgetRef ref,
+    String dayLabel,
+    List<NotificationEvent> events,
+  ) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -145,7 +235,9 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
               ),
               child: _NotificationTile(
                 event: event,
-                onTap: () => _handleNotificationTap(event),
+                onTap: () {
+                  ref.read(notificationsProvider.notifier).markAsRead(event.id);
+                },
               ),
             )),
       ],
@@ -183,7 +275,6 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
       grouped[label]!.add(notification);
     }
 
-    // Sort to maintain order: Today, Yesterday, This Week, Earlier
     final sortOrder = ['TODAY', 'YESTERDAY', 'THIS WEEK', 'EARLIER'];
     final sorted = Map.fromEntries(
       sortOrder
@@ -192,41 +283,6 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
     );
 
     return sorted;
-  }
-
-  Set<NotificationEventType> _getFilterSet(String filter) {
-    return switch (filter) {
-      'behaviors' => {
-          NotificationEventType.sit,
-          NotificationEventType.lieDown,
-          NotificationEventType.stand,
-          NotificationEventType.bark,
-          NotificationEventType.happy,
-        },
-      'missions' => {
-          NotificationEventType.missionStarted,
-          NotificationEventType.missionCompleted,
-          NotificationEventType.missionFailed,
-        },
-      'alerts' => {
-          NotificationEventType.lowBattery,
-          NotificationEventType.alert,
-          NotificationEventType.connected,
-          NotificationEventType.disconnected,
-        },
-      'treats' => {
-          NotificationEventType.treatDispensed,
-        },
-      _ => {},
-    };
-  }
-
-  void _handleNotificationTap(NotificationEvent event) {
-    // Mark as read
-    ref.read(notificationsProvider.notifier).markAsRead(event.id);
-
-    // Navigate to related screen based on type
-    // TODO: Implement navigation to video clip, mission detail, etc.
   }
 }
 
@@ -363,24 +419,10 @@ class _NotificationTile extends StatelessWidget {
   }
 
   String _formatTime(DateTime timestamp) {
-    final now = DateTime.now();
-    final today = DateTime(now.year, now.month, now.day);
-    final date = DateTime(timestamp.year, timestamp.month, timestamp.day);
-
-    if (date == today) {
-      // Today - show time
-      final hour = timestamp.hour;
-      final minute = timestamp.minute.toString().padLeft(2, '0');
-      final period = hour >= 12 ? 'PM' : 'AM';
-      final hour12 = hour > 12 ? hour - 12 : (hour == 0 ? 12 : hour);
-      return '$hour12:$minute $period';
-    } else {
-      // Other days - show time
-      final hour = timestamp.hour;
-      final minute = timestamp.minute.toString().padLeft(2, '0');
-      final period = hour >= 12 ? 'PM' : 'AM';
-      final hour12 = hour > 12 ? hour - 12 : (hour == 0 ? 12 : hour);
-      return '$hour12:$minute $period';
-    }
+    final hour = timestamp.hour;
+    final minute = timestamp.minute.toString().padLeft(2, '0');
+    final period = hour >= 12 ? 'PM' : 'AM';
+    final hour12 = hour > 12 ? hour - 12 : (hour == 0 ? 12 : hour);
+    return '$hour12:$minute $period';
   }
 }
