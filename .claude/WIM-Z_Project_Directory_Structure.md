@@ -44,6 +44,9 @@ Architecture: Mobile App (this repo) → Server (intermediary) → Robot (Pi 5)
             mission.dart           Training mission config
          📂 datasources/
             robot_api.dart         REST API client for WIM-Z
+         📂 services/
+            photo_service.dart     Photo capture → gallery save
+            video_service.dart     Video capture → gallery save (Build 59)
 
       📂 domain/                   # Business logic
          📂 providers/             # Riverpod state management
@@ -57,11 +60,12 @@ Architecture: Mobile App (this repo) → Server (intermediary) → Robot (Pi 5)
             home/                  Dashboard with video + status
             drive/                 Manual joystick control
             missions/              Training session management
+            notifications/         Activity dashboard + event feed (Build 59)
             settings/              Configuration & info
          📂 widgets/
             video/                 MJPEG viewer
             controls/              Joystick, pan/tilt, quick actions
-            status/                Battery, connection, detection
+            status/                Battery, connection, detection, treat counter
             common/                Loading, errors, shared UI
          📂 theme/
             app_theme.dart         Dark theme with neon aesthetics
