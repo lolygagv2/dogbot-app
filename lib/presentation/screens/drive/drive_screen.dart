@@ -98,12 +98,18 @@ class _DriveScreenState extends ConsumerState<DriveScreen> {
         leading: IconButton(
           onPressed: () {
             final modeState = ref.read(modeStateProvider);
-            // Only restore portrait mode when NOT in coach/mission
-            // (Coach stays active, user can re-enter coach screen from home)
-            if (modeState.currentMode != RobotMode.coach &&
-                !modeState.isMissionActive && !modeState.isModeLocked) {
+            if (modeState.isMissionActive || modeState.isModeLocked) {
+              // Mission active — stop it and exit to idle
+              ref.read(missionsProvider.notifier).stopMission();
+              ref.read(modeStateProvider.notifier).setMode(
+                RobotMode.idle,
+                source: 'mission_end',
+              );
+            } else if (modeState.currentMode != RobotMode.coach) {
+              // Not in coach or mission — restore previous portrait mode
               ref.read(modeStateProvider.notifier).restorePortraitMode();
             }
+            // Coach stays active when leaving drive screen
             context.pop();
           },
           icon: Container(
@@ -906,7 +912,7 @@ class _DriveCoachOverlay extends ConsumerWidget {
   }
 }
 
-/// Active mission banner shown on drive screen
+/// Active mission banner shown on drive screen — includes stop button
 class _ActiveMissionBanner extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -934,6 +940,33 @@ class _ActiveMissionBanner extends ConsumerWidget {
                 fontWeight: FontWeight.w600,
               ),
               overflow: TextOverflow.ellipsis,
+            ),
+          ),
+          const SizedBox(width: 8),
+          // Stop mission button — exits mission and returns to idle
+          GestureDetector(
+            onTap: () {
+              ref.read(missionsProvider.notifier).stopMission();
+              ref.read(modeStateProvider.notifier).setMode(
+                RobotMode.idle,
+                source: 'mission_end',
+              );
+              context.pop();
+            },
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              decoration: BoxDecoration(
+                color: Colors.red,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: const Text(
+                'STOP',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 11,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
             ),
           ),
         ],

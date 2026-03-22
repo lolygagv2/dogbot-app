@@ -114,11 +114,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             title: const Text('Temperature'),
             trailing: Text(telemetry.temperature > 0 ? '${telemetry.temperature.toInt()}°C' : 'N/A'),
           ),
-          ListTile(
-            leading: const Icon(Icons.cookie),
-            title: const Text('Treats Remaining'),
-            trailing: Text('${telemetry.treatsRemaining}'),
-          ),
+          _TreatsRemainingTile(),
           ListTile(
             leading: const Icon(Icons.tune),
             title: const Text('Current Mode'),
@@ -411,6 +407,21 @@ class _InlineDeviceList extends ConsumerWidget {
           onTap: () => context.push('/device-pairing'),
         ),
       ],
+    );
+  }
+}
+
+/// Treats remaining display — reads from treatsRemainingProvider (handles null/-1)
+class _TreatsRemainingTile extends ConsumerWidget {
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final count = ref.watch(treatsRemainingProvider);
+    final display = count == null ? '\u2014' : (count <= 0 ? '0 (refill needed)' : '$count');
+
+    return ListTile(
+      leading: const Icon(Icons.cookie),
+      title: const Text('Treats Remaining'),
+      trailing: Text(display),
     );
   }
 }

@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/network/websocket_client.dart';
+import 'dog_profiles_provider.dart';
 import 'mode_provider.dart';
 
 /// Coach session state
@@ -140,9 +141,12 @@ class CoachNotifier extends StateNotifier<CoachState> {
     // First set mode to coach
     await _ref.read(modeStateProvider.notifier).setMode(RobotMode.coach);
 
-    // Then send start_coach command
+    // Send start_coach command with selected dog info so robot can track it
+    final selectedDog = _ref.read(selectedDogProvider);
     ws.sendCommand('start_coach', {
       if (behaviors != null) 'behaviors': behaviors,
+      if (selectedDog != null) 'dog_id': selectedDog.id,
+      if (selectedDog?.name != null) 'dog_name': selectedDog!.name,
     });
 
     state = state.copyWith(

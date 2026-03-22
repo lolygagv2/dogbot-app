@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/network/websocket_client.dart';
 import '../../data/models/notification_event.dart';
 import 'connection_provider.dart';
+import 'dog_profiles_provider.dart';
 
 /// Provider for notification events list
 final notificationsProvider =
@@ -63,8 +64,10 @@ class NotificationsNotifier extends StateNotifier<List<NotificationEvent>> {
 
     switch (event.type) {
       case 'detection':
+        // Only show notifications for known dogs (ignore ArUco false positives
+        // like tags on water bottles, furniture, etc.)
         final behavior = event.data['behavior'] as String?;
-        if (behavior != null) {
+        if (behavior != null && _isKnownDog(event.data)) {
           notification = _createBehaviorNotification(behavior, event.data);
         }
         break;
@@ -146,6 +149,19 @@ class NotificationsNotifier extends StateNotifier<List<NotificationEvent>> {
     if (notification != null) {
       addNotification(notification);
     }
+  }
+
+  /// Check if detection is from a known dog (has dog_id, or aruco_id matches a profile,
+  /// or no aruco at all — generic detection without ArUco is allowed through)
+  bool _isKnownDog(Map<String, dynamic> data) {
+    // If robot sent a dog_id, it's identified
+    if (data['dog_id'] != null) return true;
+    // If no aruco_id, it's a generic detection (no ArUco tag) — allow
+    final arucoId = data['aruco_id'] as int?;
+    if (arucoId == null) return true;
+    // Has aruco_id — check if it matches any profile
+    final profiles = _ref.read(dogProfilesProvider);
+    return profiles.any((p) => p.arucoMarkerId == arucoId);
   }
 
   NotificationEvent? _createBehaviorNotification(

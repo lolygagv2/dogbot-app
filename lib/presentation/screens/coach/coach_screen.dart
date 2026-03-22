@@ -246,7 +246,9 @@ class _CoachScreenState extends ConsumerState<CoachScreen> {
                               const Icon(Icons.pets, color: AppTheme.primary, size: 20),
                               const SizedBox(width: 8),
                               Text(
-                                selectedDog?.name ?? coachState.dogName ?? 'Dog',
+                                // Priority: detection event dog name > coach state > fallback
+                                // Do NOT use selectedDog.name — that locks to profile selection
+                                coachState.dogName ?? 'Dog Detected',
                                 style: const TextStyle(
                                   color: Colors.white,
                                   fontSize: 16,
