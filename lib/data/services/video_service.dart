@@ -1,6 +1,6 @@
-import 'dart:convert';
 import 'dart:io';
 
+import 'package:dio/dio.dart';
 import 'package:gal/gal.dart';
 import 'package:path_provider/path_provider.dart';
 
@@ -21,7 +21,7 @@ class CapturedVideo {
   });
 }
 
-/// Service for saving captured videos to gallery
+/// Service for downloading and saving captured videos to gallery
 class VideoService {
   static VideoService? _instance;
   static VideoService get instance => _instance ??= VideoService._();
@@ -29,6 +29,10 @@ class VideoService {
   VideoService._();
 
   Directory? _videosDir;
+  final _dio = Dio(BaseOptions(
+    connectTimeout: const Duration(seconds: 10),
+    receiveTimeout: const Duration(seconds: 120),
+  ));
 
   Future<void> init() async {
     final appDir = await getTemporaryDirectory();
@@ -45,29 +49,46 @@ class VideoService {
     return _videosDir!;
   }
 
-  /// Save video from base64 data to gallery
-  Future<CapturedVideo> saveVideo({
-    required String base64Data,
-    required String filename,
+  /// Download video from URL and save to gallery
+  Future<CapturedVideo> downloadAndSaveVideo({
+    required String downloadUrl,
+    String? filename,
     String? timestamp,
+    void Function(double progress)? onProgress,
   }) async {
     final dir = await videosDirectory;
     final now = DateTime.now();
     final id = '${now.millisecondsSinceEpoch}';
 
-    final cleanFilename = filename.replaceAll(RegExp(r'[^\w.-]'), '_');
+    final cleanFilename = (filename ?? 'wimz_video_$id')
+        .replaceAll(RegExp(r'[^\w.-]'), '_');
     final finalFilename = cleanFilename.endsWith('.mp4')
         ? cleanFilename
-        : '${cleanFilename}_$id.mp4';
+        : '$cleanFilename.mp4';
 
     final localPath = '${dir.path}/$finalFilename';
 
-    // Decode and save to temp file
-    final bytes = base64Decode(base64Data);
-    final file = File(localPath);
-    await file.writeAsBytes(bytes);
+    print('VideoService: Downloading from $downloadUrl');
+    print('VideoService: Saving to $localPath');
 
-    print('VideoService: Saved video to $localPath (${bytes.length} bytes)');
+    // Download with progress
+    await _dio.download(
+      downloadUrl,
+      localPath,
+      onReceiveProgress: (received, total) {
+        if (total > 0 && onProgress != null) {
+          onProgress(received / total);
+        }
+      },
+    );
+
+    final file = File(localPath);
+    final fileSize = await file.length();
+    print('VideoService: Downloaded $fileSize bytes');
+
+    if (fileSize < 100) {
+      throw Exception('Downloaded file is too small ($fileSize bytes)');
+    }
 
     // Save to gallery
     bool savedToGallery = false;

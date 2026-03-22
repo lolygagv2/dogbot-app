@@ -10,6 +10,7 @@ import 'connection_provider.dart';
 class VideoState {
   final bool isRecording;
   final bool isProcessing;
+  final double downloadProgress; // 0.0 to 1.0 during download
   final DateTime? recordingStartTime;
   final CapturedVideo? lastCaptured;
   final String? error;
@@ -17,6 +18,7 @@ class VideoState {
   const VideoState({
     this.isRecording = false,
     this.isProcessing = false,
+    this.downloadProgress = 0.0,
     this.recordingStartTime,
     this.lastCaptured,
     this.error,
@@ -25,6 +27,7 @@ class VideoState {
   VideoState copyWith({
     bool? isRecording,
     bool? isProcessing,
+    double? downloadProgress,
     DateTime? recordingStartTime,
     CapturedVideo? lastCaptured,
     String? error,
@@ -35,6 +38,7 @@ class VideoState {
     return VideoState(
       isRecording: isRecording ?? this.isRecording,
       isProcessing: isProcessing ?? this.isProcessing,
+      downloadProgress: downloadProgress ?? this.downloadProgress,
       recordingStartTime: clearRecordingStart
           ? null
           : (recordingStartTime ?? this.recordingStartTime),
@@ -49,6 +53,9 @@ class VideoState {
     if (recordingStartTime == null) return 0;
     return DateTime.now().difference(recordingStartTime!).inSeconds;
   }
+
+  /// Whether currently downloading video from robot
+  bool get isDownloading => isProcessing && downloadProgress > 0 && downloadProgress < 1.0;
 }
 
 /// Provider for video recording management
@@ -65,7 +72,7 @@ class VideoNotifier extends StateNotifier<VideoState> {
   Timer? _maxDurationTimer;
 
   static const _maxRecordingSeconds = 60;
-  static const _videoResponseTimeoutSeconds = 45; // Pi encoding takes time
+  static const _videoResponseTimeoutSeconds = 45;
 
   VideoNotifier(this._ref) : super(const VideoState()) {
     _init();
@@ -85,46 +92,60 @@ class VideoNotifier extends StateNotifier<VideoState> {
   Future<void> _handleVideoMessage(Map<String, dynamic> message) async {
     _maxDurationTimer?.cancel();
 
-    final base64Data = message['data'] as String?;
+    final downloadUrl = message['download_url'] as String? ?? message['url'] as String?;
     final filename = message['filename'] as String? ?? 'wimz_video';
     final timestamp = message['timestamp'] as String?;
 
-    print('VIDEO: Received video response, keys=${message.keys}');
-    print('VIDEO: data length=${base64Data?.length ?? 0}, filename=$filename');
+    print('VIDEO: Received video_ready, keys=${message.keys}');
+    print('VIDEO: download_url=$downloadUrl, filename=$filename');
 
-    if (base64Data == null || base64Data.isEmpty) {
+    if (downloadUrl == null || downloadUrl.isEmpty) {
+      print('VIDEO: ERROR — no download_url in video_ready response');
       state = state.copyWith(
         isRecording: false,
         isProcessing: false,
+        downloadProgress: 0,
         clearRecordingStart: true,
-        error: 'Received empty video data',
+        error: 'No download URL received from robot',
       );
       return;
     }
 
-    state = state.copyWith(isRecording: false, isProcessing: true);
+    state = state.copyWith(
+      isRecording: false,
+      isProcessing: true,
+      downloadProgress: 0,
+    );
 
     try {
-      final video = await _videoService.saveVideo(
-        base64Data: base64Data,
+      print('VIDEO: Starting download from $downloadUrl');
+      final video = await _videoService.downloadAndSaveVideo(
+        downloadUrl: downloadUrl,
         filename: filename,
         timestamp: timestamp,
+        onProgress: (progress) {
+          if (mounted) {
+            state = state.copyWith(downloadProgress: progress);
+          }
+        },
       );
 
       state = state.copyWith(
         isProcessing: false,
+        downloadProgress: 1.0,
         lastCaptured: video,
         clearRecordingStart: true,
         clearError: true,
       );
 
-      print('VideoProvider: Video saved: ${video.filename}');
+      print('VIDEO: Saved to gallery: ${video.filename}');
     } catch (e) {
-      print('VideoProvider: Failed to save video: $e');
+      print('VIDEO: Download/save failed: $e');
       state = state.copyWith(
         isProcessing: false,
+        downloadProgress: 0,
         clearRecordingStart: true,
-        error: 'Failed to save video: $e',
+        error: 'Failed to download video: $e',
       );
     }
   }
@@ -143,6 +164,7 @@ class VideoNotifier extends StateNotifier<VideoState> {
     state = state.copyWith(
       isRecording: true,
       recordingStartTime: DateTime.now(),
+      downloadProgress: 0,
       clearError: true,
     );
 
@@ -169,19 +191,20 @@ class VideoNotifier extends StateNotifier<VideoState> {
 
     _maxDurationTimer?.cancel();
     print('VIDEO: Sending stop_recording command');
-    state = state.copyWith(isRecording: false, isProcessing: true);
+    state = state.copyWith(isRecording: false, isProcessing: true, downloadProgress: 0);
 
     _ref.read(websocketClientProvider).sendStopRecording();
-    print('VIDEO: Waiting for video response (timeout: ${_videoResponseTimeoutSeconds}s)...');
+    print('VIDEO: Waiting for video_ready response (timeout: ${_videoResponseTimeoutSeconds}s)...');
 
-    // Timeout waiting for video data — video encoding on Pi takes time
+    // Timeout waiting for video_ready — encoding on Pi takes time
     _maxDurationTimer = Timer(Duration(seconds: _videoResponseTimeoutSeconds), () {
       if (state.isProcessing) {
-        print('VIDEO: TIMEOUT — no response after ${_videoResponseTimeoutSeconds}s');
+        print('VIDEO: TIMEOUT — no video_ready after ${_videoResponseTimeoutSeconds}s');
         state = state.copyWith(
           isProcessing: false,
+          downloadProgress: 0,
           clearRecordingStart: true,
-          error: 'Video save timed out — no response after ${_videoResponseTimeoutSeconds}s',
+          error: 'Video encoding timed out — no response after ${_videoResponseTimeoutSeconds}s',
         );
       }
     });

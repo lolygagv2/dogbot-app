@@ -367,10 +367,13 @@ class _VideoRecordButtonState extends ConsumerState<_VideoRecordButton>
         child: Padding(
           padding: const EdgeInsets.all(12),
           child: isProcessing
-              ? const SizedBox(
+              ? SizedBox(
                   width: 24,
                   height: 24,
                   child: CircularProgressIndicator(
+                    value: videoState.downloadProgress > 0
+                        ? videoState.downloadProgress
+                        : null, // indeterminate until download starts
                     color: Colors.white,
                     strokeWidth: 2,
                   ),
