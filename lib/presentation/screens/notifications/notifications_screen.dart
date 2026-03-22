@@ -78,6 +78,7 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen>
                 const PopupMenuItem(value: 'missions', child: Text('Missions')),
                 const PopupMenuItem(value: 'alerts', child: Text('Alerts')),
                 const PopupMenuItem(value: 'treats', child: Text('Treats')),
+                const PopupMenuItem(value: 'coach', child: Text('Coach')),
                 const PopupMenuDivider(),
                 const PopupMenuItem(
                   value: 'clear_all',
@@ -132,6 +133,9 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen>
         },
       'treats' => {
           NotificationEventType.treatDispensed,
+        },
+      'coach' => {
+          NotificationEventType.coachReward,
         },
       _ => {},
     };
@@ -397,6 +401,7 @@ class _NotificationTile extends StatelessWidget {
       NotificationEventType.happy => Icons.sentiment_very_satisfied,
       NotificationEventType.connected => Icons.wifi,
       NotificationEventType.disconnected => Icons.wifi_off,
+      NotificationEventType.coachReward => Icons.school,
     };
   }
 
@@ -415,6 +420,7 @@ class _NotificationTile extends StatelessWidget {
       NotificationEventType.happy => AppTheme.accent,
       NotificationEventType.connected => AppTheme.accent,
       NotificationEventType.disconnected => AppTheme.error,
+      NotificationEventType.coachReward => Colors.orange,
     };
   }
 

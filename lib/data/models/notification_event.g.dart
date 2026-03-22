@@ -50,4 +50,5 @@ const _$NotificationEventTypeEnumMap = {
   NotificationEventType.happy: 'happy',
   NotificationEventType.connected: 'connected',
   NotificationEventType.disconnected: 'disconnected',
+  NotificationEventType.coachReward: 'coach_reward',
 };

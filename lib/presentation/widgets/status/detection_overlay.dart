@@ -46,7 +46,7 @@ class DetectionOverlay extends StatelessWidget {
               ),
             ),
             child: Text(
-              '${AppTheme.getBehaviorDisplayName(detection.behavior)} ${((detection.confidence ?? 0) * 100).toInt()}%',
+              '${detection.displayName.isNotEmpty ? "${detection.displayName} \u2022 " : ""}${AppTheme.getBehaviorDisplayName(detection.behavior)} ${((detection.confidence ?? 0) * 100).toInt()}%',
               style: const TextStyle(
                 color: Colors.white,
                 fontSize: 10,

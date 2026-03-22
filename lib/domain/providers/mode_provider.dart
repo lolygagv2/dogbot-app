@@ -353,20 +353,19 @@ class ModeStateNotifier extends StateNotifier<ModeState> {
   }
 
   /// Handle mission ended (completed or stopped)
-  /// v1.3: Restores previous portrait mode instead of defaulting to idle
+  /// Mission ALWAYS exits to idle. Only Drive exit restores previous portrait mode.
   void _handleMissionEnded() {
-    final restoreMode = state.previousPortraitMode;
-    _logModeChange(state.currentMode, restoreMode, 'mission_ended');
-    _userSelectedMode = restoreMode; // Protect restored mode
+    _logModeChange(state.currentMode, RobotMode.idle, 'mission_ended');
+    _userSelectedMode = RobotMode.idle;
     state = state.copyWith(
-      currentMode: restoreMode,
+      currentMode: RobotMode.idle,
       isModeLocked: false,
       clearMission: true,
       isChanging: false,
       clearPending: true,
     );
-    // Send the restored mode to robot
-    _ref.read(websocketClientProvider).sendModeCommand(restoreMode.value, source: 'mission_end');
+    // Send idle mode to robot
+    _ref.read(websocketClientProvider).sendModeCommand(RobotMode.idle.value, source: 'mission_end');
   }
 
   // ─────────────────────────────────────────────────────────────────────────
@@ -424,14 +423,19 @@ class ModeStateNotifier extends StateNotifier<ModeState> {
 
   /// v1.3: Store current portrait mode before entering landscape/mission
   void storePortraitMode() {
-    final current = state.currentMode;
+    // Read the ACTUAL robot mode from telemetry (source of truth),
+    // not state.currentMode which may be stale from a previous user action
+    final telemetryMode = _ref.read(telemetryProvider).mode;
+    final robotMode = RobotMode.tryFromString(telemetryMode);
+    final actual = robotMode ?? state.currentMode; // Fallback to cached if telemetry empty
+
     // Only store portrait-valid modes
-    final toStore = (current == RobotMode.idle ||
-        current == RobotMode.silentGuardian ||
-        current == RobotMode.coach)
-        ? current
+    final toStore = (actual == RobotMode.idle ||
+        actual == RobotMode.silentGuardian ||
+        actual == RobotMode.coach)
+        ? actual
         : RobotMode.idle;
-    print('Mode: Storing portrait mode: ${toStore.value}');
+    print('Mode: Storing portrait mode: ${toStore.value} (telemetry=${robotMode?.value ?? "none"}, cached=${state.currentMode.value})');
     state = state.copyWith(previousPortraitMode: toStore);
   }
 

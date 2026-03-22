@@ -24,6 +24,7 @@ class AnalyticsData {
   final int missionsAttempted;
   final int missionsSucceeded;
   final int activeMinutes;
+  final int coachRewards;
 
   const AnalyticsData({
     required this.dogId,
@@ -33,6 +34,7 @@ class AnalyticsData {
     this.missionsAttempted = 0,
     this.missionsSucceeded = 0,
     this.activeMinutes = 0,
+    this.coachRewards = 0,
   });
 
   double get successRate =>
@@ -92,6 +94,7 @@ class DogAnalyticsNotifier extends StateNotifier<AnalyticsData> {
             missionsAttempted: metrics['mission_attempts'] as int? ?? 0,
             missionsSucceeded: metrics['mission_successes'] as int? ?? 0,
             activeMinutes: metrics['session_minutes'] as int? ?? 0,
+            coachRewards: metrics['coach_rewards'] as int? ?? 0,
           );
         }
         break;
@@ -106,6 +109,7 @@ class DogAnalyticsNotifier extends StateNotifier<AnalyticsData> {
           missionsAttempted: state.missionsAttempted,
           missionsSucceeded: state.missionsSucceeded,
           activeMinutes: state.activeMinutes,
+          coachRewards: state.coachRewards,
         );
         break;
       case 'detection':
@@ -117,6 +121,19 @@ class DogAnalyticsNotifier extends StateNotifier<AnalyticsData> {
           missionsAttempted: state.missionsAttempted,
           missionsSucceeded: state.missionsSucceeded,
           activeMinutes: state.activeMinutes,
+          coachRewards: state.coachRewards,
+        );
+        break;
+      case 'coach_reward':
+        state = AnalyticsData(
+          dogId: _dogId,
+          range: state.range,
+          treatCount: state.treatCount,
+          detectionCount: state.detectionCount,
+          missionsAttempted: state.missionsAttempted,
+          missionsSucceeded: state.missionsSucceeded,
+          activeMinutes: state.activeMinutes,
+          coachRewards: state.coachRewards + 1,
         );
         break;
       case 'mission_complete':
@@ -128,6 +145,7 @@ class DogAnalyticsNotifier extends StateNotifier<AnalyticsData> {
           missionsAttempted: state.missionsAttempted + 1,
           missionsSucceeded: state.missionsSucceeded + 1,
           activeMinutes: state.activeMinutes,
+          coachRewards: state.coachRewards,
         );
         break;
       case 'mission_stopped':
@@ -139,6 +157,7 @@ class DogAnalyticsNotifier extends StateNotifier<AnalyticsData> {
           missionsAttempted: state.missionsAttempted + 1,
           missionsSucceeded: state.missionsSucceeded,
           activeMinutes: state.activeMinutes,
+          coachRewards: state.coachRewards,
         );
         break;
     }
@@ -166,6 +185,7 @@ class DogAnalyticsNotifier extends StateNotifier<AnalyticsData> {
       missionsAttempted: summary.missionCount * multiplier,
       missionsSucceeded: summary.missionSuccessCount * multiplier,
       activeMinutes: 15 * multiplier, // Estimated
+      coachRewards: 3 * multiplier, // Estimated
     );
   }
 

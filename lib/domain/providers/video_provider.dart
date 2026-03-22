@@ -65,6 +65,7 @@ class VideoNotifier extends StateNotifier<VideoState> {
   Timer? _maxDurationTimer;
 
   static const _maxRecordingSeconds = 60;
+  static const _videoResponseTimeoutSeconds = 45; // Pi encoding takes time
 
   VideoNotifier(this._ref) : super(const VideoState()) {
     _init();
@@ -88,7 +89,8 @@ class VideoNotifier extends StateNotifier<VideoState> {
     final filename = message['filename'] as String? ?? 'wimz_video';
     final timestamp = message['timestamp'] as String?;
 
-    print('VideoProvider: Received video, data length=${base64Data?.length ?? 0}');
+    print('VIDEO: Received video response, keys=${message.keys}');
+    print('VIDEO: data length=${base64Data?.length ?? 0}, filename=$filename');
 
     if (base64Data == null || base64Data.isEmpty) {
       state = state.copyWith(
@@ -136,6 +138,8 @@ class VideoNotifier extends StateNotifier<VideoState> {
       return;
     }
 
+    print('VIDEO: Sending start_recording command (max ${_maxRecordingSeconds}s)');
+
     state = state.copyWith(
       isRecording: true,
       recordingStartTime: DateTime.now(),
@@ -152,6 +156,7 @@ class VideoNotifier extends StateNotifier<VideoState> {
       const Duration(seconds: _maxRecordingSeconds),
       () {
         if (state.isRecording) {
+          print('VIDEO: Auto-stopping after ${_maxRecordingSeconds}s max duration');
           stopRecording();
         }
       },
@@ -163,17 +168,20 @@ class VideoNotifier extends StateNotifier<VideoState> {
     if (!state.isRecording) return;
 
     _maxDurationTimer?.cancel();
+    print('VIDEO: Sending stop_recording command');
     state = state.copyWith(isRecording: false, isProcessing: true);
 
     _ref.read(websocketClientProvider).sendStopRecording();
+    print('VIDEO: Waiting for video response (timeout: ${_videoResponseTimeoutSeconds}s)...');
 
-    // Timeout waiting for video data
-    _maxDurationTimer = Timer(const Duration(seconds: 15), () {
+    // Timeout waiting for video data — video encoding on Pi takes time
+    _maxDurationTimer = Timer(Duration(seconds: _videoResponseTimeoutSeconds), () {
       if (state.isProcessing) {
+        print('VIDEO: TIMEOUT — no response after ${_videoResponseTimeoutSeconds}s');
         state = state.copyWith(
           isProcessing: false,
           clearRecordingStart: true,
-          error: 'Video save timed out - no response from robot',
+          error: 'Video save timed out — no response after ${_videoResponseTimeoutSeconds}s',
         );
       }
     });

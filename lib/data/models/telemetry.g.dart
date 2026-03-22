@@ -48,6 +48,8 @@ _$DetectionImpl _$$DetectionImplFromJson(Map<String, dynamic> json) =>
       bbox: (json['bbox'] as List<dynamic>?)
           ?.map((e) => (e as num).toDouble())
           .toList(),
+      dogName: json['dogName'] as String?,
+      arucoId: (json['arucoId'] as num?)?.toInt(),
       timestamp: json['timestamp'] == null
           ? null
           : DateTime.parse(json['timestamp'] as String),
@@ -59,5 +61,7 @@ Map<String, dynamic> _$$DetectionImplToJson(_$DetectionImpl instance) =>
       'behavior': instance.behavior,
       'confidence': instance.confidence,
       'bbox': instance.bbox,
+      'dogName': instance.dogName,
+      'arucoId': instance.arucoId,
       'timestamp': instance.timestamp?.toIso8601String(),
     };

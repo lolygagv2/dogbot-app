@@ -115,6 +115,20 @@ class NotificationsNotifier extends StateNotifier<List<NotificationEvent>> {
         );
         break;
 
+      case 'coach_reward':
+        final behavior = event.data['behavior'] as String? ?? 'trick';
+        final dogName = event.data['dog_name'] as String?;
+        final behaviorLabel = behavior[0].toUpperCase() + behavior.substring(1);
+        notification = NotificationEvent(
+          id: DateTime.now().millisecondsSinceEpoch.toString(),
+          type: NotificationEventType.coachReward,
+          timestamp: DateTime.now(),
+          title: dogName != null ? '$dogName: $behaviorLabel rewarded' : '$behaviorLabel rewarded',
+          subtitle: 'Coach mode',
+          dogId: event.data['dog_id'] as String?,
+        );
+        break;
+
       case 'battery':
         final level = (event.data['level'] as num?)?.toDouble() ?? 100;
         if (level < 20) {
@@ -175,6 +189,7 @@ class NotificationsNotifier extends StateNotifier<List<NotificationEvent>> {
       NotificationEventType.happy => 'Happy Dog',
       NotificationEventType.connected => 'Connected',
       NotificationEventType.disconnected => 'Disconnected',
+      NotificationEventType.coachReward => 'Coach Reward',
     };
   }
 

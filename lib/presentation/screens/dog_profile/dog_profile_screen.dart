@@ -906,8 +906,14 @@ class _MetricsDashboard extends ConsumerWidget {
               ),
             ),
             const SizedBox(width: 8),
-            // Spacer card to keep grid alignment
-            const Expanded(child: SizedBox()),
+            Expanded(
+              child: _StatCard(
+                value: analytics.coachRewards.toString(),
+                label: 'Coach',
+                icon: Icons.school,
+                color: Colors.orange,
+              ),
+            ),
           ],
         ),
         const SizedBox(height: 12),

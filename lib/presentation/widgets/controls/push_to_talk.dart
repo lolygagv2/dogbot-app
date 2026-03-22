@@ -5,7 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../domain/providers/push_to_talk_provider.dart';
 import '../../theme/app_theme.dart';
 
-/// Push-to-talk controls widget with mic and listen buttons
+/// Push-to-talk controls widget with mic toggle and listen buttons
 class PushToTalkControls extends ConsumerStatefulWidget {
   final bool compact;
 
@@ -52,7 +52,7 @@ class _PushToTalkControlsState extends ConsumerState<PushToTalkControls> {
       return Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          _MicButton(state: pttState, compact: true),
+          _MicToggleButton(state: pttState, compact: true),
           const SizedBox(width: 8),
           _ListenButton(state: pttState, compact: true),
         ],
@@ -69,7 +69,7 @@ class _PushToTalkControlsState extends ConsumerState<PushToTalkControls> {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          _MicButton(state: pttState),
+          _MicToggleButton(state: pttState),
           const SizedBox(width: 12),
           _ListenButton(state: pttState),
         ],
@@ -78,36 +78,108 @@ class _PushToTalkControlsState extends ConsumerState<PushToTalkControls> {
   }
 }
 
-/// Mic button - hold to talk
-class _MicButton extends ConsumerWidget {
+/// Mic toggle button — tap to start recording, tap again to stop and send.
+/// 56dp default, red pulsing when recording, countdown from 5, "Sent" confirmation.
+class _MicToggleButton extends ConsumerStatefulWidget {
   final PttStateData state;
   final bool compact;
 
-  const _MicButton({required this.state, this.compact = false});
+  const _MicToggleButton({required this.state, this.compact = false});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final isRecording = state.isRecording;
-    final isBusy = state.isBusy && !isRecording;
-    final size = compact ? 44.0 : 56.0;
-    final iconSize = compact ? 24.0 : 28.0;
+  ConsumerState<_MicToggleButton> createState() => _MicToggleButtonState();
+}
+
+class _MicToggleButtonState extends ConsumerState<_MicToggleButton>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _pulseController;
+
+  @override
+  void initState() {
+    super.initState();
+    _pulseController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 800),
+    );
+    _pulseController.addListener(() {
+      if (mounted) setState(() {});
+    });
+  }
+
+  @override
+  void dispose() {
+    _pulseController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final pttState = widget.state;
+    final isRecording = pttState.isRecording;
+    final isSending = pttState.state == PttState.sending;
+    final isSent = pttState.isSent;
+    final isBusy = isSending;
+    final size = widget.compact ? 48.0 : 56.0;
+    final iconSize = widget.compact ? 24.0 : 28.0;
+
+    // Drive pulse animation
+    if (isRecording && !_pulseController.isAnimating) {
+      _pulseController.repeat(reverse: true);
+    } else if (!isRecording && _pulseController.isAnimating) {
+      _pulseController.stop();
+      _pulseController.reset();
+    }
+
+    // Countdown: remaining seconds
+    final remainingMs = PushToTalkNotifier.maxRecordingDurationMs - pttState.recordingDurationMs;
+    final remainingSec = (remainingMs / 1000).ceil().clamp(0, 5);
+
+    // Button color
+    Color bgColor;
+    if (isSent) {
+      bgColor = AppTheme.accent;
+    } else if (isRecording) {
+      final pulse = 0.7 + (_pulseController.value * 0.3);
+      bgColor = Colors.red.withOpacity(pulse);
+    } else if (isBusy) {
+      bgColor = Colors.grey;
+    } else {
+      bgColor = AppTheme.primary;
+    }
+
+    // Label text
+    String label;
+    if (isSent) {
+      label = 'Sent \u2713';
+    } else if (isRecording) {
+      label = 'Recording... ${remainingSec}s';
+    } else if (isSending) {
+      label = 'Sending...';
+    } else {
+      label = 'Talk';
+    }
 
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
         GestureDetector(
-          onTapDown: isBusy ? null : (_) => _startRecording(ref),
-          onTapUp: isRecording ? (_) => _stopRecording(ref) : null,
-          onTapCancel: isRecording ? () => _cancelRecording(ref) : null,
+          onTap: isBusy
+              ? null
+              : () async {
+                  HapticFeedback.mediumImpact();
+                  final success = await ref.read(pushToTalkProvider.notifier).toggleRecording();
+                  if (!success && !isRecording) {
+                    // Failed to start — heavy haptic
+                    HapticFeedback.heavyImpact();
+                  }
+                },
           child: AnimatedContainer(
             duration: const Duration(milliseconds: 150),
             width: size,
             height: size,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              color: isRecording
-                  ? Colors.red
-                  : (isBusy ? Colors.grey : AppTheme.primary),
+              color: bgColor,
               boxShadow: isRecording
                   ? [
                       BoxShadow(
@@ -127,15 +199,27 @@ class _MicButton extends ConsumerWidget {
                     width: size - 8,
                     height: size - 8,
                     child: CircularProgressIndicator(
-                      value: state.recordingProgress,
+                      value: pttState.recordingProgress,
                       strokeWidth: 3,
                       valueColor: const AlwaysStoppedAnimation(Colors.white),
                       backgroundColor: Colors.white24,
                     ),
                   ),
-                // Mic icon
+                // Sending spinner
+                if (isSending)
+                  SizedBox(
+                    width: size - 16,
+                    height: size - 16,
+                    child: const CircularProgressIndicator(
+                      strokeWidth: 2,
+                      valueColor: AlwaysStoppedAnimation(Colors.white),
+                    ),
+                  ),
+                // Icon
                 Icon(
-                  isRecording ? Icons.mic : Icons.mic_none,
+                  isSent
+                      ? Icons.check
+                      : (isRecording ? Icons.stop : Icons.mic),
                   size: iconSize,
                   color: Colors.white,
                 ),
@@ -143,40 +227,21 @@ class _MicButton extends ConsumerWidget {
             ),
           ),
         ),
-        if (!compact) ...[
+        if (!widget.compact) ...[
           const SizedBox(height: 4),
           Text(
-            isRecording
-                ? '${(state.recordingDurationMs / 1000).toStringAsFixed(1)}s'
-                : 'Hold to talk',
+            label,
             style: TextStyle(
               fontSize: 10,
-              color: isRecording ? Colors.red : AppTheme.textSecondary,
-              fontWeight: isRecording ? FontWeight.bold : FontWeight.normal,
+              color: isSent
+                  ? AppTheme.accent
+                  : (isRecording ? Colors.red : AppTheme.textSecondary),
+              fontWeight: isRecording || isSent ? FontWeight.bold : FontWeight.normal,
             ),
           ),
         ],
       ],
     );
-  }
-
-  Future<void> _startRecording(WidgetRef ref) async {
-    HapticFeedback.mediumImpact();
-    final success = await ref.read(pushToTalkProvider.notifier).startRecording();
-    if (success) {
-      HapticFeedback.selectionClick();
-    } else {
-      HapticFeedback.heavyImpact();
-    }
-  }
-
-  Future<void> _stopRecording(WidgetRef ref) async {
-    HapticFeedback.lightImpact();
-    await ref.read(pushToTalkProvider.notifier).stopRecordingAndSend();
-  }
-
-  Future<void> _cancelRecording(WidgetRef ref) async {
-    await ref.read(pushToTalkProvider.notifier).cancelRecording();
   }
 }
 
@@ -323,7 +388,7 @@ class _PushToTalkMicOnlyState extends ConsumerState<PushToTalkMicOnly> {
       _lastShownError = null;
     }
 
-    return _MicButton(state: pttState, compact: widget.compact);
+    return _MicToggleButton(state: pttState, compact: widget.compact);
   }
 }
 

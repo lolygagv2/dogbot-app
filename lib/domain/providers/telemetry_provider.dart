@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/network/websocket_client.dart';
 import '../../data/models/telemetry.dart';
+import 'dog_profiles_provider.dart';
 
 /// Provider for current telemetry data
 final telemetryProvider =
@@ -77,8 +78,9 @@ class TelemetryNotifier extends StateNotifier<Telemetry> {
         break;
 
       case 'detection':
-        // Dog detection update
+        // Dog detection update — store full detection with dogName/arucoId
         final detection = Detection.fromWsEvent(event.data);
+        _ref.read(lastDetectionProvider.notifier).state = detection;
         state = state.copyWith(
           dogDetected: detection.detected,
           currentBehavior: detection.behavior,
@@ -210,8 +212,18 @@ class TelemetryNotifier extends StateNotifier<Telemetry> {
   }
 }
 
-/// Provider for latest detection data
+/// Provider for the full latest detection (includes dogName, arucoId from WS)
+final lastDetectionProvider = StateProvider<Detection>((ref) {
+  return const Detection();
+});
+
+/// Provider for latest detection data (derived from telemetry for backward compat)
 final detectionProvider = Provider<Detection>((ref) {
+  // Prefer the full detection from WS events (has dogName/arucoId)
+  final wsDetection = ref.watch(lastDetectionProvider);
+  if (wsDetection.detected) return wsDetection;
+
+  // Fallback to telemetry-derived detection
   final telemetry = ref.watch(telemetryProvider);
   return Detection(
     detected: telemetry.dogDetected,
@@ -219,6 +231,19 @@ final detectionProvider = Provider<Detection>((ref) {
     confidence: telemetry.confidence,
     timestamp: DateTime.now(),
   );
+});
+
+/// Provider that emits a Detection when an unknown dog is detected
+/// (has arucoId but no matching profile). Returns null otherwise.
+final unknownDogProvider = Provider<Detection?>((ref) {
+  final detection = ref.watch(detectionProvider);
+  if (!detection.detected || detection.arucoId == null) return null;
+
+  final profiles = ref.watch(dogProfilesProvider);
+  final matched = profiles.any((p) => p.arucoMarkerId == detection.arucoId);
+  if (matched) return null;
+
+  return detection; // Unknown dog with ArUco marker
 });
 
 /// Provider for battery level

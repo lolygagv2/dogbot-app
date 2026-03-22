@@ -16,6 +16,7 @@ enum PttState {
   idle,
   recording,
   sending,
+  sent, // brief confirmation state before returning to idle
   requesting,
   playing,
 }
@@ -50,7 +51,8 @@ class PttStateData {
 
   bool get isRecording => state == PttState.recording;
   bool get isPlaying => state == PttState.playing;
-  bool get isBusy => state != PttState.idle;
+  bool get isSent => state == PttState.sent;
+  bool get isBusy => state != PttState.idle && state != PttState.sent;
 }
 
 /// Check if we're on a mobile platform
@@ -85,8 +87,8 @@ class PushToTalkNotifier extends StateNotifier<PttStateData> {
   // WebRTC audio coordination
   bool _webrtcWasMuted = true;
 
-  // Max recording duration (10 seconds)
-  static const int maxRecordingDurationMs = 10000;
+  // Max recording duration (5 seconds — tap toggle style)
+  static const int maxRecordingDurationMs = 5000;
 
   PushToTalkNotifier(this._ref) : super(const PttStateData()) {
     _setupAudioListener();
@@ -193,6 +195,15 @@ class PushToTalkNotifier extends StateNotifier<PttStateData> {
     super.dispose();
   }
 
+  /// Toggle recording: tap to start, tap again to stop and send.
+  Future<bool> toggleRecording() async {
+    if (state.isRecording) {
+      return stopRecordingAndSend();
+    } else {
+      return startRecording();
+    }
+  }
+
   /// Start recording
   Future<bool> startRecording() async {
     rlog('PTT_START', 'startRecording() called');
@@ -203,6 +214,13 @@ class PushToTalkNotifier extends StateNotifier<PttStateData> {
     if (!isMobile) {
       rlog('PTT_ERROR', 'Not on mobile platform');
       state = state.copyWith(error: 'Recording only available on iOS/Android');
+      return false;
+    }
+
+    // Check connection before recording — don't waste user's time
+    if (WebSocketClient.instance.state != WsConnectionState.connected) {
+      rlog('PTT_ERROR', 'WebSocket not connected');
+      state = state.copyWith(error: 'Not connected — cannot send voice');
       return false;
     }
 
@@ -275,10 +293,8 @@ class PushToTalkNotifier extends StateNotifier<PttStateData> {
         );
 
         if (elapsed >= maxRecordingDurationMs) {
-          rlog('PTT_RECORDING', 'Max duration (10s) reached, auto-stopping');
-          stopRecordingAndSend().then((_) {
-            state = state.copyWith(error: 'Max recording time reached (10 seconds)');
-          });
+          rlog('PTT_RECORDING', 'Max duration (5s) reached, auto-stopping');
+          stopRecordingAndSend();
         }
       });
 
@@ -371,14 +387,22 @@ class PushToTalkNotifier extends StateNotifier<PttStateData> {
 
       try { await file.delete(); } catch (_) {}
 
+      _currentRecordingPath = null;
+      _recordingStartTime = null;
+
+      // Show "Sent" confirmation briefly
       state = state.copyWith(
-        state: PttState.idle,
+        state: PttState.sent,
         recordingProgress: 0,
         recordingDurationMs: 0,
       );
 
-      _currentRecordingPath = null;
-      _recordingStartTime = null;
+      // Return to idle after 1.5s
+      Future.delayed(const Duration(milliseconds: 1500), () {
+        if (mounted && state.state == PttState.sent) {
+          state = state.copyWith(state: PttState.idle);
+        }
+      });
 
       return true;
     } catch (e) {

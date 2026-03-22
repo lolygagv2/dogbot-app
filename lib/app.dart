@@ -78,7 +78,12 @@ final _router = GoRouter(
             // Add dog route - must be before :id to avoid conflict
             GoRoute(
               path: 'add',
-              builder: (context, state) => const AddDogScreen(),
+              builder: (context, state) {
+                final arucoId = int.tryParse(
+                  state.uri.queryParameters['arucoId'] ?? '',
+                );
+                return AddDogScreen(initialArucoId: arucoId);
+              },
             ),
             GoRoute(
               path: ':id',

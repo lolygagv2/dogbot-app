@@ -215,9 +215,10 @@ class WebSocketClient {
           _photoController.add(json);
           break;
 
-        // Video capture response
+        // Video capture response (robot may send as 'video' or 'video_ready')
         case 'video':
-          print('WebSocket: Received video response, keys: ${json.keys}');
+        case 'video_ready':
+          print('WebSocket: Received $msgType, keys: ${json.keys}');
           _videoController.add(json);
           break;
 

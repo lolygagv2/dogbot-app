@@ -19,6 +19,7 @@ enum NotificationEventType {
   happy,
   connected,
   disconnected,
+  coachReward,
 }
 
 /// A notification event from the robot
@@ -100,5 +101,7 @@ String _getDefaultTitle(NotificationEventType type) {
       return 'Connected';
     case NotificationEventType.disconnected:
       return 'Disconnected';
+    case NotificationEventType.coachReward:
+      return 'Coach Reward';
   }
 }

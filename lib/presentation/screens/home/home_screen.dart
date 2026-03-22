@@ -87,6 +87,9 @@ class HomeScreen extends ConsumerWidget {
                           ),
                         ),
 
+                      // Unknown dog prompt — detected ArUco with no profile
+                      _UnknownDogBanner(),
+
                       // Mission progress overlay
                       const MissionProgressOverlay(),
 
@@ -220,6 +223,84 @@ class _DetectionChipState extends State<_DetectionChip> {
               ),
             ],
           ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Banner shown when a dog with ArUco marker is detected but has no profile.
+/// Positioned at top-right of video, auto-dismisses after 10s, tap to add dog.
+class _UnknownDogBanner extends ConsumerStatefulWidget {
+  @override
+  ConsumerState<_UnknownDogBanner> createState() => _UnknownDogBannerState();
+}
+
+class _UnknownDogBannerState extends ConsumerState<_UnknownDogBanner> {
+  bool _dismissed = false;
+  int? _lastDismissedArucoId;
+
+  @override
+  Widget build(BuildContext context) {
+    final unknownDog = ref.watch(unknownDogProvider);
+
+    if (unknownDog == null || _dismissed && unknownDog.arucoId == _lastDismissedArucoId) {
+      return const SizedBox.shrink();
+    }
+
+    // Reset dismissed state if a different dog appears
+    if (unknownDog.arucoId != _lastDismissedArucoId) {
+      _dismissed = false;
+    }
+
+    return Positioned(
+      top: 16,
+      right: 16,
+      child: Material(
+        color: AppTheme.warning.withOpacity(0.9),
+        borderRadius: BorderRadius.circular(12),
+        child: InkWell(
+          onTap: () {
+            context.push('/dogs/add?arucoId=${unknownDog.arucoId}');
+          },
+          borderRadius: BorderRadius.circular(12),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(Icons.pets, color: Colors.black87, size: 16),
+                const SizedBox(width: 6),
+                Text(
+                  'New dog #${unknownDog.arucoId}',
+                  style: const TextStyle(
+                    color: Colors.black87,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 12,
+                  ),
+                ),
+                const SizedBox(width: 6),
+                const Text(
+                  'Add',
+                  style: TextStyle(
+                    color: Colors.black54,
+                    fontSize: 12,
+                    decoration: TextDecoration.underline,
+                  ),
+                ),
+                const SizedBox(width: 4),
+                GestureDetector(
+                  onTap: () {
+                    setState(() {
+                      _dismissed = true;
+                      _lastDismissedArucoId = unknownDog.arucoId;
+                    });
+                  },
+                  child: const Icon(Icons.close, color: Colors.black54, size: 14),
+                ),
+              ],
+            ),
+          ),
         ),
       ),
     );

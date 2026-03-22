@@ -8,6 +8,8 @@ class SettingsKeys {
   static const motorTrimRight = 'motor_trim_right';
   static const cameraTrackingEnabled = 'camera_tracking_enabled';
   static const backgroundAudioEnabled = 'background_audio_enabled';
+  static const dailyLimitEnabled = 'daily_limit_enabled';
+  static const dailyLimitCount = 'daily_limit_count';
 }
 
 /// App settings state
@@ -25,21 +27,31 @@ class AppSettings {
   /// When true, WebRTC audio continues when app is backgrounded
   final bool backgroundAudioEnabled;
 
+  /// Daily treat/reward limit — optional cap on auto-dispensed treats per day
+  final bool dailyLimitEnabled;
+  final int dailyLimitCount;
+
   const AppSettings({
     this.motorTrimRight = 0.0,
     this.cameraTrackingEnabled = false,
     this.backgroundAudioEnabled = true,
+    this.dailyLimitEnabled = false,
+    this.dailyLimitCount = 30,
   });
 
   AppSettings copyWith({
     double? motorTrimRight,
     bool? cameraTrackingEnabled,
     bool? backgroundAudioEnabled,
+    bool? dailyLimitEnabled,
+    int? dailyLimitCount,
   }) {
     return AppSettings(
       motorTrimRight: motorTrimRight ?? this.motorTrimRight,
       cameraTrackingEnabled: cameraTrackingEnabled ?? this.cameraTrackingEnabled,
       backgroundAudioEnabled: backgroundAudioEnabled ?? this.backgroundAudioEnabled,
+      dailyLimitEnabled: dailyLimitEnabled ?? this.dailyLimitEnabled,
+      dailyLimitCount: dailyLimitCount ?? this.dailyLimitCount,
     );
   }
 }
@@ -65,11 +77,15 @@ class SettingsNotifier extends StateNotifier<AppSettings> {
     final motorTrim = _prefs?.getDouble(SettingsKeys.motorTrimRight) ?? 0.0;
     final cameraTracking = _prefs?.getBool(SettingsKeys.cameraTrackingEnabled) ?? false;
     final backgroundAudio = _prefs?.getBool(SettingsKeys.backgroundAudioEnabled) ?? true;
+    final dailyLimitEnabled = _prefs?.getBool(SettingsKeys.dailyLimitEnabled) ?? false;
+    final dailyLimitCount = _prefs?.getInt(SettingsKeys.dailyLimitCount) ?? 30;
 
     state = AppSettings(
       motorTrimRight: motorTrim.clamp(-0.5, 0.5),
       cameraTrackingEnabled: cameraTracking,
       backgroundAudioEnabled: backgroundAudio,
+      dailyLimitEnabled: dailyLimitEnabled,
+      dailyLimitCount: dailyLimitCount.clamp(1, 200),
     );
   }
 
@@ -108,6 +124,31 @@ class SettingsNotifier extends StateNotifier<AppSettings> {
     state = state.copyWith(backgroundAudioEnabled: enabled);
     await _prefs?.setBool(SettingsKeys.backgroundAudioEnabled, enabled);
     print('Settings: Background audio set to $enabled');
+  }
+
+  /// Toggle daily treat limit on/off
+  Future<void> setDailyLimitEnabled(bool enabled) async {
+    state = state.copyWith(dailyLimitEnabled: enabled);
+    await _prefs?.setBool(SettingsKeys.dailyLimitEnabled, enabled);
+    _sendDailyLimitToRobot();
+  }
+
+  /// Set daily treat limit count
+  Future<void> setDailyLimitCount(int count) async {
+    final clamped = count.clamp(1, 200);
+    state = state.copyWith(dailyLimitCount: clamped);
+    await _prefs?.setInt(SettingsKeys.dailyLimitCount, clamped);
+    _sendDailyLimitToRobot();
+  }
+
+  /// Send daily limit config to robot
+  void _sendDailyLimitToRobot() {
+    final ws = _ref.read(websocketClientProvider);
+    ws.sendCommand('set_daily_limit', {
+      'enabled': state.dailyLimitEnabled,
+      'limit': state.dailyLimitCount,
+    });
+    print('Settings: Daily limit ${state.dailyLimitEnabled ? "ON (${state.dailyLimitCount})" : "OFF"}');
   }
 }
 

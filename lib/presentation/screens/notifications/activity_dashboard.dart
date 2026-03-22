@@ -88,10 +88,10 @@ class _SummaryStatsRow extends ConsumerWidget {
         const SizedBox(width: 8),
         Expanded(
           child: _CompactStatCard(
-            value: '${analytics.activeMinutes}m',
-            label: 'Active',
-            icon: Icons.timer,
-            color: Colors.deepPurple,
+            value: analytics.coachRewards.toString(),
+            label: 'Coach',
+            icon: Icons.school,
+            color: Colors.orange,
           ),
         ),
       ],
@@ -415,6 +415,7 @@ class _EventRow extends StatelessWidget {
       NotificationEventType.missionCompleted => AppTheme.accent,
       NotificationEventType.missionStarted => AppTheme.primary,
       NotificationEventType.missionFailed => AppTheme.error,
+      NotificationEventType.coachReward => Colors.orange,
       _ => Colors.grey,
     };
   }
@@ -426,6 +427,7 @@ class _EventRow extends StatelessWidget {
       NotificationEventType.lieDown => Icons.airline_seat_flat,
       NotificationEventType.stand => Icons.accessibility_new,
       NotificationEventType.treatDispensed => Icons.cookie,
+      NotificationEventType.coachReward => Icons.school,
       NotificationEventType.missionStarted => Icons.play_circle,
       NotificationEventType.missionCompleted => Icons.check_circle,
       NotificationEventType.missionFailed => Icons.cancel,

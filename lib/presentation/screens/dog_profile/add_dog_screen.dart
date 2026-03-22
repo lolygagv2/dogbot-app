@@ -11,7 +11,9 @@ import '../../../domain/providers/dog_profiles_provider.dart';
 
 /// Add Dog screen with stepper flow
 class AddDogScreen extends ConsumerStatefulWidget {
-  const AddDogScreen({super.key});
+  final int? initialArucoId;
+
+  const AddDogScreen({super.key, this.initialArucoId});
 
   @override
   ConsumerState<AddDogScreen> createState() => _AddDogScreenState();
@@ -27,6 +29,14 @@ class _AddDogScreenState extends ConsumerState<AddDogScreen> {
   DogColor _selectedColor = DogColor.mixed;
   String? _photoPath;
   final _arucoController = TextEditingController();
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.initialArucoId != null) {
+      _arucoController.text = widget.initialArucoId.toString();
+    }
+  }
 
   final _imagePicker = ImagePicker();
 

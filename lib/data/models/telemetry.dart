@@ -82,6 +82,8 @@ class Detection with _$Detection {
     String? behavior,
     double? confidence,
     List<double>? bbox, // [x, y, width, height]
+    String? dogName, // from ArUco marker identification
+    int? arucoId, // ArUco marker ID if identified
     DateTime? timestamp,
   }) = _Detection;
 
@@ -96,7 +98,17 @@ class Detection with _$Detection {
       bbox: (data['bbox'] as List<dynamic>?)
           ?.map((e) => (e as num).toDouble())
           .toList(),
+      dogName: data['dog_name'] as String? ?? data['dogName'] as String?,
+      arucoId: data['aruco_id'] as int? ?? data['arucoId'] as int?,
       timestamp: DateTime.now(),
     );
+  }
+
+  /// Display name: from detection data, fallback to "Dog Detected" or "Unknown Dog"
+  const Detection._();
+  String get displayName {
+    if (dogName != null && dogName!.isNotEmpty) return dogName!;
+    if (detected) return 'Dog Detected';
+    return '';
   }
 }

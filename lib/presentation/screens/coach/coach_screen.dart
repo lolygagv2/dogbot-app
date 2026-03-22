@@ -58,43 +58,66 @@ class _CoachScreenState extends ConsumerState<CoachScreen> {
               child: WebRTCVideoView(),
             ),
 
-            // Detection chip with confidence %
+            // Detection chip — uses dog name from WS detection event, not profile
             if (telemetry.dogDetected)
               Positioned(
                 top: MediaQuery.of(context).padding.top + 60,
                 left: 16,
                 child: IgnorePointer(
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                    decoration: BoxDecoration(
-                      color: AppTheme.getBehaviorColor(telemetry.currentBehavior).withOpacity(0.9),
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Icon(Icons.pets, color: Colors.white, size: 16),
-                        const SizedBox(width: 6),
-                        Text(
-                          AppTheme.getBehaviorDisplayName(telemetry.currentBehavior).toUpperCase(),
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 12,
-                          ),
+                  child: Builder(
+                    builder: (context) {
+                      final detection = ref.watch(detectionProvider);
+                      final dogLabel = detection.displayName;
+                      return Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: AppTheme.getBehaviorColor(telemetry.currentBehavior).withOpacity(0.9),
+                          borderRadius: BorderRadius.circular(20),
                         ),
-                        if (telemetry.confidence != null) ...[
-                          const SizedBox(width: 6),
-                          Text(
-                            '${(telemetry.confidence! * 100).toInt()}%',
-                            style: const TextStyle(
-                              color: Colors.white70,
-                              fontSize: 12,
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(Icons.pets, color: Colors.white, size: 16),
+                            const SizedBox(width: 6),
+                            // Dog name from detection data (ArUco identified)
+                            if (dogLabel.isNotEmpty) ...[
+                              Text(
+                                dogLabel,
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 12,
+                                ),
+                              ),
+                              const SizedBox(width: 6),
+                              Text(
+                                '\u2022',
+                                style: const TextStyle(color: Colors.white54, fontSize: 12),
+                              ),
+                              const SizedBox(width: 6),
+                            ],
+                            Text(
+                              AppTheme.getBehaviorDisplayName(telemetry.currentBehavior).toUpperCase(),
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 12,
+                              ),
                             ),
-                          ),
-                        ],
-                      ],
-                    ),
+                            if (telemetry.confidence != null) ...[
+                              const SizedBox(width: 6),
+                              Text(
+                                '${(telemetry.confidence! * 100).toInt()}%',
+                                style: const TextStyle(
+                                  color: Colors.white70,
+                                  fontSize: 12,
+                                ),
+                              ),
+                            ],
+                          ],
+                        ),
+                      );
+                    },
                   ),
                 ),
               ),

@@ -437,6 +437,10 @@ mixin _$Detection {
   double? get confidence => throw _privateConstructorUsedError;
   List<double>? get bbox =>
       throw _privateConstructorUsedError; // [x, y, width, height]
+  String? get dogName =>
+      throw _privateConstructorUsedError; // from ArUco marker identification
+  int? get arucoId =>
+      throw _privateConstructorUsedError; // ArUco marker ID if identified
   DateTime? get timestamp => throw _privateConstructorUsedError;
 
   /// Serializes this Detection to a JSON map.
@@ -459,6 +463,8 @@ abstract class $DetectionCopyWith<$Res> {
       String? behavior,
       double? confidence,
       List<double>? bbox,
+      String? dogName,
+      int? arucoId,
       DateTime? timestamp});
 }
 
@@ -481,6 +487,8 @@ class _$DetectionCopyWithImpl<$Res, $Val extends Detection>
     Object? behavior = freezed,
     Object? confidence = freezed,
     Object? bbox = freezed,
+    Object? dogName = freezed,
+    Object? arucoId = freezed,
     Object? timestamp = freezed,
   }) {
     return _then(_value.copyWith(
@@ -500,6 +508,14 @@ class _$DetectionCopyWithImpl<$Res, $Val extends Detection>
           ? _value.bbox
           : bbox // ignore: cast_nullable_to_non_nullable
               as List<double>?,
+      dogName: freezed == dogName
+          ? _value.dogName
+          : dogName // ignore: cast_nullable_to_non_nullable
+              as String?,
+      arucoId: freezed == arucoId
+          ? _value.arucoId
+          : arucoId // ignore: cast_nullable_to_non_nullable
+              as int?,
       timestamp: freezed == timestamp
           ? _value.timestamp
           : timestamp // ignore: cast_nullable_to_non_nullable
@@ -521,6 +537,8 @@ abstract class _$$DetectionImplCopyWith<$Res>
       String? behavior,
       double? confidence,
       List<double>? bbox,
+      String? dogName,
+      int? arucoId,
       DateTime? timestamp});
 }
 
@@ -541,6 +559,8 @@ class __$$DetectionImplCopyWithImpl<$Res>
     Object? behavior = freezed,
     Object? confidence = freezed,
     Object? bbox = freezed,
+    Object? dogName = freezed,
+    Object? arucoId = freezed,
     Object? timestamp = freezed,
   }) {
     return _then(_$DetectionImpl(
@@ -560,6 +580,14 @@ class __$$DetectionImplCopyWithImpl<$Res>
           ? _value._bbox
           : bbox // ignore: cast_nullable_to_non_nullable
               as List<double>?,
+      dogName: freezed == dogName
+          ? _value.dogName
+          : dogName // ignore: cast_nullable_to_non_nullable
+              as String?,
+      arucoId: freezed == arucoId
+          ? _value.arucoId
+          : arucoId // ignore: cast_nullable_to_non_nullable
+              as int?,
       timestamp: freezed == timestamp
           ? _value.timestamp
           : timestamp // ignore: cast_nullable_to_non_nullable
@@ -570,14 +598,17 @@ class __$$DetectionImplCopyWithImpl<$Res>
 
 /// @nodoc
 @JsonSerializable()
-class _$DetectionImpl implements _Detection {
+class _$DetectionImpl extends _Detection {
   const _$DetectionImpl(
       {this.detected = false,
       this.behavior,
       this.confidence,
       final List<double>? bbox,
+      this.dogName,
+      this.arucoId,
       this.timestamp})
-      : _bbox = bbox;
+      : _bbox = bbox,
+        super._();
 
   factory _$DetectionImpl.fromJson(Map<String, dynamic> json) =>
       _$$DetectionImplFromJson(json);
@@ -601,11 +632,17 @@ class _$DetectionImpl implements _Detection {
 
 // [x, y, width, height]
   @override
+  final String? dogName;
+// from ArUco marker identification
+  @override
+  final int? arucoId;
+// ArUco marker ID if identified
+  @override
   final DateTime? timestamp;
 
   @override
   String toString() {
-    return 'Detection(detected: $detected, behavior: $behavior, confidence: $confidence, bbox: $bbox, timestamp: $timestamp)';
+    return 'Detection(detected: $detected, behavior: $behavior, confidence: $confidence, bbox: $bbox, dogName: $dogName, arucoId: $arucoId, timestamp: $timestamp)';
   }
 
   @override
@@ -620,6 +657,8 @@ class _$DetectionImpl implements _Detection {
             (identical(other.confidence, confidence) ||
                 other.confidence == confidence) &&
             const DeepCollectionEquality().equals(other._bbox, _bbox) &&
+            (identical(other.dogName, dogName) || other.dogName == dogName) &&
+            (identical(other.arucoId, arucoId) || other.arucoId == arucoId) &&
             (identical(other.timestamp, timestamp) ||
                 other.timestamp == timestamp));
   }
@@ -627,7 +666,7 @@ class _$DetectionImpl implements _Detection {
   @JsonKey(includeFromJson: false, includeToJson: false)
   @override
   int get hashCode => Object.hash(runtimeType, detected, behavior, confidence,
-      const DeepCollectionEquality().hash(_bbox), timestamp);
+      const DeepCollectionEquality().hash(_bbox), dogName, arucoId, timestamp);
 
   /// Create a copy of Detection
   /// with the given fields replaced by the non-null parameter values.
@@ -645,13 +684,16 @@ class _$DetectionImpl implements _Detection {
   }
 }
 
-abstract class _Detection implements Detection {
+abstract class _Detection extends Detection {
   const factory _Detection(
       {final bool detected,
       final String? behavior,
       final double? confidence,
       final List<double>? bbox,
+      final String? dogName,
+      final int? arucoId,
       final DateTime? timestamp}) = _$DetectionImpl;
+  const _Detection._() : super._();
 
   factory _Detection.fromJson(Map<String, dynamic> json) =
       _$DetectionImpl.fromJson;
@@ -664,6 +706,10 @@ abstract class _Detection implements Detection {
   double? get confidence;
   @override
   List<double>? get bbox; // [x, y, width, height]
+  @override
+  String? get dogName; // from ArUco marker identification
+  @override
+  int? get arucoId; // ArUco marker ID if identified
   @override
   DateTime? get timestamp;
 

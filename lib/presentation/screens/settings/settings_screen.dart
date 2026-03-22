@@ -139,6 +139,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           const Divider(),
 
           _SectionHeader('Training'),
+          const _DailyLimitTile(),
           ListTile(
             leading: const Icon(Icons.schedule),
             title: const Text('Training Scheduler'),
@@ -409,6 +410,60 @@ class _InlineDeviceList extends ConsumerWidget {
           title: const Text('Add Device'),
           onTap: () => context.push('/device-pairing'),
         ),
+      ],
+    );
+  }
+}
+
+/// Daily treat limit toggle with count slider
+class _DailyLimitTile extends ConsumerWidget {
+  const _DailyLimitTile();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final settings = ref.watch(settingsProvider);
+
+    return Column(
+      children: [
+        SwitchListTile(
+          secondary: Icon(
+            Icons.cookie,
+            color: settings.dailyLimitEnabled ? AppTheme.warning : AppTheme.textTertiary,
+          ),
+          title: const Text('Daily Treat Limit'),
+          subtitle: Text(
+            settings.dailyLimitEnabled
+                ? 'Max ${settings.dailyLimitCount} auto-treats per day'
+                : 'No daily limit — unlimited auto-treats',
+            style: TextStyle(fontSize: 12, color: AppTheme.textTertiary),
+          ),
+          value: settings.dailyLimitEnabled,
+          onChanged: (value) {
+            ref.read(settingsProvider.notifier).setDailyLimitEnabled(value);
+          },
+        ),
+        if (settings.dailyLimitEnabled)
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Row(
+              children: [
+                const Text('5', style: TextStyle(fontSize: 12)),
+                Expanded(
+                  child: Slider(
+                    value: settings.dailyLimitCount.toDouble(),
+                    min: 5,
+                    max: 100,
+                    divisions: 19,
+                    label: '${settings.dailyLimitCount}',
+                    onChanged: (value) {
+                      ref.read(settingsProvider.notifier).setDailyLimitCount(value.round());
+                    },
+                  ),
+                ),
+                const Text('100', style: TextStyle(fontSize: 12)),
+              ],
+            ),
+          ),
       ],
     );
   }
