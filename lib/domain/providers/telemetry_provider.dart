@@ -88,6 +88,19 @@ class TelemetryNotifier extends StateNotifier<Telemetry> {
         );
         break;
 
+      case 'unknown_dog_detected':
+        // Robot detected ArUco marker with no profile — store as detection
+        // so unknownDogProvider can trigger the "Add dog?" prompt
+        final arucoId = event.data['aruco_id'] as int?;
+        if (arucoId != null) {
+          _ref.read(lastDetectionProvider.notifier).state = Detection(
+            detected: true,
+            arucoId: arucoId,
+            timestamp: DateTime.now(),
+          );
+        }
+        break;
+
       case 'treat':
         // Treat dispensed
         state = state.copyWith(

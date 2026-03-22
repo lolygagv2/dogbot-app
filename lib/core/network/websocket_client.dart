@@ -259,6 +259,7 @@ class WebSocketClient {
         case 'status':
         case 'robot_status':
         case 'detection':
+        case 'unknown_dog_detected':
         case 'battery':
         case 'mode':
         case 'treat':

@@ -141,12 +141,12 @@ class SettingsNotifier extends StateNotifier<AppSettings> {
     _sendDailyLimitToRobot();
   }
 
-  /// Send daily limit config to robot
+  /// Send daily limit config to robot via mission_config command
   void _sendDailyLimitToRobot() {
     final ws = _ref.read(websocketClientProvider);
-    ws.sendCommand('set_daily_limit', {
-      'enabled': state.dailyLimitEnabled,
-      'limit': state.dailyLimitCount,
+    ws.sendCommand('mission_config', {
+      'daily_limit_enabled': state.dailyLimitEnabled,
+      'daily_limit': state.dailyLimitCount,
     });
     print('Settings: Daily limit ${state.dailyLimitEnabled ? "ON (${state.dailyLimitCount})" : "OFF"}');
   }
