@@ -13,13 +13,24 @@ class TreatCounterIndicator extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final count = ref.watch(treatsRemainingProvider);
+    final count = ref.watch(treatsRemainingProvider); // null = no data yet
 
-    final color = count > 5
-        ? AppTheme.accent
-        : count > 0
-            ? AppTheme.warning
-            : AppTheme.textTertiary;
+    // Color tiers
+    final Color color;
+    final String label;
+    if (count == null) {
+      color = AppTheme.textTertiary;
+      label = '\u2014'; // em-dash
+    } else if (count <= 0) {
+      color = AppTheme.textTertiary;
+      label = '0 (refill)';
+    } else if (count <= 5) {
+      color = AppTheme.warning;
+      label = '$count left';
+    } else {
+      color = AppTheme.accent;
+      label = '$count left';
+    }
 
     return GestureDetector(
       onTap: () => _showTreatSheet(context),
@@ -31,7 +42,7 @@ class TreatCounterIndicator extends ConsumerWidget {
             children: [
               Icon(Icons.cookie, color: color, size: 20),
               // Warning dot when low but not empty
-              if (count > 0 && count < 5)
+              if (count != null && count > 0 && count < 5)
                 Positioned(
                   top: -2,
                   right: -2,
@@ -48,7 +59,7 @@ class TreatCounterIndicator extends ConsumerWidget {
           ),
           const SizedBox(width: 4),
           Text(
-            '$count left',
+            label,
             style: TextStyle(
               color: color,
               fontWeight: FontWeight.w500,
@@ -69,6 +80,7 @@ class TreatCounterIndicator extends ConsumerWidget {
 }
 
 /// Bottom sheet for managing treat counter — reset or set custom count.
+/// Commands are fire-and-forget; UI updates when next telemetry cycle confirms.
 class _TreatManagementSheet extends ConsumerStatefulWidget {
   const _TreatManagementSheet();
 
@@ -89,6 +101,11 @@ class _TreatManagementSheetState extends ConsumerState<_TreatManagementSheet> {
   @override
   Widget build(BuildContext context) {
     final count = ref.watch(treatsRemainingProvider);
+    final displayCount = count == null
+        ? '\u2014'
+        : count <= 0
+            ? '0 (refill needed)'
+            : '$count';
 
     return SafeArea(
       child: Padding(
@@ -112,7 +129,7 @@ class _TreatManagementSheetState extends ConsumerState<_TreatManagementSheet> {
             ),
             const SizedBox(height: 16),
             Text(
-              'Treats Remaining: $count',
+              'Treats Remaining: $displayCount',
               style: const TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.bold,

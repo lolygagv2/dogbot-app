@@ -62,7 +62,8 @@ class TelemetryNotifier extends StateNotifier<Telemetry> {
           confidence: parsed.confidence,
           // Only update isCharging if we got battery data
           isCharging: parsed.battery > 0 ? parsed.isCharging : state.isCharging,
-          treatsRemaining: parsed.treatsRemaining > 0 ? parsed.treatsRemaining : state.treatsRemaining,
+          // Only update treatsRemaining if this event actually had the field (-1 = missing)
+          treatsRemaining: parsed.treatsRemaining >= 0 ? parsed.treatsRemaining : state.treatsRemaining,
           activeMissionId: parsed.activeMissionId,
           connectionType: parsed.connectionType ?? state.connectionType,
           rawData: parsed.rawData,
@@ -94,11 +95,11 @@ class TelemetryNotifier extends StateNotifier<Telemetry> {
         break;
 
       case 'battery':
-        // Battery update - {'level': 95, 'charging': true, 'voltage': 16.6, 'temperature': 73.25, 'treats_today': 0, 'mode': 'idle'}
+        // Battery update - {'level': 95, 'charging': true, 'voltage': 16.6, 'temperature': 73.25, 'treats_remaining': 8, 'mode': 'idle'}
         final level = (event.data['level'] as num?)?.toDouble();
         final charging = event.data['charging'] as bool?;
         final temp = (event.data['temperature'] as num?)?.toDouble();
-        final treats = event.data['treats_today'] as int?;
+        final treats = event.data['treats_remaining'] as int?;
         final mode = event.data['mode'] as String?;
         print('BATTERY EVENT RECEIVED: level=$level, charging=$charging, temp=$temp, treats=$treats, mode=$mode');
         if (level != null) {
@@ -134,12 +135,12 @@ class TelemetryNotifier extends StateNotifier<Telemetry> {
   /// Extract telemetry data from any event - robot sends it in various formats
   /// Build 44: Fixed - removed overly aggressive > 0 checks that broke battery display
   void _extractBatteryFromAnyEvent(Map<String, dynamic> data) {
-    // Format 1: {'level': 96, 'charging': true, 'voltage': 16.6, 'temperature': 73.25, 'treats_today': 0}
+    // Format 1: {'level': 96, 'charging': true, 'voltage': 16.6, 'temperature': 73.25, 'treats_remaining': 8}
     if (data.containsKey('level')) {
       final level = (data['level'] as num?)?.toDouble();
       final charging = data['charging'] as bool?;
       final temp = (data['temperature'] as num?)?.toDouble();
-      final treats = data['treats_today'] as int?;
+      final treats = data['treats_remaining'] as int?;
       if (level != null) {
         print('BATTERY EXTRACTED (level key): level=$level, charging=$charging, temp=$temp, treats=$treats');
         state = state.copyWith(
@@ -158,7 +159,7 @@ class TelemetryNotifier extends StateNotifier<Telemetry> {
       final level = (batteryData['level'] as num?)?.toDouble();
       final charging = batteryData['charging'] as bool?;
       final temp = (batteryData['temperature'] as num?)?.toDouble();
-      final treats = batteryData['treats_today'] as int?;
+      final treats = batteryData['treats_remaining'] as int?;
       if (level != null) {
         print('BATTERY EXTRACTED (nested): level=$level, temp=$temp');
         state = state.copyWith(
@@ -230,7 +231,11 @@ final modeProvider = Provider<String>((ref) {
   return ref.watch(telemetryProvider).mode;
 });
 
-/// Provider for treats remaining count
-final treatsRemainingProvider = Provider<int>((ref) {
-  return ref.watch(telemetryProvider).treatsRemaining;
+/// Provider for treats remaining count.
+/// Returns null if robot has never sent the field (show "—" in UI).
+/// Clamps negative values to 0.
+final treatsRemainingProvider = Provider<int?>((ref) {
+  final raw = ref.watch(telemetryProvider).treatsRemaining;
+  if (raw < 0) return null; // -1 sentinel = never received
+  return raw;
 });

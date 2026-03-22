@@ -14,7 +14,7 @@ class Telemetry with _$Telemetry {
     String? currentBehavior,
     double? confidence,
     @Default(false) bool isCharging,
-    @Default(0) int treatsRemaining,
+    @Default(-1) int treatsRemaining, // -1 = not yet received from robot
     DateTime? lastTreatTime,
     String? activeMissionId,
     String? connectionType, // "LAN" (P2P), "WAN" (TURN relay), or null
@@ -65,7 +65,7 @@ class Telemetry with _$Telemetry {
       isCharging: isCharging,
       treatsRemaining: json['treats_remaining'] as int? ??
           json['treatsRemaining'] as int? ??
-          0,
+          -1, // -1 = field missing from this event
       activeMissionId: json['active_mission_id'] as String? ??
           json['activeMission'] as String?,
       connectionType: json['connection_type'] as String?,
