@@ -141,11 +141,22 @@ class VideoNotifier extends StateNotifier<VideoState> {
       print('VIDEO: Saved to gallery: ${video.filename}');
     } catch (e) {
       print('VIDEO: Download/save failed: $e');
+      // Show user-friendly error, not raw DioException
+      String errorMsg;
+      final eStr = e.toString();
+      if (eStr.contains('404')) {
+        errorMsg = 'Video file not found on server — robot may need a direct connection for downloads';
+      } else if (eStr.contains('connect') || eStr.contains('timeout')) {
+        errorMsg = 'Could not reach robot for video download';
+      } else {
+        errorMsg = 'Video download failed';
+      }
+      print('VIDEO: User-facing error: $errorMsg');
       state = state.copyWith(
         isProcessing: false,
         downloadProgress: 0,
         clearRecordingStart: true,
-        error: 'Failed to download video: $e',
+        error: errorMsg,
       );
     }
   }
