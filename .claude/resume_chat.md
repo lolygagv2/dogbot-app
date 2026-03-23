@@ -1,5 +1,60 @@
 # WIM-Z Resume Chat Log
 
+## Session: 2026-03-22/23 — Builds 61-63 (PP Fixes, Coach Stats, Profile Sync)
+**Goal:** Fix PTT, video recording, mission mode, coach detection, unknown dog prompt, daily limit, profile sync
+**Status:** Completed — pushed to main (Build 63)
+
+### Problems Solved This Session:
+
+#### Build 61 — Major Feature/Fix Bundle (445d0e8)
+| Fix | Description |
+|-----|-------------|
+| A1: PTT Redesign | Tap toggle (not hold), 5s max, countdown inside button, "Sent" confirmation |
+| A2: Video Timeout | Increased to 45s, detailed logging, handle video_ready event |
+| A3: Mission Exit | Always exits to idle (not restore previous portrait mode) |
+| A4: Coach Detection | Dog name from WS events (not profile), Detection model gains dogName/arucoId |
+| Coach Stats | coach_reward events → analytics, notifications, dashboard, dog profile metrics |
+| Unknown Dog Prompt | unknownDogProvider + yellow banner on home screen → navigate to add dog with arucoId |
+| Daily Limit Toggle | Optional daily treat limit in settings, sends mission_config to robot |
+| Drive Exit Mode Fix | storePortraitMode reads telemetry (not stale cached currentMode) |
+
+#### Post-Build 61 Fixes
+| Commit | Fix |
+|--------|-----|
+| 4f0f11a | Align with robot API: mission_config command, unknown_dog_detected event |
+| db7a2fd | ArUco false positive notifications filtered, mission STOP button on drive, treat counter in settings uses provider, coach dog selection from detection |
+| 85eee1f | Mission error handling — don't navigate to drive until robot confirms start, show error snackbar |
+| 6c16d47 | Video recording uses download URL (not base64 blob), HTTP download with progress |
+| d8ec7bc | Video sends record_video command (not start_recording) — root cause of robot never recording |
+| 4c252ef | PTT countdown number shown inside button (was hidden in compact mode) |
+| 149dcc5 | User-friendly video download error messages (not raw DioException) |
+| db214ae | Sync dog profiles to robot via reload_dogs with full profile data on connect/add/update/delete |
+| ca139d5 | Fix race condition: sync profiles after async SharedPreferences load completes |
+
+### Key Architecture Changes:
+- **Video flow**: App sends `record_video` (with duration) → robot records → sends `video_ready` with `download_url` → app downloads MP4 via HTTP → saves to gallery. No more base64 over WebSocket.
+- **Profile sync**: App pushes all dog profiles to robot on connect and on any profile change via `reload_dogs` command with profiles array. No relay dependency.
+- **Mission start**: App no longer navigates to drive immediately. Uses `ref.listen` to wait for robot confirmation, shows "Starting..." spinner, handles `mission_error` events.
+- **Coach mode**: Dog name comes from detection events (ArUco), not selected profile. `start_coach` includes dog_id/dog_name.
+
+### Files Modified (23+ files across session):
+Key files: websocket_client.dart, video_provider.dart, video_service.dart, push_to_talk.dart, push_to_talk_provider.dart, mode_provider.dart, missions_provider.dart, mission_detail_screen.dart, dog_profiles_provider.dart, coach_provider.dart, coach_screen.dart, notifications_provider.dart, analytics_provider.dart, settings_provider.dart, settings_screen.dart, home_screen.dart, drive_screen.dart, telemetry_provider.dart, telemetry.dart, notification_event.dart, activity_dashboard.dart, notifications_screen.dart, dog_profile_screen.dart, add_dog_screen.dart, detection_overlay.dart, app.dart
+
+### Unresolved / Next Steps:
+1. Video download only works on LAN — relay needs `/api/media/upload` + `/api/media/download` endpoints for WAN
+2. Coach stats are session-only (not persisted across app restarts) — needs SharedPreferences or API
+3. `dogDailySummaryProvider` is still mock data
+4. Daily limit slider sends `mission_config` to robot — needs testing with robot's new handler
+
+### Robot-Side Fixes Applied This Session (not app code):
+- `detector.ai.dog_tracker.update_valid_ids()` — was using wrong attribute path `ai_controller`
+- `record_video` command handler added with duration/resolution
+- `video_ready` event with `download_url` field
+- `reload_dogs` now accepts profiles array directly, persists to SQLite
+- `mission_error` event with user-friendly `message` field
+
+---
+
 ## Session: 2026-03-22 — Build 59 (Treat Counter, Video Capture, Activity Dashboard)
 **Goal:** Implement Items 13, 15, 16 — video capture button, treat counter UI, dog metrics dashboard
 **Status:** Completed — pushed to main
