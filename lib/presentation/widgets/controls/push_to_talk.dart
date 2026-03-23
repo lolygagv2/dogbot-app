@@ -215,14 +215,24 @@ class _MicToggleButtonState extends ConsumerState<_MicToggleButton>
                       valueColor: AlwaysStoppedAnimation(Colors.white),
                     ),
                   ),
-                // Icon
-                Icon(
-                  isSent
-                      ? Icons.check
-                      : (isRecording ? Icons.stop : Icons.mic),
-                  size: iconSize,
-                  color: Colors.white,
-                ),
+                // Show countdown number inside button when recording (always visible)
+                if (isRecording)
+                  Text(
+                    '$remainingSec',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: iconSize,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  )
+                else
+                  Icon(
+                    isSent
+                        ? Icons.check
+                        : (isRecording ? Icons.stop : Icons.mic),
+                    size: iconSize,
+                    color: Colors.white,
+                  ),
               ],
             ),
           ),
