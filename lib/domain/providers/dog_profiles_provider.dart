@@ -63,8 +63,13 @@ class DogProfilesNotifier extends StateNotifier<List<DogProfile>> {
   String? _currentUserEmail;
 
   DogProfilesNotifier(this._ref) : super([]) {
-    _loadProfiles();
-    // Sync profiles to robot when connection comes online
+    _loadProfiles().then((_) {
+      // After profiles are loaded, sync to robot if already connected
+      if (_ref.read(connectionProvider).isConnected && state.isNotEmpty) {
+        _syncProfilesToRobot();
+      }
+    });
+    // Also sync when connection comes online (reconnect, etc.)
     _ref.listen<ConnectionState>(connectionProvider, (prev, next) {
       if (next.isConnected && prev?.isConnected != true && state.isNotEmpty) {
         _syncProfilesToRobot();
@@ -135,7 +140,10 @@ class DogProfilesNotifier extends StateNotifier<List<DogProfile>> {
       }).toList();
 
       ws.sendCommand('reload_dogs', {'profiles': profiles});
-      print('DogProfiles: Synced ${profiles.length} profiles to robot');
+      print('DogProfiles: Synced ${profiles.length} profiles to robot:');
+      for (final p in profiles) {
+        print('  - ${p['name']} (aruco=${p['aruco_id'] ?? 'none'}, color=${p['color']})');
+      }
     } catch (e) {
       print('DogProfiles: Failed to sync profiles to robot: $e');
     }
