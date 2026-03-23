@@ -8,6 +8,7 @@ import '../../core/network/websocket_client.dart';
 import '../../data/datasources/robot_api.dart';
 import '../../data/models/dog_profile.dart';
 import 'auth_provider.dart';
+import 'connection_provider.dart';
 
 // Build 32: Dogs scoped by user email to fix security issue (Issue 6)
 // Keys are now functions that include user scope
@@ -63,6 +64,12 @@ class DogProfilesNotifier extends StateNotifier<List<DogProfile>> {
 
   DogProfilesNotifier(this._ref) : super([]) {
     _loadProfiles();
+    // Sync profiles to robot when connection comes online
+    _ref.listen<ConnectionState>(connectionProvider, (prev, next) {
+      if (next.isConnected && prev?.isConnected != true && state.isNotEmpty) {
+        _syncProfilesToRobot();
+      }
+    });
   }
 
   /// Get current user's email for scoped storage
@@ -113,6 +120,27 @@ class DogProfilesNotifier extends StateNotifier<List<DogProfile>> {
     state = [];
   }
 
+  /// Push all profiles to robot via reload_dogs command.
+  /// Robot uses this to update its profile manager and dog tracker
+  /// without needing to fetch from the relay.
+  void _syncProfilesToRobot() {
+    try {
+      final ws = _ref.read(websocketClientProvider);
+      final profiles = state.map((p) => {
+        'name': p.name,
+        if (p.arucoMarkerId != null) 'aruco_id': p.arucoMarkerId,
+        'color': p.color.value,
+        'id': p.id,
+        if (p.breed != null) 'breed': p.breed,
+      }).toList();
+
+      ws.sendCommand('reload_dogs', {'profiles': profiles});
+      print('DogProfiles: Synced ${profiles.length} profiles to robot');
+    } catch (e) {
+      print('DogProfiles: Failed to sync profiles to robot: $e');
+    }
+  }
+
   /// Add a new dog profile (rejects duplicate names)
   /// Saves locally, syncs to relay server, and tells robot to reload.
   Future<bool> addProfile(DogProfile profile) async {
@@ -140,14 +168,8 @@ class DogProfilesNotifier extends StateNotifier<List<DogProfile>> {
       }
     }
 
-    // Tell robot to reload dog list
-    try {
-      final ws = _ref.read(websocketClientProvider);
-      ws.sendCommand('reload_dogs');
-      print('DogProfiles: Sent reload_dogs command to robot');
-    } catch (e) {
-      print('DogProfiles: Failed to send reload_dogs: $e');
-    }
+    // Push all profiles to robot (includes the new one)
+    _syncProfilesToRobot();
 
     return true;
   }
@@ -159,6 +181,7 @@ class DogProfilesNotifier extends StateNotifier<List<DogProfile>> {
       return p;
     }).toList();
     await _saveProfiles();
+    _syncProfilesToRobot();
   }
 
   /// Remove a dog profile (Build 32: also sends delete_dog to robot)
@@ -188,6 +211,9 @@ class DogProfilesNotifier extends StateNotifier<List<DogProfile>> {
 
     state = state.where((p) => p.id != id).toList();
     await _saveProfiles();
+
+    // Sync updated profile list to robot (minus the deleted one)
+    _syncProfilesToRobot();
 
     // Clear selection if deleted dog was selected
     final selected = _ref.read(selectedDogProvider);
