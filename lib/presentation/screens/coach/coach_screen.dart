@@ -5,8 +5,10 @@ import 'package:go_router/go_router.dart';
 import '../../../domain/providers/coach_provider.dart';
 import '../../../domain/providers/connection_provider.dart';
 import '../../../domain/providers/dog_profiles_provider.dart';
+import '../../../domain/providers/settings_provider.dart';
 import '../../../domain/providers/telemetry_provider.dart';
 import '../../theme/app_theme.dart';
+import '../../widgets/video/mjpeg_viewer.dart';
 import '../../widgets/video/webrtc_video_view.dart';
 
 class CoachScreen extends ConsumerStatefulWidget {
@@ -53,9 +55,11 @@ class _CoachScreenState extends ConsumerState<CoachScreen> {
         backgroundColor: Colors.black,
         body: Stack(
           children: [
-            // Full screen video
-            const Positioned.fill(
-              child: WebRTCVideoView(),
+            // Full screen video — MJPEG in local mode, WebRTC in relay mode
+            Positioned.fill(
+              child: ref.watch(settingsProvider).localModeEnabled
+                  ? const MjpegViewer(streamUrl: 'http://192.168.4.1:8000/camera/stream')
+                  : const WebRTCVideoView(),
             ),
 
             // Detection chip — uses dog name from WS detection event, not profile

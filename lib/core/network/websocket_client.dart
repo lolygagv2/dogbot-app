@@ -345,6 +345,7 @@ class WebSocketClient {
         case 'pong':
         case 'ack':
         case 'command_ack':
+        case 'command_response':
         case 'response':
           // Commands acknowledged - good, no need to log
           break;
