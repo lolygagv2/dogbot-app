@@ -263,6 +263,58 @@ class RobotApi {
     }
   }
 
+  // ============ WiFi / Network API (Build 66) ============
+
+  /// Scan for available WiFi networks
+  /// Returns list of {ssid, signal, security} maps
+  Future<List<Map<String, dynamic>>> wifiScan() async {
+    try {
+      final response = await _dio.get(
+        ApiEndpoints.wifiScan,
+        options: Options(receiveTimeout: const Duration(seconds: 15)),
+      );
+      if (response.statusCode == 200 && response.data is List) {
+        return (response.data as List).cast<Map<String, dynamic>>();
+      }
+      return [];
+    } catch (e) {
+      print('RobotApi: WiFi scan failed: $e');
+      rethrow;
+    }
+  }
+
+  /// Connect robot to a WiFi network
+  Future<Map<String, dynamic>> wifiConnect({
+    required String ssid,
+    required String password,
+  }) async {
+    try {
+      final response = await _dio.post(
+        ApiEndpoints.wifiConnect,
+        data: {'ssid': ssid, 'password': password},
+        options: Options(receiveTimeout: const Duration(seconds: 15)),
+      );
+      return response.data as Map<String, dynamic>? ?? {};
+    } catch (e) {
+      print('RobotApi: WiFi connect failed: $e');
+      rethrow;
+    }
+  }
+
+  /// Get current network status (AP mode vs WiFi, SSID, IP)
+  Future<Map<String, dynamic>> networkStatus() async {
+    try {
+      final response = await _dio.get(ApiEndpoints.networkStatus);
+      if (response.statusCode == 200 && response.data is Map) {
+        return response.data as Map<String, dynamic>;
+      }
+      return {};
+    } catch (e) {
+      print('RobotApi: Network status failed: $e');
+      rethrow;
+    }
+  }
+
   // ============ Music Upload API (Build 38) ============
 
   /// Upload MP3 file via HTTP multipart (instead of WebSocket)

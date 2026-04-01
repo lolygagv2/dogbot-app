@@ -10,6 +10,7 @@ import '../../../domain/providers/paired_devices_provider.dart';
 import '../../../domain/providers/settings_provider.dart';
 import '../../../domain/providers/push_to_talk_provider.dart';
 import '../../../domain/providers/telemetry_provider.dart';
+import '../../../domain/providers/wifi_config_provider.dart';
 import '../../theme/app_theme.dart';
 
 class SettingsScreen extends ConsumerStatefulWidget {
@@ -419,12 +420,59 @@ class _LocalModeTileState extends ConsumerState<_LocalModeTile> {
                     color: AppTheme.textTertiary,
                   ),
                 ),
+                // Network status indicator (polls when connected)
+                if (localConn.isConnected) ...[
+                  const SizedBox(height: 12),
+                  const _NetworkStatusIndicator(),
+                ],
+                // WiFi config button (only when connected in local mode)
+                if (localConn.isConnected) ...[
+                  const SizedBox(height: 12),
+                  SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton.icon(
+                      onPressed: () => _showWifiConfigSheet(context),
+                      icon: const Icon(Icons.wifi_find, size: 20),
+                      label: const Text('Configure Robot WiFi'),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: AppTheme.primary,
+                        side: BorderSide(color: AppTheme.primary.withOpacity(0.5)),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
                 const SizedBox(height: 8),
               ],
             ),
           ),
         ],
       ],
+    );
+  }
+
+  void _showWifiConfigSheet(BuildContext context) {
+    // Reset state before opening
+    ref.read(wifiConfigProvider.notifier).reset();
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: AppTheme.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) => DraggableScrollableSheet(
+        initialChildSize: 0.7,
+        minChildSize: 0.4,
+        maxChildSize: 0.9,
+        expand: false,
+        builder: (context, scrollController) => _WifiConfigSheet(
+          scrollController: scrollController,
+        ),
+      ),
     );
   }
 }
@@ -1010,6 +1058,510 @@ class _LedIndicator extends StatelessWidget {
         ],
       ),
     );
+  }
+}
+
+/// Network status indicator — polls GET /system/network-status every 5s
+class _NetworkStatusIndicator extends ConsumerStatefulWidget {
+  const _NetworkStatusIndicator();
+
+  @override
+  ConsumerState<_NetworkStatusIndicator> createState() =>
+      _NetworkStatusIndicatorState();
+}
+
+class _NetworkStatusIndicatorState
+    extends ConsumerState<_NetworkStatusIndicator> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.read(wifiConfigProvider.notifier).startStatusPolling();
+    });
+  }
+
+  @override
+  void dispose() {
+    // Don't stop polling here — provider lifecycle handles it.
+    // But if we want to be polite when the tile collapses:
+    // We can't call ref in dispose, so the provider's own dispose handles cleanup.
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final status = ref.watch(wifiConfigProvider).networkStatus;
+
+    if (status == null) {
+      return const SizedBox.shrink();
+    }
+
+    final modeLabel = status.isAP ? 'Hotspot (AP)' : status.isWifi ? 'WiFi' : status.mode;
+    final modeColor = status.isAP ? AppTheme.warning : AppTheme.accent;
+
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: AppTheme.surfaceLight,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: modeColor.withOpacity(0.3)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                status.isAP ? Icons.wifi_tethering : Icons.wifi,
+                size: 16,
+                color: modeColor,
+              ),
+              const SizedBox(width: 8),
+              Text(
+                'Robot Network',
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold,
+                  color: modeColor,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          _statusRow('Mode', modeLabel),
+          if (status.networkName.isNotEmpty)
+            _statusRow('Network', status.networkName),
+          if (status.ipAddress.isNotEmpty)
+            _statusRow('IP', status.ipAddress),
+        ],
+      ),
+    );
+  }
+
+  Widget _statusRow(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 2),
+      child: Row(
+        children: [
+          SizedBox(
+            width: 60,
+            child: Text(
+              label,
+              style: TextStyle(fontSize: 11, color: AppTheme.textTertiary),
+            ),
+          ),
+          Expanded(
+            child: Text(
+              value,
+              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// WiFi configuration bottom sheet
+class _WifiConfigSheet extends ConsumerStatefulWidget {
+  final ScrollController scrollController;
+
+  const _WifiConfigSheet({required this.scrollController});
+
+  @override
+  ConsumerState<_WifiConfigSheet> createState() => _WifiConfigSheetState();
+}
+
+class _WifiConfigSheetState extends ConsumerState<_WifiConfigSheet> {
+  final _passwordController = TextEditingController();
+  String? _selectedSsid;
+  bool _obscurePassword = true;
+
+  @override
+  void initState() {
+    super.initState();
+    // Start scanning immediately
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.read(wifiConfigProvider.notifier).scanNetworks();
+    });
+  }
+
+  @override
+  void dispose() {
+    _passwordController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final wifiState = ref.watch(wifiConfigProvider);
+    final localConn = ref.watch(localConnectionProvider);
+
+    // If we sent connect and local connection dropped, notify provider
+    if (wifiState.step == WifiConfigStep.connectSent && !localConn.isConnected) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        ref.read(wifiConfigProvider.notifier).onConnectionLost();
+      });
+    }
+
+    return Padding(
+      padding: EdgeInsets.only(
+        bottom: MediaQuery.of(context).viewInsets.bottom,
+      ),
+      child: Column(
+        children: [
+          // Drag handle
+          Container(
+            margin: const EdgeInsets.only(top: 12),
+            width: 40,
+            height: 4,
+            decoration: BoxDecoration(
+              color: AppTheme.textTertiary.withOpacity(0.3),
+              borderRadius: BorderRadius.circular(2),
+            ),
+          ),
+          // Title
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: Row(
+              children: [
+                const Icon(Icons.wifi, color: AppTheme.primary),
+                const SizedBox(width: 12),
+                const Text(
+                  'Configure Robot WiFi',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                ),
+                const Spacer(),
+                if (wifiState.step == WifiConfigStep.scanning)
+                  const SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  ),
+              ],
+            ),
+          ),
+          const Divider(height: 1),
+          // Content
+          Expanded(
+            child: _buildSheetContent(wifiState),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSheetContent(WifiConfigState wifiState) {
+    switch (wifiState.step) {
+      case WifiConfigStep.idle:
+      case WifiConfigStep.scanning:
+        return _buildScanningView();
+
+      case WifiConfigStep.scanComplete:
+        return _buildNetworkList(wifiState);
+
+      case WifiConfigStep.scanError:
+        return _buildErrorView(wifiState.errorMessage ?? 'Scan failed');
+
+      case WifiConfigStep.connecting:
+        return _buildConnectingView();
+
+      case WifiConfigStep.connectSent:
+        return _buildWaitingView();
+
+      case WifiConfigStep.connectionLost:
+        return _buildConnectionLostView();
+    }
+  }
+
+  Widget _buildScanningView() {
+    return const Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          CircularProgressIndicator(),
+          SizedBox(height: 16),
+          Text('Scanning for WiFi networks...'),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildNetworkList(WifiConfigState wifiState) {
+    final networks = wifiState.networks;
+
+    return Column(
+      children: [
+        Expanded(
+          child: networks.isEmpty
+              ? Center(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.wifi_off, size: 48, color: AppTheme.textTertiary),
+                      const SizedBox(height: 12),
+                      const Text('No WiFi networks found'),
+                      const SizedBox(height: 16),
+                      OutlinedButton.icon(
+                        onPressed: () =>
+                            ref.read(wifiConfigProvider.notifier).scanNetworks(),
+                        icon: const Icon(Icons.refresh),
+                        label: const Text('Scan Again'),
+                      ),
+                    ],
+                  ),
+                )
+              : ListView.builder(
+                  controller: widget.scrollController,
+                  itemCount: networks.length,
+                  itemBuilder: (context, index) {
+                    final network = networks[index];
+                    final isSelected = _selectedSsid == network.ssid;
+
+                    return Column(
+                      children: [
+                        ListTile(
+                          leading: Icon(
+                            _signalIcon(network.signal),
+                            color: isSelected ? AppTheme.primary : null,
+                          ),
+                          title: Text(
+                            network.ssid,
+                            style: TextStyle(
+                              fontWeight:
+                                  isSelected ? FontWeight.bold : FontWeight.normal,
+                              color: isSelected ? AppTheme.primary : null,
+                            ),
+                          ),
+                          subtitle: Text(
+                            '${_signalLabel(network.signal)}${network.security.isNotEmpty ? ' · ${network.security}' : ''}',
+                            style: TextStyle(
+                                fontSize: 12, color: AppTheme.textTertiary),
+                          ),
+                          trailing: isSelected
+                              ? const Icon(Icons.check_circle,
+                                  color: AppTheme.primary)
+                              : null,
+                          selected: isSelected,
+                          onTap: () {
+                            setState(() => _selectedSsid = network.ssid);
+                          },
+                        ),
+                        // Password field expands under selected network
+                        if (isSelected)
+                          Padding(
+                            padding:
+                                const EdgeInsets.fromLTRB(16, 0, 16, 12),
+                            child: Column(
+                              children: [
+                                TextField(
+                                  controller: _passwordController,
+                                  obscureText: _obscurePassword,
+                                  decoration: InputDecoration(
+                                    labelText: 'Password',
+                                    hintText: 'Enter WiFi password',
+                                    prefixIcon:
+                                        const Icon(Icons.lock_outline, size: 20),
+                                    suffixIcon: IconButton(
+                                      icon: Icon(
+                                        _obscurePassword
+                                            ? Icons.visibility_off
+                                            : Icons.visibility,
+                                        size: 20,
+                                      ),
+                                      onPressed: () {
+                                        setState(() =>
+                                            _obscurePassword = !_obscurePassword);
+                                      },
+                                    ),
+                                    border: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    contentPadding: const EdgeInsets.symmetric(
+                                        horizontal: 16, vertical: 12),
+                                    isDense: true,
+                                  ),
+                                ),
+                                const SizedBox(height: 12),
+                                SizedBox(
+                                  width: double.infinity,
+                                  child: FilledButton.icon(
+                                    onPressed: () {
+                                      ref
+                                          .read(wifiConfigProvider.notifier)
+                                          .connectToNetwork(
+                                            _selectedSsid!,
+                                            _passwordController.text,
+                                          );
+                                    },
+                                    icon: const Icon(Icons.wifi),
+                                    label: const Text('Connect'),
+                                    style: FilledButton.styleFrom(
+                                      backgroundColor: AppTheme.primary,
+                                      foregroundColor: AppTheme.background,
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                      ],
+                    );
+                  },
+                ),
+        ),
+        if (wifiState.errorMessage != null)
+          Padding(
+            padding: const EdgeInsets.all(12),
+            child: Text(
+              wifiState.errorMessage!,
+              style: const TextStyle(color: Colors.red, fontSize: 12),
+            ),
+          ),
+        // Rescan button at bottom
+        if (networks.isNotEmpty)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+            child: SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: () {
+                  setState(() => _selectedSsid = null);
+                  ref.read(wifiConfigProvider.notifier).scanNetworks();
+                },
+                icon: const Icon(Icons.refresh, size: 18),
+                label: const Text('Scan Again'),
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+
+  Widget _buildErrorView(String message) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(32),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.error_outline, size: 48, color: AppTheme.error),
+            const SizedBox(height: 16),
+            Text(message, textAlign: TextAlign.center),
+            const SizedBox(height: 24),
+            OutlinedButton.icon(
+              onPressed: () =>
+                  ref.read(wifiConfigProvider.notifier).scanNetworks(),
+              icon: const Icon(Icons.refresh),
+              label: const Text('Try Again'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildConnectingView() {
+    return const Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          CircularProgressIndicator(),
+          SizedBox(height: 16),
+          Text(
+            'Robot is connecting to WiFi...',
+            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+          ),
+          SizedBox(height: 8),
+          Text(
+            'This may take a moment.',
+            style: TextStyle(color: AppTheme.textTertiary),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildWaitingView() {
+    return const Center(
+      child: Padding(
+        padding: EdgeInsets.all(32),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            CircularProgressIndicator(color: AppTheme.warning),
+            SizedBox(height: 16),
+            Text(
+              'Robot is switching to WiFi...',
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+            ),
+            SizedBox(height: 8),
+            Text(
+              'The local hotspot will shut down.\n'
+              'Your connection may drop shortly.',
+              textAlign: TextAlign.center,
+              style: TextStyle(color: AppTheme.textTertiary),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildConnectionLostView() {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(32),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.check_circle, size: 56, color: AppTheme.accent),
+            const SizedBox(height: 16),
+            const Text(
+              'WiFi command sent!',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 12),
+            const Text(
+              'Robot is switching to WiFi. '
+              'Connect your phone to the same WiFi network, '
+              'then disable Local Mode to use relay connection.',
+              textAlign: TextAlign.center,
+              style: TextStyle(height: 1.5),
+            ),
+            const SizedBox(height: 24),
+            FilledButton(
+              onPressed: () => Navigator.pop(context),
+              style: FilledButton.styleFrom(
+                backgroundColor: AppTheme.primary,
+                foregroundColor: AppTheme.background,
+              ),
+              child: const Text('Got it'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  IconData _signalIcon(int signal) {
+    // signal is typically negative dBm (e.g., -30 = excellent, -90 = poor)
+    // or could be 0-100 percentage — handle both
+    final strength = signal < 0 ? signal : -(100 - signal);
+    if (strength > -50) return Icons.wifi;
+    if (strength > -70) return Icons.wifi_2_bar;
+    return Icons.wifi_1_bar;
+  }
+
+  String _signalLabel(int signal) {
+    final strength = signal < 0 ? signal : -(100 - signal);
+    if (strength > -50) return 'Excellent';
+    if (strength > -70) return 'Good';
+    if (strength > -80) return 'Fair';
+    return 'Weak';
   }
 }
 

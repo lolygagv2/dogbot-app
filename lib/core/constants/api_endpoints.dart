@@ -67,6 +67,11 @@ class ApiEndpoints {
 
   // Music upload (Build 38: HTTP multipart instead of WebSocket)
   static const String musicUpload = '/api/music/upload';
+
+  // System / WiFi (Build 66: WiFi configuration from app)
+  static const String wifiScan = '/system/wifi/scan';
+  static const String wifiConnect = '/system/wifi/connect';
+  static const String networkStatus = '/system/network-status';
 }
 
 /// LED pattern names
