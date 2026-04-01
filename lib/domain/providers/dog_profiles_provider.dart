@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../core/network/websocket_client.dart';
+import '../../core/services/local_connection_service.dart';
 import '../../data/datasources/robot_api.dart';
 import '../../data/models/dog_profile.dart';
 import 'auth_provider.dart';
@@ -65,12 +66,21 @@ class DogProfilesNotifier extends StateNotifier<List<DogProfile>> {
   DogProfilesNotifier(this._ref) : super([]) {
     _loadProfiles().then((_) {
       // After profiles are loaded, sync to robot if already connected
-      if (_ref.read(connectionProvider).isConnected && state.isNotEmpty) {
+      // Check both relay connection AND local connection
+      final isConnected = _ref.read(connectionProvider).isConnected ||
+          _ref.read(localConnectionProvider).isConnected;
+      if (isConnected && state.isNotEmpty) {
         _syncProfilesToRobot();
       }
     });
-    // Also sync when connection comes online (reconnect, etc.)
+    // Also sync when relay connection comes online (reconnect, etc.)
     _ref.listen<ConnectionState>(connectionProvider, (prev, next) {
+      if (next.isConnected && prev?.isConnected != true && state.isNotEmpty) {
+        _syncProfilesToRobot();
+      }
+    });
+    // Also sync when local connection comes online
+    _ref.listen<LocalConnectionData>(localConnectionProvider, (prev, next) {
       if (next.isConnected && prev?.isConnected != true && state.isNotEmpty) {
         _syncProfilesToRobot();
       }
