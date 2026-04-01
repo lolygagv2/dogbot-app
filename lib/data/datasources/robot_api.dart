@@ -19,10 +19,16 @@ class RobotApi {
 
   RobotApi(this._dio);
 
-  /// Check if server is reachable
+  /// Check if server is reachable (3-second timeout to avoid hanging)
   Future<bool> healthCheck() async {
     try {
-      final response = await _dio.get(ApiEndpoints.health);
+      final response = await _dio.get(
+        ApiEndpoints.health,
+        options: Options(
+          sendTimeout: const Duration(seconds: 3),
+          receiveTimeout: const Duration(seconds: 3),
+        ),
+      );
       return response.statusCode == 200;
     } catch (e) {
       return false;

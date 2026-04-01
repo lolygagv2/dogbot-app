@@ -1,5 +1,53 @@
 # WIM-Z Resume Chat Log
 
+## Session: 2026-04-01 — Builds 65-66 (PTT Logging, Treat UI, Trick Sync, Local Mode, WiFi Config)
+**Goal:** PTT debug logging, treat carousel updates, trick name alignment with Pi, local connection mode, WiFi config UI
+**Status:** Completed — pushed to main (Build 66: ef1b372)
+
+### Build 65 (6a04109) — PTT Logging, Treat UI, Trick Alignment, Local Mode
+| Change | Description |
+|--------|-------------|
+| A1: PTT Debug Logging | Added `[PTT]` prefixed print() at every pipeline stage: button press/release, mic start/stop, packet size, send latency measurement |
+| A2: Treat Refill → 44 | `resetCount()` now sends `treat_counter_set(44)` instead of parameterless reset. Button shows "Reset to Full (44)" |
+| A2: Clear Jam Button | New button in treat bottom sheet — sends `carousel_rotate` command with 2s "Clearing..." loading state |
+| A3: Trick Name Alignment | Coach defaults changed to `['sit','laydown','come','spin','speak']` matching Pi's canonical list |
+| A3: down → laydown | Renamed `down`/`lie_down` → `laydown` in coach_provider, missions_provider, voice_command, app_theme, notifications_provider |
+| A3: New Display Names | Added Spin → "Spin", Speak → "Speak", fixed come vs stand mapping |
+| A3: New Missions | Added `laydown`, `come_training`, `spin_training` mission definitions |
+| A4: Local Mode Toggle | Settings screen toggle with IP/port fields, connect/disconnect buttons, uses LocalConnectionService for direct ws:// |
+| A4: Helper Text | "Find robot's IP on boot screen or run: hostname -I" |
+
+### Build 66 (ef1b372) — WiFi Config UI (from separate session)
+| Change | Description |
+|--------|-------------|
+| WiFi Endpoints | Added `/system/wifi/scan`, `/system/wifi/connect`, `/system/network-status` to api_endpoints |
+| WiFi API Methods | `wifiScan()`, `wifiConnect()`, `networkStatus()` in robot_api.dart |
+| WiFi Config Provider | New `wifi_config_provider.dart` — scan, connect, network status polling |
+| WiFi Config Sheet | Bottom sheet in local mode: scan networks, select SSID, password entry, connection status flow |
+| Network Status | Indicator showing AP vs WiFi mode when connected locally |
+
+### Key Architecture Notes:
+- **Local mode WebRTC**: App side is complete — all signaling goes through WebSocketClient singleton. Pi's local WS handler must process `webrtc_request/answer/ice` messages.
+- **Local mode PTT**: Works — sends `ptt_play` command via WebSocket (base64 WAV), does NOT use WebRTC audio track for sending.
+- **Trick canonical names**: Pi uses `sit`, `laydown`, `come`, `spin`, `speak`. App now matches.
+- **Treat full count**: 44 treats = full carousel (was undefined/robot-decided, now explicit).
+
+### Files Modified (Build 65 — 11 files):
+- push_to_talk_provider.dart, control_provider.dart, coach_provider.dart, missions_provider.dart, notifications_provider.dart, settings_provider.dart, voice_command.dart, settings_screen.dart, app_theme.dart, treat_counter_indicator.dart, pubspec.yaml
+
+### Files Modified/Created (Build 66 — 5 files):
+- api_endpoints.dart, robot_api.dart, settings_screen.dart, pubspec.yaml
+- NEW: wifi_config_provider.dart
+
+### Unresolved / Next Steps:
+1. Pi-side: Local WS handler needs `webrtc_request/answer/ice` support for local video streaming
+2. Pi-side: Local WS handler needs `ptt_play` command support
+3. Coach stats still session-only (not persisted across app restarts)
+4. `dogDailySummaryProvider` still mock data
+5. Video download only works on LAN — relay needs media endpoints for WAN
+
+---
+
 ## Session: 2026-03-22/23 — Builds 61-63 (PP Fixes, Coach Stats, Profile Sync)
 **Goal:** Fix PTT, video recording, mission mode, coach detection, unknown dog prompt, daily limit, profile sync
 **Status:** Completed — pushed to main (Build 63)

@@ -199,16 +199,19 @@ class LocalConnectionNotifier extends StateNotifier<LocalConnectionData> {
     return null;
   }
 
-  /// Check robot health endpoint
+  /// Check robot health endpoint (3-second timeout so app never freezes)
   Future<bool> _checkHealth(String ip, int port) async {
     try {
       final client = HttpClient();
-      client.connectionTimeout = const Duration(seconds: 2);
+      client.connectionTimeout = const Duration(seconds: 3);
 
       final request = await client.getUrl(
         Uri.parse('http://$ip:$port/health'),
       );
-      final response = await request.close();
+      final response = await request.close().timeout(
+        const Duration(seconds: 3),
+        onTimeout: () => throw Exception('Health check timed out'),
+      );
       client.close(force: true);
       return response.statusCode == 200;
     } catch (e) {

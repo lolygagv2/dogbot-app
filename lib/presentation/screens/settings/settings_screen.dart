@@ -210,7 +210,7 @@ class _SectionHeader extends StatelessWidget {
     );
   }
 }
-/// Local Mode toggle with IP/port input
+/// Host selection dropdown — WIMZ Server (relay) or WIMZ Robot (local)
 class _LocalModeTile extends ConsumerStatefulWidget {
   const _LocalModeTile();
 
@@ -219,242 +219,7 @@ class _LocalModeTile extends ConsumerStatefulWidget {
 }
 
 class _LocalModeTileState extends ConsumerState<_LocalModeTile> {
-  final _ipController = TextEditingController();
-  final _portController = TextEditingController();
-
-  @override
-  void initState() {
-    super.initState();
-    // Initialize controllers with saved values
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      final settings = ref.read(settingsProvider);
-      _ipController.text = settings.localModeIp;
-      _portController.text = settings.localModePort.toString();
-    });
-  }
-
-  @override
-  void dispose() {
-    _ipController.dispose();
-    _portController.dispose();
-    super.dispose();
-  }
-
-  Future<void> _connectLocal() async {
-    final ip = _ipController.text.trim();
-    final port = int.tryParse(_portController.text.trim()) ?? 8000;
-
-    if (ip.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Enter the Pi\'s local IP address'),
-          backgroundColor: Colors.orange,
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
-      return;
-    }
-
-    // Save the IP/port for convenience
-    await ref.read(settingsProvider.notifier).setLocalModeIp(ip);
-    await ref.read(settingsProvider.notifier).setLocalModePort(port);
-
-    // Disconnect any existing connection first
-    await ref.read(connectionProvider.notifier).disconnect();
-
-    // Connect via local connection service
-    final success = await ref.read(localConnectionProvider.notifier).connectDirect(ip, port);
-
-    if (mounted) {
-      if (success) {
-        // Update main connection state to reflect we're connected
-        // The local connection service already set up DioClient and WebSocket
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Connected to robot at $ip:$port'),
-            backgroundColor: Colors.green,
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Could not connect to $ip:$port'),
-            backgroundColor: Colors.red,
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
-      }
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final settings = ref.watch(settingsProvider);
-    final localConn = ref.watch(localConnectionProvider);
-
-    return Column(
-      children: [
-        SwitchListTile(
-          secondary: Icon(
-            Icons.wifi,
-            color: settings.localModeEnabled ? AppTheme.accent : AppTheme.textTertiary,
-          ),
-          title: const Text('Local Mode'),
-          subtitle: Text(
-            settings.localModeEnabled
-                ? 'Direct connection to Pi (no relay/auth)'
-                : 'Using cloud relay server',
-            style: TextStyle(fontSize: 12, color: AppTheme.textTertiary),
-          ),
-          value: settings.localModeEnabled,
-          onChanged: (value) {
-            ref.read(settingsProvider.notifier).setLocalModeEnabled(value);
-          },
-        ),
-        if (settings.localModeEnabled) ...[
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: Column(
-              children: [
-                // IP address field
-                TextField(
-                  controller: _ipController,
-                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                  decoration: InputDecoration(
-                    labelText: 'Pi IP Address',
-                    hintText: '192.168.1.50',
-                    prefixIcon: const Icon(Icons.router, size: 20),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                    isDense: true,
-                  ),
-                  onChanged: (value) {
-                    ref.read(settingsProvider.notifier).setLocalModeIp(value.trim());
-                  },
-                ),
-                const SizedBox(height: 8),
-                // Port field
-                TextField(
-                  controller: _portController,
-                  keyboardType: TextInputType.number,
-                  decoration: InputDecoration(
-                    labelText: 'Port',
-                    hintText: '8000',
-                    prefixIcon: const Icon(Icons.numbers, size: 20),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                    isDense: true,
-                  ),
-                  onChanged: (value) {
-                    final port = int.tryParse(value.trim());
-                    if (port != null && port > 0 && port <= 65535) {
-                      ref.read(settingsProvider.notifier).setLocalModePort(port);
-                    }
-                  },
-                ),
-                const SizedBox(height: 12),
-                // Connect button
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton.icon(
-                    onPressed: localConn.isConnecting ? null : _connectLocal,
-                    icon: localConn.isConnecting
-                        ? const SizedBox(
-                            width: 18,
-                            height: 18,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          )
-                        : Icon(
-                            localConn.isConnected ? Icons.check_circle : Icons.power_settings_new,
-                          ),
-                    label: Text(
-                      localConn.isConnecting
-                          ? 'Connecting...'
-                          : localConn.isConnected
-                              ? 'Connected'
-                              : 'Connect to Pi',
-                    ),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: localConn.isConnected ? Colors.green : AppTheme.accent,
-                      foregroundColor: AppTheme.background,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                    ),
-                  ),
-                ),
-                if (localConn.isConnected)
-                  Padding(
-                    padding: const EdgeInsets.only(top: 8),
-                    child: SizedBox(
-                      width: double.infinity,
-                      child: OutlinedButton(
-                        onPressed: () {
-                          ref.read(localConnectionProvider.notifier).disconnect();
-                        },
-                        child: const Text('Disconnect'),
-                      ),
-                    ),
-                  ),
-                if (localConn.errorMessage != null)
-                  Padding(
-                    padding: const EdgeInsets.only(top: 8),
-                    child: Text(
-                      localConn.errorMessage!,
-                      style: const TextStyle(color: Colors.red, fontSize: 12),
-                    ),
-                  ),
-                const SizedBox(height: 8),
-                Text(
-                  'Connects directly via ws:// and http:// (no TLS, no auth).\n'
-                  'Ensure your phone is on the same WiFi as the Pi.\n'
-                  'Find the robot\'s IP on its boot screen or by running:\n'
-                  'hostname -I on the robot.',
-                  style: TextStyle(
-                    fontSize: 11,
-                    color: AppTheme.textTertiary,
-                  ),
-                ),
-                // Network status indicator (polls when connected)
-                if (localConn.isConnected) ...[
-                  const SizedBox(height: 12),
-                  const _NetworkStatusIndicator(),
-                ],
-                // WiFi config button (only when connected in local mode)
-                if (localConn.isConnected) ...[
-                  const SizedBox(height: 12),
-                  SizedBox(
-                    width: double.infinity,
-                    child: OutlinedButton.icon(
-                      onPressed: () => _showWifiConfigSheet(context),
-                      icon: const Icon(Icons.wifi_find, size: 20),
-                      label: const Text('Configure Robot WiFi'),
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: AppTheme.primary,
-                        side: BorderSide(color: AppTheme.primary.withOpacity(0.5)),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-                const SizedBox(height: 8),
-              ],
-            ),
-          ),
-        ],
-      ],
-    );
-  }
-
   void _showWifiConfigSheet(BuildContext context) {
-    // Reset state before opening
     ref.read(wifiConfigProvider.notifier).reset();
 
     showModalBottomSheet(
@@ -473,6 +238,144 @@ class _LocalModeTileState extends ConsumerState<_LocalModeTile> {
           scrollController: scrollController,
         ),
       ),
+    );
+  }
+
+  Future<void> _switchToLocal() async {
+    // Disconnect any existing relay connection
+    await ref.read(connectionProvider.notifier).disconnect();
+    // Connect directly to robot hotspot
+    final success = await ref
+        .read(localConnectionProvider.notifier)
+        .connectViaHotspot();
+
+    if (mounted) {
+      ScaffoldMessenger.of(context).hideCurrentSnackBar();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(success
+              ? 'Connected to WIMZ Robot'
+              : 'Could not connect. Make sure you\'re on the WIMZ-Demo WiFi network.'),
+          backgroundColor: success ? Colors.green : Colors.red,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
+  }
+
+  Future<void> _switchToRelay() async {
+    // Disconnect local connection
+    await ref.read(localConnectionProvider.notifier).disconnect();
+    // Reconnect to relay with saved credentials
+    await ref.read(connectionProvider.notifier).reconnect();
+
+    if (mounted) {
+      ScaffoldMessenger.of(context).hideCurrentSnackBar();
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Switching to WIMZ Server...'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final settings = ref.watch(settingsProvider);
+    final localConn = ref.watch(localConnectionProvider);
+    final isLocal = settings.localModeEnabled;
+
+    return Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: DropdownButtonFormField<bool>(
+            value: isLocal,
+            decoration: InputDecoration(
+              prefixIcon: Icon(
+                isLocal ? Icons.wifi : Icons.cloud,
+                color: isLocal ? AppTheme.accent : AppTheme.primary,
+              ),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            ),
+            items: const [
+              DropdownMenuItem(
+                value: false,
+                child: Text('WIMZ Server — api.wimzai.com'),
+              ),
+              DropdownMenuItem(
+                value: true,
+                child: Text('WIMZ Robot — 192.168.4.1'),
+              ),
+            ],
+            onChanged: (value) async {
+              if (value == null) return;
+              await ref.read(settingsProvider.notifier).setLocalModeEnabled(value);
+              if (value) {
+                _switchToLocal();
+              } else {
+                _switchToRelay();
+              }
+            },
+          ),
+        ),
+        if (isLocal) ...[
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+            child: Text(
+              'Direct connection via local WiFi (no internet needed)',
+              style: TextStyle(fontSize: 12, color: AppTheme.textTertiary),
+            ),
+          ),
+          // Network status indicator (when connected locally)
+          if (localConn.isConnected) ...[
+            const Padding(
+              padding: EdgeInsets.fromLTRB(16, 12, 16, 0),
+              child: _NetworkStatusIndicator(),
+            ),
+            // WiFi config button
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+              child: SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  onPressed: () => _showWifiConfigSheet(context),
+                  icon: const Icon(Icons.wifi_find, size: 20),
+                  label: const Text('Configure Robot WiFi'),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: AppTheme.primary,
+                    side: BorderSide(color: AppTheme.primary.withValues(alpha: 0.5)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
+          if (localConn.errorMessage != null)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+              child: Text(
+                localConn.errorMessage!,
+                style: const TextStyle(color: Colors.red, fontSize: 12),
+              ),
+            ),
+        ] else ...[
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+            child: Text(
+              'Cloud relay connection (requires internet & login)',
+              style: TextStyle(fontSize: 12, color: AppTheme.textTertiary),
+            ),
+          ),
+        ],
+        const SizedBox(height: 8),
+      ],
     );
   }
 }
