@@ -10,10 +10,8 @@ import '../../../domain/providers/dog_profiles_provider.dart';
 import '../../../domain/providers/guardian_events_provider.dart';
 import '../../../domain/providers/missions_provider.dart';
 import '../../../domain/providers/mode_provider.dart';
-import '../../../domain/providers/settings_provider.dart';
 import '../../../domain/providers/telemetry_provider.dart';
-import '../../widgets/video/mjpeg_viewer.dart';
-import '../../widgets/video/webrtc_video_view.dart';
+import '../../widgets/video/smart_video_view.dart';
 import '../../widgets/video/audio_mute_toggle.dart';
 import '../../widgets/status/battery_indicator.dart';
 import '../../widgets/status/connection_badge.dart';
@@ -74,11 +72,7 @@ class HomeScreen extends ConsumerWidget {
                   child: Stack(
                     fit: StackFit.expand,
                     children: [
-                      // Local mode: MJPEG (simpler, no WebRTC signaling needed)
-                      // Relay mode: WebRTC (lower latency, relay-brokered signaling)
-                      ref.watch(settingsProvider).localModeEnabled
-                          ? const MjpegViewer(streamUrl: 'http://192.168.4.1:8000/camera/stream')
-                          : const WebRTCVideoView(),
+                      const SmartVideoView(),
 
                       // Detection overlay (hidden during mission)
                       if (telemetry.dogDetected && !ref.watch(missionsProvider).hasActiveMission)

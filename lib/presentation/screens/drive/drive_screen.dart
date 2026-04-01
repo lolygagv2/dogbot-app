@@ -11,10 +11,8 @@ import '../../../domain/providers/connection_provider.dart';
 import '../../../domain/providers/control_provider.dart';
 import '../../../domain/providers/missions_provider.dart';
 import '../../../domain/providers/mode_provider.dart';
-import '../../../domain/providers/settings_provider.dart';
 import '../../../domain/providers/telemetry_provider.dart';
-import '../../widgets/video/mjpeg_viewer.dart';
-import '../../widgets/video/webrtc_video_view.dart';
+import '../../widgets/video/smart_video_view.dart';
 import '../../widgets/video/audio_mute_toggle.dart';
 import '../../widgets/controls/push_to_talk.dart';
 import '../../theme/app_theme.dart';
@@ -146,10 +144,7 @@ class _DriveScreenState extends ConsumerState<DriveScreen> {
         fit: StackFit.expand,
         children: [
           // Full-screen video background
-          // Local mode: MJPEG, Relay mode: WebRTC
-          ref.watch(settingsProvider).localModeEnabled
-              ? const MjpegViewer(streamUrl: 'http://192.168.4.1:8000/camera/stream')
-              : const WebRTCVideoView(),
+          const SmartVideoView(),
 
           // Top status bar
           Positioned(
