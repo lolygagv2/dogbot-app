@@ -3,6 +3,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../core/constants/app_constants.dart';
 import '../../core/network/websocket_client.dart';
+import '../../core/services/local_connection_service.dart';
 import 'connection_provider.dart';
 
 /// Provider for paired device ID
@@ -20,6 +21,14 @@ class DeviceIdNotifier extends StateNotifier<String> {
   }
 
   Future<void> _loadDeviceId() async {
+    // In local mode, device ID is always 'local_robot' — no lookup needed
+    final localConn = _ref.read(localConnectionProvider);
+    if (localConn.isConnected) {
+      state = 'local_robot';
+      print('DeviceId: Local mode — using local_robot');
+      return;
+    }
+
     final prefs = await SharedPreferences.getInstance();
     final savedId = prefs.getString(AppConstants.keyDeviceId);
     print('DeviceId: Loading saved device_id: ${savedId ?? 'null (using default: ${AppConstants.defaultDeviceId})'}');
@@ -44,9 +53,12 @@ class DeviceIdNotifier extends StateNotifier<String> {
     _ref.read(websocketClientProvider).setTargetDevice(deviceId);
     print('DeviceId: Updated WebSocket target to $deviceId');
 
-    // Notify connection provider to re-check robot status
-    _ref.read(connectionProvider.notifier).onDeviceIdChanged(deviceId);
-    print('DeviceId: Notified connection provider of change');
+    // Notify connection provider to re-check robot status (skip in local mode)
+    final localConn = _ref.read(localConnectionProvider);
+    if (!localConn.isConnected) {
+      _ref.read(connectionProvider.notifier).onDeviceIdChanged(deviceId);
+      print('DeviceId: Notified connection provider of change');
+    }
   }
 
   Future<void> clearDeviceId() async {
