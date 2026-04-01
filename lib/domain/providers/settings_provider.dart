@@ -10,6 +10,9 @@ class SettingsKeys {
   static const backgroundAudioEnabled = 'background_audio_enabled';
   static const dailyLimitEnabled = 'daily_limit_enabled';
   static const dailyLimitCount = 'daily_limit_count';
+  static const localModeEnabled = 'local_mode_enabled';
+  static const localModeIp = 'local_mode_ip';
+  static const localModePort = 'local_mode_port';
 }
 
 /// App settings state
@@ -31,12 +34,20 @@ class AppSettings {
   final bool dailyLimitEnabled;
   final int dailyLimitCount;
 
+  /// Local mode — connect directly to Pi on LAN (skip relay + auth)
+  final bool localModeEnabled;
+  final String localModeIp;
+  final int localModePort;
+
   const AppSettings({
     this.motorTrimRight = 0.0,
     this.cameraTrackingEnabled = false,
     this.backgroundAudioEnabled = true,
     this.dailyLimitEnabled = false,
     this.dailyLimitCount = 30,
+    this.localModeEnabled = false,
+    this.localModeIp = '',
+    this.localModePort = 8000,
   });
 
   AppSettings copyWith({
@@ -45,6 +56,9 @@ class AppSettings {
     bool? backgroundAudioEnabled,
     bool? dailyLimitEnabled,
     int? dailyLimitCount,
+    bool? localModeEnabled,
+    String? localModeIp,
+    int? localModePort,
   }) {
     return AppSettings(
       motorTrimRight: motorTrimRight ?? this.motorTrimRight,
@@ -52,6 +66,9 @@ class AppSettings {
       backgroundAudioEnabled: backgroundAudioEnabled ?? this.backgroundAudioEnabled,
       dailyLimitEnabled: dailyLimitEnabled ?? this.dailyLimitEnabled,
       dailyLimitCount: dailyLimitCount ?? this.dailyLimitCount,
+      localModeEnabled: localModeEnabled ?? this.localModeEnabled,
+      localModeIp: localModeIp ?? this.localModeIp,
+      localModePort: localModePort ?? this.localModePort,
     );
   }
 }
@@ -79,6 +96,9 @@ class SettingsNotifier extends StateNotifier<AppSettings> {
     final backgroundAudio = _prefs?.getBool(SettingsKeys.backgroundAudioEnabled) ?? true;
     final dailyLimitEnabled = _prefs?.getBool(SettingsKeys.dailyLimitEnabled) ?? false;
     final dailyLimitCount = _prefs?.getInt(SettingsKeys.dailyLimitCount) ?? 30;
+    final localModeEnabled = _prefs?.getBool(SettingsKeys.localModeEnabled) ?? false;
+    final localModeIp = _prefs?.getString(SettingsKeys.localModeIp) ?? '';
+    final localModePort = _prefs?.getInt(SettingsKeys.localModePort) ?? 8000;
 
     state = AppSettings(
       motorTrimRight: motorTrim.clamp(-0.5, 0.5),
@@ -86,6 +106,9 @@ class SettingsNotifier extends StateNotifier<AppSettings> {
       backgroundAudioEnabled: backgroundAudio,
       dailyLimitEnabled: dailyLimitEnabled,
       dailyLimitCount: dailyLimitCount.clamp(1, 200),
+      localModeEnabled: localModeEnabled,
+      localModeIp: localModeIp,
+      localModePort: localModePort,
     );
   }
 
@@ -149,6 +172,25 @@ class SettingsNotifier extends StateNotifier<AppSettings> {
       'daily_limit': state.dailyLimitCount,
     });
     print('Settings: Daily limit ${state.dailyLimitEnabled ? "ON (${state.dailyLimitCount})" : "OFF"}');
+  }
+
+  /// Toggle local mode on/off
+  Future<void> setLocalModeEnabled(bool enabled) async {
+    state = state.copyWith(localModeEnabled: enabled);
+    await _prefs?.setBool(SettingsKeys.localModeEnabled, enabled);
+    print('Settings: Local mode ${enabled ? "ON" : "OFF"}');
+  }
+
+  /// Set local mode IP address
+  Future<void> setLocalModeIp(String ip) async {
+    state = state.copyWith(localModeIp: ip);
+    await _prefs?.setString(SettingsKeys.localModeIp, ip);
+  }
+
+  /// Set local mode port
+  Future<void> setLocalModePort(int port) async {
+    state = state.copyWith(localModePort: port);
+    await _prefs?.setInt(SettingsKeys.localModePort, port);
   }
 }
 

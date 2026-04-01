@@ -18,7 +18,7 @@ class CoachState {
 
   const CoachState({
     this.isActive = false,
-    this.watchingFor = const ['sit', 'down', 'stand'],
+    this.watchingFor = const ['sit', 'laydown', 'come', 'spin', 'speak'],
     this.rewardsGiven = 0,
     this.lastRewardBehavior,
     this.lastRewardTime,

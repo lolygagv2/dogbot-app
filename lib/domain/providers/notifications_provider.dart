@@ -168,8 +168,10 @@ class NotificationsNotifier extends StateNotifier<List<NotificationEvent>> {
       String behavior, Map<String, dynamic> data) {
     final type = switch (behavior.toLowerCase()) {
       'sit' || 'sitting' => NotificationEventType.sit,
-      'lie' || 'lying' || 'down' || 'lie_down' => NotificationEventType.lieDown,
-      'stand' || 'standing' || 'come' => NotificationEventType.stand,
+      'laydown' || 'lie' || 'lying' || 'down' || 'lie_down' => NotificationEventType.lieDown,
+      'come' || 'stand' || 'standing' => NotificationEventType.stand,
+      'spin' => NotificationEventType.stand, // reuse stand type for spin
+      'speak' => NotificationEventType.bark, // reuse bark type for speak
       'bark' || 'barking' => NotificationEventType.bark,
       _ => null,
     };

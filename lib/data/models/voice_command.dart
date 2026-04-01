@@ -8,7 +8,7 @@ enum VoiceCommandType {
   name('name', 'Dog\'s Name', 'Say your dog\'s name clearly'),
   sit('sit', 'Sit', 'Say "Sit" firmly'),
   stay('stay', 'Stay', 'Say "Stay" with a steady tone'),
-  lieDown('lie_down', 'Lie Down', 'Say "Lie Down" or "Down"'),
+  lieDown('laydown', 'Lay Down', 'Say "Lay Down" or "Down"'),
   spin('spin', 'Spin', 'Say "Spin" enthusiastically'),
   come('come', 'Come', 'Say "Come" or "Come here"'),
   treat('treat', 'Want a treat?', 'Say "Want a treat?" playfully'),

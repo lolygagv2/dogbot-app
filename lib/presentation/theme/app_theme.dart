@@ -313,15 +313,20 @@ class AppTheme {
       case 'sit':
       case 'sitting':
         return 'Sit';
-      case 'stand':
-      case 'standing':
-      case 'come':
-        return 'Come';
+      case 'laydown':
       case 'down':
       case 'lying':
       case 'lie':
       case 'lie_down':
         return 'Lay Down';
+      case 'come':
+      case 'stand':
+      case 'standing':
+        return 'Come';
+      case 'spin':
+        return 'Spin';
+      case 'speak':
+        return 'Speak';
       case 'bark':
       case 'barking':
         return 'Bark';
@@ -336,14 +341,18 @@ class AppTheme {
       case 'sitting':
       case 'sit':
         return behaviorSitting;
+      case 'come':
       case 'standing':
       case 'stand':
-      case 'come':
         return behaviorStanding;
+      case 'laydown':
       case 'lying':
       case 'lie':
       case 'down':
         return behaviorLying;
+      case 'spin':
+      case 'speak':
+        return behaviorStanding; // reuse standing color for new tricks
       case 'barking':
       case 'bark':
         return behaviorBarking;

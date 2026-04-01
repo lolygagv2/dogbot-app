@@ -2,9 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-// Temporarily disabled local mode imports for debugging white screen
-// import '../../../core/services/local_connection_service.dart';
-// import '../../../domain/providers/connection_mode_provider.dart';
+import '../../../core/services/local_connection_service.dart';
 import '../../../domain/providers/auth_provider.dart';
 import '../../../domain/providers/connection_provider.dart';
 import '../../../domain/providers/device_provider.dart';
@@ -69,20 +67,19 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   @override
   Widget build(BuildContext context) {
     final telemetry = ref.watch(telemetryProvider);
-    // Temporarily disabled for white screen debugging
-    // final isLocalMode = ref.watch(isLocalModeProvider);
-    const isLocalMode = false;
+    final settings = ref.watch(settingsProvider);
+    final isLocalMode = settings.localModeEnabled;
 
     return Scaffold(
       appBar: AppBar(title: const Text('Settings')),
       body: ListView(
         children: [
-          // Section 1: Connection Mode - TEMPORARILY DISABLED
-          // _SectionHeader('Connection Mode'),
-          // const _ConnectionModeTile(),
-          // const Divider(),
+          // Section 1: Connection Mode
+          _SectionHeader('Connection Mode'),
+          const _LocalModeTile(),
+          const Divider(),
 
-          // Section 2: Connection Status (simplified)
+          // Section 2: Connection Status
           _SectionHeader('Connection Status'),
           const _SimpleConnectionTile(),
           const Divider(),
@@ -212,6 +209,226 @@ class _SectionHeader extends StatelessWidget {
     );
   }
 }
+/// Local Mode toggle with IP/port input
+class _LocalModeTile extends ConsumerStatefulWidget {
+  const _LocalModeTile();
+
+  @override
+  ConsumerState<_LocalModeTile> createState() => _LocalModeTileState();
+}
+
+class _LocalModeTileState extends ConsumerState<_LocalModeTile> {
+  final _ipController = TextEditingController();
+  final _portController = TextEditingController();
+
+  @override
+  void initState() {
+    super.initState();
+    // Initialize controllers with saved values
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final settings = ref.read(settingsProvider);
+      _ipController.text = settings.localModeIp;
+      _portController.text = settings.localModePort.toString();
+    });
+  }
+
+  @override
+  void dispose() {
+    _ipController.dispose();
+    _portController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _connectLocal() async {
+    final ip = _ipController.text.trim();
+    final port = int.tryParse(_portController.text.trim()) ?? 8000;
+
+    if (ip.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Enter the Pi\'s local IP address'),
+          backgroundColor: Colors.orange,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
+
+    // Save the IP/port for convenience
+    await ref.read(settingsProvider.notifier).setLocalModeIp(ip);
+    await ref.read(settingsProvider.notifier).setLocalModePort(port);
+
+    // Disconnect any existing connection first
+    await ref.read(connectionProvider.notifier).disconnect();
+
+    // Connect via local connection service
+    final success = await ref.read(localConnectionProvider.notifier).connectDirect(ip, port);
+
+    if (mounted) {
+      if (success) {
+        // Update main connection state to reflect we're connected
+        // The local connection service already set up DioClient and WebSocket
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Connected to robot at $ip:$port'),
+            backgroundColor: Colors.green,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Could not connect to $ip:$port'),
+            backgroundColor: Colors.red,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final settings = ref.watch(settingsProvider);
+    final localConn = ref.watch(localConnectionProvider);
+
+    return Column(
+      children: [
+        SwitchListTile(
+          secondary: Icon(
+            Icons.wifi,
+            color: settings.localModeEnabled ? AppTheme.accent : AppTheme.textTertiary,
+          ),
+          title: const Text('Local Mode'),
+          subtitle: Text(
+            settings.localModeEnabled
+                ? 'Direct connection to Pi (no relay/auth)'
+                : 'Using cloud relay server',
+            style: TextStyle(fontSize: 12, color: AppTheme.textTertiary),
+          ),
+          value: settings.localModeEnabled,
+          onChanged: (value) {
+            ref.read(settingsProvider.notifier).setLocalModeEnabled(value);
+          },
+        ),
+        if (settings.localModeEnabled) ...[
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Column(
+              children: [
+                // IP address field
+                TextField(
+                  controller: _ipController,
+                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                  decoration: InputDecoration(
+                    labelText: 'Pi IP Address',
+                    hintText: '192.168.1.50',
+                    prefixIcon: const Icon(Icons.router, size: 20),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                    isDense: true,
+                  ),
+                  onChanged: (value) {
+                    ref.read(settingsProvider.notifier).setLocalModeIp(value.trim());
+                  },
+                ),
+                const SizedBox(height: 8),
+                // Port field
+                TextField(
+                  controller: _portController,
+                  keyboardType: TextInputType.number,
+                  decoration: InputDecoration(
+                    labelText: 'Port',
+                    hintText: '8000',
+                    prefixIcon: const Icon(Icons.numbers, size: 20),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                    isDense: true,
+                  ),
+                  onChanged: (value) {
+                    final port = int.tryParse(value.trim());
+                    if (port != null && port > 0 && port <= 65535) {
+                      ref.read(settingsProvider.notifier).setLocalModePort(port);
+                    }
+                  },
+                ),
+                const SizedBox(height: 12),
+                // Connect button
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton.icon(
+                    onPressed: localConn.isConnecting ? null : _connectLocal,
+                    icon: localConn.isConnecting
+                        ? const SizedBox(
+                            width: 18,
+                            height: 18,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : Icon(
+                            localConn.isConnected ? Icons.check_circle : Icons.power_settings_new,
+                          ),
+                    label: Text(
+                      localConn.isConnecting
+                          ? 'Connecting...'
+                          : localConn.isConnected
+                              ? 'Connected'
+                              : 'Connect to Pi',
+                    ),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: localConn.isConnected ? Colors.green : AppTheme.accent,
+                      foregroundColor: AppTheme.background,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                  ),
+                ),
+                if (localConn.isConnected)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 8),
+                    child: SizedBox(
+                      width: double.infinity,
+                      child: OutlinedButton(
+                        onPressed: () {
+                          ref.read(localConnectionProvider.notifier).disconnect();
+                        },
+                        child: const Text('Disconnect'),
+                      ),
+                    ),
+                  ),
+                if (localConn.errorMessage != null)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 8),
+                    child: Text(
+                      localConn.errorMessage!,
+                      style: const TextStyle(color: Colors.red, fontSize: 12),
+                    ),
+                  ),
+                const SizedBox(height: 8),
+                Text(
+                  'Connects directly via ws:// and http:// (no TLS, no auth).\n'
+                  'Ensure your phone is on the same WiFi as the Pi.\n'
+                  'Find the robot\'s IP on its boot screen or by running:\n'
+                  'hostname -I on the robot.',
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: AppTheme.textTertiary,
+                  ),
+                ),
+                const SizedBox(height: 8),
+              ],
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+}
+
 /// Simplified connection tile - shows cloud connection status only (local mode disabled)
 class _SimpleConnectionTile extends ConsumerWidget {
   const _SimpleConnectionTile();

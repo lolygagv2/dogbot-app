@@ -91,6 +91,7 @@ class _TreatManagementSheet extends ConsumerStatefulWidget {
 
 class _TreatManagementSheetState extends ConsumerState<_TreatManagementSheet> {
   final _controller = TextEditingController();
+  bool _isClearing = false;
 
   @override
   void dispose() {
@@ -137,7 +138,7 @@ class _TreatManagementSheetState extends ConsumerState<_TreatManagementSheet> {
               ),
             ),
             const SizedBox(height: 24),
-            // Reset to Full — the 2-tap expo flow
+            // Reset to Full (44 treats)
             SizedBox(
               width: double.infinity,
               height: 48,
@@ -147,12 +148,53 @@ class _TreatManagementSheetState extends ConsumerState<_TreatManagementSheet> {
                   Navigator.pop(context);
                 },
                 icon: const Icon(Icons.refresh),
-                label: const Text(
-                  'Reset to Full',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                label: Text(
+                  'Reset to Full (${TreatControl.fullTreatCount})',
+                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                 ),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppTheme.accent,
+                  foregroundColor: AppTheme.background,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
+            // Clear Jam button
+            SizedBox(
+              width: double.infinity,
+              height: 48,
+              child: ElevatedButton.icon(
+                onPressed: _isClearing
+                    ? null
+                    : () {
+                        setState(() => _isClearing = true);
+                        ref.read(treatControlProvider).clearJam();
+                        // Show brief "Clearing..." state then dismiss
+                        Future.delayed(const Duration(seconds: 2), () {
+                          if (mounted) {
+                            Navigator.pop(context);
+                          }
+                        });
+                      },
+                icon: _isClearing
+                    ? const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: AppTheme.textPrimary,
+                        ),
+                      )
+                    : const Icon(Icons.build_circle_outlined),
+                label: Text(
+                  _isClearing ? 'Clearing...' : 'Clear Jam',
+                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                ),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppTheme.warning,
                   foregroundColor: AppTheme.background,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),

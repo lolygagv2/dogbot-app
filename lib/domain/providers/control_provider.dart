@@ -316,10 +316,18 @@ class TreatControl {
     _ref.read(websocketClientProvider).sendTreatCounterSet(count);
   }
 
-  /// Reset treat counter to full
+  /// Reset treat counter to full (44 treats = full carousel)
+  static const int fullTreatCount = 44;
+
   void resetCount() {
     if (!_ref.read(connectionProvider).isConnected) return;
-    _ref.read(websocketClientProvider).sendTreatCounterReset();
+    _ref.read(websocketClientProvider).sendTreatCounterSet(fullTreatCount);
+  }
+
+  /// Clear treat carousel jam — rotates carousel motor to dislodge stuck treat
+  void clearJam() {
+    if (!_ref.read(connectionProvider).isConnected) return;
+    _ref.read(websocketClientProvider).sendCarouselRotate();
   }
 }
 

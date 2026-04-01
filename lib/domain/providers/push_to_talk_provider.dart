@@ -198,20 +198,24 @@ class PushToTalkNotifier extends StateNotifier<PttStateData> {
   /// Toggle recording: tap to start, tap again to stop and send.
   Future<bool> toggleRecording() async {
     if (state.isRecording) {
+      print('[PTT] Button released — stopping and sending');
       return stopRecordingAndSend();
     } else {
+      print('[PTT] Button pressed — starting recording');
       return startRecording();
     }
   }
 
   /// Start recording
   Future<bool> startRecording() async {
+    print('[PTT] startRecording() called — platform: iOS=${Platform.isIOS}, Android=${Platform.isAndroid}');
     rlog('PTT_START', 'startRecording() called');
     rlog('PTT_START', 'Platform.isIOS=${Platform.isIOS}, Platform.isAndroid=${Platform.isAndroid}');
 
     final isMobile = Platform.isIOS || Platform.isAndroid;
 
     if (!isMobile) {
+      print('[PTT] ERROR: Not on mobile platform');
       rlog('PTT_ERROR', 'Not on mobile platform');
       state = state.copyWith(error: 'Recording only available on iOS/Android');
       return false;
@@ -219,6 +223,7 @@ class PushToTalkNotifier extends StateNotifier<PttStateData> {
 
     // Check connection before recording — don't waste user's time
     if (WebSocketClient.instance.state != WsConnectionState.connected) {
+      print('[PTT] ERROR: WebSocket not connected — cannot send voice');
       rlog('PTT_ERROR', 'WebSocket not connected');
       state = state.copyWith(error: 'Not connected — cannot send voice');
       return false;
@@ -230,11 +235,13 @@ class PushToTalkNotifier extends StateNotifier<PttStateData> {
       _recorder?.dispose();
       _recorder = AudioRecorder();
 
+      print('[PTT] Checking mic permission...');
       rlog('PTT_START', 'Checking permission...');
       final hasPermission = await _recorder!.hasPermission();
       rlog('PTT_START', 'hasPermission=$hasPermission');
 
       if (!hasPermission) {
+        print('[PTT] ERROR: Microphone permission denied');
         rlog('PTT_ERROR', 'Permission denied');
         state = state.copyWith(error: 'Microphone permission denied');
         return false;
@@ -273,6 +280,7 @@ class PushToTalkNotifier extends StateNotifier<PttStateData> {
         state = state.copyWith(error: 'Recording failed to start');
         return false;
       }
+      print('[PTT] Mic capture started — WAV 44100Hz mono');
       rlog('PTT_RECORDING', 'Recording confirmed active');
 
       _recordingStartTime = DateTime.now();
@@ -305,9 +313,11 @@ class PushToTalkNotifier extends StateNotifier<PttStateData> {
         error: null,
       );
 
+      print('[PTT] Recording started successfully');
       rlog('PTT_RECORDING', 'Recording started successfully');
       return true;
     } catch (e) {
+      print('[PTT] ERROR: Failed to start recording: $e');
       rlog('PTT_ERROR', 'Starting recording: $e');
       _restoreWebRTCAudio();
       state = state.copyWith(error: 'Failed to start recording: $e');
@@ -320,13 +330,18 @@ class PushToTalkNotifier extends StateNotifier<PttStateData> {
     _progressTimer?.cancel();
 
     if (!state.isRecording || _recorder == null) {
+      print('[PTT] stopRecordingAndSend: not recording or no recorder');
       rlog('PTT_STOP', 'stopRecordingAndSend: not recording or no recorder');
       return false;
     }
 
+    final sendStartTime = DateTime.now();
+
     try {
+      print('[PTT] Mic capture stopping...');
       rlog('PTT_STOP', 'Stopping recorder...');
       final path = await _recorder!.stop();
+      print('[PTT] Mic capture stopped — path=$path');
       rlog('PTT_STOP', 'Recorder stopped, path=$path');
 
       if (path == null || path.isEmpty) {
@@ -356,6 +371,7 @@ class PushToTalkNotifier extends StateNotifier<PttStateData> {
 
       // Check for empty recording (just container header, no audio data)
       if (fileSize < 100) {
+        print('[PTT] ERROR: Recording empty ($fileSize bytes) — no audio captured');
         rlog('PTT_ERROR', 'File too small ($fileSize bytes) - recording is empty');
         _restoreWebRTCAudio();
         state = state.copyWith(state: PttState.idle, error: 'Recording was empty - no audio captured');
@@ -365,6 +381,7 @@ class PushToTalkNotifier extends StateNotifier<PttStateData> {
 
       // Check WebSocket connection before sending
       if (WebSocketClient.instance.state != WsConnectionState.connected) {
+        print('[PTT] ERROR: Connection dropped — cannot send audio');
         rlog('PTT_ERROR', 'WebSocket not connected, cannot send audio');
         _restoreWebRTCAudio();
         state = state.copyWith(state: PttState.idle, error: 'Not connected — voice message not sent');
@@ -376,9 +393,12 @@ class PushToTalkNotifier extends StateNotifier<PttStateData> {
 
       final bytes = await file.readAsBytes();
       final base64Data = base64Encode(bytes);
+      print('[PTT] Sending audio packet — ${bytes.length} bytes raw, ${base64Data.length} chars base64, duration=${durationMs}ms');
       rlog('PTT_SEND', 'Sending audio: ${bytes.length} bytes raw, ${base64Data.length} chars base64, format=wav');
       WebSocketClient.instance.sendAudioMessage(base64Data, 'wav', durationMs);
-      rlog('PTT_SEND', 'Audio sent to robot');
+      final sendLatencyMs = DateTime.now().difference(sendStartTime).inMilliseconds;
+      print('[PTT] Audio sent to robot — total send latency: ${sendLatencyMs}ms (includes stop+encode+transmit)');
+      rlog('PTT_SEND', 'Audio sent to robot, send latency: ${sendLatencyMs}ms');
 
       _restoreWebRTCAudio();
 
@@ -406,6 +426,7 @@ class PushToTalkNotifier extends StateNotifier<PttStateData> {
 
       return true;
     } catch (e) {
+      print('[PTT] ERROR: Send failed — $e');
       rlog('PTT_ERROR', 'Stop/send failed: $e');
       _restoreWebRTCAudio();
       state = state.copyWith(state: PttState.idle, error: 'Failed to send audio: $e');
@@ -438,6 +459,7 @@ class PushToTalkNotifier extends StateNotifier<PttStateData> {
 
     _currentRecordingPath = null;
     _recordingStartTime = null;
+    print('[PTT] Recording cancelled');
     rlog('PTT_CANCEL', 'Recording cancelled');
   }
 
