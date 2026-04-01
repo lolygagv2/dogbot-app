@@ -14,7 +14,7 @@ import '../../theme/app_theme.dart';
 
 /// Login/Welcome screen for WIM-Z with 3 options:
 /// 1. Login — cloud relay with authentication
-/// 2. Connect to Robot — direct local connection (no internet)
+/// 2. Connect to Robot — direct AP connection at 192.168.4.1 (no internet)
 /// 3. Demo Mode — simulated app demo
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
@@ -26,37 +26,26 @@ class LoginScreen extends ConsumerStatefulWidget {
 class _LoginScreenState extends ConsumerState<LoginScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
-  final _ipController = TextEditingController();
   final _formKey = GlobalKey<FormState>();
   bool _isLogin = true;
   bool _obscurePassword = true;
   bool _showLoginForm = false;
   bool _isConnectingLocal = false;
-  bool _showIpInput = false;
   String? _localError;
 
   static const _keyLastEmail = 'last_login_email';
-  static const _keyLastLocalIp = 'last_local_ip';
 
   @override
   void initState() {
     super.initState();
-    _loadSavedCredentials();
+    _loadSavedEmail();
   }
 
-  Future<void> _loadSavedCredentials() async {
+  Future<void> _loadSavedEmail() async {
     final prefs = await SharedPreferences.getInstance();
     final savedEmail = prefs.getString(_keyLastEmail);
-    final savedIp = prefs.getString(_keyLastLocalIp);
-    if (mounted) {
-      setState(() {
-        if (savedEmail != null && savedEmail.isNotEmpty) {
-          _emailController.text = savedEmail;
-        }
-        if (savedIp != null && savedIp.isNotEmpty) {
-          _ipController.text = savedIp;
-        }
-      });
+    if (mounted && savedEmail != null && savedEmail.isNotEmpty) {
+      _emailController.text = savedEmail;
     }
   }
 
@@ -64,7 +53,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   void dispose() {
     _emailController.dispose();
     _passwordController.dispose();
-    _ipController.dispose();
     super.dispose();
   }
 
@@ -93,14 +81,12 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       await prefs.setString(_keyLastEmail, email);
 
       await ref.read(connectionProvider.notifier).connect(host, port);
-      if (mounted) {
-        context.go('/home');
-      }
+      if (mounted) context.go('/home');
     }
   }
 
-  /// Connect to Robot — direct local connection, no auth, no relay
-  Future<void> _connectToRobot([String? customIp]) async {
+  /// Connect to Robot — direct AP connection at 192.168.4.1, no auth, no relay
+  Future<void> _connectToRobot() async {
     setState(() {
       _isConnectingLocal = true;
       _localError = null;
@@ -108,51 +94,34 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
     ref.read(settingsProvider.notifier).setLocalModeEnabled(true);
 
-    final ip = customIp ?? LocalConnectionNotifier.defaultHotspotIp;
-
     try {
       final success = await ref
           .read(localConnectionProvider.notifier)
-          .connectDirect(ip)
-          .timeout(
-            const Duration(seconds: 8),
-            onTimeout: () => false,
-          );
+          .connectViaHotspot()
+          .timeout(const Duration(seconds: 8), onTimeout: () => false);
 
       if (mounted) {
         if (success) {
-          // Save IP for next time
-          final prefs = await SharedPreferences.getInstance();
-          await prefs.setString(_keyLastLocalIp, ip);
-
           ref.read(connectionProvider.notifier).setLocalConnected();
           context.go('/home');
         } else {
           setState(() {
-            _showIpInput = true;
             _isConnectingLocal = false;
-            _localError = customIp != null
-                ? 'Could not connect to $ip. Check the IP and try again.'
-                : 'Robot not found at default IP (192.168.4.1).\nEnter your robot\'s IP address:';
+            _localError =
+                'Could not connect to robot.\n'
+                'Make sure you\'re connected to the WIMZ WiFi network.\n'
+                'For other networks, use Settings after connecting.';
           });
         }
       }
     } catch (e) {
       if (mounted) {
         setState(() {
-          _showIpInput = true;
           _isConnectingLocal = false;
-          _localError = 'Connection failed. Enter your robot\'s IP:';
+          _localError = 'Connection failed. Check WiFi and try again.';
         });
       }
     }
-  }
-
-  /// Connect with user-entered IP
-  void _connectWithCustomIp() {
-    final ip = _ipController.text.trim();
-    if (ip.isEmpty) return;
-    _connectToRobot(ip);
   }
 
   @override
@@ -194,136 +163,61 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 ),
                 const SizedBox(height: 48),
 
-                // === Main 3 buttons (when login form hidden) ===
+                // === Main 3 buttons ===
                 if (!_showLoginForm) ...[
-                  // 1. Login button
+                  // 1. Login
                   SizedBox(
                     width: double.infinity,
                     height: 52,
                     child: ElevatedButton.icon(
                       onPressed: () => setState(() => _showLoginForm = true),
                       icon: const Icon(Icons.cloud),
-                      label: const Text(
-                        'Login',
-                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                      ),
+                      label: const Text('Login',
+                          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: AppTheme.primary,
                         foregroundColor: AppTheme.background,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(14),
-                        ),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                       ),
                     ),
                   ),
                   Padding(
                     padding: const EdgeInsets.only(top: 4, bottom: 20),
-                    child: Text(
-                      'Cloud connection (requires internet)',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: Theme.of(context)
-                            .colorScheme
-                            .onSurface
-                            .withValues(alpha: 0.4),
-                      ),
-                    ),
+                    child: Text('Cloud connection (requires internet)',
+                        style: TextStyle(fontSize: 12,
+                            color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.4))),
                   ),
 
-                  // 2. Connect to Robot button
+                  // 2. Connect to Robot
                   SizedBox(
                     width: double.infinity,
                     height: 52,
                     child: ElevatedButton.icon(
-                      onPressed: _isConnectingLocal
-                          ? null
-                          : () => _showIpInput
-                              ? _connectWithCustomIp()
-                              : _connectToRobot(),
+                      onPressed: _isConnectingLocal ? null : _connectToRobot,
                       icon: _isConnectingLocal
-                          ? const SizedBox(
-                              width: 20,
-                              height: 20,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                color: Colors.white,
-                              ),
-                            )
+                          ? const SizedBox(width: 20, height: 20,
+                              child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
                           : const Icon(Icons.wifi),
                       label: Text(
                         _isConnectingLocal ? 'Connecting...' : 'Connect to Robot',
-                        style: const TextStyle(
-                            fontSize: 16, fontWeight: FontWeight.bold),
+                        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                       ),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: AppTheme.accent,
                         foregroundColor: AppTheme.background,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(14),
-                        ),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                       ),
                     ),
                   ),
                   Padding(
-                    padding: const EdgeInsets.only(top: 4, bottom: 8),
-                    child: Text(
-                      'Direct connection (no internet needed)',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: Theme.of(context)
-                            .colorScheme
-                            .onSurface
-                            .withValues(alpha: 0.4),
-                      ),
-                    ),
+                    padding: const EdgeInsets.only(top: 4, bottom: 16),
+                    child: Text('Direct connection via WIMZ WiFi hotspot',
+                        style: TextStyle(fontSize: 12,
+                            color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.4))),
                   ),
 
-                  // IP input field (shown after default IP fails)
-                  if (_showIpInput) ...[
-                    const SizedBox(height: 8),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: TextField(
-                            controller: _ipController,
-                            keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                            decoration: InputDecoration(
-                              hintText: '192.168.X.X',
-                              labelText: 'Robot IP Address',
-                              prefixIcon: const Icon(Icons.router, size: 20),
-                              border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              contentPadding: const EdgeInsets.symmetric(
-                                  horizontal: 16, vertical: 12),
-                              isDense: true,
-                            ),
-                            onSubmitted: (_) => _connectWithCustomIp(),
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        ElevatedButton(
-                          onPressed: _isConnectingLocal
-                              ? null
-                              : _connectWithCustomIp,
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: AppTheme.accent,
-                            foregroundColor: AppTheme.background,
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 16, vertical: 14),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                          ),
-                          child: const Text('Go'),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 8),
-                  ],
-
                   // Error message
-                  if (_localError != null) ...[
+                  if (_localError != null)
                     Container(
                       padding: const EdgeInsets.all(12),
                       margin: const EdgeInsets.only(bottom: 16),
@@ -334,20 +228,13 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       child: Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Icon(Icons.error_outline,
-                              color: AppTheme.error, size: 20),
+                          const Icon(Icons.error_outline, color: AppTheme.error, size: 20),
                           const SizedBox(width: 8),
-                          Expanded(
-                            child: Text(
-                              _localError!,
-                              style: const TextStyle(
-                                  color: AppTheme.error, fontSize: 13),
-                            ),
-                          ),
+                          Expanded(child: Text(_localError!,
+                              style: const TextStyle(color: AppTheme.error, fontSize: 13))),
                         ],
                       ),
                     ),
-                  ],
 
                   // 3. Demo Mode
                   TextButton(
@@ -357,49 +244,37 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 ],
 
                 // === Login form ===
-                if (_showLoginForm) ...[
+                if (_showLoginForm)
                   Form(
                     key: _formKey,
                     child: Column(
                       children: [
                         Align(
                           alignment: Alignment.centerLeft,
-                          child: Row(
-                            children: [
-                              IconButton(
-                                icon: const Icon(Icons.arrow_back),
-                                onPressed: () {
-                                  setState(() => _showLoginForm = false);
-                                  ref.read(authProvider.notifier).clearError();
-                                },
-                              ),
-                              Text(
-                                _isLogin ? 'Sign In' : 'Create Account',
-                                style: Theme.of(context)
-                                    .textTheme
-                                    .titleMedium
-                                    ?.copyWith(fontWeight: FontWeight.bold),
-                              ),
-                            ],
-                          ),
+                          child: Row(children: [
+                            IconButton(
+                              icon: const Icon(Icons.arrow_back),
+                              onPressed: () {
+                                setState(() => _showLoginForm = false);
+                                ref.read(authProvider.notifier).clearError();
+                              },
+                            ),
+                            Text(_isLogin ? 'Sign In' : 'Create Account',
+                                style: Theme.of(context).textTheme.titleMedium
+                                    ?.copyWith(fontWeight: FontWeight.bold)),
+                          ]),
                         ),
                         const SizedBox(height: 16),
                         TextFormField(
                           controller: _emailController,
                           decoration: const InputDecoration(
-                            labelText: 'Email',
-                            hintText: 'you@example.com',
-                            prefixIcon: Icon(Icons.email),
-                          ),
+                            labelText: 'Email', hintText: 'you@example.com',
+                            prefixIcon: Icon(Icons.email)),
                           keyboardType: TextInputType.emailAddress,
                           autocorrect: false,
-                          validator: (value) {
-                            if (value == null || value.isEmpty) {
-                              return 'Please enter email';
-                            }
-                            if (!value.contains('@') || !value.contains('.')) {
-                              return 'Invalid email format';
-                            }
+                          validator: (v) {
+                            if (v == null || v.isEmpty) return 'Please enter email';
+                            if (!v.contains('@') || !v.contains('.')) return 'Invalid email';
                             return null;
                           },
                         ),
@@ -410,25 +285,14 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                             labelText: 'Password',
                             prefixIcon: const Icon(Icons.lock),
                             suffixIcon: IconButton(
-                              icon: Icon(
-                                _obscurePassword
-                                    ? Icons.visibility
-                                    : Icons.visibility_off,
-                              ),
-                              onPressed: () {
-                                setState(
-                                    () => _obscurePassword = !_obscurePassword);
-                              },
+                              icon: Icon(_obscurePassword ? Icons.visibility : Icons.visibility_off),
+                              onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
                             ),
                           ),
                           obscureText: _obscurePassword,
-                          validator: (value) {
-                            if (value == null || value.isEmpty) {
-                              return 'Please enter password';
-                            }
-                            if (!_isLogin && value.length < 6) {
-                              return 'Password must be at least 6 characters';
-                            }
+                          validator: (v) {
+                            if (v == null || v.isEmpty) return 'Please enter password';
+                            if (!_isLogin && v.length < 6) return 'Min 6 characters';
                             return null;
                           },
                         ),
@@ -438,41 +302,24 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                             padding: const EdgeInsets.all(12),
                             decoration: BoxDecoration(
                               color: AppTheme.error.withValues(alpha: 0.1),
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: Row(
-                              children: [
-                                const Icon(Icons.error_outline,
-                                    color: AppTheme.error, size: 20),
-                                const SizedBox(width: 8),
-                                Expanded(
-                                  child: Text(
-                                    authState.errorMessage!,
-                                    style:
-                                        const TextStyle(color: AppTheme.error),
-                                  ),
-                                ),
-                              ],
-                            ),
+                              borderRadius: BorderRadius.circular(8)),
+                            child: Row(children: [
+                              const Icon(Icons.error_outline, color: AppTheme.error, size: 20),
+                              const SizedBox(width: 8),
+                              Expanded(child: Text(authState.errorMessage!,
+                                  style: const TextStyle(color: AppTheme.error))),
+                            ]),
                           ),
                           const SizedBox(height: 16),
                         ],
                         SizedBox(
-                          width: double.infinity,
-                          height: 48,
+                          width: double.infinity, height: 48,
                           child: ElevatedButton(
-                            onPressed:
-                                authState.isLoading ? null : _submitLogin,
+                            onPressed: authState.isLoading ? null : _submitLogin,
                             child: authState.isLoading
-                                ? const SizedBox(
-                                    width: 24,
-                                    height: 24,
-                                    child: CircularProgressIndicator(
-                                        strokeWidth: 2),
-                                  )
-                                : Text(_isLogin
-                                    ? 'Sign In'
-                                    : 'Create Account'),
+                                ? const SizedBox(width: 24, height: 24,
+                                    child: CircularProgressIndicator(strokeWidth: 2))
+                                : Text(_isLogin ? 'Sign In' : 'Create Account'),
                           ),
                         ),
                         const SizedBox(height: 16),
@@ -481,16 +328,13 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                             setState(() => _isLogin = !_isLogin);
                             ref.read(authProvider.notifier).clearError();
                           },
-                          child: Text(
-                            _isLogin
-                                ? "Don't have an account? Sign up"
-                                : 'Already have an account? Sign in',
-                          ),
+                          child: Text(_isLogin
+                              ? "Don't have an account? Sign up"
+                              : 'Already have an account? Sign in'),
                         ),
                       ],
                     ),
                   ),
-                ],
               ],
             ),
           ),

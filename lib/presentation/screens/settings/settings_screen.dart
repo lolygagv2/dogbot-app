@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../core/services/local_connection_service.dart';
 import '../../../domain/providers/auth_provider.dart';
@@ -335,12 +336,17 @@ class _LocalModeTileState extends ConsumerState<_LocalModeTile> {
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
             child: Text(
-              'Direct connection via local WiFi (no internet needed)',
+              localConn.isConnected
+                  ? 'Connected to ${localConn.robotIp ?? "robot"}'
+                  : 'Direct connection (no internet needed)',
               style: TextStyle(fontSize: 12, color: AppTheme.textTertiary),
             ),
           ),
-          // Network status and WiFi config hidden for now — Pi doesn't have
-          // /system/network-status or /system/wifi/scan endpoints yet
+          // Manual IP for Mode 2 (same WiFi network)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+            child: _ManualIpConnect(),
+          ),
           if (localConn.errorMessage != null)
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
@@ -359,6 +365,112 @@ class _LocalModeTileState extends ConsumerState<_LocalModeTile> {
           ),
         ],
         const SizedBox(height: 8),
+      ],
+    );
+  }
+}
+
+/// Manual IP connection for Mode 2 (phone + robot on same WiFi network)
+class _ManualIpConnect extends ConsumerStatefulWidget {
+  @override
+  ConsumerState<_ManualIpConnect> createState() => _ManualIpConnectState();
+}
+
+class _ManualIpConnectState extends ConsumerState<_ManualIpConnect> {
+  final _controller = TextEditingController();
+  bool _isConnecting = false;
+
+  @override
+  void initState() {
+    super.initState();
+    // Load last-used IP
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      final prefs = await SharedPreferences.getInstance();
+      final savedIp = prefs.getString('last_local_ip');
+      if (savedIp != null && savedIp.isNotEmpty && mounted) {
+        _controller.text = savedIp;
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  Future<void> _connect() async {
+    final ip = _controller.text.trim();
+    if (ip.isEmpty) return;
+
+    setState(() => _isConnecting = true);
+
+    final success = await ref
+        .read(localConnectionProvider.notifier)
+        .connectDirect(ip)
+        .timeout(const Duration(seconds: 8), onTimeout: () => false);
+
+    if (success) {
+      ref.read(connectionProvider.notifier).setLocalConnected();
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('last_local_ip', ip);
+    }
+
+    if (mounted) {
+      setState(() => _isConnecting = false);
+      ScaffoldMessenger.of(context).hideCurrentSnackBar();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(success ? 'Connected to $ip' : 'Could not connect to $ip'),
+          backgroundColor: success ? Colors.green : Colors.red,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'On same WiFi? Enter robot IP:',
+          style: TextStyle(fontSize: 12, color: AppTheme.textTertiary),
+        ),
+        const SizedBox(height: 6),
+        Row(
+          children: [
+            Expanded(
+              child: TextField(
+                controller: _controller,
+                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                decoration: InputDecoration(
+                  hintText: '192.168.X.X',
+                  prefixIcon: const Icon(Icons.router, size: 18),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                  isDense: true,
+                ),
+                onSubmitted: (_) => _connect(),
+              ),
+            ),
+            const SizedBox(width: 8),
+            ElevatedButton(
+              onPressed: _isConnecting ? null : _connect,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppTheme.accent,
+                foregroundColor: AppTheme.background,
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              ),
+              child: _isConnecting
+                  ? const SizedBox(width: 18, height: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                  : const Text('Connect'),
+            ),
+          ],
+        ),
       ],
     );
   }
