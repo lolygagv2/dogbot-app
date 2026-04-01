@@ -9,6 +9,7 @@ import '../../../core/network/dio_client.dart';
 import '../../../core/services/local_connection_service.dart';
 import '../../../domain/providers/auth_provider.dart';
 import '../../../domain/providers/connection_provider.dart';
+import '../../../domain/providers/settings_provider.dart';
 import '../../theme/app_theme.dart';
 
 /// Login/Welcome screen for WIM-Z with 3 options:
@@ -96,6 +97,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       _localError = null;
     });
 
+    // Mark local mode in settings
+    await ref.read(settingsProvider.notifier).setLocalModeEnabled(true);
+
     try {
       final success = await ref
           .read(localConnectionProvider.notifier)
@@ -103,6 +107,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
       if (mounted) {
         if (success) {
+          // Mark connectionProvider as connected so all controls work
+          ref.read(connectionProvider.notifier).setLocalConnected();
           context.go('/home');
         } else {
           setState(() {

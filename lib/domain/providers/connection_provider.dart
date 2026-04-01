@@ -7,6 +7,7 @@ import '../../core/config/environment.dart';
 import '../../core/constants/app_constants.dart';
 import '../../core/network/dio_client.dart';
 import '../../core/network/websocket_client.dart';
+import '../../core/services/local_connection_service.dart';
 import '../../data/datasources/robot_api.dart';
 import 'auth_provider.dart';
 import 'device_provider.dart';
@@ -493,6 +494,19 @@ class ConnectionNotifier extends StateNotifier<ConnectionState> {
     state = state.copyWith(errorMessage: null);
   }
 
+  /// Mark as connected in local mode — no relay, no auth, direct to Pi.
+  /// This makes connectionProvider.isConnected return true so all controls work.
+  void setLocalConnected() {
+    state = state.copyWith(
+      status: ConnectionStatus.robotOnline,
+      pairingStatus: PairingStatus.paired,
+      host: '192.168.4.1',
+      port: 8000,
+      errorMessage: null,
+    );
+    print('Connection: Set to local connected (robot online)');
+  }
+
   /// Enable demo mode - simulate fully connected state
   void enableDemoMode() {
     state = state.copyWith(
@@ -518,18 +532,23 @@ class ConnectionNotifier extends StateNotifier<ConnectionState> {
 }
 
 /// Convenience provider for checking if robot is actually online
+/// Returns true for EITHER relay connection OR local direct connection
 final isRobotOnlineProvider = Provider<bool>((ref) {
-  return ref.watch(connectionProvider).isRobotOnline;
+  return ref.watch(connectionProvider).isRobotOnline ||
+      ref.watch(localConnectionProvider).isConnected;
 });
 
 /// Convenience provider for checking if at least relay connected
 final isRelayConnectedProvider = Provider<bool>((ref) {
-  return ref.watch(connectionProvider).isRelayConnected;
+  return ref.watch(connectionProvider).isRelayConnected ||
+      ref.watch(localConnectionProvider).isConnected;
 });
 
 /// Legacy alias - prefer isRobotOnlineProvider
+/// Returns true for EITHER relay OR local connection
 final isConnectedProvider = Provider<bool>((ref) {
-  return ref.watch(connectionProvider).isRobotOnline;
+  return ref.watch(connectionProvider).isRobotOnline ||
+      ref.watch(localConnectionProvider).isConnected;
 });
 
 /// Stream provider for rate limit errors from relay

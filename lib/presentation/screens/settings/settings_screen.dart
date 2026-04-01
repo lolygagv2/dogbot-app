@@ -252,6 +252,11 @@ class _LocalModeTileState extends ConsumerState<_LocalModeTile> {
         .read(localConnectionProvider.notifier)
         .connectViaHotspot();
 
+    if (success) {
+      // Mark connectionProvider as connected so all controls work
+      ref.read(connectionProvider.notifier).setLocalConnected();
+    }
+
     if (mounted) {
       ScaffoldMessenger.of(context).hideCurrentSnackBar();
       ScaffoldMessenger.of(context).showSnackBar(
@@ -334,32 +339,8 @@ class _LocalModeTileState extends ConsumerState<_LocalModeTile> {
               style: TextStyle(fontSize: 12, color: AppTheme.textTertiary),
             ),
           ),
-          // Network status indicator (when connected locally)
-          if (localConn.isConnected) ...[
-            const Padding(
-              padding: EdgeInsets.fromLTRB(16, 12, 16, 0),
-              child: _NetworkStatusIndicator(),
-            ),
-            // WiFi config button
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-              child: SizedBox(
-                width: double.infinity,
-                child: OutlinedButton.icon(
-                  onPressed: () => _showWifiConfigSheet(context),
-                  icon: const Icon(Icons.wifi_find, size: 20),
-                  label: const Text('Configure Robot WiFi'),
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: AppTheme.primary,
-                    side: BorderSide(color: AppTheme.primary.withValues(alpha: 0.5)),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ],
+          // Network status and WiFi config hidden for now — Pi doesn't have
+          // /system/network-status or /system/wifi/scan endpoints yet
           if (localConn.errorMessage != null)
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
