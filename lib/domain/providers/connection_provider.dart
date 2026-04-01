@@ -456,6 +456,16 @@ class ConnectionNotifier extends StateNotifier<ConnectionState> {
 
     if (state.isDemoMode) return;
 
+    // Don't attempt relay reconnect if WebSocket is already connected
+    // (e.g., local mode has its own active connection)
+    if (ws.state == WsConnectionState.connected) {
+      print('Connection: WebSocket already connected (likely local mode), skipping relay reconnect');
+      if (state.isRelayConnected) {
+        _requestRobotStatus();
+      }
+      return;
+    }
+
     if (!state.isRelayConnected && state.host != null) {
       print('Connection: Not connected, attempting reconnect');
       reconnect();

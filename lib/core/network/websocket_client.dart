@@ -155,8 +155,15 @@ class WebSocketClient {
     try {
       _channel = WebSocketChannel.connect(Uri.parse(_currentUrl!));
 
-      // Wait for connection to establish
-      await _channel!.ready;
+      // Wait for connection to establish (5-second timeout to avoid hanging)
+      await _channel!.ready.timeout(
+        const Duration(seconds: 5),
+        onTimeout: () {
+          _channel?.sink.close();
+          _channel = null;
+          throw Exception('WebSocket handshake timed out after 5s');
+        },
+      );
 
       _setState(WsConnectionState.connected);
       _reconnectAttempts = 0;

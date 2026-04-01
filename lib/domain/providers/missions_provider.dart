@@ -354,14 +354,16 @@ class MissionsNotifier extends StateNotifier<MissionsState> {
     _loadMissions();
   }
 
-  /// Load missions from server with offline fallback
+  /// Load missions from server with offline fallback.
+  /// Skips API call in local mode (no relay) or when not authenticated.
   Future<void> _loadMissions() async {
     if (_isLoading) return;
     _isLoading = true;
 
     final token = _ref.read(authTokenProvider);
     if (token == null) {
-      // Not logged in, use predefined missions
+      // Not logged in or local mode — use predefined/cached missions
+      await _loadCachedMissions();
       _isLoading = false;
       return;
     }

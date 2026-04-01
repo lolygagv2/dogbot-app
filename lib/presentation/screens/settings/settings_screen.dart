@@ -24,9 +24,12 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   @override
   void initState() {
     super.initState();
-    // Load paired devices on screen open
+    // Load paired devices on screen open (skip in local mode — no relay API)
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      ref.read(pairedDevicesProvider.notifier).loadDevices();
+      final isLocal = ref.read(settingsProvider).localModeEnabled;
+      if (!isLocal) {
+        ref.read(pairedDevicesProvider.notifier).loadDevices();
+      }
     });
   }
 
