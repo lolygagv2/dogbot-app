@@ -107,8 +107,8 @@ class LocalConnectionNotifier extends StateNotifier<LocalConnectionData> {
       rprint('LocalConnection: Connecting WebSocket to $wsUrl');
       await WebSocketClient.instance.connect(wsUrl);
 
-      // Set target device - in local mode, we use a generic ID
-      WebSocketClient.instance.setTargetDevice('local_robot');
+      // Set target device - use default robot ID (Pi knows itself as this)
+      WebSocketClient.instance.setTargetDevice('wimz_robot_01');
 
       state = state.copyWith(
         state: LocalConnectionState.connected,

@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_webrtc/flutter_webrtc.dart';
 
-import '../../../core/services/local_connection_service.dart';
 import '../../../domain/providers/device_provider.dart';
 import '../../../domain/providers/photo_provider.dart';
 import '../../../domain/providers/video_provider.dart';
@@ -37,12 +36,9 @@ class _WebRTCVideoViewState extends ConsumerState<WebRTCVideoView> {
     if (_requestSent) return;
     _requestSent = true;
 
-    // In local mode, use 'local_robot' as device ID (1:1 direct connection)
-    final localConn = ref.read(localConnectionProvider);
+    // Use widget deviceId if provided, otherwise use stored device ID from provider
     final String deviceId;
-    if (localConn.isConnected) {
-      deviceId = 'local_robot';
-    } else if (widget.deviceId != null && widget.deviceId!.isNotEmpty) {
+    if (widget.deviceId != null && widget.deviceId!.isNotEmpty) {
       deviceId = widget.deviceId!;
     } else {
       deviceId = ref.read(deviceIdProvider);
