@@ -26,14 +26,17 @@ class LoginScreen extends ConsumerStatefulWidget {
 class _LoginScreenState extends ConsumerState<LoginScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
+  final _ipController = TextEditingController();
   final _formKey = GlobalKey<FormState>();
   bool _isLogin = true;
   bool _obscurePassword = true;
   bool _showLoginForm = false;
   bool _isConnectingLocal = false;
+  bool _showIpInput = false;
   String? _localError;
 
   static const _keyLastEmail = 'last_login_email';
+  static const _keyLastLocalIp = 'last_local_ip';
 
   @override
   void initState() {
@@ -44,9 +47,15 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   Future<void> _loadSavedCredentials() async {
     final prefs = await SharedPreferences.getInstance();
     final savedEmail = prefs.getString(_keyLastEmail);
-    if (mounted && savedEmail != null && savedEmail.isNotEmpty) {
+    final savedIp = prefs.getString(_keyLastLocalIp);
+    if (mounted) {
       setState(() {
-        _emailController.text = savedEmail;
+        if (savedEmail != null && savedEmail.isNotEmpty) {
+          _emailController.text = savedEmail;
+        }
+        if (savedIp != null && savedIp.isNotEmpty) {
+          _ipController.text = savedIp;
+        }
       });
     }
   }
@@ -55,6 +64,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   void dispose() {
     _emailController.dispose();
     _passwordController.dispose();
+    _ipController.dispose();
     super.dispose();
   }
 
@@ -65,7 +75,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     final host = AppConstants.defaultHost;
     const port = AppConstants.defaultPort;
 
-    // Configure Dio client with the relay URL
     final baseUrl = AppConfig.baseUrl(host, port);
     DioClient.setBaseUrl(baseUrl);
 
@@ -91,46 +100,59 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   }
 
   /// Connect to Robot — direct local connection, no auth, no relay
-  Future<void> _connectToRobot() async {
+  Future<void> _connectToRobot([String? customIp]) async {
     setState(() {
       _isConnectingLocal = true;
       _localError = null;
     });
 
-    // Mark local mode in settings (fire-and-forget, don't block connection)
     ref.read(settingsProvider.notifier).setLocalModeEnabled(true);
+
+    final ip = customIp ?? LocalConnectionNotifier.defaultHotspotIp;
 
     try {
       final success = await ref
           .read(localConnectionProvider.notifier)
-          .connectViaHotspot()
+          .connectDirect(ip)
           .timeout(
-            const Duration(seconds: 10),
+            const Duration(seconds: 8),
             onTimeout: () => false,
           );
 
       if (mounted) {
         if (success) {
-          // Mark connectionProvider as connected so all controls work
+          // Save IP for next time
+          final prefs = await SharedPreferences.getInstance();
+          await prefs.setString(_keyLastLocalIp, ip);
+
           ref.read(connectionProvider.notifier).setLocalConnected();
           context.go('/home');
         } else {
           setState(() {
-            _localError =
-                'Could not connect. Make sure you\'re on the WIMZ-Demo WiFi network.';
+            _showIpInput = true;
             _isConnectingLocal = false;
+            _localError = customIp != null
+                ? 'Could not connect to $ip. Check the IP and try again.'
+                : 'Robot not found at default IP (192.168.4.1).\nEnter your robot\'s IP address:';
           });
         }
       }
     } catch (e) {
       if (mounted) {
         setState(() {
-          _localError =
-              'Could not connect: ${e.toString().length > 80 ? e.toString().substring(0, 80) : e}';
+          _showIpInput = true;
           _isConnectingLocal = false;
+          _localError = 'Connection failed. Enter your robot\'s IP:';
         });
       }
     }
+  }
+
+  /// Connect with user-entered IP
+  void _connectWithCustomIp() {
+    final ip = _ipController.text.trim();
+    if (ip.isEmpty) return;
+    _connectToRobot(ip);
   }
 
   @override
@@ -154,8 +176,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   height: 120,
                 ),
                 const SizedBox(height: 16),
-
-                // Title
                 Text(
                   'WIM-Z',
                   style: Theme.of(context).textTheme.headlineLarge?.copyWith(
@@ -181,9 +201,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     width: double.infinity,
                     height: 52,
                     child: ElevatedButton.icon(
-                      onPressed: () {
-                        setState(() => _showLoginForm = true);
-                      },
+                      onPressed: () => setState(() => _showLoginForm = true),
                       icon: const Icon(Icons.cloud),
                       label: const Text(
                         'Login',
@@ -217,7 +235,11 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     width: double.infinity,
                     height: 52,
                     child: ElevatedButton.icon(
-                      onPressed: _isConnectingLocal ? null : _connectToRobot,
+                      onPressed: _isConnectingLocal
+                          ? null
+                          : () => _showIpInput
+                              ? _connectWithCustomIp()
+                              : _connectToRobot(),
                       icon: _isConnectingLocal
                           ? const SizedBox(
                               width: 20,
@@ -243,7 +265,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     ),
                   ),
                   Padding(
-                    padding: const EdgeInsets.only(top: 4, bottom: 20),
+                    padding: const EdgeInsets.only(top: 4, bottom: 8),
                     child: Text(
                       'Direct connection (no internet needed)',
                       style: TextStyle(
@@ -256,7 +278,51 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     ),
                   ),
 
-                  // Local connection error
+                  // IP input field (shown after default IP fails)
+                  if (_showIpInput) ...[
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: TextField(
+                            controller: _ipController,
+                            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                            decoration: InputDecoration(
+                              hintText: '192.168.X.X',
+                              labelText: 'Robot IP Address',
+                              prefixIcon: const Icon(Icons.router, size: 20),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              contentPadding: const EdgeInsets.symmetric(
+                                  horizontal: 16, vertical: 12),
+                              isDense: true,
+                            ),
+                            onSubmitted: (_) => _connectWithCustomIp(),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        ElevatedButton(
+                          onPressed: _isConnectingLocal
+                              ? null
+                              : _connectWithCustomIp,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppTheme.accent,
+                            foregroundColor: AppTheme.background,
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 16, vertical: 14),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          child: const Text('Go'),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                  ],
+
+                  // Error message
                   if (_localError != null) ...[
                     Container(
                       padding: const EdgeInsets.all(12),
@@ -266,6 +332,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           const Icon(Icons.error_outline,
                               color: AppTheme.error, size: 20),
@@ -289,7 +356,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   ),
                 ],
 
-                // === Login form (expanded when Login tapped) ===
+                // === Login form ===
                 if (_showLoginForm) ...[
                   Form(
                     key: _formKey,
@@ -317,8 +384,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                           ),
                         ),
                         const SizedBox(height: 16),
-
-                        // Email
                         TextFormField(
                           controller: _emailController,
                           decoration: const InputDecoration(
@@ -339,8 +404,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                           },
                         ),
                         const SizedBox(height: 12),
-
-                        // Password
                         TextFormField(
                           controller: _passwordController,
                           decoration: InputDecoration(
@@ -370,8 +433,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                           },
                         ),
                         const SizedBox(height: 24),
-
-                        // Error message
                         if (authState.errorMessage != null) ...[
                           Container(
                             padding: const EdgeInsets.all(12),
@@ -396,8 +457,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                           ),
                           const SizedBox(height: 16),
                         ],
-
-                        // Submit
                         SizedBox(
                           width: double.infinity,
                           height: 48,
@@ -417,8 +476,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                           ),
                         ),
                         const SizedBox(height: 16),
-
-                        // Toggle login/register
                         TextButton(
                           onPressed: () {
                             setState(() => _isLogin = !_isLogin);

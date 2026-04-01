@@ -102,8 +102,8 @@ class LocalConnectionNotifier extends StateNotifier<LocalConnectionData> {
         return false;
       }
 
-      // Connect WebSocket directly to robot
-      final wsUrl = 'ws://$ip:$port/ws';
+      // Connect WebSocket directly to robot's local endpoint
+      final wsUrl = 'ws://$ip:$port/ws/local';
       rprint('LocalConnection: Connecting WebSocket to $wsUrl');
       await WebSocketClient.instance.connect(wsUrl);
 
