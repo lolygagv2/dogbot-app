@@ -97,13 +97,17 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       _localError = null;
     });
 
-    // Mark local mode in settings
-    await ref.read(settingsProvider.notifier).setLocalModeEnabled(true);
+    // Mark local mode in settings (fire-and-forget, don't block connection)
+    ref.read(settingsProvider.notifier).setLocalModeEnabled(true);
 
     try {
       final success = await ref
           .read(localConnectionProvider.notifier)
-          .connectViaHotspot();
+          .connectViaHotspot()
+          .timeout(
+            const Duration(seconds: 10),
+            onTimeout: () => false,
+          );
 
       if (mounted) {
         if (success) {
@@ -122,7 +126,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       if (mounted) {
         setState(() {
           _localError =
-              'Could not connect. Make sure you\'re on the WIMZ-Demo WiFi network.';
+              'Could not connect: ${e.toString().length > 80 ? e.toString().substring(0, 80) : e}';
           _isConnectingLocal = false;
         });
       }
