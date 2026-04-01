@@ -5,6 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 
 import '../../core/network/websocket_client.dart';
+import '../../core/services/local_connection_service.dart';
 import '../../data/datasources/robot_api.dart';
 import '../../data/models/mission.dart';
 import 'auth_provider.dart';
@@ -360,9 +361,18 @@ class MissionsNotifier extends StateNotifier<MissionsState> {
     if (_isLoading) return;
     _isLoading = true;
 
+    // Skip relay API call in local mode — use predefined/cached missions
+    final isLocal = _ref.read(localConnectionProvider).isConnected;
+    if (isLocal) {
+      print('Missions: Local mode — using predefined/cached missions');
+      await _loadCachedMissions();
+      _isLoading = false;
+      return;
+    }
+
     final token = _ref.read(authTokenProvider);
     if (token == null) {
-      // Not logged in or local mode — use predefined/cached missions
+      // Not logged in — use predefined/cached missions
       await _loadCachedMissions();
       _isLoading = false;
       return;

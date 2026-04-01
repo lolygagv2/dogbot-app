@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/network/websocket_client.dart';
+import '../../core/services/local_connection_service.dart';
 import '../../data/datasources/device_api.dart';
 import 'device_provider.dart';
 
@@ -70,8 +71,12 @@ class PairedDevicesNotifier extends StateNotifier<PairedDevicesState> {
     });
   }
 
-  /// Load paired devices from API
+  /// Load paired devices from API (skip in local mode — no relay)
   Future<void> loadDevices() async {
+    // In local mode, no relay API — treat as single paired device
+    final isLocal = _ref.read(localConnectionProvider).isConnected;
+    if (isLocal) return;
+
     state = state.copyWith(isLoading: true, error: null);
 
     try {

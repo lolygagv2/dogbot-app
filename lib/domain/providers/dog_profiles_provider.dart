@@ -174,9 +174,10 @@ class DogProfilesNotifier extends StateNotifier<List<DogProfile>> {
     state = [...state, profile];
     await _saveProfiles();
 
-    // Sync to relay server (offline-friendly: don't block local save)
+    // Sync to relay server (skip in local mode — no relay API)
+    final isLocal = _ref.read(localConnectionProvider).isConnected;
     final token = _ref.read(authProvider).token;
-    if (token != null) {
+    if (!isLocal && token != null) {
       try {
         final api = _ref.read(robotApiProvider);
         final success = await api.createDog(profile.toJson(), token);
@@ -204,9 +205,10 @@ class DogProfilesNotifier extends StateNotifier<List<DogProfile>> {
 
   /// Remove a dog profile (Build 32: also sends delete_dog to robot)
   Future<void> removeProfile(String id) async {
-    // Attempt server-side delete (offline-friendly: proceed locally even on failure)
+    // Attempt server-side delete (skip in local mode — no relay API)
+    final isLocal = _ref.read(localConnectionProvider).isConnected;
     final token = _ref.read(authProvider).token;
-    if (token != null) {
+    if (!isLocal && token != null) {
       try {
         final api = _ref.read(robotApiProvider);
         final success = await api.deleteDog(id, token);

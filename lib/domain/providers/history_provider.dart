@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../core/services/local_connection_service.dart';
 import '../../data/datasources/robot_api.dart';
 import '../../data/models/mission.dart';
 import 'auth_provider.dart';
@@ -121,8 +122,14 @@ class HistoryNotifier extends StateNotifier<HistoryState> {
 
   HistoryNotifier(this._ref) : super(const HistoryState());
 
-  /// Load history with current filter
+  /// Load history with current filter (skip in local mode — no relay API)
   Future<void> loadHistory() async {
+    final isLocal = _ref.read(localConnectionProvider).isConnected;
+    if (isLocal) {
+      state = state.copyWith(error: 'History not available in local mode');
+      return;
+    }
+
     final token = _ref.read(authTokenProvider);
     if (token == null) {
       state = state.copyWith(error: 'Not logged in');

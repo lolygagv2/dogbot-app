@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/constants/api_endpoints.dart';
 import '../../../core/network/websocket_client.dart';
+import '../../../core/services/local_connection_service.dart';
 import '../../../data/datasources/robot_api.dart';
 import '../../../domain/providers/auth_provider.dart';
 import '../../../domain/providers/control_provider.dart';
@@ -395,6 +396,20 @@ class _QuickActionsState extends ConsumerState<QuickActions> {
             const SnackBar(
               content: Text('File too large (max 20MB)'),
               backgroundColor: Colors.red,
+            ),
+          );
+        }
+        return;
+      }
+
+      // Skip upload in local mode — relay upload endpoint not available
+      final localConn = ref.read(localConnectionProvider);
+      if (localConn.isConnected) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Music upload not available in local mode'),
+              backgroundColor: Colors.orange,
             ),
           );
         }
