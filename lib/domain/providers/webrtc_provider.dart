@@ -225,25 +225,45 @@ class WebRTCNotifier extends StateNotifier<WebRTCConnectionState> {
   void _setupWebSocketListeners() {
     final wsClient = _ref.read(websocketClientProvider);
 
-    // Listen for credentials from relay (step 2)
+    // Listen for credentials from relay/robot (step 2)
     _subscriptions.add(
       wsClient.webrtcCredentialsStream.listen((message) {
-        final iceServers = message['ice_servers'];
-        // Handle both formats: {iceServers: [...]} or just [...]
-        final iceServersConfig = iceServers is List
-            ? {'iceServers': iceServers}
-            : (iceServers as Map<String, dynamic>);
+        final iceServers = message['ice_servers'] ?? message['iceServers'];
+        // Handle all formats: {iceServers: [...]}, [...], or null/missing (LAN mode)
+        Map<String, dynamic> iceServersConfig;
+        if (iceServers is List) {
+          iceServersConfig = {'iceServers': iceServers};
+        } else if (iceServers is Map) {
+          iceServersConfig = iceServers as Map<String, dynamic>;
+        } else {
+          // No ICE servers — LAN mode, use empty list (host candidates only)
+          print('WebRTC: No ice_servers in credentials — using empty list (LAN mode)');
+          iceServersConfig = {'iceServers': []};
+        }
         _handleCredentials(
-          message['session_id'] as String,
+          message['session_id'] as String? ?? 'local',
           iceServersConfig,
         );
       }),
     );
 
     // Listen for SDP offers from robot (step 3)
+    // If peer connection doesn't exist yet (Pi skipped credentials), create one first
     _subscriptions.add(
-      wsClient.webrtcOfferStream.listen((message) {
-        _handleOffer(message['sdp'] as Map<String, dynamic>);
+      wsClient.webrtcOfferStream.listen((message) async {
+        if (_peerConnection == null) {
+          print('WebRTC: Received offer but no peer connection — creating with empty ICE servers');
+          await _handleCredentials(
+            message['session_id'] as String? ?? 'local',
+            {'iceServers': []},
+          );
+        }
+        final sdp = message['sdp'];
+        if (sdp is Map<String, dynamic>) {
+          _handleOffer(sdp);
+        } else {
+          print('WebRTC: Invalid offer format — sdp field is ${sdp.runtimeType}');
+        }
       }),
     );
 
@@ -464,11 +484,11 @@ class WebRTCNotifier extends StateNotifier<WebRTCConnectionState> {
   /// Handle SDP offer from robot (step 3)
   Future<void> _handleOffer(Map<String, dynamic> sdp) async {
     if (_peerConnection == null) {
-      print('WebRTC: No peer connection for offer');
+      print('WebRTC: ERROR — No peer connection for offer (credentials never arrived or failed)');
       return;
     }
 
-    print('WebRTC: Received offer');
+    print('WebRTC: Received offer, creating answer...');
 
     try {
       final description = RTCSessionDescription(
