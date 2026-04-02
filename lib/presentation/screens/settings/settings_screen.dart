@@ -79,14 +79,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       appBar: AppBar(title: const Text('Settings')),
       body: ListView(
         children: [
-          // Section 1: Connection Mode
-          _SectionHeader('Connection Mode'),
-          const _LocalModeTile(),
-          const Divider(),
-
-          // Section 2: Connection Status
-          _SectionHeader('Connection Status'),
-          const _SimpleConnectionTile(),
+          // Connection Status
+          _SectionHeader('Connection'),
+          _ConnectionInfoTile(isLocalMode: isLocalMode),
           const Divider(),
 
           // Section 3: Manage Devices (cloud mode only)
@@ -215,268 +210,63 @@ class _SectionHeader extends StatelessWidget {
   }
 }
 /// Host selection dropdown — WIMZ Server (relay) or WIMZ Robot (local)
-class _LocalModeTile extends ConsumerStatefulWidget {
-  const _LocalModeTile();
+/// Read-only connection info — shows current mode and status.
+/// To change connection mode, go back to login screen.
+class _ConnectionInfoTile extends ConsumerWidget {
+  final bool isLocalMode;
+  const _ConnectionInfoTile({required this.isLocalMode});
 
   @override
-  ConsumerState<_LocalModeTile> createState() => _LocalModeTileState();
-}
-
-class _LocalModeTileState extends ConsumerState<_LocalModeTile> {
-  void _showWifiConfigSheet(BuildContext context) {
-    ref.read(wifiConfigProvider.notifier).reset();
-
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: AppTheme.surface,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (context) => DraggableScrollableSheet(
-        initialChildSize: 0.7,
-        minChildSize: 0.4,
-        maxChildSize: 0.9,
-        expand: false,
-        builder: (context, scrollController) => _WifiConfigSheet(
-          scrollController: scrollController,
-        ),
-      ),
-    );
-  }
-
-  Future<void> _switchToLocal() async {
-    // Disconnect any existing relay connection
-    await ref.read(connectionProvider.notifier).disconnect();
-    // Connect directly to robot hotspot
-    final success = await ref
-        .read(localConnectionProvider.notifier)
-        .connectViaHotspot();
-
-    if (success) {
-      // Mark connectionProvider as connected so all controls work
-      ref.read(connectionProvider.notifier).setLocalConnected();
-    }
-
-    if (mounted) {
-      ScaffoldMessenger.of(context).hideCurrentSnackBar();
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(success
-              ? 'Connected to WIMZ Robot'
-              : 'Could not connect. Make sure you\'re on the WIMZ-Demo WiFi network.'),
-          backgroundColor: success ? Colors.green : Colors.red,
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
-    }
-  }
-
-  Future<void> _switchToRelay() async {
-    // Disconnect local connection
-    await ref.read(localConnectionProvider.notifier).disconnect();
-    // Reconnect to relay with saved credentials
-    await ref.read(connectionProvider.notifier).reconnect();
-
-    if (mounted) {
-      ScaffoldMessenger.of(context).hideCurrentSnackBar();
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Switching to WIMZ Server...'),
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final settings = ref.watch(settingsProvider);
+  Widget build(BuildContext context, WidgetRef ref) {
     final localConn = ref.watch(localConnectionProvider);
-    final isLocal = settings.localModeEnabled;
+    final connection = ref.watch(connectionProvider);
 
-    return Column(
-      children: [
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16),
-          child: DropdownButtonFormField<bool>(
-            value: isLocal,
-            decoration: InputDecoration(
-              prefixIcon: Icon(
-                isLocal ? Icons.wifi : Icons.cloud,
-                color: isLocal ? AppTheme.accent : AppTheme.primary,
-              ),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            ),
-            items: const [
-              DropdownMenuItem(
-                value: false,
-                child: Text('WIMZ Server — api.wimzai.com'),
-              ),
-              DropdownMenuItem(
-                value: true,
-                child: Text('WIMZ Robot — 192.168.4.1'),
-              ),
-            ],
-            onChanged: (value) async {
-              if (value == null) return;
-              await ref.read(settingsProvider.notifier).setLocalModeEnabled(value);
-              if (value) {
-                _switchToLocal();
-              } else {
-                _switchToRelay();
-              }
-            },
-          ),
+    final bool isConnected;
+    final String title;
+    final String subtitle;
+    final IconData icon;
+    final Color color;
+
+    if (isLocalMode) {
+      isConnected = localConn.isConnected;
+      icon = Icons.wifi;
+      color = isConnected ? AppTheme.accent : AppTheme.textTertiary;
+      title = isConnected
+          ? 'Connected to Robot (${localConn.robotIp ?? "192.168.4.1"})'
+          : 'Local mode — not connected';
+      subtitle = 'Direct connection via WIMZ WiFi';
+    } else {
+      isConnected = connection.isRobotOnline;
+      icon = Icons.cloud;
+      color = isConnected ? AppTheme.accent : AppTheme.textTertiary;
+      title = isConnected
+          ? 'Connected via Cloud'
+          : connection.statusMessage;
+      subtitle = 'Relay: api.wimzai.com';
+    }
+
+    return ListTile(
+      leading: Icon(icon, color: color, size: 32),
+      title: Text(
+        title,
+        style: TextStyle(
+          fontWeight: FontWeight.bold,
+          color: isConnected ? AppTheme.accent : null,
+          fontSize: 14,
         ),
-        if (isLocal) ...[
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
-            child: Text(
-              localConn.isConnected
-                  ? 'Connected to ${localConn.robotIp ?? "robot"}'
-                  : 'Direct connection (no internet needed)',
-              style: TextStyle(fontSize: 12, color: AppTheme.textTertiary),
-            ),
-          ),
-          // Manual IP for Mode 2 (same WiFi network)
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-            child: _ManualIpConnect(),
-          ),
-          if (localConn.errorMessage != null)
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
-              child: Text(
-                localConn.errorMessage!,
-                style: const TextStyle(color: Colors.red, fontSize: 12),
-              ),
-            ),
-        ] else ...[
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
-            child: Text(
-              'Cloud relay connection (requires internet & login)',
-              style: TextStyle(fontSize: 12, color: AppTheme.textTertiary),
-            ),
-          ),
-        ],
-        const SizedBox(height: 8),
-      ],
+      ),
+      subtitle: Text(
+        subtitle,
+        style: TextStyle(color: AppTheme.textTertiary, fontSize: 12),
+      ),
+      trailing: isConnected
+          ? const Icon(Icons.check_circle, color: AppTheme.accent, size: 20)
+          : null,
     );
   }
 }
 
-/// Manual IP connection for Mode 2 (phone + robot on same WiFi network)
-class _ManualIpConnect extends ConsumerStatefulWidget {
-  @override
-  ConsumerState<_ManualIpConnect> createState() => _ManualIpConnectState();
-}
-
-class _ManualIpConnectState extends ConsumerState<_ManualIpConnect> {
-  final _controller = TextEditingController();
-  bool _isConnecting = false;
-
-  @override
-  void initState() {
-    super.initState();
-    // Load last-used IP
-    WidgetsBinding.instance.addPostFrameCallback((_) async {
-      final prefs = await SharedPreferences.getInstance();
-      final savedIp = prefs.getString('last_local_ip');
-      if (savedIp != null && savedIp.isNotEmpty && mounted) {
-        _controller.text = savedIp;
-      }
-    });
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  Future<void> _connect() async {
-    final ip = _controller.text.trim();
-    if (ip.isEmpty) return;
-
-    setState(() => _isConnecting = true);
-
-    final success = await ref
-        .read(localConnectionProvider.notifier)
-        .connectDirect(ip)
-        .timeout(const Duration(seconds: 8), onTimeout: () => false);
-
-    if (success) {
-      ref.read(connectionProvider.notifier).setLocalConnected();
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setString('last_local_ip', ip);
-    }
-
-    if (mounted) {
-      setState(() => _isConnecting = false);
-      ScaffoldMessenger.of(context).hideCurrentSnackBar();
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(success ? 'Connected to $ip' : 'Could not connect to $ip'),
-          backgroundColor: success ? Colors.green : Colors.red,
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'On same WiFi? Enter robot IP:',
-          style: TextStyle(fontSize: 12, color: AppTheme.textTertiary),
-        ),
-        const SizedBox(height: 6),
-        Row(
-          children: [
-            Expanded(
-              child: TextField(
-                controller: _controller,
-                keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                decoration: InputDecoration(
-                  hintText: '192.168.X.X',
-                  prefixIcon: const Icon(Icons.router, size: 18),
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                  isDense: true,
-                ),
-                onSubmitted: (_) => _connect(),
-              ),
-            ),
-            const SizedBox(width: 8),
-            ElevatedButton(
-              onPressed: _isConnecting ? null : _connect,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppTheme.accent,
-                foregroundColor: AppTheme.background,
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-              ),
-              child: _isConnecting
-                  ? const SizedBox(width: 18, height: 18,
-                      child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                  : const Text('Connect'),
-            ),
-          ],
-        ),
-      ],
-    );
-  }
-}
-
-/// Simplified connection tile - shows cloud connection status only (local mode disabled)
+/// Device list for cloud mode — kept for relay connection management
 class _SimpleConnectionTile extends ConsumerWidget {
   const _SimpleConnectionTile();
 
