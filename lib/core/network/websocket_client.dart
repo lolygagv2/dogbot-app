@@ -763,7 +763,19 @@ class WebSocketClient {
     _reconnectTimer?.cancel();
     _subscription?.cancel();
 
-    await _channel?.sink.close();
+    // Close with timeout — if connection is already dead, don't hang
+    if (_channel != null) {
+      try {
+        await _channel!.sink.close().timeout(
+          const Duration(seconds: 2),
+          onTimeout: () {
+            print('WebSocket: sink.close() timed out — connection already dead');
+          },
+        );
+      } catch (e) {
+        print('WebSocket: Error during disconnect: $e');
+      }
+    }
     _channel = null;
     _currentUrl = null;
 

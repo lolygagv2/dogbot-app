@@ -88,11 +88,14 @@ class LocalConnectionNotifier extends StateNotifier<LocalConnectionData> {
     );
 
     try {
+      // Force-disconnect any stale WebSocket from previous session
+      await WebSocketClient.instance.disconnect();
+
       // Configure Dio for local connection
       final baseUrl = 'http://$ip:$port';
       DioClient.setBaseUrl(baseUrl);
 
-      // Test connection with health check
+      // Test connection with health check (retries once)
       final isHealthy = await _checkHealth(ip, port);
       if (!isHealthy) {
         state = state.copyWith(
@@ -199,24 +202,34 @@ class LocalConnectionNotifier extends StateNotifier<LocalConnectionData> {
     return null;
   }
 
-  /// Check robot health endpoint (3-second timeout so app never freezes)
+  /// Check robot health endpoint with retry (3-second timeout per attempt)
   Future<bool> _checkHealth(String ip, int port) async {
-    try {
-      final client = HttpClient();
-      client.connectionTimeout = const Duration(seconds: 3);
+    for (int attempt = 0; attempt < 2; attempt++) {
+      HttpClient? client;
+      try {
+        client = HttpClient();
+        client.connectionTimeout = const Duration(seconds: 3);
 
-      final request = await client.getUrl(
-        Uri.parse('http://$ip:$port/health'),
-      );
-      final response = await request.close().timeout(
-        const Duration(seconds: 3),
-        onTimeout: () => throw Exception('Health check timed out'),
-      );
-      client.close(force: true);
-      return response.statusCode == 200;
-    } catch (e) {
-      return false;
+        final request = await client.getUrl(
+          Uri.parse('http://$ip:$port/health'),
+        );
+        final response = await request.close().timeout(
+          const Duration(seconds: 3),
+          onTimeout: () => throw Exception('Health check timed out'),
+        );
+        final ok = response.statusCode == 200;
+        client.close(force: true);
+        if (ok) return true;
+      } catch (e) {
+        rprint('LocalConnection: Health check attempt ${attempt + 1} failed: $e');
+        client?.close(force: true);
+        if (attempt == 0) {
+          // Brief delay before retry
+          await Future.delayed(const Duration(milliseconds: 500));
+        }
+      }
     }
+    return false;
   }
 
   /// Disconnect from local robot
