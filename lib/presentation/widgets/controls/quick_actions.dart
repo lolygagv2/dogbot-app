@@ -326,7 +326,11 @@ class _QuickActionsState extends ConsumerState<QuickActions> {
                 volume: ref.watch(_volumeProvider),
                 trackName: ref.watch(_currentTrackProvider),
                 onPrev: () => audioControl.prev(),
-                onToggle: () => audioControl.toggle(),
+                onToggle: () {
+                  // Optimistic toggle — update UI immediately, Pi confirms via audio_state
+                  ref.read(_isPlayingProvider.notifier).state = !isPlaying;
+                  audioControl.toggle();
+                },
                 onNext: () => audioControl.next(),
                 onVolumeChanged: _onVolumeChanged,
                 onUpload: () => _pickAndUploadSong(context, ref),
@@ -618,7 +622,7 @@ class _QuickActionsState extends ConsumerState<QuickActions> {
   }
 }
 
-/// PTT action button (hold to record) for the main action row
+/// PTT action button — single tap to record 5s, auto-sends
 class _PttActionButton extends ConsumerWidget {
   final PttStateData state;
 
@@ -627,28 +631,24 @@ class _PttActionButton extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final isRecording = state.isRecording;
-    final isBusy = state.isBusy && !isRecording;
+    final isSending = state.state == PttState.sending;
+    final isBusy = isRecording || isSending;
+
+    // Countdown
+    final remainingMs = PushToTalkNotifier.maxRecordingDurationMs - state.recordingDurationMs;
+    final remainingSec = (remainingMs / 1000).ceil().clamp(0, 5);
 
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
         GestureDetector(
-          onTapDown: isBusy ? null : (_) async {
+          onTap: isBusy ? null : () async {
             HapticFeedback.mediumImpact();
             final success = await ref.read(pushToTalkProvider.notifier).startRecording();
-            if (success) {
-              HapticFeedback.selectionClick();
-            } else {
+            if (!success) {
               HapticFeedback.heavyImpact();
             }
           },
-          onTapUp: isRecording ? (_) async {
-            HapticFeedback.lightImpact();
-            await ref.read(pushToTalkProvider.notifier).stopRecordingAndSend();
-          } : null,
-          onTapCancel: isRecording ? () async {
-            await ref.read(pushToTalkProvider.notifier).cancelRecording();
-          } : null,
           child: Material(
             color: isRecording
                 ? Colors.red.withOpacity(0.3)
@@ -656,11 +656,13 @@ class _PttActionButton extends ConsumerWidget {
             shape: const CircleBorder(),
             child: Padding(
               padding: const EdgeInsets.all(16),
-              child: Icon(
-                isRecording ? Icons.mic : Icons.mic_none,
-                color: isRecording ? Colors.red : (isBusy ? Colors.grey : Colors.cyan),
-                size: 28,
-              ),
+              child: isRecording
+                  ? Text('$remainingSec', style: const TextStyle(color: Colors.red, fontSize: 20, fontWeight: FontWeight.bold))
+                  : Icon(
+                      isSending ? Icons.upload : Icons.mic_none,
+                      color: isSending ? Colors.grey : Colors.cyan,
+                      size: 28,
+                    ),
             ),
           ),
         ),

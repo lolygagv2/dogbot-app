@@ -78,8 +78,8 @@ class _PushToTalkControlsState extends ConsumerState<PushToTalkControls> {
   }
 }
 
-/// Mic toggle button — tap to start recording, tap again to stop and send.
-/// 56dp default, red pulsing when recording, countdown from 5, "Sent" confirmation.
+/// Mic button — single tap to start 5-second recording, auto-sends when done.
+/// No manual stop needed. Tap once → records 5s → sends → "Sent" confirmation.
 class _MicToggleButton extends ConsumerStatefulWidget {
   final PttStateData state;
   final bool compact;
@@ -118,7 +118,7 @@ class _MicToggleButtonState extends ConsumerState<_MicToggleButton>
     final isRecording = pttState.isRecording;
     final isSending = pttState.state == PttState.sending;
     final isSent = pttState.isSent;
-    final isBusy = isSending;
+    final isBusy = isRecording || isSending;
     final size = widget.compact ? 48.0 : 56.0;
     final iconSize = widget.compact ? 24.0 : 28.0;
 
@@ -152,7 +152,7 @@ class _MicToggleButtonState extends ConsumerState<_MicToggleButton>
     if (isSent) {
       label = 'Sent \u2713';
     } else if (isRecording) {
-      label = 'Recording... ${remainingSec}s';
+      label = '${remainingSec}s';
     } else if (isSending) {
       label = 'Sending...';
     } else {
@@ -163,13 +163,13 @@ class _MicToggleButtonState extends ConsumerState<_MicToggleButton>
       mainAxisSize: MainAxisSize.min,
       children: [
         GestureDetector(
+          // Single tap starts recording. 5s auto-stop + auto-send. No second tap needed.
           onTap: isBusy
               ? null
               : () async {
                   HapticFeedback.mediumImpact();
-                  final success = await ref.read(pushToTalkProvider.notifier).toggleRecording();
-                  if (!success && !isRecording) {
-                    // Failed to start — heavy haptic
+                  final success = await ref.read(pushToTalkProvider.notifier).startRecording();
+                  if (!success) {
                     HapticFeedback.heavyImpact();
                   }
                 },

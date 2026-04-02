@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_webrtc/flutter_webrtc.dart';
 
 import '../../../domain/providers/settings_provider.dart';
 import '../../../domain/providers/webrtc_provider.dart';
@@ -9,8 +10,7 @@ import 'mjpeg_viewer.dart';
 import 'webrtc_video_view.dart';
 
 /// Smart video view: tries WebRTC first, falls back to MJPEG after timeout.
-/// In relay mode, always uses WebRTC (relay brokers signaling reliably).
-/// In local mode, tries WebRTC for 10s then falls back to MJPEG.
+/// Auto-detects stale video (no frames for 8s) and reconnects.
 class SmartVideoView extends ConsumerStatefulWidget {
   final String? deviceId;
 
@@ -23,9 +23,15 @@ class SmartVideoView extends ConsumerStatefulWidget {
 class _SmartVideoViewState extends ConsumerState<SmartVideoView> {
   bool _useMjpegFallback = false;
   Timer? _fallbackTimer;
+  Timer? _staleCheckTimer;
+  int _lastVideoWidth = 0;
+  int _lastVideoHeight = 0;
+  int _staleFrameCount = 0;
 
   static const _mjpegUrl = 'http://192.168.4.1:8000/camera/stream';
   static const _webrtcTimeout = Duration(seconds: 10);
+  static const _staleCheckInterval = Duration(seconds: 4);
+  static const _maxStaleChecks = 2; // 2 checks × 4s = 8s before reconnect
 
   @override
   void initState() {
@@ -34,13 +40,13 @@ class _SmartVideoViewState extends ConsumerState<SmartVideoView> {
     if (isLocal) {
       _startFallbackTimer();
     }
+    _startStaleFrameDetection();
   }
 
   void _startFallbackTimer() {
     _fallbackTimer?.cancel();
     _fallbackTimer = Timer(_webrtcTimeout, () {
       if (!mounted) return;
-      // Check if WebRTC connected in time
       final webrtcState = ref.read(webrtcProvider);
       if (webrtcState.state != WebRTCState.connected) {
         print('SmartVideo: WebRTC timeout (10s) — falling back to MJPEG');
@@ -49,9 +55,62 @@ class _SmartVideoViewState extends ConsumerState<SmartVideoView> {
     });
   }
 
+  /// Detect stale video: if renderer dimensions haven't changed for 8 seconds
+  /// while WebRTC claims to be connected, force a reconnect.
+  void _startStaleFrameDetection() {
+    _staleCheckTimer?.cancel();
+    _staleCheckTimer = Timer.periodic(_staleCheckInterval, (_) {
+      if (!mounted) return;
+      final webrtcState = ref.read(webrtcProvider);
+      if (webrtcState.state != WebRTCState.connected) {
+        _staleFrameCount = 0;
+        return;
+      }
+
+      final renderer = webrtcState.renderer;
+      if (renderer == null) return;
+
+      final w = renderer.videoWidth;
+      final h = renderer.videoHeight;
+
+      // If dimensions are 0, video never started — not "stale", just not connected
+      if (w == 0 && h == 0) return;
+
+      // Check if dimensions changed (proxy for "frames are flowing")
+      if (w == _lastVideoWidth && h == _lastVideoHeight) {
+        _staleFrameCount++;
+        if (_staleFrameCount >= _maxStaleChecks) {
+          print('SmartVideo: Video stale for ${_staleFrameCount * _staleCheckInterval.inSeconds}s — auto-reconnecting');
+          _staleFrameCount = 0;
+          _reconnectWebRTC();
+        }
+      } else {
+        _staleFrameCount = 0;
+        _lastVideoWidth = w;
+        _lastVideoHeight = h;
+      }
+    });
+  }
+
+  void _reconnectWebRTC() {
+    print('SmartVideo: Forcing WebRTC reconnect');
+    ref.read(webrtcProvider.notifier).close();
+    // Small delay then re-request
+    Future.delayed(const Duration(milliseconds: 500), () {
+      if (mounted) {
+        final isLocal = ref.read(settingsProvider).localModeEnabled;
+        final deviceId = isLocal ? 'local_robot' : widget.deviceId ?? '';
+        if (deviceId.isNotEmpty) {
+          ref.read(webrtcProvider.notifier).requestVideoStream(deviceId);
+        }
+      }
+    });
+  }
+
   @override
   void dispose() {
     _fallbackTimer?.cancel();
+    _staleCheckTimer?.cancel();
     super.dispose();
   }
 
@@ -70,7 +129,6 @@ class _SmartVideoViewState extends ConsumerState<SmartVideoView> {
         fit: StackFit.expand,
         children: [
           const MjpegViewer(streamUrl: _mjpegUrl),
-          // Small button to retry WebRTC
           Positioned(
             top: 8,
             right: 8,
@@ -82,6 +140,7 @@ class _SmartVideoViewState extends ConsumerState<SmartVideoView> {
                 onTap: () {
                   setState(() => _useMjpegFallback = false);
                   _startFallbackTimer();
+                  _reconnectWebRTC();
                 },
                 child: const Padding(
                   padding: EdgeInsets.symmetric(horizontal: 10, vertical: 6),
