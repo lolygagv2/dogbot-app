@@ -294,7 +294,9 @@ class TreatControl {
 
   /// Dispense a treat (debounced - 1 second cooldown)
   Future<void> dispense() async {
-    if (!_ref.read(connectionProvider).isConnected) return;
+    final isConnected = _ref.read(connectionProvider).isConnected;
+    print('TreatControl: dispense() — isConnected=$isConnected');
+    if (!isConnected) return;
     if (!_canExecute(_lastDispense)) {
       print('TreatControl: dispense() debounced');
       return;
@@ -344,8 +346,11 @@ class CallDogControl {
 
   /// Send call dog command to robot with selected dog info
   void call() {
-    if (!_ref.read(connectionProvider).isConnected) return;
+    final isConnected = _ref.read(connectionProvider).isConnected;
+    print('CallDog: call() — isConnected=$isConnected');
+    if (!isConnected) return;
     final selectedDog = _ref.read(selectedDogProvider);
+    print('CallDog: sending callDog dogId=${selectedDog?.id}, dogName=${selectedDog?.name}');
     _ref.read(websocketClientProvider).sendCallDog(
       dogId: selectedDog?.id,
       dogName: selectedDog?.name,

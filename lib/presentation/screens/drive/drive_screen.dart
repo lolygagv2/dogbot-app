@@ -81,9 +81,12 @@ class _DriveScreenState extends ConsumerState<DriveScreen> {
     // Build 56: Also check missionsProvider for optimistic mission state (before robot confirms)
     final missionsState = ref.watch(missionsProvider);
     final isMissionActive = modeState.isMissionActive || modeState.currentMode == RobotMode.mission || missionsState.hasActiveMission;
+    // Controls are ready if in manual mode (confirmed), or mission/coach active,
+    // or in idle mode (Pi may not have confirmed manual yet — don't block buttons)
     final isReady = (modeState.currentMode == RobotMode.manual &&
         modeState.pendingMode == null) || isMissionActive ||
-        modeState.currentMode == RobotMode.coach;
+        modeState.currentMode == RobotMode.coach ||
+        modeState.currentMode == RobotMode.idle;
 
     // Clear mode change request flag when confirmed
     if (_modeChangeRequested && isReady) {
