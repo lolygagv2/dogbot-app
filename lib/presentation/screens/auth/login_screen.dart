@@ -80,6 +80,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString(_keyLastEmail, email);
 
+      ref.read(settingsProvider.notifier).setLocalModeEnabled(false);
       await ref.read(connectionProvider.notifier).connect(host, port);
       if (mounted) context.go('/home');
     }
