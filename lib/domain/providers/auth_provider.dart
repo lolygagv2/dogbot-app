@@ -5,6 +5,7 @@ import '../../data/datasources/auth_api.dart';
 import 'connection_provider.dart';
 import 'dog_profiles_provider.dart';
 import 'missions_provider.dart';
+import 'settings_provider.dart';
 
 /// Auth state
 class AuthState {
@@ -63,6 +64,10 @@ class AuthNotifier extends StateNotifier<AuthState> {
     final email = prefs.getString(_keyAuthEmail);
 
     if (token != null) {
+      // Cloud user restoring session — ensure local mode flag is off
+      // so Manage Devices shows in settings (Build 83 fix)
+      _ref.read(settingsProvider.notifier).setLocalModeEnabled(false);
+
       state = state.copyWith(
         isAuthenticated: true,
         token: token,
