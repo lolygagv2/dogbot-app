@@ -130,6 +130,82 @@ class DogProfilesNotifier extends StateNotifier<List<DogProfile>> {
     await _loadProfiles();
   }
 
+  /// A1: Hydrate dog profiles from the relay on login / fresh install.
+  /// Strategy: relay is the source of truth for *existence*; per-record the
+  /// newer `updatedAt` wins. Local-only entries (no matching id on relay) are
+  /// uploaded to the relay so future devices get them.
+  /// Skipped silently in local mode or when no token is available.
+  Future<void> hydrateFromRelay() async {
+    final isLocal = _ref.read(localConnectionProvider).isConnected;
+    final token = _ref.read(authProvider).token;
+    if (isLocal || token == null) {
+      print('DogProfiles: hydrateFromRelay skipped (local=$isLocal, hasToken=${token != null})');
+      return;
+    }
+
+    try {
+      final api = _ref.read(robotApiProvider);
+      final remote = await api.getDogs(token);
+      print('DogProfiles: hydrateFromRelay fetched ${remote.length} from relay (local=${state.length})');
+
+      // Make sure we have the latest local copy from disk for this user.
+      await _loadProfiles();
+
+      final byId = <String, DogProfile>{
+        for (final p in state) p.id: p,
+      };
+      for (final r in remote) {
+        final local = byId[r.id];
+        if (local == null) {
+          // Relay knows about a dog we don't have locally — adopt it.
+          byId[r.id] = r;
+        } else {
+          // Conflict: take whichever has the newer updatedAt. Null updatedAt
+          // is treated as oldest, so a record with a real timestamp wins.
+          final lu = local.updatedAt?.millisecondsSinceEpoch ?? 0;
+          final ru = r.updatedAt?.millisecondsSinceEpoch ?? 0;
+          if (ru > lu) {
+            // Preserve local-only fields (photo cache) when remote is authoritative.
+            byId[r.id] = r.copyWith(
+              localPhotoPath: local.localPhotoPath,
+              photoVersion: local.photoVersion,
+            );
+          }
+        }
+      }
+
+      final merged = byId.values.toList()
+        ..sort((a, b) => (a.createdAt ?? DateTime(0))
+            .compareTo(b.createdAt ?? DateTime(0)));
+      state = merged;
+      await _saveProfiles();
+
+      // Push any local-only profiles up to the relay so future installs
+      // (and the other device that didn't have them) can see them.
+      final remoteIds = remote.map((r) => r.id).toSet();
+      for (final p in state) {
+        if (!remoteIds.contains(p.id)) {
+          try {
+            final api = _ref.read(robotApiProvider);
+            await api.createDog(p.toJson(), token);
+            print('DogProfiles: Backfilled local-only profile "${p.name}" to relay');
+          } catch (e) {
+            print('DogProfiles: Failed to backfill "${p.name}": $e');
+          }
+        }
+      }
+
+      // If we're already connected to a robot, push the merged list.
+      final isConnected = _ref.read(connectionProvider).isConnected ||
+          _ref.read(localConnectionProvider).isConnected;
+      if (isConnected && state.isNotEmpty) {
+        _syncProfilesToRobot();
+      }
+    } catch (e) {
+      print('DogProfiles: hydrateFromRelay error: $e');
+    }
+  }
+
   /// Clear all profiles (used on logout)
   void clearState() {
     state = [];
@@ -171,7 +247,11 @@ class DogProfilesNotifier extends StateNotifier<List<DogProfile>> {
       return false;
     }
 
-    state = [...state, profile];
+    // A1: stamp updatedAt for merge precedence
+    final stamped = profile.updatedAt == null
+        ? profile.copyWith(updatedAt: DateTime.now().toUtc())
+        : profile;
+    state = [...state, stamped];
     await _saveProfiles();
 
     // Sync to relay server (skip in local mode — no relay API)
@@ -180,10 +260,10 @@ class DogProfilesNotifier extends StateNotifier<List<DogProfile>> {
     if (!isLocal && token != null) {
       try {
         final api = _ref.read(robotApiProvider);
-        final success = await api.createDog(profile.toJson(), token);
-        print('DogProfiles: Relay sync ${success ? 'succeeded' : 'failed'} for "${profile.name}"');
+        final success = await api.createDog(stamped.toJson(), token);
+        print('DogProfiles: Relay sync ${success ? 'succeeded' : 'failed'} for "${stamped.name}"');
       } catch (e) {
-        print('DogProfiles: Relay sync error for "${profile.name}": $e');
+        print('DogProfiles: Relay sync error for "${stamped.name}": $e');
       }
     }
 
@@ -195,11 +275,27 @@ class DogProfilesNotifier extends StateNotifier<List<DogProfile>> {
 
   /// Update an existing dog profile
   Future<void> updateProfile(DogProfile profile) async {
+    // A1: bump updatedAt on every mutation
+    final stamped = profile.copyWith(updatedAt: DateTime.now().toUtc());
     state = state.map((p) {
-      if (p.id == profile.id) return profile;
+      if (p.id == stamped.id) return stamped;
       return p;
     }).toList();
     await _saveProfiles();
+
+    // Sync update to relay (skip in local mode — no relay API)
+    final isLocal = _ref.read(localConnectionProvider).isConnected;
+    final token = _ref.read(authProvider).token;
+    if (!isLocal && token != null) {
+      try {
+        final api = _ref.read(robotApiProvider);
+        await api.createDog(stamped.toJson(), token);
+        print('DogProfiles: Relay update sync sent for "${stamped.name}"');
+      } catch (e) {
+        print('DogProfiles: Relay update sync error: $e');
+      }
+    }
+
     _syncProfilesToRobot();
   }
 

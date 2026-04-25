@@ -5,7 +5,9 @@ import '../../data/datasources/auth_api.dart';
 import 'connection_provider.dart';
 import 'dog_profiles_provider.dart';
 import 'missions_provider.dart';
+import 'notifications_provider.dart';
 import 'settings_provider.dart';
+import 'voice_commands_provider.dart';
 
 /// Auth state
 class AuthState {
@@ -78,6 +80,33 @@ class AuthNotifier extends StateNotifier<AuthState> {
       // This is critical - without this, dogs load before auth is ready
       // and end up in the "anonymous" bucket
       await _ref.read(dogProfilesProvider.notifier).reloadForCurrentUser();
+
+      // A1/A2/A3: hydrate cross-device data from relay. Best-effort —
+      // failures (offline, 401, etc.) shouldn't block auth restoration.
+      _hydrateAllFromRelay(scenario: 'restore');
+    }
+  }
+
+  /// A1/A2/A3: chain hydration of dog profiles, voice commands, and activity.
+  /// Runs in the background; never blocks the auth flow on failure.
+  Future<void> _hydrateAllFromRelay({required String scenario}) async {
+    try {
+      await _ref.read(dogProfilesProvider.notifier).hydrateFromRelay();
+    } catch (e) {
+      print('Auth: hydrate dogs on $scenario failed: $e');
+    }
+    try {
+      final dogs = _ref.read(dogProfilesProvider);
+      for (final dog in dogs) {
+        await _ref.read(voiceCommandsProvider(dog.id).notifier).hydrateFromRelay();
+      }
+    } catch (e) {
+      print('Auth: hydrate voice commands on $scenario failed: $e');
+    }
+    try {
+      await _ref.read(notificationsProvider.notifier).hydrateFromRelay();
+    } catch (e) {
+      print('Auth: hydrate activity on $scenario failed: $e');
     }
   }
 
@@ -117,6 +146,9 @@ class AuthNotifier extends StateNotifier<AuthState> {
       // Build 32: Reload dog profiles for this user (scoped storage)
       await _ref.read(dogProfilesProvider.notifier).reloadForCurrentUser();
 
+      // A1/A2/A3: hydrate from relay so a fresh install/new device restores data.
+      _hydrateAllFromRelay(scenario: 'register');
+
       return true;
     } catch (e) {
       String errorMsg = 'Registration failed';
@@ -152,6 +184,9 @@ class AuthNotifier extends StateNotifier<AuthState> {
 
       // Build 32: Reload dog profiles for this user (scoped storage)
       await _ref.read(dogProfilesProvider.notifier).reloadForCurrentUser();
+
+      // A1/A2/A3: hydrate from relay so a fresh install/new device restores data.
+      _hydrateAllFromRelay(scenario: 'login');
 
       return true;
     } catch (e) {

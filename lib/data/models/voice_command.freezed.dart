@@ -26,7 +26,12 @@ mixin _$VoiceCommand {
   DateTime? get recordedAt => throw _privateConstructorUsedError;
   bool get isSynced => throw _privateConstructorUsedError;
   DateTime? get syncedAt => throw _privateConstructorUsedError;
-  int get durationMs => throw _privateConstructorUsedError;
+  int get durationMs =>
+      throw _privateConstructorUsedError; // A2: Relay URL the WAV is reachable at; populated after relay upload.
+// Used for cross-device hydration — on a fresh install the app downloads
+// the file from this URL into localPath.
+  String? get relayUrl => throw _privateConstructorUsedError;
+  DateTime? get relayUpdatedAt => throw _privateConstructorUsedError;
 
   /// Serializes this VoiceCommand to a JSON map.
   Map<String, dynamic> toJson() => throw _privateConstructorUsedError;
@@ -51,7 +56,9 @@ abstract class $VoiceCommandCopyWith<$Res> {
       DateTime? recordedAt,
       bool isSynced,
       DateTime? syncedAt,
-      int durationMs});
+      int durationMs,
+      String? relayUrl,
+      DateTime? relayUpdatedAt});
 }
 
 /// @nodoc
@@ -76,6 +83,8 @@ class _$VoiceCommandCopyWithImpl<$Res, $Val extends VoiceCommand>
     Object? isSynced = null,
     Object? syncedAt = freezed,
     Object? durationMs = null,
+    Object? relayUrl = freezed,
+    Object? relayUpdatedAt = freezed,
   }) {
     return _then(_value.copyWith(
       dogId: null == dogId
@@ -106,6 +115,14 @@ class _$VoiceCommandCopyWithImpl<$Res, $Val extends VoiceCommand>
           ? _value.durationMs
           : durationMs // ignore: cast_nullable_to_non_nullable
               as int,
+      relayUrl: freezed == relayUrl
+          ? _value.relayUrl
+          : relayUrl // ignore: cast_nullable_to_non_nullable
+              as String?,
+      relayUpdatedAt: freezed == relayUpdatedAt
+          ? _value.relayUpdatedAt
+          : relayUpdatedAt // ignore: cast_nullable_to_non_nullable
+              as DateTime?,
     ) as $Val);
   }
 }
@@ -125,7 +142,9 @@ abstract class _$$VoiceCommandImplCopyWith<$Res>
       DateTime? recordedAt,
       bool isSynced,
       DateTime? syncedAt,
-      int durationMs});
+      int durationMs,
+      String? relayUrl,
+      DateTime? relayUpdatedAt});
 }
 
 /// @nodoc
@@ -148,6 +167,8 @@ class __$$VoiceCommandImplCopyWithImpl<$Res>
     Object? isSynced = null,
     Object? syncedAt = freezed,
     Object? durationMs = null,
+    Object? relayUrl = freezed,
+    Object? relayUpdatedAt = freezed,
   }) {
     return _then(_$VoiceCommandImpl(
       dogId: null == dogId
@@ -178,6 +199,14 @@ class __$$VoiceCommandImplCopyWithImpl<$Res>
           ? _value.durationMs
           : durationMs // ignore: cast_nullable_to_non_nullable
               as int,
+      relayUrl: freezed == relayUrl
+          ? _value.relayUrl
+          : relayUrl // ignore: cast_nullable_to_non_nullable
+              as String?,
+      relayUpdatedAt: freezed == relayUpdatedAt
+          ? _value.relayUpdatedAt
+          : relayUpdatedAt // ignore: cast_nullable_to_non_nullable
+              as DateTime?,
     ));
   }
 }
@@ -192,7 +221,9 @@ class _$VoiceCommandImpl implements _VoiceCommand {
       this.recordedAt,
       this.isSynced = false,
       this.syncedAt,
-      this.durationMs = 0});
+      this.durationMs = 0,
+      this.relayUrl,
+      this.relayUpdatedAt});
 
   factory _$VoiceCommandImpl.fromJson(Map<String, dynamic> json) =>
       _$$VoiceCommandImplFromJson(json);
@@ -213,10 +244,17 @@ class _$VoiceCommandImpl implements _VoiceCommand {
   @override
   @JsonKey()
   final int durationMs;
+// A2: Relay URL the WAV is reachable at; populated after relay upload.
+// Used for cross-device hydration — on a fresh install the app downloads
+// the file from this URL into localPath.
+  @override
+  final String? relayUrl;
+  @override
+  final DateTime? relayUpdatedAt;
 
   @override
   String toString() {
-    return 'VoiceCommand(dogId: $dogId, commandId: $commandId, localPath: $localPath, recordedAt: $recordedAt, isSynced: $isSynced, syncedAt: $syncedAt, durationMs: $durationMs)';
+    return 'VoiceCommand(dogId: $dogId, commandId: $commandId, localPath: $localPath, recordedAt: $recordedAt, isSynced: $isSynced, syncedAt: $syncedAt, durationMs: $durationMs, relayUrl: $relayUrl, relayUpdatedAt: $relayUpdatedAt)';
   }
 
   @override
@@ -236,13 +274,17 @@ class _$VoiceCommandImpl implements _VoiceCommand {
             (identical(other.syncedAt, syncedAt) ||
                 other.syncedAt == syncedAt) &&
             (identical(other.durationMs, durationMs) ||
-                other.durationMs == durationMs));
+                other.durationMs == durationMs) &&
+            (identical(other.relayUrl, relayUrl) ||
+                other.relayUrl == relayUrl) &&
+            (identical(other.relayUpdatedAt, relayUpdatedAt) ||
+                other.relayUpdatedAt == relayUpdatedAt));
   }
 
   @JsonKey(includeFromJson: false, includeToJson: false)
   @override
   int get hashCode => Object.hash(runtimeType, dogId, commandId, localPath,
-      recordedAt, isSynced, syncedAt, durationMs);
+      recordedAt, isSynced, syncedAt, durationMs, relayUrl, relayUpdatedAt);
 
   /// Create a copy of VoiceCommand
   /// with the given fields replaced by the non-null parameter values.
@@ -268,7 +310,9 @@ abstract class _VoiceCommand implements VoiceCommand {
       final DateTime? recordedAt,
       final bool isSynced,
       final DateTime? syncedAt,
-      final int durationMs}) = _$VoiceCommandImpl;
+      final int durationMs,
+      final String? relayUrl,
+      final DateTime? relayUpdatedAt}) = _$VoiceCommandImpl;
 
   factory _VoiceCommand.fromJson(Map<String, dynamic> json) =
       _$VoiceCommandImpl.fromJson;
@@ -286,7 +330,13 @@ abstract class _VoiceCommand implements VoiceCommand {
   @override
   DateTime? get syncedAt;
   @override
-  int get durationMs;
+  int get durationMs; // A2: Relay URL the WAV is reachable at; populated after relay upload.
+// Used for cross-device hydration — on a fresh install the app downloads
+// the file from this URL into localPath.
+  @override
+  String? get relayUrl;
+  @override
+  DateTime? get relayUpdatedAt;
 
   /// Create a copy of VoiceCommand
   /// with the given fields replaced by the non-null parameter values.

@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/constants/api_endpoints.dart';
 import '../../core/network/dio_client.dart';
+import '../models/dog_profile.dart';
 import '../models/mission.dart';
 import '../models/schedule.dart';
 
@@ -47,6 +48,159 @@ class RobotApi {
     } catch (e) {
       print('RobotApi: Failed to create dog: $e');
       return false;
+    }
+  }
+
+  /// A1: Fetch the authenticated user's dog profiles from the relay.
+  /// Used to hydrate the app on a fresh install / new device.
+  /// Returns an empty list on any error so callers can fall back to local cache.
+  Future<List<DogProfile>> getDogs(String token) async {
+    try {
+      final response = await _dio.get(
+        ApiEndpoints.dogs,
+        options: Options(headers: {'Authorization': 'Bearer $token'}),
+      );
+      if (response.statusCode == 200 && response.data is List) {
+        return (response.data as List)
+            .map((d) => DogProfile.fromApiResponse(d as Map<String, dynamic>))
+            .toList();
+      }
+      return [];
+    } catch (e) {
+      print('RobotApi: Failed to fetch dogs: $e');
+      return [];
+    }
+  }
+
+  // ============ Voice Commands API (A2) ============
+
+  /// A2: Fetch the voice command manifest for a dog.
+  /// Returns list of {command_id, audio_url, updated_at, format, size_bytes}.
+  Future<List<Map<String, dynamic>>> getVoiceCommands({
+    required String token,
+    required String dogId,
+  }) async {
+    try {
+      final response = await _dio.get(
+        ApiEndpoints.voiceCommands,
+        queryParameters: {'dog_id': dogId},
+        options: Options(headers: {'Authorization': 'Bearer $token'}),
+      );
+      if (response.statusCode == 200 && response.data is List) {
+        return (response.data as List).cast<Map<String, dynamic>>();
+      }
+      return [];
+    } catch (e) {
+      print('RobotApi: Failed to fetch voice commands: $e');
+      return [];
+    }
+  }
+
+  /// A2: Upload a voice command WAV to the relay. Relay stores the file and
+  /// pushes `voice_command_updated` to the user's robot via WS.
+  /// Returns {audio_url, updated_at} on success, null on error.
+  Future<Map<String, dynamic>?> uploadVoiceCommand({
+    required String token,
+    required String dogId,
+    required String commandId,
+    required String filePath,
+  }) async {
+    try {
+      final formData = FormData.fromMap({
+        'dog_id': dogId,
+        'command_id': commandId,
+        'file': await MultipartFile.fromFile(filePath, filename: '$commandId.wav'),
+      });
+      final response = await _dio.post(
+        ApiEndpoints.voiceCommands,
+        data: formData,
+        options: Options(
+          headers: {'Authorization': 'Bearer $token'},
+          sendTimeout: const Duration(seconds: 30),
+          receiveTimeout: const Duration(seconds: 30),
+        ),
+      );
+      if ((response.statusCode == 200 || response.statusCode == 201) &&
+          response.data is Map) {
+        return (response.data as Map).cast<String, dynamic>();
+      }
+      return null;
+    } catch (e) {
+      print('RobotApi: Failed to upload voice command: $e');
+      return null;
+    }
+  }
+
+  /// A2: Delete a voice command from the relay. Relay pushes
+  /// `voice_command_deleted` to the user's robot via WS.
+  Future<bool> deleteVoiceCommand({
+    required String token,
+    required String dogId,
+    required String commandId,
+  }) async {
+    try {
+      final response = await _dio.delete(
+        ApiEndpoints.voiceCommandDelete(dogId, commandId),
+        options: Options(headers: {'Authorization': 'Bearer $token'}),
+      );
+      return response.statusCode == 200 || response.statusCode == 204;
+    } catch (e) {
+      print('RobotApi: Failed to delete voice command: $e');
+      return false;
+    }
+  }
+
+  /// A2: Download a voice command WAV from the relay (no-auth file URL).
+  /// Returns the bytes, or null on error. Used by the app to restore audio
+  /// files on a fresh install.
+  Future<List<int>?> downloadVoiceCommand(String audioUrl) async {
+    try {
+      final response = await _dio.get<List<int>>(
+        audioUrl,
+        options: Options(
+          responseType: ResponseType.bytes,
+          receiveTimeout: const Duration(seconds: 30),
+        ),
+      );
+      if (response.statusCode == 200 && response.data != null) {
+        return response.data;
+      }
+      return null;
+    } catch (e) {
+      print('RobotApi: Failed to download voice command from $audioUrl: $e');
+      return null;
+    }
+  }
+
+  // ============ Activity API (A3) ============
+
+  /// A3: Fetch activity events. dogId optional (omit for all dogs).
+  /// Returns {events: [...], next_cursor: str?} or {} on error.
+  Future<Map<String, dynamic>> getActivity({
+    required String token,
+    String? dogId,
+    DateTime? since,
+    int limit = 100,
+    String? cursor,
+  }) async {
+    try {
+      final qp = <String, dynamic>{'limit': limit};
+      if (dogId != null) qp['dog_id'] = dogId;
+      if (since != null) qp['since'] = since.toUtc().toIso8601String();
+      if (cursor != null) qp['cursor'] = cursor;
+
+      final response = await _dio.get(
+        ApiEndpoints.activity,
+        queryParameters: qp,
+        options: Options(headers: {'Authorization': 'Bearer $token'}),
+      );
+      if (response.statusCode == 200 && response.data is Map) {
+        return (response.data as Map).cast<String, dynamic>();
+      }
+      return {};
+    } catch (e) {
+      print('RobotApi: Failed to fetch activity: $e');
+      return {};
     }
   }
 

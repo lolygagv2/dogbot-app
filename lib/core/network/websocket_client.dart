@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
 
 import '../constants/app_constants.dart';
+import '../session/session_id.dart';
 import '../utils/remote_logger.dart';
 
 /// WebSocket connection state
@@ -67,8 +68,16 @@ class WebSocketClient {
 
   String? _currentUrl;
   String? _targetDeviceId;
+  // B1: identity for session_hello, set by ConnectionNotifier on connect()
+  String? _sessionId;
+  String? _sessionUserId;
+  String? _sessionDeviceId;
   int _reconnectAttempts = 0;
   static const int _maxReconnectAttempts = 5;
+
+  /// The current session id sent with the session_hello frame and tagged on
+  /// every signaling frame. Null until [connect] is called.
+  String? get sessionId => _sessionId;
 
   WsConnectionState _state = WsConnectionState.disconnected;
   WsConnectionState get state => _state;
@@ -104,6 +113,11 @@ class WebSocketClient {
   // Rate limit stream (relay returns RATE_LIMITED error)
   final _rateLimitController = StreamController<String>.broadcast();
 
+  // B1: Session supersede stream — relay closes the prior session for this
+  // (user, device) pair when a new one connects. Payload: {by: <new_session_id>}.
+  final _sessionSupersededController =
+      StreamController<Map<String, dynamic>>.broadcast();
+
   Stream<Map<String, dynamic>> get webrtcCredentialsStream =>
       _webrtcCredentialsController.stream;
   Stream<Map<String, dynamic>> get webrtcOfferStream =>
@@ -119,6 +133,8 @@ class WebSocketClient {
   Stream<Map<String, dynamic>> get videoStream =>
       _videoController.stream;
   Stream<String> get rateLimitStream => _rateLimitController.stream;
+  Stream<Map<String, dynamic>> get sessionSupersededStream =>
+      _sessionSupersededController.stream;
 
   /// Get the current target device ID
   String? get targetDeviceId => _targetDeviceId;
@@ -134,14 +150,27 @@ class WebSocketClient {
     _reconnectAttempts = 0;
   }
 
-  /// Connect to WebSocket server
-  Future<void> connect(String url) async {
+  /// Connect to WebSocket server.
+  ///
+  /// [sessionId], [userId], [deviceId] are used to send the B1 `session_hello`
+  /// handshake frame as the first message after the WS upgrade succeeds. The
+  /// relay validates [userId] against the bearer token and supersedes any
+  /// prior session for the same (userId, deviceId) pair.
+  Future<void> connect(
+    String url, {
+    String? sessionId,
+    String? userId,
+    String? deviceId,
+  }) async {
     if (_state == WsConnectionState.connected && _currentUrl == url) {
       return; // Already connected to this URL
     }
 
     await disconnect();
     _currentUrl = url;
+    _sessionId = sessionId ?? SessionId.current;
+    _sessionUserId = userId;
+    _sessionDeviceId = deviceId;
     _reconnectAttempts = 0;
 
     await _doConnect();
@@ -177,6 +206,11 @@ class WebSocketClient {
         onError: _onError,
         onDone: _onDone,
       );
+
+      // B1: send session_hello as the first frame so the relay can supersede
+      // any prior session for this (user, device) and validate user_id against
+      // the bearer token.
+      _sendSessionHello();
 
       // Start ping timer
       _startPingTimer();
@@ -217,6 +251,14 @@ class WebSocketClient {
       }
 
       switch (msgType) {
+        // B1: relay supersession notice — a new session for this (user, device)
+        // has connected and we're being kicked. Surface to the connection
+        // provider so it can tear down WS+WebRTC and show a banner.
+        case 'session_superseded':
+          print('WS: session_superseded received: $json');
+          _sessionSupersededController.add(json);
+          break;
+
         // WebRTC signaling messages
         case 'webrtc_credentials':
           _webrtcCredentialsController.add(json);
@@ -439,6 +481,22 @@ class WebSocketClient {
   void _setState(WsConnectionState newState) {
     _state = newState;
     _stateController.add(newState);
+  }
+
+  /// B1: First frame after the WS upgrade. Relay expects this within 5s or it
+  /// closes with 4000.
+  void _sendSessionHello() {
+    if (_sessionId == null) {
+      // Connection started before sessionId/userId/deviceId were set — caller
+      // is on the legacy connect() path (e.g. local mode); skip handshake.
+      return;
+    }
+    send({
+      'type': 'session_hello',
+      'session_id': _sessionId,
+      if (_sessionUserId != null) 'user_id': _sessionUserId,
+      if (_sessionDeviceId != null) 'device_id': _sessionDeviceId,
+    });
   }
 
   /// Send a message to the server
@@ -676,17 +734,39 @@ class WebSocketClient {
 
   /// Request WebRTC video stream
   void requestVideoStream() {
-    send({'type': 'webrtc_request'});
+    send({
+      'type': 'webrtc_request',
+      if (_sessionId != null) 'session_id': _sessionId,
+    });
   }
 
   /// Send WebRTC answer
   void sendWebrtcAnswer(Map<String, dynamic> answer) {
-    send({'type': 'webrtc_answer', ...answer});
+    send({
+      'type': 'webrtc_answer',
+      if (_sessionId != null) 'session_id': _sessionId,
+      ...answer,
+    });
   }
 
   /// Send WebRTC ICE candidate
   void sendWebrtcIce(Map<String, dynamic> candidate) {
-    send({'type': 'webrtc_ice', ...candidate});
+    send({
+      'type': 'webrtc_ice',
+      if (_sessionId != null) 'session_id': _sessionId,
+      ...candidate,
+    });
+  }
+
+  /// B4: best-effort graceful close. Tells relay we're shutting down so it can
+  /// notify the robot to tear down its PeerConnection immediately, without
+  /// waiting for the heartbeat timeout.
+  void sendClientClosing() {
+    if (_sessionId == null) return;
+    send({
+      'type': 'client_closing',
+      'session_id': _sessionId,
+    });
   }
 
   // ============ Schedule Commands (Build 38) ============

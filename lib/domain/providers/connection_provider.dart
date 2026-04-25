@@ -8,6 +8,7 @@ import '../../core/constants/app_constants.dart';
 import '../../core/network/dio_client.dart';
 import '../../core/network/websocket_client.dart';
 import '../../core/services/local_connection_service.dart';
+import '../../core/session/session_id.dart';
 import '../../data/datasources/robot_api.dart';
 import 'auth_provider.dart';
 import 'device_provider.dart';
@@ -19,6 +20,7 @@ enum ConnectionStatus {
   relayConnected,   // WebSocket to relay open, waiting for robot status
   robotOnline,      // Robot is connected to relay AND responding
   error,            // Connection error
+  superseded,       // B1: This session was kicked by a newer login on the same account/device
 }
 
 /// Robot pairing status
@@ -87,6 +89,7 @@ class ConnectionState {
   bool get isConnecting => status == ConnectionStatus.connecting;
   bool get hasError => status == ConnectionStatus.error;
   bool get isNotPaired => pairingStatus == PairingStatus.notPaired;
+  bool get isSuperseded => status == ConnectionStatus.superseded;
 
   /// Human-readable status message
   String get statusMessage {
@@ -105,6 +108,8 @@ class ConnectionState {
         return 'Robot online';
       case ConnectionStatus.error:
         return errorMessage ?? 'Connection error';
+      case ConnectionStatus.superseded:
+        return 'Signed in on another device';
     }
   }
 
@@ -125,6 +130,7 @@ class ConnectionNotifier extends StateNotifier<ConnectionState> {
   StreamSubscription? _wsStateSubscription;
   StreamSubscription? _wsEventSubscription;
   StreamSubscription? _deviceStatusSubscription;
+  StreamSubscription? _supersededSubscription; // B1
   Timer? _reconnectTimer;
   Timer? _statusCheckTimer;
   Timer? _statusDowngradeTimer; // Build 34: Debounce status downgrades
@@ -191,16 +197,25 @@ class ConnectionNotifier extends StateNotifier<ConnectionState> {
       final authState = _ref.read(authProvider);
       final token = authState.token;
 
+      // B1: regenerate session id for this fresh connection. Old sessions for
+      // the same (user, device) on the relay will be superseded.
+      final newSessionId = SessionId.regenerate();
+
       // Connect WebSocket
       final ws = _ref.read(websocketClientProvider);
       final wsUrl = token != null
           ? AppConfig.wsUrlWithToken(host, token, port)
           : AppConfig.wsUrl(host, port);
-      print('Connecting WebSocket to: $wsUrl');
-      await ws.connect(wsUrl);
+      final deviceId = _ref.read(deviceIdProvider);
+      print('Connecting WebSocket to: $wsUrl (session=$newSessionId)');
+      await ws.connect(
+        wsUrl,
+        sessionId: newSessionId,
+        userId: authState.email,
+        deviceId: deviceId,
+      );
 
       // Set target device ID
-      final deviceId = _ref.read(deviceIdProvider);
       ws.setTargetDevice(deviceId);
       state = state.copyWith(deviceId: deviceId);
       print('Connection: Target device set to $deviceId');
@@ -216,6 +231,11 @@ class ConnectionNotifier extends StateNotifier<ConnectionState> {
       // Listen for error events (command responses)
       _wsEventSubscription?.cancel();
       _wsEventSubscription = ws.eventStream.listen(_onWsEvent);
+
+      // B1: listen for relay supersede notice
+      _supersededSubscription?.cancel();
+      _supersededSubscription =
+          ws.sessionSupersededStream.listen(_onSessionSuperseded);
 
       // Save connection settings
       await _saveConnection(host, port);
@@ -407,6 +427,7 @@ class ConnectionNotifier extends StateNotifier<ConnectionState> {
     _wsStateSubscription?.cancel();
     _wsEventSubscription?.cancel();
     _deviceStatusSubscription?.cancel();
+    _supersededSubscription?.cancel();
     await _ref.read(websocketClientProvider).disconnect();
     state = state.copyWith(
       status: ConnectionStatus.disconnected,
@@ -414,6 +435,34 @@ class ConnectionNotifier extends StateNotifier<ConnectionState> {
       isDemoMode: false,
       errorMessage: null,
     );
+  }
+
+  /// B1: Relay told us this session has been superseded by a newer login.
+  /// Tear down WS + WebRTC and surface a non-fatal banner. The user can pull
+  /// to refresh / tap a button to take control back, which will create a new
+  /// session id and supersede the other device.
+  void _onSessionSuperseded(Map<String, dynamic> payload) {
+    print('Connection: session_superseded by=${payload['by']}');
+    _reconnectTimer?.cancel();
+    _statusCheckTimer?.cancel();
+    _statusDowngradeTimer?.cancel();
+    _reconnectAttempts = _maxReconnectAttempts; // suppress auto-reconnect loop
+    // WebRTC teardown happens via webrtc_provider listening to connection state.
+    // We deliberately do NOT call disconnect() here so the host/port stay set
+    // (allowing the user to tap "take over" and reconnect with a new session).
+    state = state.copyWith(
+      status: ConnectionStatus.superseded,
+      errorMessage:
+          'This account is now active on another device. Tap to take control back.',
+    );
+  }
+
+  /// B1: User opted to take control back from the other device. Generates a
+  /// new session id and reconnects, which will supersede the other session.
+  Future<bool> takeOverSession() async {
+    _reconnectAttempts = 0;
+    if (state.host == null) return false;
+    return connect(state.host!, state.port ?? AppConstants.defaultPort);
   }
 
   /// Retry connection with saved settings

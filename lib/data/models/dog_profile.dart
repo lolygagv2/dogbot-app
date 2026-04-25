@@ -40,6 +40,10 @@ class DogProfile with _$DogProfile {
     @Default([]) List<String> goals,
     String? lastMissionId,
     DateTime? createdAt,
+    // A1: Set on every mutation; used for merge precedence when hydrating
+    // from relay (relay is source of truth for existence; per-record the
+    // newer updatedAt wins).
+    DateTime? updatedAt,
     // Build 32: Cache-busting version number for photo refresh
     @Default(0) int photoVersion,
   }) = _DogProfile;
@@ -73,6 +77,11 @@ class DogProfile with _$DogProfile {
           ? DateTime.parse(data['created_at'] as String)
           : data['createdAt'] != null
               ? DateTime.parse(data['createdAt'] as String)
+              : null,
+      updatedAt: data['updated_at'] != null
+          ? DateTime.parse(data['updated_at'] as String)
+          : data['updatedAt'] != null
+              ? DateTime.parse(data['updatedAt'] as String)
               : null,
     );
   }

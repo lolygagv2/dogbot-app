@@ -33,6 +33,10 @@ mixin _$DogProfile {
   List<String> get goals => throw _privateConstructorUsedError;
   String? get lastMissionId => throw _privateConstructorUsedError;
   DateTime? get createdAt =>
+      throw _privateConstructorUsedError; // A1: Set on every mutation; used for merge precedence when hydrating
+// from relay (relay is source of truth for existence; per-record the
+// newer updatedAt wins).
+  DateTime? get updatedAt =>
       throw _privateConstructorUsedError; // Build 32: Cache-busting version number for photo refresh
   int get photoVersion => throw _privateConstructorUsedError;
 
@@ -66,6 +70,7 @@ abstract class $DogProfileCopyWith<$Res> {
       List<String> goals,
       String? lastMissionId,
       DateTime? createdAt,
+      DateTime? updatedAt,
       int photoVersion});
 }
 
@@ -97,6 +102,7 @@ class _$DogProfileCopyWithImpl<$Res, $Val extends DogProfile>
     Object? goals = null,
     Object? lastMissionId = freezed,
     Object? createdAt = freezed,
+    Object? updatedAt = freezed,
     Object? photoVersion = null,
   }) {
     return _then(_value.copyWith(
@@ -152,6 +158,10 @@ class _$DogProfileCopyWithImpl<$Res, $Val extends DogProfile>
           ? _value.createdAt
           : createdAt // ignore: cast_nullable_to_non_nullable
               as DateTime?,
+      updatedAt: freezed == updatedAt
+          ? _value.updatedAt
+          : updatedAt // ignore: cast_nullable_to_non_nullable
+              as DateTime?,
       photoVersion: null == photoVersion
           ? _value.photoVersion
           : photoVersion // ignore: cast_nullable_to_non_nullable
@@ -182,6 +192,7 @@ abstract class _$$DogProfileImplCopyWith<$Res>
       List<String> goals,
       String? lastMissionId,
       DateTime? createdAt,
+      DateTime? updatedAt,
       int photoVersion});
 }
 
@@ -211,6 +222,7 @@ class __$$DogProfileImplCopyWithImpl<$Res>
     Object? goals = null,
     Object? lastMissionId = freezed,
     Object? createdAt = freezed,
+    Object? updatedAt = freezed,
     Object? photoVersion = null,
   }) {
     return _then(_$DogProfileImpl(
@@ -266,6 +278,10 @@ class __$$DogProfileImplCopyWithImpl<$Res>
           ? _value.createdAt
           : createdAt // ignore: cast_nullable_to_non_nullable
               as DateTime?,
+      updatedAt: freezed == updatedAt
+          ? _value.updatedAt
+          : updatedAt // ignore: cast_nullable_to_non_nullable
+              as DateTime?,
       photoVersion: null == photoVersion
           ? _value.photoVersion
           : photoVersion // ignore: cast_nullable_to_non_nullable
@@ -291,6 +307,7 @@ class _$DogProfileImpl implements _DogProfile {
       final List<String> goals = const [],
       this.lastMissionId,
       this.createdAt,
+      this.updatedAt,
       this.photoVersion = 0})
       : _goals = goals;
 
@@ -331,6 +348,11 @@ class _$DogProfileImpl implements _DogProfile {
   final String? lastMissionId;
   @override
   final DateTime? createdAt;
+// A1: Set on every mutation; used for merge precedence when hydrating
+// from relay (relay is source of truth for existence; per-record the
+// newer updatedAt wins).
+  @override
+  final DateTime? updatedAt;
 // Build 32: Cache-busting version number for photo refresh
   @override
   @JsonKey()
@@ -338,7 +360,7 @@ class _$DogProfileImpl implements _DogProfile {
 
   @override
   String toString() {
-    return 'DogProfile(id: $id, name: $name, breed: $breed, photoUrl: $photoUrl, localPhotoPath: $localPhotoPath, birthDate: $birthDate, weight: $weight, notes: $notes, color: $color, arucoMarkerId: $arucoMarkerId, goals: $goals, lastMissionId: $lastMissionId, createdAt: $createdAt, photoVersion: $photoVersion)';
+    return 'DogProfile(id: $id, name: $name, breed: $breed, photoUrl: $photoUrl, localPhotoPath: $localPhotoPath, birthDate: $birthDate, weight: $weight, notes: $notes, color: $color, arucoMarkerId: $arucoMarkerId, goals: $goals, lastMissionId: $lastMissionId, createdAt: $createdAt, updatedAt: $updatedAt, photoVersion: $photoVersion)';
   }
 
   @override
@@ -365,6 +387,8 @@ class _$DogProfileImpl implements _DogProfile {
                 other.lastMissionId == lastMissionId) &&
             (identical(other.createdAt, createdAt) ||
                 other.createdAt == createdAt) &&
+            (identical(other.updatedAt, updatedAt) ||
+                other.updatedAt == updatedAt) &&
             (identical(other.photoVersion, photoVersion) ||
                 other.photoVersion == photoVersion));
   }
@@ -386,6 +410,7 @@ class _$DogProfileImpl implements _DogProfile {
       const DeepCollectionEquality().hash(_goals),
       lastMissionId,
       createdAt,
+      updatedAt,
       photoVersion);
 
   /// Create a copy of DogProfile
@@ -419,6 +444,7 @@ abstract class _DogProfile implements DogProfile {
       final List<String> goals,
       final String? lastMissionId,
       final DateTime? createdAt,
+      final DateTime? updatedAt,
       final int photoVersion}) = _$DogProfileImpl;
 
   factory _DogProfile.fromJson(Map<String, dynamic> json) =
@@ -450,7 +476,12 @@ abstract class _DogProfile implements DogProfile {
   String? get lastMissionId;
   @override
   DateTime?
-      get createdAt; // Build 32: Cache-busting version number for photo refresh
+      get createdAt; // A1: Set on every mutation; used for merge precedence when hydrating
+// from relay (relay is source of truth for existence; per-record the
+// newer updatedAt wins).
+  @override
+  DateTime?
+      get updatedAt; // Build 32: Cache-busting version number for photo refresh
   @override
   int get photoVersion;
 

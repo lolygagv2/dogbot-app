@@ -3,8 +3,11 @@ import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/network/websocket_client.dart';
+import '../../core/services/local_connection_service.dart';
 import '../../core/services/notification_service.dart';
+import '../../data/datasources/robot_api.dart';
 import '../../data/models/notification_event.dart';
+import 'auth_provider.dart';
 import 'connection_provider.dart';
 import 'dog_profiles_provider.dart';
 import 'settings_provider.dart';
@@ -241,20 +244,30 @@ class NotificationsNotifier extends StateNotifier<List<NotificationEvent>> {
     };
   }
 
-  /// Add a new notification to the list
+  /// Add a new notification to the list.
+  ///
+  /// Per-type channel routing:
+  /// - [NotificationChannel.off]: drop entirely; nothing in-app, nothing on lock screen.
+  /// - [NotificationChannel.inApp]: append to in-app feed only.
+  /// - [NotificationChannel.inAppAndPush]: in-app feed + OS push (when
+  ///   backgrounded and global notifications are enabled).
   void addNotification(NotificationEvent notification) {
+    final settings = _ref.read(settingsProvider);
+    final channel = settings.channelFor(notification.type);
+
+    if (channel == NotificationChannel.off) return;
+
     state = [notification, ...state];
-    // Keep only the last 100 notifications
     if (state.length > 100) {
       state = state.sublist(0, 100);
     }
 
-    // Fire OS-level local notification when app is backgrounded
-    final notifService = NotificationService.instance;
-    if (_ref.read(settingsProvider).notificationsEnabled &&
-        notifService.isAppBackgrounded &&
-        notifService.shouldNotify(notification.type)) {
-      notifService.showForEvent(notification);
+    if (channel == NotificationChannel.inAppAndPush &&
+        settings.notificationsEnabled) {
+      final notifService = NotificationService.instance;
+      if (notifService.isAppBackgrounded) {
+        notifService.showForEvent(notification);
+      }
     }
   }
 
@@ -283,8 +296,134 @@ class NotificationsNotifier extends StateNotifier<List<NotificationEvent>> {
 
   /// Refresh notifications (would fetch from API in real implementation)
   Future<void> refresh() async {
-    // In a real implementation, fetch from API
-    // For now, just use the existing state
+    await hydrateFromRelay();
+  }
+
+  /// A3: Hydrate notifications from the relay activity log.
+  /// Strategy: fetch the last 7 days of events for this user across all dogs,
+  /// merge with existing in-memory list (de-dup by id), keep newest 200.
+  /// Skipped silently in local mode or when no token is available.
+  Future<void> hydrateFromRelay() async {
+    final isLocal = _ref.read(localConnectionProvider).isConnected;
+    final token = _ref.read(authProvider).token;
+    if (isLocal || token == null) {
+      print('Notifications: hydrateFromRelay skipped (local=$isLocal, hasToken=${token != null})');
+      return;
+    }
+
+    try {
+      final api = _ref.read(robotApiProvider);
+      final since = DateTime.now().toUtc().subtract(const Duration(days: 7));
+      final result = await api.getActivity(
+        token: token,
+        since: since,
+        limit: 200,
+      );
+      final eventsJson = (result['events'] as List?) ?? [];
+      print('Notifications: hydrated ${eventsJson.length} events from relay');
+
+      final hydrated = <NotificationEvent>[];
+      for (final e in eventsJson) {
+        if (e is! Map) continue;
+        final n = _activityEventToNotification(e.cast<String, dynamic>());
+        if (n != null) hydrated.add(n);
+      }
+
+      // Merge: existing state first (most recent in-memory events win on id
+      // collision), then anything new from the relay we don't already have.
+      final existingIds = state.map((n) => n.id).toSet();
+      final merged = [
+        ...state,
+        ...hydrated.where((n) => !existingIds.contains(n.id)),
+      ]..sort((a, b) => b.timestamp.compareTo(a.timestamp));
+
+      state = merged.take(200).toList();
+    } catch (e) {
+      print('Notifications: hydrateFromRelay error: $e');
+    }
+  }
+
+  /// A3: Convert a relay activity_events row to a NotificationEvent.
+  /// Returns null for unknown types (don't crash on schema drift).
+  NotificationEvent? _activityEventToNotification(Map<String, dynamic> event) {
+    final id = event['id'] as String? ??
+        DateTime.now().millisecondsSinceEpoch.toString();
+    final typeStr = event['type'] as String? ?? '';
+    final timestampStr = event['timestamp'] as String?;
+    final timestamp = timestampStr != null
+        ? (DateTime.tryParse(timestampStr) ?? DateTime.now())
+        : DateTime.now();
+    final dogId = event['dog_id'] as String?;
+    final payload = (event['payload'] as Map?)?.cast<String, dynamic>() ?? {};
+
+    NotificationEventType? mapped;
+    String title;
+    String? subtitle;
+
+    switch (typeStr) {
+      case 'bark':
+        mapped = NotificationEventType.bark;
+        title = 'Barking Detected';
+        final emotion = payload['emotion'] as String?;
+        subtitle = emotion != null ? 'Emotion: $emotion' : null;
+        break;
+      case 'treat_dispensed':
+        mapped = NotificationEventType.treatDispensed;
+        title = 'Treat Dispensed';
+        final remaining = payload['treats_remaining_after'] as int?;
+        subtitle = remaining != null ? '$remaining treats remaining' : null;
+        break;
+      case 'coach_reward':
+        mapped = NotificationEventType.coachReward;
+        final trick = payload['trick'] as String? ?? 'trick';
+        final success = payload['success'] as bool? ?? true;
+        title = success ? '$trick rewarded' : '$trick attempt';
+        break;
+      case 'guardian_alert':
+        mapped = NotificationEventType.alert;
+        final reason = payload['reason'] as String? ?? 'Alert';
+        title = 'Guardian: $reason';
+        subtitle = payload['severity'] as String?;
+        break;
+      case 'mission_started':
+        mapped = NotificationEventType.missionStarted;
+        title = 'Mission Started';
+        subtitle = payload['mission_id'] as String?;
+        break;
+      case 'mission_completed':
+        mapped = NotificationEventType.missionCompleted;
+        final success = payload['success'] as bool? ?? true;
+        title = success ? 'Mission Completed' : 'Mission Failed';
+        if (!success) mapped = NotificationEventType.missionFailed;
+        subtitle = payload['mission_id'] as String?;
+        break;
+      case 'behavior_flag':
+        final behavior = (payload['behavior'] as String? ?? '').toLowerCase();
+        mapped = switch (behavior) {
+          'sit' || 'sitting' => NotificationEventType.sit,
+          'laydown' || 'lie_down' || 'down' => NotificationEventType.lieDown,
+          'come' || 'stand' => NotificationEventType.stand,
+          'bark' => NotificationEventType.bark,
+          _ => NotificationEventType.alert,
+        };
+        title = behavior.isEmpty
+            ? 'Behavior Detected'
+            : '${behavior[0].toUpperCase()}${behavior.substring(1)} Detected';
+        break;
+      default:
+        return null;
+    }
+
+    return NotificationEvent(
+      id: id,
+      type: mapped,
+      timestamp: timestamp,
+      title: title,
+      subtitle: subtitle,
+      dogId: dogId,
+      missionId: payload['mission_id'] as String?,
+      metadata: payload,
+    );
   }
 
   @override

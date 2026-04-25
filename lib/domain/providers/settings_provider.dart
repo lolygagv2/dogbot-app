@@ -1,7 +1,10 @@
+import 'dart:convert';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../core/network/websocket_client.dart';
+import '../../data/models/notification_event.dart';
 
 /// Keys for persisted settings
 class SettingsKeys {
@@ -14,7 +17,42 @@ class SettingsKeys {
   static const localModeIp = 'local_mode_ip';
   static const localModePort = 'local_mode_port';
   static const notificationsEnabled = 'notifications_enabled';
+  static const notificationChannels = 'notification_channels_v1';
 }
+
+/// Per-event-type destination for a notification:
+/// - [off]: suppress entirely (not even the in-app feed)
+/// - [inApp]: add to the in-app activity feed only — never wakes the lock
+///   screen / Apple Watch
+/// - [inAppAndPush]: in-app feed AND OS-level local notification (which iOS
+///   mirrors to Apple Watch automatically)
+enum NotificationChannel { off, inApp, inAppAndPush }
+
+/// Defaults — chosen so high-frequency / low-value events stay quiet.
+/// Override per type via the settings screen.
+const Map<NotificationEventType, NotificationChannel> _defaultChannels = {
+  // High-signal: always OS push (Watch + lock screen)
+  NotificationEventType.treatDispensed: NotificationChannel.inAppAndPush,
+  NotificationEventType.coachReward: NotificationChannel.inAppAndPush,
+  NotificationEventType.missionCompleted: NotificationChannel.inAppAndPush,
+  NotificationEventType.alert: NotificationChannel.inAppAndPush,
+  NotificationEventType.lowBattery: NotificationChannel.inAppAndPush,
+  // Medium-signal: in-app feed only by default (chatty if pushed)
+  NotificationEventType.bark: NotificationChannel.inApp,
+  NotificationEventType.missionFailed: NotificationChannel.inApp,
+  NotificationEventType.happy: NotificationChannel.inApp,
+  // Behavior detections — confidence noise; in-app only
+  NotificationEventType.sit: NotificationChannel.inApp,
+  NotificationEventType.lieDown: NotificationChannel.inApp,
+  NotificationEventType.stand: NotificationChannel.inApp,
+  // Connection events — off; not user-actionable
+  NotificationEventType.connected: NotificationChannel.off,
+  NotificationEventType.disconnected: NotificationChannel.off,
+  NotificationEventType.missionStarted: NotificationChannel.inApp,
+};
+
+NotificationChannel defaultChannelFor(NotificationEventType type) =>
+    _defaultChannels[type] ?? NotificationChannel.inApp;
 
 /// App settings state
 class AppSettings {
@@ -40,8 +78,11 @@ class AppSettings {
   final String localModeIp;
   final int localModePort;
 
-  /// Local notifications — show OS notifications when app is backgrounded
+  /// Local notifications — global on/off for OS notifications when backgrounded
   final bool notificationsEnabled;
+
+  /// Per-event-type routing. Missing keys fall back to defaults.
+  final Map<NotificationEventType, NotificationChannel> notificationChannels;
 
   const AppSettings({
     this.motorTrimRight = 0.0,
@@ -53,7 +94,12 @@ class AppSettings {
     this.localModeIp = '',
     this.localModePort = 8000,
     this.notificationsEnabled = true,
+    this.notificationChannels = const {},
   });
+
+  /// Resolve the channel for an event type, applying defaults for missing keys.
+  NotificationChannel channelFor(NotificationEventType type) =>
+      notificationChannels[type] ?? defaultChannelFor(type);
 
   AppSettings copyWith({
     double? motorTrimRight,
@@ -65,6 +111,7 @@ class AppSettings {
     String? localModeIp,
     int? localModePort,
     bool? notificationsEnabled,
+    Map<NotificationEventType, NotificationChannel>? notificationChannels,
   }) {
     return AppSettings(
       motorTrimRight: motorTrimRight ?? this.motorTrimRight,
@@ -76,6 +123,7 @@ class AppSettings {
       localModeIp: localModeIp ?? this.localModeIp,
       localModePort: localModePort ?? this.localModePort,
       notificationsEnabled: notificationsEnabled ?? this.notificationsEnabled,
+      notificationChannels: notificationChannels ?? this.notificationChannels,
     );
   }
 }
@@ -108,6 +156,28 @@ class SettingsNotifier extends StateNotifier<AppSettings> {
     final localModePort = _prefs?.getInt(SettingsKeys.localModePort) ?? 8000;
     final notificationsEnabled = _prefs?.getBool(SettingsKeys.notificationsEnabled) ?? true;
 
+    // Channels persisted as JSON map of {eventTypeName: channelName}.
+    final channelsJson = _prefs?.getString(SettingsKeys.notificationChannels);
+    final channels = <NotificationEventType, NotificationChannel>{};
+    if (channelsJson != null && channelsJson.isNotEmpty) {
+      try {
+        final decoded = jsonDecode(channelsJson) as Map<String, dynamic>;
+        for (final entry in decoded.entries) {
+          final type = NotificationEventType.values.firstWhere(
+            (t) => t.name == entry.key,
+            orElse: () => NotificationEventType.alert,
+          );
+          final channel = NotificationChannel.values.firstWhere(
+            (c) => c.name == entry.value,
+            orElse: () => NotificationChannel.inApp,
+          );
+          channels[type] = channel;
+        }
+      } catch (e) {
+        print('Settings: Failed to load notification channels: $e');
+      }
+    }
+
     state = AppSettings(
       motorTrimRight: motorTrim.clamp(-0.5, 0.5),
       cameraTrackingEnabled: cameraTracking,
@@ -118,6 +188,7 @@ class SettingsNotifier extends StateNotifier<AppSettings> {
       localModeIp: localModeIp,
       localModePort: localModePort,
       notificationsEnabled: notificationsEnabled,
+      notificationChannels: channels,
     );
   }
 
@@ -188,6 +259,35 @@ class SettingsNotifier extends StateNotifier<AppSettings> {
     state = state.copyWith(notificationsEnabled: enabled);
     await _prefs?.setBool(SettingsKeys.notificationsEnabled, enabled);
     print('Settings: Notifications set to $enabled');
+  }
+
+  /// Set the channel for a single event type.
+  Future<void> setNotificationChannel(
+    NotificationEventType type,
+    NotificationChannel channel,
+  ) async {
+    final next = Map<NotificationEventType, NotificationChannel>.from(
+        state.notificationChannels);
+    next[type] = channel;
+    state = state.copyWith(notificationChannels: next);
+    await _persistChannels();
+  }
+
+  /// Reset all notification channels to defaults.
+  Future<void> resetNotificationChannels() async {
+    state = state.copyWith(notificationChannels: const {});
+    await _prefs?.remove(SettingsKeys.notificationChannels);
+  }
+
+  Future<void> _persistChannels() async {
+    final encoded = <String, String>{
+      for (final entry in state.notificationChannels.entries)
+        entry.key.name: entry.value.name,
+    };
+    await _prefs?.setString(
+      SettingsKeys.notificationChannels,
+      jsonEncode(encoded),
+    );
   }
 
   /// Toggle local mode on/off

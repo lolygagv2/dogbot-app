@@ -134,19 +134,39 @@ class CoachNotifier extends StateNotifier<CoachState> {
     }
   }
 
-  /// Start coach mode
-  Future<void> startCoaching({List<String>? behaviors}) async {
+  /// Start coach mode.
+  ///
+  /// C2: [dogId] explicitly targets a single dog. If null, the caller chose
+  /// "any visible dog" mode and the robot will tag rewards with whichever
+  /// dog it actually detects. Pass [anyVisibleDog]=true to opt into the
+  /// null-dog mode without falling back to selectedDogProvider.
+  Future<void> startCoaching({
+    List<String>? behaviors,
+    String? dogId,
+    bool anyVisibleDog = false,
+  }) async {
     final ws = _ref.read(websocketClientProvider);
 
     // First set mode to coach
     await _ref.read(modeStateProvider.notifier).setMode(RobotMode.coach);
 
-    // Send start_coach command with selected dog info so robot can track it
-    final selectedDog = _ref.read(selectedDogProvider);
+    // Resolve target dog: explicit dogId > "any visible" override > selected dog.
+    String? targetId;
+    String? targetName;
+    if (dogId != null) {
+      targetId = dogId;
+      final profile = _ref.read(dogProfilesProvider).where((p) => p.id == dogId);
+      targetName = profile.isNotEmpty ? profile.first.name : null;
+    } else if (!anyVisibleDog) {
+      final selectedDog = _ref.read(selectedDogProvider);
+      targetId = selectedDog?.id;
+      targetName = selectedDog?.name;
+    }
+
     ws.sendCommand('start_coach', {
       if (behaviors != null) 'behaviors': behaviors,
-      if (selectedDog != null) 'dog_id': selectedDog.id,
-      if (selectedDog?.name != null) 'dog_name': selectedDog!.name,
+      if (targetId != null) 'dog_id': targetId,
+      if (targetName != null) 'dog_name': targetName,
     });
 
     state = state.copyWith(

@@ -50,6 +50,7 @@ _$DetectionImpl _$$DetectionImplFromJson(Map<String, dynamic> json) =>
           .toList(),
       dogName: json['dogName'] as String?,
       arucoId: (json['arucoId'] as num?)?.toInt(),
+      dogId: json['dogId'] as String?,
       timestamp: json['timestamp'] == null
           ? null
           : DateTime.parse(json['timestamp'] as String),
@@ -63,5 +64,6 @@ Map<String, dynamic> _$$DetectionImplToJson(_$DetectionImpl instance) =>
       'bbox': instance.bbox,
       'dogName': instance.dogName,
       'arucoId': instance.arucoId,
+      'dogId': instance.dogId,
       'timestamp': instance.timestamp?.toIso8601String(),
     };

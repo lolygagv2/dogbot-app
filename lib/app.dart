@@ -1,7 +1,10 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import 'core/network/websocket_client.dart';
 import 'domain/providers/connection_provider.dart';
 import 'domain/providers/notifications_provider.dart';
 import 'domain/providers/settings_provider.dart';
@@ -16,6 +19,7 @@ import 'presentation/screens/coach/coach_screen.dart';
 import 'presentation/screens/history/history_screen.dart';
 import 'presentation/screens/settings/settings_screen.dart';
 import 'presentation/screens/settings/device_pairing_screen.dart';
+import 'presentation/screens/settings/notification_preferences_screen.dart';
 import 'presentation/screens/notifications/notifications_screen.dart';
 import 'presentation/screens/dog_profile/dog_profile_screen.dart';
 import 'presentation/screens/dog_profile/add_dog_screen.dart';
@@ -157,6 +161,13 @@ final _router = GoRouter(
           pageBuilder: (context, state) => const NoTransitionPage(
             child: SettingsScreen(),
           ),
+          routes: [
+            GoRoute(
+              path: 'notifications',
+              builder: (context, state) =>
+                  const NotificationPreferencesScreen(),
+            ),
+          ],
         ),
       ],
     ),
@@ -488,6 +499,12 @@ class WimzApp extends ConsumerStatefulWidget {
 }
 
 class _WimzAppState extends ConsumerState<WimzApp> with WidgetsBindingObserver {
+  /// B4: After this long in background, escalate from video-only pause (or
+  /// any preserved state) to a full WebRTC teardown so we don't return to a
+  /// half-dead PeerConnection on foreground.
+  static const Duration _backgroundTeardownDelay = Duration(seconds: 30);
+  Timer? _backgroundTeardownTimer;
+
   @override
   void initState() {
     super.initState();
@@ -496,6 +513,7 @@ class _WimzAppState extends ConsumerState<WimzApp> with WidgetsBindingObserver {
 
   @override
   void dispose() {
+    _backgroundTeardownTimer?.cancel();
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }
@@ -513,11 +531,45 @@ class _WimzAppState extends ConsumerState<WimzApp> with WidgetsBindingObserver {
           print('App: Lifecycle → $state — pausing WebRTC');
           ref.read(webrtcProvider.notifier).pause();
         }
+        // B4: schedule a deterministic teardown if we stay backgrounded long
+        // enough that iOS will suspend us. Avoids the "video is broken until
+        // sign out and back in" failure mode after a long background.
+        _backgroundTeardownTimer?.cancel();
+        _backgroundTeardownTimer = Timer(_backgroundTeardownDelay, () {
+          print('App: Background teardown timer fired — forcing hard teardown');
+          ref.read(webrtcProvider.notifier).hardTeardown();
+        });
         break;
       case AppLifecycleState.resumed:
         print('App: Lifecycle → resumed — resuming WebRTC');
-        ref.read(webrtcProvider.notifier).resume();
+        _backgroundTeardownTimer?.cancel();
+        // B4: if WS is dead by the time we foreground (iOS suspended us, or
+        // the relay heartbeat-timed-out at 4002), tear down WebRTC hard so
+        // the next reconnect builds a fresh PeerConnection rather than
+        // layering an offer onto stale ICE state.
+        final ws = ref.read(websocketClientProvider);
+        if (ws.state != WsConnectionState.connected) {
+          print('App: WS not connected on resume — hard teardown before reconnect');
+          ref.read(webrtcProvider.notifier).hardTeardown();
+        } else {
+          ref.read(webrtcProvider.notifier).resume();
+        }
         ref.read(connectionProvider.notifier).onAppResumed();
+        break;
+      case AppLifecycleState.detached:
+        // B4: best-effort graceful close. iOS doesn't always grant time on
+        // force-quit, but when it does the relay learns immediately rather
+        // than waiting on its 25s heartbeat timeout.
+        print('App: Lifecycle → detached — sending client_closing');
+        try {
+          ref.read(websocketClientProvider).sendClientClosing();
+        } catch (_) {/* best-effort */}
+        try {
+          ref.read(webrtcProvider.notifier).hardTeardown();
+        } catch (_) {/* best-effort */}
+        try {
+          ref.read(websocketClientProvider).disconnect();
+        } catch (_) {/* best-effort */}
         break;
       default:
         break;

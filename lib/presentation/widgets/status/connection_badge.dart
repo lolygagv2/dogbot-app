@@ -42,6 +42,12 @@ class ConnectionBadge extends ConsumerWidget {
         text = 'Error';
         icon = Icons.error_outline;
         break;
+      case ConnectionStatus.superseded:
+        // B1: another device took over this account/device pair.
+        color = AppTheme.warning;
+        text = 'Other Device Active';
+        icon = Icons.swap_horiz;
+        break;
     }
 
     // Demo mode override

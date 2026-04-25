@@ -80,12 +80,17 @@ class DogAnalyticsNotifier extends StateNotifier<AnalyticsData> {
   }
 
   void _onWsEvent(WsEvent event) {
+    // C4: filter strictly by event-source dog_id, not the selected dog. The
+    // robot now tags every event with the dog_id of whichever ArUco it
+    // actually saw (Workstream C). Legacy events without dog_id are skipped
+    // for per-dog providers — see allDogsAnalyticsProvider for aggregates.
+    final eventDogId = event.data['dog_id'] as String?;
+
     switch (event.type) {
       // Relay sends metrics_sync on connect with the day's totals per dog
       case 'metrics_sync':
-        final dogId = event.data['dog_id'] as String?;
         final metrics = event.data['metrics'] as Map<String, dynamic>?;
-        if (dogId == _dogId && metrics != null) {
+        if (eventDogId == _dogId && metrics != null) {
           state = AnalyticsData(
             dogId: _dogId,
             range: state.range,
@@ -99,8 +104,10 @@ class DogAnalyticsNotifier extends StateNotifier<AnalyticsData> {
         }
         break;
 
-      // Real-time incremental updates
+      // Real-time incremental updates — only attribute when we have a positive
+      // match on event.data['dog_id'].
       case 'treat':
+        if (eventDogId != _dogId) break;
         state = AnalyticsData(
           dogId: _dogId,
           range: state.range,
@@ -113,6 +120,7 @@ class DogAnalyticsNotifier extends StateNotifier<AnalyticsData> {
         );
         break;
       case 'detection':
+        if (eventDogId != _dogId) break;
         state = AnalyticsData(
           dogId: _dogId,
           range: state.range,
@@ -125,6 +133,7 @@ class DogAnalyticsNotifier extends StateNotifier<AnalyticsData> {
         );
         break;
       case 'coach_reward':
+        if (eventDogId != _dogId) break;
         state = AnalyticsData(
           dogId: _dogId,
           range: state.range,
@@ -137,6 +146,7 @@ class DogAnalyticsNotifier extends StateNotifier<AnalyticsData> {
         );
         break;
       case 'mission_complete':
+        if (eventDogId != _dogId) break;
         state = AnalyticsData(
           dogId: _dogId,
           range: state.range,
@@ -149,6 +159,7 @@ class DogAnalyticsNotifier extends StateNotifier<AnalyticsData> {
         );
         break;
       case 'mission_stopped':
+        if (eventDogId != _dogId) break;
         state = AnalyticsData(
           dogId: _dogId,
           range: state.range,
@@ -198,6 +209,96 @@ class DogAnalyticsNotifier extends StateNotifier<AnalyticsData> {
 
 /// Tab index for the Activity screen (0=Dashboard, 1=Events)
 final activityTabIndexProvider = StateProvider<int>((ref) => 0);
+
+/// C4: Aggregate analytics across all dogs (and untagged events). Counts
+/// every event regardless of dog_id, so it's the right choice for the
+/// "All Dogs" lens / fleet-level dashboards.
+final allDogsAnalyticsProvider =
+    StateNotifierProvider<AllDogsAnalyticsNotifier, AnalyticsData>((ref) {
+  return AllDogsAnalyticsNotifier(ref);
+});
+
+class AllDogsAnalyticsNotifier extends StateNotifier<AnalyticsData> {
+  final Ref _ref;
+  StreamSubscription? _wsSubscription;
+
+  AllDogsAnalyticsNotifier(this._ref)
+      : super(const AnalyticsData(dogId: '', range: AnalyticsRange.today)) {
+    final ws = _ref.read(websocketClientProvider);
+    _wsSubscription = ws.eventStream.listen(_onWsEvent);
+  }
+
+  void _onWsEvent(WsEvent event) {
+    switch (event.type) {
+      case 'treat':
+        state = AnalyticsData(
+          dogId: state.dogId,
+          range: state.range,
+          treatCount: state.treatCount + 1,
+          detectionCount: state.detectionCount,
+          missionsAttempted: state.missionsAttempted,
+          missionsSucceeded: state.missionsSucceeded,
+          activeMinutes: state.activeMinutes,
+          coachRewards: state.coachRewards,
+        );
+        break;
+      case 'detection':
+        state = AnalyticsData(
+          dogId: state.dogId,
+          range: state.range,
+          treatCount: state.treatCount,
+          detectionCount: state.detectionCount + 1,
+          missionsAttempted: state.missionsAttempted,
+          missionsSucceeded: state.missionsSucceeded,
+          activeMinutes: state.activeMinutes,
+          coachRewards: state.coachRewards,
+        );
+        break;
+      case 'coach_reward':
+        state = AnalyticsData(
+          dogId: state.dogId,
+          range: state.range,
+          treatCount: state.treatCount,
+          detectionCount: state.detectionCount,
+          missionsAttempted: state.missionsAttempted,
+          missionsSucceeded: state.missionsSucceeded,
+          activeMinutes: state.activeMinutes,
+          coachRewards: state.coachRewards + 1,
+        );
+        break;
+      case 'mission_complete':
+        state = AnalyticsData(
+          dogId: state.dogId,
+          range: state.range,
+          treatCount: state.treatCount,
+          detectionCount: state.detectionCount,
+          missionsAttempted: state.missionsAttempted + 1,
+          missionsSucceeded: state.missionsSucceeded + 1,
+          activeMinutes: state.activeMinutes,
+          coachRewards: state.coachRewards,
+        );
+        break;
+      case 'mission_stopped':
+        state = AnalyticsData(
+          dogId: state.dogId,
+          range: state.range,
+          treatCount: state.treatCount,
+          detectionCount: state.detectionCount,
+          missionsAttempted: state.missionsAttempted + 1,
+          missionsSucceeded: state.missionsSucceeded,
+          activeMinutes: state.activeMinutes,
+          coachRewards: state.coachRewards,
+        );
+        break;
+    }
+  }
+
+  @override
+  void dispose() {
+    _wsSubscription?.cancel();
+    super.dispose();
+  }
+}
 
 /// 7-day demo data for the dashboard chart, keyed by dogId
 final dogWeeklyStatsProvider =

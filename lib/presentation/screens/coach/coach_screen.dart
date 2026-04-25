@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../data/models/telemetry.dart';
 import '../../../domain/providers/coach_provider.dart';
 import '../../../domain/providers/connection_provider.dart';
 import '../../../domain/providers/dog_profiles_provider.dart';
@@ -42,9 +43,11 @@ class _CoachScreenState extends ConsumerState<CoachScreen> {
   @override
   Widget build(BuildContext context) {
     final coachState = ref.watch(coachProvider);
+    // selectedDog is no longer used here for the chip — see C5 — but kept
+    // for backward compatibility with other widgets that might watch it.
+    // ignore: unused_local_variable
     final selectedDog = ref.watch(selectedDogProvider);
     final isConnected = ref.watch(isRobotOnlineProvider);
-    final telemetry = ref.watch(telemetryProvider);
 
     // Build 38: NO commands in lifecycle handlers. Commands ONLY on explicit user tap.
     // If user navigates away while coaching, coach mode stays active on robot.
@@ -58,69 +61,32 @@ class _CoachScreenState extends ConsumerState<CoachScreen> {
               child: SmartVideoView(),
             ),
 
-            // Detection chip — uses dog name from WS detection event, not profile
-            if (telemetry.dogDetected)
-              Positioned(
-                top: MediaQuery.of(context).padding.top + 60,
-                left: 16,
-                child: IgnorePointer(
-                  child: Builder(
-                    builder: (context) {
-                      final detection = ref.watch(detectionProvider);
-                      final dogLabel = detection.displayName;
-                      return Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                        decoration: BoxDecoration(
-                          color: AppTheme.getBehaviorColor(telemetry.currentBehavior).withOpacity(0.9),
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            const Icon(Icons.pets, color: Colors.white, size: 16),
-                            const SizedBox(width: 6),
-                            // Dog name from detection data (ArUco identified)
-                            if (dogLabel.isNotEmpty) ...[
-                              Text(
-                                dogLabel,
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 12,
-                                ),
-                              ),
-                              const SizedBox(width: 6),
-                              Text(
-                                '\u2022',
-                                style: const TextStyle(color: Colors.white54, fontSize: 12),
-                              ),
-                              const SizedBox(width: 6),
-                            ],
-                            Text(
-                              AppTheme.getBehaviorDisplayName(telemetry.currentBehavior).toUpperCase(),
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontWeight: FontWeight.bold,
-                                fontSize: 12,
-                              ),
-                            ),
-                            if (telemetry.confidence != null) ...[
-                              const SizedBox(width: 6),
-                              Text(
-                                '${(telemetry.confidence! * 100).toInt()}%',
-                                style: const TextStyle(
-                                  color: Colors.white70,
-                                  fontSize: 12,
-                                ),
-                              ),
-                            ],
-                          ],
-                        ),
-                      );
-                    },
-                  ),
+            // C5: One detection chip per visible dog. Robot's C0 fix
+            // guarantees one track per physical dog, so this no longer
+            // double-renders ("Dog" + "Elsa" on the same animal).
+            Positioned(
+              top: MediaQuery.of(context).padding.top + 60,
+              left: 16,
+              right: 16,
+              child: IgnorePointer(
+                child: Builder(
+                  builder: (context) {
+                    final detections = ref.watch(allDetectionsProvider);
+                    if (detections.isEmpty) {
+                      return const SizedBox.shrink();
+                    }
+                    return Wrap(
+                      spacing: 6,
+                      runSpacing: 6,
+                      children: [
+                        for (final d in detections.values)
+                          _DogChip(detection: d),
+                      ],
+                    );
+                  },
                 ),
               ),
+            ),
 
             // Top bar with back and stop buttons
             Positioned(
@@ -351,6 +317,82 @@ class _CoachScreenState extends ConsumerState<CoachScreen> {
             ),
           ],
         ),
+    );
+  }
+}
+
+/// C5: Per-dog chip showing dog name, behavior, and confidence. Color is
+/// hashed from dog_id (or aruco id) so the same dog renders consistently.
+class _DogChip extends StatelessWidget {
+  final Detection detection;
+  const _DogChip({required this.detection});
+
+  static const _palette = <Color>[
+    Color(0xFF00E5FF),
+    Color(0xFFFFC400),
+    Color(0xFFFF4081),
+    Color(0xFF76FF03),
+    Color(0xFFB388FF),
+    Color(0xFFFF6E40),
+  ];
+
+  Color get _dogColor => _palette[detection.trackKey.hashCode.abs() % _palette.length];
+
+  @override
+  Widget build(BuildContext context) {
+    final dogLabel = detection.displayName;
+    final behaviorLabel = AppTheme.getBehaviorDisplayName(detection.behavior).toUpperCase();
+    final confidence = detection.confidence;
+    final color = detection.dogId != null
+        ? _dogColor
+        : AppTheme.getBehaviorColor(detection.behavior);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.9),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(Icons.pets, color: Colors.white, size: 16),
+          const SizedBox(width: 6),
+          if (dogLabel.isNotEmpty) ...[
+            Text(
+              dogLabel,
+              style: const TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+                fontSize: 12,
+              ),
+            ),
+            const SizedBox(width: 6),
+            const Text(
+              '|',
+              style: TextStyle(color: Colors.white54, fontSize: 12),
+            ),
+            const SizedBox(width: 6),
+          ],
+          Text(
+            behaviorLabel,
+            style: const TextStyle(
+              color: Colors.white,
+              fontWeight: FontWeight.bold,
+              fontSize: 12,
+            ),
+          ),
+          if (confidence != null) ...[
+            const SizedBox(width: 6),
+            Text(
+              '${(confidence * 100).toInt()}%',
+              style: const TextStyle(
+                color: Colors.white70,
+                fontSize: 12,
+              ),
+            ),
+          ],
+        ],
+      ),
     );
   }
 }

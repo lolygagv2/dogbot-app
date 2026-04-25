@@ -81,6 +81,9 @@ class TelemetryNotifier extends StateNotifier<Telemetry> {
         // Dog detection update — store full detection with dogName/arucoId
         final detection = Detection.fromWsEvent(event.data);
         _ref.read(lastDetectionProvider.notifier).state = detection;
+        // C5: also update the multi-dog map so the UI can render boxes/chips
+        // for every dog visible this frame, not just the most recent.
+        _ref.read(allDetectionsProvider.notifier).upsert(detection);
         state = state.copyWith(
           dogDetected: detection.detected,
           currentBehavior: detection.behavior,
@@ -250,6 +253,51 @@ class TelemetryNotifier extends StateNotifier<Telemetry> {
 final lastDetectionProvider = StateProvider<Detection>((ref) {
   return const Detection();
 });
+
+/// C5: Per-dog detection map. Keyed by [Detection.trackKey] (dog_id when
+/// available, falling back to aruco id or "anon"). Entries older than
+/// [_detectionStaleAfter] are pruned automatically so the UI doesn't render
+/// ghost boxes once a dog leaves the frame.
+final allDetectionsProvider = StateNotifierProvider<AllDetectionsNotifier,
+    Map<String, Detection>>((ref) {
+  return AllDetectionsNotifier();
+});
+
+const Duration _detectionStaleAfter = Duration(seconds: 2);
+
+class AllDetectionsNotifier extends StateNotifier<Map<String, Detection>> {
+  AllDetectionsNotifier() : super(const {}) {
+    _prunerTimer = Timer.periodic(const Duration(milliseconds: 500), (_) => _prune());
+  }
+
+  Timer? _prunerTimer;
+
+  void upsert(Detection d) {
+    if (!d.detected) return;
+    final next = Map<String, Detection>.from(state);
+    next[d.trackKey] = d;
+    state = next;
+  }
+
+  void _prune() {
+    if (state.isEmpty) return;
+    final now = DateTime.now();
+    final next = <String, Detection>{};
+    for (final entry in state.entries) {
+      final ts = entry.value.timestamp ?? now;
+      if (now.difference(ts) <= _detectionStaleAfter) {
+        next[entry.key] = entry.value;
+      }
+    }
+    if (next.length != state.length) state = next;
+  }
+
+  @override
+  void dispose() {
+    _prunerTimer?.cancel();
+    super.dispose();
+  }
+}
 
 /// Provider for latest detection data (derived from telemetry for backward compat)
 final detectionProvider = Provider<Detection>((ref) {

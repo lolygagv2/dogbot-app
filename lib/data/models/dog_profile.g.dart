@@ -28,6 +28,9 @@ _$DogProfileImpl _$$DogProfileImplFromJson(Map<String, dynamic> json) =>
       createdAt: json['createdAt'] == null
           ? null
           : DateTime.parse(json['createdAt'] as String),
+      updatedAt: json['updatedAt'] == null
+          ? null
+          : DateTime.parse(json['updatedAt'] as String),
       photoVersion: (json['photoVersion'] as num?)?.toInt() ?? 0,
     );
 
@@ -46,6 +49,7 @@ Map<String, dynamic> _$$DogProfileImplToJson(_$DogProfileImpl instance) =>
       'goals': instance.goals,
       'lastMissionId': instance.lastMissionId,
       'createdAt': instance.createdAt?.toIso8601String(),
+      'updatedAt': instance.updatedAt?.toIso8601String(),
       'photoVersion': instance.photoVersion,
     };
 

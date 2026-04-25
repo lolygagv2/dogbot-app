@@ -441,6 +441,9 @@ mixin _$Detection {
       throw _privateConstructorUsedError; // from ArUco marker identification
   int? get arucoId =>
       throw _privateConstructorUsedError; // ArUco marker ID if identified
+// C1/C5: stable profile id per Workstream C. Null when robot has no
+// identification (no ArUco visible AND no in-session match).
+  String? get dogId => throw _privateConstructorUsedError;
   DateTime? get timestamp => throw _privateConstructorUsedError;
 
   /// Serializes this Detection to a JSON map.
@@ -465,6 +468,7 @@ abstract class $DetectionCopyWith<$Res> {
       List<double>? bbox,
       String? dogName,
       int? arucoId,
+      String? dogId,
       DateTime? timestamp});
 }
 
@@ -489,6 +493,7 @@ class _$DetectionCopyWithImpl<$Res, $Val extends Detection>
     Object? bbox = freezed,
     Object? dogName = freezed,
     Object? arucoId = freezed,
+    Object? dogId = freezed,
     Object? timestamp = freezed,
   }) {
     return _then(_value.copyWith(
@@ -516,6 +521,10 @@ class _$DetectionCopyWithImpl<$Res, $Val extends Detection>
           ? _value.arucoId
           : arucoId // ignore: cast_nullable_to_non_nullable
               as int?,
+      dogId: freezed == dogId
+          ? _value.dogId
+          : dogId // ignore: cast_nullable_to_non_nullable
+              as String?,
       timestamp: freezed == timestamp
           ? _value.timestamp
           : timestamp // ignore: cast_nullable_to_non_nullable
@@ -539,6 +548,7 @@ abstract class _$$DetectionImplCopyWith<$Res>
       List<double>? bbox,
       String? dogName,
       int? arucoId,
+      String? dogId,
       DateTime? timestamp});
 }
 
@@ -561,6 +571,7 @@ class __$$DetectionImplCopyWithImpl<$Res>
     Object? bbox = freezed,
     Object? dogName = freezed,
     Object? arucoId = freezed,
+    Object? dogId = freezed,
     Object? timestamp = freezed,
   }) {
     return _then(_$DetectionImpl(
@@ -588,6 +599,10 @@ class __$$DetectionImplCopyWithImpl<$Res>
           ? _value.arucoId
           : arucoId // ignore: cast_nullable_to_non_nullable
               as int?,
+      dogId: freezed == dogId
+          ? _value.dogId
+          : dogId // ignore: cast_nullable_to_non_nullable
+              as String?,
       timestamp: freezed == timestamp
           ? _value.timestamp
           : timestamp // ignore: cast_nullable_to_non_nullable
@@ -606,6 +621,7 @@ class _$DetectionImpl extends _Detection {
       final List<double>? bbox,
       this.dogName,
       this.arucoId,
+      this.dogId,
       this.timestamp})
       : _bbox = bbox,
         super._();
@@ -637,12 +653,16 @@ class _$DetectionImpl extends _Detection {
   @override
   final int? arucoId;
 // ArUco marker ID if identified
+// C1/C5: stable profile id per Workstream C. Null when robot has no
+// identification (no ArUco visible AND no in-session match).
+  @override
+  final String? dogId;
   @override
   final DateTime? timestamp;
 
   @override
   String toString() {
-    return 'Detection(detected: $detected, behavior: $behavior, confidence: $confidence, bbox: $bbox, dogName: $dogName, arucoId: $arucoId, timestamp: $timestamp)';
+    return 'Detection(detected: $detected, behavior: $behavior, confidence: $confidence, bbox: $bbox, dogName: $dogName, arucoId: $arucoId, dogId: $dogId, timestamp: $timestamp)';
   }
 
   @override
@@ -659,14 +679,23 @@ class _$DetectionImpl extends _Detection {
             const DeepCollectionEquality().equals(other._bbox, _bbox) &&
             (identical(other.dogName, dogName) || other.dogName == dogName) &&
             (identical(other.arucoId, arucoId) || other.arucoId == arucoId) &&
+            (identical(other.dogId, dogId) || other.dogId == dogId) &&
             (identical(other.timestamp, timestamp) ||
                 other.timestamp == timestamp));
   }
 
   @JsonKey(includeFromJson: false, includeToJson: false)
   @override
-  int get hashCode => Object.hash(runtimeType, detected, behavior, confidence,
-      const DeepCollectionEquality().hash(_bbox), dogName, arucoId, timestamp);
+  int get hashCode => Object.hash(
+      runtimeType,
+      detected,
+      behavior,
+      confidence,
+      const DeepCollectionEquality().hash(_bbox),
+      dogName,
+      arucoId,
+      dogId,
+      timestamp);
 
   /// Create a copy of Detection
   /// with the given fields replaced by the non-null parameter values.
@@ -692,6 +721,7 @@ abstract class _Detection extends Detection {
       final List<double>? bbox,
       final String? dogName,
       final int? arucoId,
+      final String? dogId,
       final DateTime? timestamp}) = _$DetectionImpl;
   const _Detection._() : super._();
 
@@ -710,6 +740,10 @@ abstract class _Detection extends Detection {
   String? get dogName; // from ArUco marker identification
   @override
   int? get arucoId; // ArUco marker ID if identified
+// C1/C5: stable profile id per Workstream C. Null when robot has no
+// identification (no ArUco visible AND no in-session match).
+  @override
+  String? get dogId;
   @override
   DateTime? get timestamp;
 

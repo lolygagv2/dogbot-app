@@ -68,6 +68,14 @@ class ApiEndpoints {
   // Music upload (Build 38: HTTP multipart instead of WebSocket)
   static const String musicUpload = '/api/music/upload';
 
+  // A2: Voice commands (relay-mediated; replaces direct WS upload_voice)
+  static const String voiceCommands = '/api/voice-commands';
+  static String voiceCommandDelete(String dogId, String commandId) =>
+      '/api/voice-commands/$dogId/$commandId';
+
+  // A3: Activity event log
+  static const String activity = '/api/activity';
+
   // System / WiFi (Build 66: WiFi configuration from app)
   static const String wifiScan = '/system/wifi/scan';
   static const String wifiConnect = '/system/wifi/connect';

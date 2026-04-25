@@ -880,6 +880,21 @@ class WebRTCNotifier extends StateNotifier<WebRTCConnectionState> {
     await _closeInternal();
   }
 
+  /// B4: Hard teardown — wipes peer connection, ICE buffers, and all state.
+  /// Called before resuming a connection where the WS may have died while
+  /// backgrounded. We do NOT clear `_lastDeviceId` so a subsequent
+  /// `requestVideoStream` still knows the target. Also forces `_isPaused=false`
+  /// so the next reconnect attempt can fire.
+  Future<void> hardTeardown() async {
+    print('WebRTC: hardTeardown — forcing full reset before reconnect');
+    _reconnectTimer?.cancel();
+    _reconnectAttempts = 0;
+    _isRequesting = false;
+    _isPaused = false;
+    _isVideoOnlyPause = false;
+    await _closeInternal();
+  }
+
   @override
   void dispose() {
     _reconnectTimer?.cancel();

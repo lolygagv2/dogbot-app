@@ -6,6 +6,10 @@ import '../../data/models/notification_event.dart';
 /// Singleton service for OS-level local notifications.
 /// Fires notifications when the app is backgrounded so events appear
 /// on lock screen, notification center, and Apple Watch.
+///
+/// Per-type routing now lives in `AppSettings.channelFor(type)`. This service
+/// no longer hard-codes the allow list; callers (notifications_provider) read
+/// the channel from settings and decide whether to call [showForEvent].
 class NotificationService {
   NotificationService._();
   static final NotificationService instance = NotificationService._();
@@ -14,16 +18,6 @@ class NotificationService {
       FlutterLocalNotificationsPlugin();
 
   bool _initialized = false;
-
-  /// Event types that should trigger a local notification.
-  static const _notifiableTypes = {
-    NotificationEventType.bark,
-    NotificationEventType.treatDispensed,
-    NotificationEventType.coachReward,
-    NotificationEventType.missionCompleted,
-    NotificationEventType.lowBattery,
-    NotificationEventType.alert,
-  };
 
   /// Initialize the plugin. Call once from main().
   Future<void> init() async {
@@ -47,9 +41,10 @@ class NotificationService {
     _initialized = true;
   }
 
-  /// Whether this event type should trigger a local notification.
-  bool shouldNotify(NotificationEventType type) =>
-      _notifiableTypes.contains(type);
+  /// Deprecated — kept for source compatibility but always returns true.
+  /// Routing decisions live in AppSettings.channelFor(type) now.
+  @Deprecated('Read AppSettings.channelFor(type) instead')
+  bool shouldNotify(NotificationEventType type) => true;
 
   /// Whether the app is currently in the background.
   bool get isAppBackgrounded {

@@ -9,6 +9,7 @@ import '../../core/services/local_connection_service.dart';
 import '../../data/datasources/robot_api.dart';
 import '../../data/models/mission.dart';
 import 'auth_provider.dart';
+import 'dog_profiles_provider.dart';
 
 /// Predefined training missions (Build 41.1 - synced with robot's mission list)
 final _predefinedMissions = [
@@ -697,7 +698,9 @@ class MissionsNotifier extends StateNotifier<MissionsState> {
 
   /// Start a mission with verification
   /// Build 38: Added check for already-active mission
-  void startMission(String missionId) {
+  /// C2: Optional [dogId] tells the robot which dog to target. If null, the
+  /// robot picks whichever dog it actually detects ("any visible dog" mode).
+  void startMission(String missionId, {String? dogId}) {
     // Build 38: Check if mission already active locally
     if (state.hasActiveMission && state.activeMissionId != missionId) {
       print('Missions: Cannot start $missionId - ${state.activeMissionId} already active');
@@ -718,10 +721,15 @@ class MissionsNotifier extends StateNotifier<MissionsState> {
     // Build 56: Clear completed guard so new mission can receive progress events
     _completedMissionId = null;
 
+    // C2: prefer explicit dogId; fall back to currently selected dog so
+    // existing call sites keep working without changes.
+    final effectiveDogId = dogId ?? _ref.read(selectedDogProvider)?.id;
+
     final ws = _ref.read(websocketClientProvider);
     ws.sendCommand('start_mission', {
       'mission_id': missionId,
       'mission_name': missionId,
+      if (effectiveDogId != null) 'dog_id': effectiveDogId,
     });
 
     // Optimistic update - show "starting" state

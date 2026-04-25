@@ -7,9 +7,12 @@ import 'package:path_provider/path_provider.dart';
 import 'package:record/record.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../../data/datasources/robot_api.dart';
 import '../../data/models/voice_command.dart';
 import '../../core/network/websocket_client.dart';
+import '../../core/services/local_connection_service.dart';
 import '../../core/utils/remote_logger.dart';
+import 'auth_provider.dart';
 
 const String _voiceCommandsKey = 'voice_commands';
 
@@ -308,6 +311,22 @@ class VoiceCommandsNotifier extends StateNotifier<DogVoiceCommands> {
       }
     }
 
+    // A2: also remove from relay so other devices stop seeing it.
+    final isLocal = _ref.read(localConnectionProvider).isConnected;
+    final token = _ref.read(authProvider).token;
+    if (!isLocal && token != null) {
+      try {
+        final api = _ref.read(robotApiProvider);
+        await api.deleteVoiceCommand(
+          token: token,
+          dogId: dogId,
+          commandId: commandId,
+        );
+      } catch (e) {
+        print('VoiceCommands: Failed to delete on relay: $e');
+      }
+    }
+
     final newCommands = Map<String, VoiceCommand>.from(state.commands);
     newCommands.remove(commandId);
     state = state.copyWith(commands: newCommands);
@@ -315,7 +334,12 @@ class VoiceCommandsNotifier extends StateNotifier<DogVoiceCommands> {
     await _saveCommands();
   }
 
-  /// Sync a command to the robot
+  /// Sync a command to the robot.
+  ///
+  /// A2: Cloud-mode path — upload WAV to the relay; relay pushes
+  /// `voice_command_updated` to the robot which downloads from relay.
+  /// Local-mode fallback — directly send the WAV via WS `upload_voice` so
+  /// local-only sessions still work.
   Future<bool> syncCommand(String commandId) async {
     final command = state.commands[commandId];
     if (command?.localPath == null) return false;
@@ -324,10 +348,45 @@ class VoiceCommandsNotifier extends StateNotifier<DogVoiceCommands> {
       final file = File(command!.localPath!);
       if (!await file.exists()) return false;
 
+      final isLocal = _ref.read(localConnectionProvider).isConnected;
+      final token = _ref.read(authProvider).token;
+
+      if (!isLocal && token != null) {
+        // Cloud path — relay-mediated.
+        final api = _ref.read(robotApiProvider);
+        final result = await api.uploadVoiceCommand(
+          token: token,
+          dogId: dogId,
+          commandId: commandId,
+          filePath: command.localPath!,
+        );
+        if (result == null) {
+          rlog('VOICE', 'Relay upload failed for $commandId, trying WS fallback');
+        } else {
+          final relayUrl = result['audio_url'] as String?;
+          final relayUpdatedAt = result['updated_at'] != null
+              ? DateTime.tryParse(result['updated_at'] as String)
+              : null;
+          final updatedCommand = command.copyWith(
+            isSynced: true,
+            syncedAt: DateTime.now(),
+            relayUrl: relayUrl,
+            relayUpdatedAt: relayUpdatedAt,
+          );
+          final newCommands = Map<String, VoiceCommand>.from(state.commands);
+          newCommands[commandId] = updatedCommand;
+          state = state.copyWith(commands: newCommands);
+          await _saveCommands();
+          rlog('VOICE', 'Synced $commandId via relay (url=$relayUrl)');
+          return true;
+        }
+      }
+
+      // Local-mode (or relay failure) fallback — send WAV bytes via WS.
       final bytes = await file.readAsBytes();
       final base64Data = base64Encode(bytes);
 
-      rlog('VOICE', 'Syncing $commandId for dog $dogId: ${bytes.length} bytes raw, format=wav');
+      rlog('VOICE', 'Syncing $commandId via WS for dog $dogId: ${bytes.length} bytes');
       WebSocketClient.instance.sendVoiceCommand(commandId, base64Data, dogId: dogId);
 
       final updatedCommand = command.copyWith(
@@ -340,11 +399,94 @@ class VoiceCommandsNotifier extends StateNotifier<DogVoiceCommands> {
       state = state.copyWith(commands: newCommands);
 
       await _saveCommands();
-      print('VoiceCommands: Synced $commandId');
+      print('VoiceCommands: Synced $commandId via WS fallback');
       return true;
     } catch (e) {
       print('VoiceCommands: Failed to sync $commandId: $e');
       return false;
+    }
+  }
+
+  /// A2: Hydrate voice command audio for this dog from the relay.
+  /// On a fresh install the manifest gives us {command_id, audio_url,
+  /// updated_at, ...}; we download any WAVs we don't already have locally
+  /// and persist them to `voice_commands/{dogId}_{commandId}.wav`.
+  Future<void> hydrateFromRelay() async {
+    final isLocal = _ref.read(localConnectionProvider).isConnected;
+    final token = _ref.read(authProvider).token;
+    if (isLocal || token == null) return;
+
+    try {
+      final api = _ref.read(robotApiProvider);
+      final manifest = await api.getVoiceCommands(token: token, dogId: dogId);
+      if (manifest.isEmpty) {
+        print('VoiceCommands[$dogId]: relay manifest empty');
+        return;
+      }
+      print('VoiceCommands[$dogId]: hydrating ${manifest.length} from relay');
+
+      final appDir = await getApplicationDocumentsDirectory();
+      final permanentDir = '${appDir.path}/voice_commands';
+      await Directory(permanentDir).create(recursive: true);
+
+      final newCommands = Map<String, VoiceCommand>.from(state.commands);
+
+      for (final entry in manifest) {
+        final commandId = entry['command_id'] as String?;
+        final audioUrl = entry['audio_url'] as String?;
+        final updatedAtStr = entry['updated_at'] as String?;
+        if (commandId == null || audioUrl == null) continue;
+        final updatedAt = updatedAtStr != null
+            ? DateTime.tryParse(updatedAtStr)
+            : null;
+
+        final existing = newCommands[commandId];
+        final existingFile = existing?.localPath != null
+            ? File(existing!.localPath!)
+            : null;
+        final localExists =
+            existingFile != null && await existingFile.exists();
+        final localStale = existing?.relayUpdatedAt == null ||
+            (updatedAt != null && updatedAt.isAfter(existing!.relayUpdatedAt!));
+
+        if (localExists && !localStale) {
+          // Already up to date — just record the relay URL.
+          newCommands[commandId] = existing!.copyWith(
+            relayUrl: audioUrl,
+            relayUpdatedAt: updatedAt,
+          );
+          continue;
+        }
+
+        // Download the WAV.
+        final bytes = await api.downloadVoiceCommand(audioUrl);
+        if (bytes == null) {
+          print('VoiceCommands[$dogId]: download failed for $commandId');
+          continue;
+        }
+        final permanentPath = '$permanentDir/${dogId}_$commandId.wav';
+        final file = File(permanentPath);
+        if (await file.exists()) await file.delete();
+        await file.writeAsBytes(bytes);
+
+        newCommands[commandId] = VoiceCommand(
+          dogId: dogId,
+          commandId: commandId,
+          localPath: permanentPath,
+          recordedAt: existing?.recordedAt ?? updatedAt ?? DateTime.now(),
+          isSynced: true,
+          syncedAt: DateTime.now(),
+          durationMs: existing?.durationMs ?? 0,
+          relayUrl: audioUrl,
+          relayUpdatedAt: updatedAt,
+        );
+        print('VoiceCommands[$dogId]: downloaded $commandId (${bytes.length} bytes)');
+      }
+
+      state = state.copyWith(commands: newCommands);
+      await _saveCommands();
+    } catch (e) {
+      print('VoiceCommands[$dogId]: hydrateFromRelay error: $e');
     }
   }
 

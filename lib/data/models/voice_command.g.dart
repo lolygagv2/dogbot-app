@@ -19,6 +19,10 @@ _$VoiceCommandImpl _$$VoiceCommandImplFromJson(Map<String, dynamic> json) =>
           ? null
           : DateTime.parse(json['syncedAt'] as String),
       durationMs: (json['durationMs'] as num?)?.toInt() ?? 0,
+      relayUrl: json['relayUrl'] as String?,
+      relayUpdatedAt: json['relayUpdatedAt'] == null
+          ? null
+          : DateTime.parse(json['relayUpdatedAt'] as String),
     );
 
 Map<String, dynamic> _$$VoiceCommandImplToJson(_$VoiceCommandImpl instance) =>
@@ -30,6 +34,8 @@ Map<String, dynamic> _$$VoiceCommandImplToJson(_$VoiceCommandImpl instance) =>
       'isSynced': instance.isSynced,
       'syncedAt': instance.syncedAt?.toIso8601String(),
       'durationMs': instance.durationMs,
+      'relayUrl': instance.relayUrl,
+      'relayUpdatedAt': instance.relayUpdatedAt?.toIso8601String(),
     };
 
 _$DogVoiceCommandsImpl _$$DogVoiceCommandsImplFromJson(

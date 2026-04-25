@@ -594,7 +594,7 @@ class _BackgroundAudioTile extends ConsumerWidget {
   }
 }
 
-/// Activity notifications toggle
+/// Activity notifications — master toggle + drill-down to per-type preferences.
 class _NotificationsTile extends ConsumerWidget {
   const _NotificationsTile();
 
@@ -602,22 +602,37 @@ class _NotificationsTile extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final settings = ref.watch(settingsProvider);
 
-    return SwitchListTile(
-      secondary: Icon(
-        settings.notificationsEnabled ? Icons.notifications_active : Icons.notifications_off,
-        color: settings.notificationsEnabled ? AppTheme.accent : AppTheme.textTertiary,
-      ),
-      title: const Text('Activity Notifications'),
-      subtitle: Text(
-        settings.notificationsEnabled
-            ? 'Show alerts on lock screen & Apple Watch'
-            : 'Notifications disabled',
-        style: TextStyle(fontSize: 12, color: AppTheme.textTertiary),
-      ),
-      value: settings.notificationsEnabled,
-      onChanged: (value) {
-        ref.read(settingsProvider.notifier).setNotificationsEnabled(value);
-      },
+    return Column(
+      children: [
+        SwitchListTile(
+          secondary: Icon(
+            settings.notificationsEnabled ? Icons.notifications_active : Icons.notifications_off,
+            color: settings.notificationsEnabled ? AppTheme.accent : AppTheme.textTertiary,
+          ),
+          title: const Text('Activity Notifications'),
+          subtitle: Text(
+            settings.notificationsEnabled
+                ? 'Show alerts on lock screen & Apple Watch'
+                : 'Notifications disabled',
+            style: TextStyle(fontSize: 12, color: AppTheme.textTertiary),
+          ),
+          value: settings.notificationsEnabled,
+          onChanged: (value) {
+            ref.read(settingsProvider.notifier).setNotificationsEnabled(value);
+          },
+        ),
+        ListTile(
+          leading: const Icon(Icons.tune),
+          title: const Text('Per-event preferences'),
+          subtitle: const Text(
+            'Choose which events push to the lock screen vs in-app only',
+            style: TextStyle(fontSize: 12),
+          ),
+          trailing: const Icon(Icons.chevron_right),
+          onTap: () =>
+              GoRouter.of(context).go('/settings/notifications'),
+        ),
+      ],
     );
   }
 }

@@ -84,6 +84,9 @@ class Detection with _$Detection {
     List<double>? bbox, // [x, y, width, height]
     String? dogName, // from ArUco marker identification
     int? arucoId, // ArUco marker ID if identified
+    // C1/C5: stable profile id per Workstream C. Null when robot has no
+    // identification (no ArUco visible AND no in-session match).
+    String? dogId,
     DateTime? timestamp,
   }) = _Detection;
 
@@ -100,6 +103,7 @@ class Detection with _$Detection {
           .toList(),
       dogName: data['dog_name'] as String? ?? data['dogName'] as String?,
       arucoId: data['aruco_id'] as int? ?? data['arucoId'] as int?,
+      dogId: data['dog_id'] as String? ?? data['dogId'] as String?,
       timestamp: DateTime.now(),
     );
   }
@@ -110,5 +114,14 @@ class Detection with _$Detection {
     if (dogName != null && dogName!.isNotEmpty) return dogName!;
     if (detected) return 'Dog Detected';
     return '';
+  }
+
+  /// C5: stable map key for the multi-detection provider. Prefers dogId,
+  /// falls back to aruco id, then to a sentinel "anon" so unidentified dogs
+  /// still get a slot.
+  String get trackKey {
+    if (dogId != null && dogId!.isNotEmpty) return dogId!;
+    if (arucoId != null) return 'aruco_$arucoId';
+    return 'anon';
   }
 }

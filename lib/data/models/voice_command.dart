@@ -40,6 +40,11 @@ class VoiceCommand with _$VoiceCommand {
     @Default(false) bool isSynced,
     DateTime? syncedAt,
     @Default(0) int durationMs,
+    // A2: Relay URL the WAV is reachable at; populated after relay upload.
+    // Used for cross-device hydration — on a fresh install the app downloads
+    // the file from this URL into localPath.
+    String? relayUrl,
+    DateTime? relayUpdatedAt,
   }) = _VoiceCommand;
 
   factory VoiceCommand.fromJson(Map<String, dynamic> json) =>
