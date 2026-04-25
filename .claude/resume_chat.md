@@ -1,5 +1,84 @@
 # WIM-Z Resume Chat Log
 
+## Session: 2026-04-25 — Build 87 (Cross-Device Restore + Session Identity + Multi-Dog + Per-Type Notifications)
+**Goal:** Coordinated 3-codebase change for cross-device data restore, WebRTC session lifecycle fix, multi-dog data model, per-type notification routing
+**Status:** Completed — pushed to main (Build 87: 01ae7a1). Plan file: `~/.claude/plans/ok-first-just-explain-curried-swing.md`
+
+### Coordinated with sister codebases
+- **Relay** (head 249567b deployed to Lightsail): all 3 phases shipped — Phase 1 9766be1 (B2 sessions + A1 dogs), Phase 2 6df5595 (A2 voice commands), Phase 3 249567b (A3 activity log).
+- **Robot** (Pi): C0 duplicate-detection fix shipped (`core/dog_tracker.py` lines ~152, ~213, ~459 with new `_find_overlapping_tracked_dog` + `_bbox_iou` helpers). Build 38 gap, not a regression — generic + ArUco entries were never deduped. All 5 verification scenarios pass.
+
+### App-side (this codebase) — Build 87 changes
+
+#### Workstream A — Cross-device restore on login
+| Change | Files |
+|---|---|
+| A1: GET /api/dogs hydration with updatedAt-based merge, backfill of local-only profiles | dog_profiles_provider.dart, robot_api.dart, dog_profile.dart (+freezed) |
+| A2: Voice command relay-mediated upload (multipart) + manifest GET + WAV download on hydrate; WS upload_voice kept as local-mode fallback | voice_commands_provider.dart, robot_api.dart, voice_command.dart (+freezed) |
+| A3: GET /api/activity (last 7 days) merged into in-memory feed with relay→app event-type mapping | notifications_provider.dart, robot_api.dart |
+| Auth chaining: dogs → voice commands per dog → activity hydration on _loadSavedAuth/register/login. Best-effort, never blocks login. | auth_provider.dart |
+
+#### Workstream B — Session identity + lifecycle hardening
+| Change | Files |
+|---|---|
+| B1 SessionId per launch (UUID, regenerated on connect) | NEW: lib/core/session/session_id.dart |
+| B1 session_hello first-frame handshake; session_id tag on all WebRTC signaling; session_superseded inbound stream → ConnectionStatus.superseded with takeOverSession() | websocket_client.dart, connection_provider.dart |
+| B4 detached lifecycle handler (best-effort client_closing + WebRTC teardown + WS disconnect); paused-30s background-teardown timer; resumed → hardTeardown if WS dead before reconnect | app.dart, webrtc_provider.dart |
+| B4 WS ping interval 30s → 10s | app_constants.dart |
+
+#### Workstream C — Multi-dog data model (Option 3, ArUco-only; visual ID deferred)
+| Change | Files |
+|---|---|
+| C2 start_mission/start_coach accept optional dog_id | missions_provider.dart, coach_provider.dart |
+| C4 dogAnalyticsProvider filters strictly by event-source dog_id (was incrementing globally — misattribution bug fixed); allDogsAnalyticsProvider added for fleet aggregates | analytics_provider.dart |
+| C5 Detection.dogId + trackKey; allDetectionsProvider (TTL-pruned map); coach_screen renders one _DogChip per visible dog with palette-hashed per-dog color; MultiDetectionOverlay added | telemetry.dart (+freezed), telemetry_provider.dart, coach_screen.dart, detection_overlay.dart |
+| ConnectionStatus.superseded → connection_badge case | connection_badge.dart |
+
+#### Per-type notifications (added mid-session)
+| Change | Files |
+|---|---|
+| NotificationChannel enum (off/inApp/inAppAndPush) persisted as JSON map keyed by NotificationEventType. AppSettings.channelFor(type) with sensible defaults | settings_provider.dart |
+| notifications_provider.addNotification consults channel: off drops entirely, inApp adds to feed only, inAppAndPush also fires OS notification (which iOS mirrors to Apple Watch) | notifications_provider.dart, notification_service.dart (shouldNotify deprecated) |
+| NotificationPreferencesScreen at /settings/notifications with per-type SegmentedButton + master switch + reset-to-defaults | NEW: notification_preferences_screen.dart, settings_screen.dart, app.dart |
+
+### Files created (2)
+- `lib/core/session/session_id.dart`
+- `lib/presentation/screens/settings/notification_preferences_screen.dart`
+
+### Files modified (29)
+lib/app.dart, lib/core/constants/api_endpoints.dart, lib/core/constants/app_constants.dart, lib/core/network/websocket_client.dart, lib/core/services/notification_service.dart, lib/data/datasources/robot_api.dart, lib/data/models/dog_profile.dart (+gen), lib/data/models/telemetry.dart (+gen), lib/data/models/voice_command.dart (+gen), lib/domain/providers/{analytics,auth,coach,connection,dog_profiles,missions,notifications,settings,telemetry,voice_commands,webrtc}_provider.dart, lib/presentation/screens/coach/coach_screen.dart, lib/presentation/screens/settings/settings_screen.dart, lib/presentation/widgets/status/{connection_badge,detection_overlay}.dart, pubspec.yaml
+
+### Verification
+- `flutter analyze --no-pub lib`: **0 errors** (388 info/warning, all pre-existing or unrelated deprecation hints)
+- `dart run build_runner build --delete-conflicting-outputs`: 974 outputs, succeeded
+
+### Architectural decisions locked in this session
+1. **Option 3** for multi-dog: true multi-dog data model now (every event tagged with stable `dog_id`); visual ID (face/feature embedding) explicitly deferred to a future epic. Not part of this plan.
+2. **Voice command audio bytes** live in relay file/object storage (`/api/voice-commands/file/{user}/{dog}/{cmd}` — no auth on download, URL is the security boundary), fetched on demand. Mirrors `/api/music/upload`.
+3. **Per-type notification channels** rather than a single global toggle. Defaults chosen to keep Watch/lock-screen quiet for high-frequency types (bark, behavior detections) while pushing high-signal events (treat dispensed, coach reward, mission completed, alerts).
+4. **Profile deletion** confirmed already wired end-to-end (relay DELETE + robot delete_dog WS + local + selectedDog clear). Cross-device delete propagates via relay being source of truth.
+
+### Known limitations / next steps
+- **Visual dog ID** is the major deferred epic — when ArUco is occluded and no in-session prior identification exists, robot labels "Unknown" (dog_id=null). Future work: face/feature embedding on Hailo-8.
+- **Token storage** still in plain SharedPreferences. Worth migrating to FlutterSecureStorage in a follow-up.
+- **Photos** still local-only; not in this plan's scope.
+- **Settings** (motor trim, daily limit, host/port) still app-local; intentional.
+- **Testing**: Phase 1 verification (session supersede, force-quit recovery, reinstall dogs); Phase 2 (reinstall voice); Phase 3 (reinstall activity, two-dogs-in-frame, per-dog voice playback, per-dog analytics) — runtime testing on iOS device + robot still required. Plan doc has the full verification matrix.
+- **Codemagic**: Build 87 ready to trigger.
+
+### Commit
+```
+01ae7a1 feat: Build 87 — cross-device restore, session identity, multi-dog data, per-type notifications
+```
+
+### Coordination context for next session
+The orchestration model from this session worked well:
+- This (app) Claude as the master, drafting paste-ready prompts for the relay and robot Claudes.
+- Plan file at `~/.claude/plans/ok-first-just-explain-curried-swing.md` has the full coordinated plan including paste-ready prompts for relay and robot.
+- Next person/session: hand the relay's deployed-to-Lightsail commit (249567b) and the robot's C0 fix as known-good baselines. Any follow-up that touches all three repos should reuse the orchestrator pattern from this session.
+
+---
+
 ## Session: 2026-04-01 — Builds 65-66 (PTT Logging, Treat UI, Trick Sync, Local Mode, WiFi Config)
 **Goal:** PTT debug logging, treat carousel updates, trick name alignment with Pi, local connection mode, WiFi config UI
 **Status:** Completed — pushed to main (Build 66: ef1b372)
