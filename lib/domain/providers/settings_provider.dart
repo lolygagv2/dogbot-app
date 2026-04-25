@@ -13,6 +13,7 @@ class SettingsKeys {
   static const localModeEnabled = 'local_mode_enabled';
   static const localModeIp = 'local_mode_ip';
   static const localModePort = 'local_mode_port';
+  static const notificationsEnabled = 'notifications_enabled';
 }
 
 /// App settings state
@@ -39,6 +40,9 @@ class AppSettings {
   final String localModeIp;
   final int localModePort;
 
+  /// Local notifications — show OS notifications when app is backgrounded
+  final bool notificationsEnabled;
+
   const AppSettings({
     this.motorTrimRight = 0.0,
     this.cameraTrackingEnabled = false,
@@ -48,6 +52,7 @@ class AppSettings {
     this.localModeEnabled = false,
     this.localModeIp = '',
     this.localModePort = 8000,
+    this.notificationsEnabled = true,
   });
 
   AppSettings copyWith({
@@ -59,6 +64,7 @@ class AppSettings {
     bool? localModeEnabled,
     String? localModeIp,
     int? localModePort,
+    bool? notificationsEnabled,
   }) {
     return AppSettings(
       motorTrimRight: motorTrimRight ?? this.motorTrimRight,
@@ -69,6 +75,7 @@ class AppSettings {
       localModeEnabled: localModeEnabled ?? this.localModeEnabled,
       localModeIp: localModeIp ?? this.localModeIp,
       localModePort: localModePort ?? this.localModePort,
+      notificationsEnabled: notificationsEnabled ?? this.notificationsEnabled,
     );
   }
 }
@@ -99,6 +106,7 @@ class SettingsNotifier extends StateNotifier<AppSettings> {
     final localModeEnabled = _prefs?.getBool(SettingsKeys.localModeEnabled) ?? false;
     final localModeIp = _prefs?.getString(SettingsKeys.localModeIp) ?? '';
     final localModePort = _prefs?.getInt(SettingsKeys.localModePort) ?? 8000;
+    final notificationsEnabled = _prefs?.getBool(SettingsKeys.notificationsEnabled) ?? true;
 
     state = AppSettings(
       motorTrimRight: motorTrim.clamp(-0.5, 0.5),
@@ -109,6 +117,7 @@ class SettingsNotifier extends StateNotifier<AppSettings> {
       localModeEnabled: localModeEnabled,
       localModeIp: localModeIp,
       localModePort: localModePort,
+      notificationsEnabled: notificationsEnabled,
     );
   }
 
@@ -172,6 +181,13 @@ class SettingsNotifier extends StateNotifier<AppSettings> {
       'daily_limit': state.dailyLimitCount,
     });
     print('Settings: Daily limit ${state.dailyLimitEnabled ? "ON (${state.dailyLimitCount})" : "OFF"}');
+  }
+
+  /// Set notifications enabled
+  Future<void> setNotificationsEnabled(bool enabled) async {
+    state = state.copyWith(notificationsEnabled: enabled);
+    await _prefs?.setBool(SettingsKeys.notificationsEnabled, enabled);
+    print('Settings: Notifications set to $enabled');
   }
 
   /// Toggle local mode on/off

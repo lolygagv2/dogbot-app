@@ -131,6 +131,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           const _BackgroundAudioTile(),
           const Divider(),
 
+          _SectionHeader('Notifications'),
+          const _NotificationsTile(),
+          const Divider(),
+
           _SectionHeader('Training'),
           const _DailyLimitTile(),
           ListTile(
@@ -585,6 +589,34 @@ class _BackgroundAudioTile extends ConsumerWidget {
       value: settings.backgroundAudioEnabled,
       onChanged: (value) {
         ref.read(settingsProvider.notifier).setBackgroundAudioEnabled(value);
+      },
+    );
+  }
+}
+
+/// Activity notifications toggle
+class _NotificationsTile extends ConsumerWidget {
+  const _NotificationsTile();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final settings = ref.watch(settingsProvider);
+
+    return SwitchListTile(
+      secondary: Icon(
+        settings.notificationsEnabled ? Icons.notifications_active : Icons.notifications_off,
+        color: settings.notificationsEnabled ? AppTheme.accent : AppTheme.textTertiary,
+      ),
+      title: const Text('Activity Notifications'),
+      subtitle: Text(
+        settings.notificationsEnabled
+            ? 'Show alerts on lock screen & Apple Watch'
+            : 'Notifications disabled',
+        style: TextStyle(fontSize: 12, color: AppTheme.textTertiary),
+      ),
+      value: settings.notificationsEnabled,
+      onChanged: (value) {
+        ref.read(settingsProvider.notifier).setNotificationsEnabled(value);
       },
     );
   }

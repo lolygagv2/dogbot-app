@@ -187,6 +187,22 @@ class WebSocketClient {
     }
   }
 
+  /// Check if a message is from the currently targeted robot.
+  /// Returns true if the message should be processed, false if it should be skipped.
+  /// Messages without an identifier are always accepted (local mode, legacy relay).
+  /// Checks both device_id (relay commands) and robot_id (robot events).
+  bool _isFromTargetDevice(Map<String, dynamic> json) {
+    final nestedData = json['data'];
+
+    // Check device_id (relay format) and robot_id (robot event format)
+    final sourceId = json['device_id'] as String? ??
+        json['robot_id'] as String? ??
+        ((nestedData is Map) ? (nestedData['device_id'] as String? ?? nestedData['robot_id'] as String?) : null);
+
+    if (sourceId == null || _targetDeviceId == null) return true;
+    return sourceId == _targetDeviceId;
+  }
+
   void _onMessage(dynamic message) {
     try {
       final json = jsonDecode(message as String) as Map<String, dynamic>;
@@ -255,6 +271,7 @@ class WebSocketClient {
         // Status update from robot (mode, battery, telemetry combined)
         case 'status_update':
           print('WS: Received status_update: $json');
+          if (!_isFromTargetDevice(json)) break;
           // Forward to both device status and event streams
           _deviceStatusController.add(json);
           final statusUpdateEvent = WsEvent.fromJson(json);
@@ -270,6 +287,9 @@ class WebSocketClient {
         case 'battery':
         case 'mode':
         case 'treat':
+        case 'treat_status':
+        case 'reward':
+          if (!_isFromTargetDevice(json)) break;
           final statusEvent = WsEvent.fromJson(json);
           _eventController.add(statusEvent);
           break;
@@ -288,6 +308,7 @@ class WebSocketClient {
         case 'mission_status':
         case 'mission_error':
         case 'mission_failed':
+          if (!_isFromTargetDevice(json)) break;
           print('WS: Received $msgType: $json');
           final missionEvent = WsEvent.fromJson(json);
           _eventController.add(missionEvent);
@@ -295,6 +316,7 @@ class WebSocketClient {
 
         // Mode changed event (Build 31) - includes locked state
         case 'mode_changed':
+          if (!_isFromTargetDevice(json)) break;
           print('WS: Received mode_changed: $json');
           final modeChangedEvent = WsEvent.fromJson(json);
           _eventController.add(modeChangedEvent);
@@ -302,6 +324,7 @@ class WebSocketClient {
 
         // Audio state event (Build 31) - sync music player UI
         case 'audio_state':
+          if (!_isFromTargetDevice(json)) break;
           print('WS: Received audio_state: $json');
           final audioStateEvent = WsEvent.fromJson(json);
           _eventController.add(audioStateEvent);
@@ -309,6 +332,7 @@ class WebSocketClient {
 
         // Bark event - forward as guardian event for event feed
         case 'bark':
+          if (!_isFromTargetDevice(json)) break;
           final barkEvent = WsEvent(
             type: 'event',
             data: {

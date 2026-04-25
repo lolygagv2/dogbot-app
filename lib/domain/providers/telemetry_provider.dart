@@ -102,11 +102,32 @@ class TelemetryNotifier extends StateNotifier<Telemetry> {
         break;
 
       case 'treat':
-        // Treat dispensed
+        // Treat dispensed (legacy format)
         state = state.copyWith(
           treatsRemaining: event.data['remaining'] as int? ?? state.treatsRemaining,
           lastTreatTime: DateTime.now(),
         );
+        break;
+
+      case 'treat_status':
+        // Full treat status update: {treats_loaded, treats_remaining, treats_low}
+        final remaining = event.data['treats_remaining'] as int?;
+        if (remaining != null) {
+          state = state.copyWith(treatsRemaining: remaining);
+        }
+        break;
+
+      case 'reward':
+        // Reward event (e.g. treat_dispensed): {subtype, treats_remaining, treats_low}
+        if (event.data['subtype'] == 'treat_dispensed') {
+          final remaining = event.data['treats_remaining'] as int?;
+          if (remaining != null) {
+            state = state.copyWith(
+              treatsRemaining: remaining,
+              lastTreatTime: DateTime.now(),
+            );
+          }
+        }
         break;
 
       case 'battery':

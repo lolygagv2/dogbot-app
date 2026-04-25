@@ -3,9 +3,11 @@ import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/network/websocket_client.dart';
+import '../../core/services/notification_service.dart';
 import '../../data/models/notification_event.dart';
 import 'connection_provider.dart';
 import 'dog_profiles_provider.dart';
+import 'settings_provider.dart';
 
 /// Provider for notification events list
 final notificationsProvider =
@@ -94,6 +96,34 @@ class NotificationsNotifier extends StateNotifier<List<NotificationEvent>> {
           title: 'Treat Dispensed',
           subtitle: 'Good job!',
         );
+        break;
+
+      case 'reward':
+        if (event.data['subtype'] == 'treat_dispensed') {
+          final remaining = event.data['treats_remaining'] as int?;
+          notification = NotificationEvent(
+            id: DateTime.now().millisecondsSinceEpoch.toString(),
+            type: NotificationEventType.treatDispensed,
+            timestamp: DateTime.now(),
+            title: 'Treat Dispensed',
+            subtitle: remaining != null ? '$remaining treats remaining' : 'Good job!',
+          );
+        }
+        break;
+
+      case 'treat_status':
+        // Only notify when treats are running low
+        final treatsLow = event.data['treats_low'] as bool? ?? false;
+        if (treatsLow) {
+          final remaining = event.data['treats_remaining'] as int? ?? 0;
+          notification = NotificationEvent(
+            id: DateTime.now().millisecondsSinceEpoch.toString(),
+            type: NotificationEventType.alert,
+            timestamp: DateTime.now(),
+            title: 'Treats Running Low',
+            subtitle: '$remaining treats remaining — time to refill!',
+          );
+        }
         break;
 
       case 'mission_start':
@@ -217,6 +247,14 @@ class NotificationsNotifier extends StateNotifier<List<NotificationEvent>> {
     // Keep only the last 100 notifications
     if (state.length > 100) {
       state = state.sublist(0, 100);
+    }
+
+    // Fire OS-level local notification when app is backgrounded
+    final notifService = NotificationService.instance;
+    if (_ref.read(settingsProvider).notificationsEnabled &&
+        notifService.isAppBackgrounded &&
+        notifService.shouldNotify(notification.type)) {
+      notifService.showForEvent(notification);
     }
   }
 
