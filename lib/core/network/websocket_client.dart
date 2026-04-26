@@ -216,14 +216,13 @@ class WebSocketClient {
         onDone: _onDone,
       );
 
-      // Build 89: session_hello sending DISABLED — Build 87/88 caused
-      // immediate 4000 closes from the relay. The deployed relay's
-      // user_id validation appears stricter than expected and we can't
-      // tell what JWT claim it wants without a Mac to read iOS logs.
-      // Revert to bearer-token-only identity (same as Build 85, which
-      // worked). Re-enable once we coordinate the exact handshake
-      // payload with the relay codebase.
-      // _sendSessionHello();
+      // Build 90: session_hello RE-ENABLED. Diagnosed against the deployed
+      // relay code (wimzrelay/app/routers/websocket.py): the handshake is
+      // mandatory (4000 close on timeout) and validates `user_id` against
+      // the JWT `sub` claim (which is `user_NNNNNN`, not the email — the
+      // login response only returns `token`/`expires_in`, so we extract
+      // `sub` from the JWT itself in connection_provider).
+      _sendSessionHello();
 
       // Start ping timer
       _startPingTimer();

@@ -9,6 +9,7 @@ import '../../core/network/dio_client.dart';
 import '../../core/network/websocket_client.dart';
 import '../../core/services/local_connection_service.dart';
 import '../../core/session/session_id.dart';
+import '../../core/utils/jwt_decode.dart';
 import '../../data/datasources/robot_api.dart';
 import 'auth_provider.dart';
 import 'device_provider.dart';
@@ -207,12 +208,12 @@ class ConnectionNotifier extends StateNotifier<ConnectionState> {
           ? AppConfig.wsUrlWithToken(host, token, port)
           : AppConfig.wsUrl(host, port);
       final deviceId = _ref.read(deviceIdProvider);
-      // Build 88: prefer relay's user_id (from auth response) for the
-      // session_hello handshake — the relay validates this against the
-      // JWT subject. Fall back to email only when userId is unknown
-      // (older accounts), and omit entirely if neither is set so the
-      // relay can derive identity from the bearer token alone.
-      final sessionUserId = authState.userId ?? authState.email;
+      // Build 90: extract user_id from the JWT `sub` claim. The relay
+      // validates session_hello.user_id against this (e.g. `user_000042`,
+      // not email). Falls back to authState.userId / email if the token
+      // is malformed for some reason.
+      final sessionUserId =
+          jwtSub(token) ?? authState.userId ?? authState.email;
       print('Connecting WebSocket to: $wsUrl (session=$newSessionId, user=$sessionUserId)');
       await ws.connect(
         wsUrl,
