@@ -10,6 +10,7 @@ enum VoiceCommandType {
   stay('stay', 'Stay', 'Say "Stay" with a steady tone'),
   lieDown('laydown', 'Lay Down', 'Say "Lay Down" or "Down"'),
   spin('spin', 'Spin', 'Say "Spin" enthusiastically'),
+  speak('speak', 'Speak', 'Say "Speak" enthusiastically'),
   come('come', 'Come', 'Say "Come" or "Come here"'),
   treat('treat', 'Want a treat?', 'Say "Want a treat?" playfully'),
   goodDog('good', 'Good dog!', 'Say "Good dog!" with praise'),
