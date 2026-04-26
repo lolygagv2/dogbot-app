@@ -230,6 +230,16 @@ class DogProfilesNotifier extends StateNotifier<List<DogProfile>> {
       for (final p in profiles) {
         print('  - ${p['name']} (aruco=${p['aruco_id'] ?? 'none'}, color=${p['color']})');
       }
+
+      // Build 91 (C3 app-side): re-assert the currently-selected dog so the
+      // robot's "active dog" cache survives reconnects / app restarts.
+      final selected = _ref.read(selectedDogProvider);
+      if (selected != null) {
+        ws.sendCommand('select_dog', {
+          'dog_id': selected.id,
+          'dog_name': selected.name,
+        });
+      }
     } catch (e) {
       print('DogProfiles: Failed to sync profiles to robot: $e');
     }
@@ -402,6 +412,16 @@ class SelectedDogNotifier extends StateNotifier<DogProfile?> {
     _prefs ??= await SharedPreferences.getInstance();
     final key = _selectedDogKeyForUser(_userEmail);
     await _prefs?.setString(key, dog.id);
+    // Build 91 (C3 app-side): tell the robot which dog is now "active"
+    // so autonomous voice playback (coach rewards, Silent Guardian, Xbox
+    // controller buttons) uses this dog's per-dog voice files when no
+    // ArUco is visible to identify the dog directly.
+    try {
+      WebSocketClient.instance.sendCommand('select_dog', {
+        'dog_id': dog.id,
+        'dog_name': dog.name,
+      });
+    } catch (_) {/* WS not connected — robot will pick this up on next connect */}
   }
 }
 
