@@ -6,9 +6,10 @@ class AppConstants {
   static const Duration connectionTimeout = Duration(seconds: 10);
   static const Duration receiveTimeout = Duration(seconds: 30);
   static const Duration websocketReconnectDelay = Duration(seconds: 3);
-  // B4: 10s ping. Relay closes with 4002 after 25s of no ping. Faster
-  // dead-connection detection means faster legitimate reconnect.
-  static const Duration websocketPingInterval = Duration(seconds: 10);
+  // Build 89: restored 30s ping (Build 85 behavior). The 10s ping from
+  // Build 87 may have been contributing to relay-side rate limiting or
+  // close behavior we don't fully understand yet.
+  static const Duration websocketPingInterval = Duration(seconds: 30);
 
   // Control rates
   static const Duration joystickSendInterval = Duration(milliseconds: 100); // 10Hz (reduced from 20Hz)

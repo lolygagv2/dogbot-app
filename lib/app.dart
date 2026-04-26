@@ -557,13 +557,10 @@ class _WimzAppState extends ConsumerState<WimzApp> with WidgetsBindingObserver {
         ref.read(connectionProvider.notifier).onAppResumed();
         break;
       case AppLifecycleState.detached:
-        // B4: best-effort graceful close. iOS doesn't always grant time on
-        // force-quit, but when it does the relay learns immediately rather
-        // than waiting on its 25s heartbeat timeout.
-        print('App: Lifecycle → detached — sending client_closing');
-        try {
-          ref.read(websocketClientProvider).sendClientClosing();
-        } catch (_) {/* best-effort */}
+        // Build 89: don't send client_closing — that frame is part of the
+        // disabled session_hello protocol and the relay logs a warning on
+        // unknown frames. Just hard-teardown WebRTC and close the WS.
+        print('App: Lifecycle → detached — disconnecting');
         try {
           ref.read(webrtcProvider.notifier).hardTeardown();
         } catch (_) {/* best-effort */}

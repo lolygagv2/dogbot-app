@@ -216,10 +216,14 @@ class WebSocketClient {
         onDone: _onDone,
       );
 
-      // B1: send session_hello as the first frame so the relay can supersede
-      // any prior session for this (user, device) and validate user_id against
-      // the bearer token.
-      _sendSessionHello();
+      // Build 89: session_hello sending DISABLED — Build 87/88 caused
+      // immediate 4000 closes from the relay. The deployed relay's
+      // user_id validation appears stricter than expected and we can't
+      // tell what JWT claim it wants without a Mac to read iOS logs.
+      // Revert to bearer-token-only identity (same as Build 85, which
+      // worked). Re-enable once we coordinate the exact handshake
+      // payload with the relay codebase.
+      // _sendSessionHello();
 
       // Start ping timer
       _startPingTimer();
@@ -767,30 +771,22 @@ class WebSocketClient {
     sendCommand('audio_request', {'duration': durationSeconds});
   }
 
+  // Build 89: session_id tagging on signaling frames disabled along with
+  // session_hello. The relay was rejecting the augmented payloads in some
+  // configurations. Restored to the Build 85 bare format.
   /// Request WebRTC video stream
   void requestVideoStream() {
-    send({
-      'type': 'webrtc_request',
-      if (_sessionId != null) 'session_id': _sessionId,
-    });
+    send({'type': 'webrtc_request'});
   }
 
   /// Send WebRTC answer
   void sendWebrtcAnswer(Map<String, dynamic> answer) {
-    send({
-      'type': 'webrtc_answer',
-      if (_sessionId != null) 'session_id': _sessionId,
-      ...answer,
-    });
+    send({'type': 'webrtc_answer', ...answer});
   }
 
   /// Send WebRTC ICE candidate
   void sendWebrtcIce(Map<String, dynamic> candidate) {
-    send({
-      'type': 'webrtc_ice',
-      if (_sessionId != null) 'session_id': _sessionId,
-      ...candidate,
-    });
+    send({'type': 'webrtc_ice', ...candidate});
   }
 
   /// B4: best-effort graceful close. Tells relay we're shutting down so it can
