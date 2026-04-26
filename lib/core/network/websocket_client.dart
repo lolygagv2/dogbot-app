@@ -72,6 +72,11 @@ class WebSocketClient {
   String? _sessionId;
   String? _sessionUserId;
   String? _sessionDeviceId;
+  // Build 88: when the relay rejects our session_hello (close 4000) we
+  // suppress the handshake on the next reconnect attempt so the user
+  // isn't stuck in an infinite handshake-fail / reconnect loop. The
+  // relay can still derive user identity from the bearer token alone.
+  bool _suppressSessionHello = false;
   int _reconnectAttempts = 0;
   static const int _maxReconnectAttempts = 5;
 
@@ -171,6 +176,10 @@ class WebSocketClient {
     _sessionId = sessionId ?? SessionId.current;
     _sessionUserId = userId;
     _sessionDeviceId = deviceId;
+    // Build 88: a fresh connect() (e.g. user tapped reconnect, took over a
+    // superseded session, or logged in fresh) gets a fresh shot at the
+    // handshake. We only suppress it within a single connect→reconnect run.
+    _suppressSessionHello = false;
     _reconnectAttempts = 0;
 
     await _doConnect();
@@ -441,9 +450,28 @@ class WebSocketClient {
   }
 
   void _onDone() {
-    print('WebSocket closed');
+    // B1 diagnostics: surface the close code/reason so we can tell
+    // 4000 (bad session_hello), 4001 (superseded), 4002 (heartbeat)
+    // apart from a normal disconnect.
+    final code = _channel?.closeCode;
+    final reason = _channel?.closeReason;
+    print('WebSocket closed (code=$code, reason=$reason)');
     if (_state != WsConnectionState.disconnected) {
       _setState(WsConnectionState.disconnected);
+      // 4001 — superseded by another session. Don't reconnect; the connection
+      // provider has already routed to ConnectionStatus.superseded.
+      if (code == 4001) {
+        print('WebSocket: superseded by another session, not reconnecting');
+        return;
+      }
+      // 4000 — relay rejected session_hello (handshake mismatch / timeout).
+      // Reconnecting with the same payload would just loop. Suppress
+      // session_hello on the next attempt so the relay falls back to
+      // bearer-token identity. We re-enable on the next connect() call.
+      if (code == 4000 && !_suppressSessionHello) {
+        print('WebSocket: handshake rejected (4000), suppressing session_hello on retry');
+        _suppressSessionHello = true;
+      }
       _scheduleReconnect();
     }
   }
@@ -485,10 +513,17 @@ class WebSocketClient {
 
   /// B1: First frame after the WS upgrade. Relay expects this within 5s or it
   /// closes with 4000.
+  ///
+  /// Build 88: skipped when [_suppressSessionHello] is set — used after a
+  /// 4000 close so we don't keep banging on a handshake the relay rejects.
   void _sendSessionHello() {
     if (_sessionId == null) {
       // Connection started before sessionId/userId/deviceId were set — caller
       // is on the legacy connect() path (e.g. local mode); skip handshake.
+      return;
+    }
+    if (_suppressSessionHello) {
+      print('WebSocket: skipping session_hello (suppressed after prior 4000)');
       return;
     }
     send({

@@ -15,6 +15,10 @@ class AuthState {
   final bool isAuthenticated;
   final String? token;
   final String? email;
+  // Build 88: persist relay's user_id from auth response. Used for the WS
+  // session_hello handshake — the relay validates this against the JWT
+  // subject, so it must match what the relay set.
+  final String? userId;
   final String? errorMessage;
 
   const AuthState({
@@ -22,6 +26,7 @@ class AuthState {
     this.isAuthenticated = false,
     this.token,
     this.email,
+    this.userId,
     this.errorMessage,
   });
 
@@ -30,6 +35,7 @@ class AuthState {
     bool? isAuthenticated,
     String? token,
     String? email,
+    String? userId,
     String? errorMessage,
   }) {
     return AuthState(
@@ -37,6 +43,7 @@ class AuthState {
       isAuthenticated: isAuthenticated ?? this.isAuthenticated,
       token: token ?? this.token,
       email: email ?? this.email,
+      userId: userId ?? this.userId,
       errorMessage: errorMessage,
     );
   }
@@ -45,6 +52,7 @@ class AuthState {
 /// Storage keys
 const _keyAuthToken = 'auth_token';
 const _keyAuthEmail = 'auth_email';
+const _keyAuthUserId = 'auth_user_id';
 
 /// Provider for auth state
 final authProvider = StateNotifierProvider<AuthNotifier, AuthState>((ref) {
@@ -64,6 +72,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
     final prefs = await SharedPreferences.getInstance();
     final token = prefs.getString(_keyAuthToken);
     final email = prefs.getString(_keyAuthEmail);
+    final userId = prefs.getString(_keyAuthUserId);
 
     if (token != null) {
       // Cloud user restoring session — ensure local mode flag is off
@@ -74,6 +83,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
         isAuthenticated: true,
         token: token,
         email: email,
+        userId: userId,
       );
 
       // Build 32 fix: Reload dog profiles for restored user session
@@ -111,11 +121,16 @@ class AuthNotifier extends StateNotifier<AuthState> {
   }
 
   /// Save auth to storage
-  Future<void> _saveAuth(String token, String? email) async {
+  Future<void> _saveAuth(String token, String? email, String? userId) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_keyAuthToken, token);
     if (email != null) {
       await prefs.setString(_keyAuthEmail, email);
+    }
+    if (userId != null) {
+      await prefs.setString(_keyAuthUserId, userId);
+    } else {
+      await prefs.remove(_keyAuthUserId);
     }
   }
 
@@ -124,6 +139,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(_keyAuthToken);
     await prefs.remove(_keyAuthEmail);
+    await prefs.remove(_keyAuthUserId);
   }
 
   /// Register a new account
@@ -134,13 +150,14 @@ class AuthNotifier extends StateNotifier<AuthState> {
       final api = _ref.read(authApiProvider);
       final response = await api.register(email, password);
 
-      await _saveAuth(response.token, email);
+      await _saveAuth(response.token, email, response.userId);
 
       state = state.copyWith(
         isLoading: false,
         isAuthenticated: true,
         token: response.token,
         email: email,
+        userId: response.userId,
       );
 
       // Build 32: Reload dog profiles for this user (scoped storage)
@@ -173,13 +190,14 @@ class AuthNotifier extends StateNotifier<AuthState> {
       final api = _ref.read(authApiProvider);
       final response = await api.login(email, password);
 
-      await _saveAuth(response.token, email);
+      await _saveAuth(response.token, email, response.userId);
 
       state = state.copyWith(
         isLoading: false,
         isAuthenticated: true,
         token: response.token,
         email: email,
+        userId: response.userId,
       );
 
       // Build 32: Reload dog profiles for this user (scoped storage)

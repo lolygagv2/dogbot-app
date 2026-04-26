@@ -207,11 +207,17 @@ class ConnectionNotifier extends StateNotifier<ConnectionState> {
           ? AppConfig.wsUrlWithToken(host, token, port)
           : AppConfig.wsUrl(host, port);
       final deviceId = _ref.read(deviceIdProvider);
-      print('Connecting WebSocket to: $wsUrl (session=$newSessionId)');
+      // Build 88: prefer relay's user_id (from auth response) for the
+      // session_hello handshake — the relay validates this against the
+      // JWT subject. Fall back to email only when userId is unknown
+      // (older accounts), and omit entirely if neither is set so the
+      // relay can derive identity from the bearer token alone.
+      final sessionUserId = authState.userId ?? authState.email;
+      print('Connecting WebSocket to: $wsUrl (session=$newSessionId, user=$sessionUserId)');
       await ws.connect(
         wsUrl,
         sessionId: newSessionId,
-        userId: authState.email,
+        userId: sessionUserId,
         deviceId: deviceId,
       );
 
