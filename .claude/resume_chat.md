@@ -1,5 +1,66 @@
 # WIM-Z Resume Chat Log
 
+## Session: 2026-04-27 — Build 93 (Coach Mode Exit Unified on `set_mode(idle)`)
+**Goal:** User-reported bug: in-screen "Stop Coaching" button does nothing. Diagnose, coordinate with robot session, fix.
+**Status:** Completed — pushed to main (Build 93: 031f1e5)
+
+### Root cause
+The cloud-relay path the app uses had no working handler for `stop_coach`. The home-screen EXIT button worked because it routes through `set_mode(idle)`, which hits the robot's mode-change handler — the single source of truth for coach teardown via `engine.stop()`. Build 38's "send `stop_coach` only, don't duplicate with `set_mode`" design assumed a robot handler that either never existed on the cloud path or got removed.
+
+### Coordinated decision (with robot session)
+Unify all coach teardown on `set_mode(idle)`. Delete the dedicated `stop_coach` / `start_coach` / `coach_set_behaviors` handlers robot-side; app stops sending them. Robot's mode-change handler at `main_treatbot.py:1786` becomes the only teardown path.
+
+### App-side changes (Build 93: 031f1e5)
+
+**`lib/domain/providers/coach_provider.dart`**
+- `stopCoaching()` now calls `setMode(RobotMode.idle, source: 'coach_exit')` instead of sending `stop_coach`. Reverses Build 38 with updated comment.
+- `startCoaching()` simplified: only `setMode(RobotMode.coach)` + local state update. Dropped the dead `start_coach` WS send and the `dogId` / `anyVisibleDog` params (their payload was always silently discarded — robot reads dog identity from ArUco vision, not from app payload).
+- `setBehaviors()` deleted entirely (no robot handler ever existed; TRICKS is loaded once at engine construction with no runtime mutation API).
+- Listener `coach_started` → `coaching_started`; reads `tricks_available` instead of `behaviors` (canonical robot event per `coaching_engine.py:259-261`).
+- Listener `coach_stopped` replaced with `mode_changed` — when new mode != `'coach'` and `isActive`, flip off.
+- `CoachState.watchingFor` doc updated: now read-only mirror of robot's `tricks_available`.
+- Removed unused `dog_profiles_provider` import.
+
+**`lib/presentation/screens/coach/coach_screen.dart`**
+- Removed duplicate top-right red ⏹ icon (was lines 153–160).
+- Renamed bottom button "Stop Coaching" → "Exit Coach Mode"; on tap, calls `stopCoaching()` then `context.pop()`.
+- Back arrow now also calls `stopCoaching()` before popping (was a no-op per Build 38). Leaving the screen by any path = exiting coach mode.
+
+### Robot-side decisions (theirs to execute)
+- Delete `start_coach` / `stop_coach` branches in `main_treatbot.py:1491-1509` (already no-ops on the cloud path).
+- Delete `start_coach` / `stop_coach` from `api/ws.py:611-630` (local WS, redundant — app doesn't use this path).
+- Mode-change handler stays — already handles teardown correctly.
+- No guard needed for `coach_set_behaviors` warnings; once Build 93 deploys, app stops sending it and the warning disappears naturally.
+
+### Architectural decisions locked in
+1. **`set_mode` is the only coach lifecycle primitive.** No dedicated start/stop commands.
+2. **`watchingFor` (TRICKS list) is robot-side configuration**, broadcast via `tricks_available` on `coaching_started`. App treats as read-only.
+3. **Coach dog targeting is pure-vision** (ArUco-first + longest-visible per `coaching_engine.py:547-573`). App makes NO targeting calls on coach entry.
+4. **`select_dog` (Build 91, global) ≠ `force_dog` (coach-only).** `select_dog` is for voice/profile routing only — coach engine doesn't read it. `force_dog` exists but is the wrong primitive (renames every visible dog to the forced name) — explicitly NOT auto-fired by app.
+5. **Future "coach picked wrong dog" need:** robot will add a clean `pin_session_dog` WS command (filter eligible dogs without renaming). Not built; file separately if it becomes a real complaint.
+
+### Verification
+- `flutter analyze --no-pub lib/domain/providers/coach_provider.dart lib/presentation/screens/coach/coach_screen.dart` → 0 errors (14 pre-existing `withOpacity` deprecation infos, all unchanged from before).
+- No remaining `setBehaviors` / `coach_set_behaviors` / `coach_started` / `coach_stopped` / `stop_coach` / `start_coach` references in `lib/`.
+
+### Commits
+```
+031f1e5 fix: Build 93 — unify coach mode exit on set_mode(idle), drop dead WS commands
+```
+
+### Files modified (3)
+- `lib/domain/providers/coach_provider.dart` (gutted dead WS sends, renamed listener)
+- `lib/presentation/screens/coach/coach_screen.dart` (Exit button + back-arrow teardown)
+- `pubspec.yaml` (1.0.0+92 → 1.0.0+93)
+
+### Next session / open items
+- **Codemagic build trigger** for Build 93 (manual).
+- **Verify robot deploy** has actually deleted the `start_coach` / `stop_coach` / `coach_set_behaviors` handlers — until they do, the app's silence is benign but the cleanup isn't symmetric.
+- **Bug to watch for:** if a user enters coach mode with a globally-selected dog and there are multiple dogs visible, robot picks via ArUco-first + longest-visible heuristic, not user selection. If complaints arrive, file `pin_session_dog` request to robot session.
+- **Coach screen `setBehaviors` UI:** there's currently no UI surface for editing `watchingFor`, but if any was planned, it can't be implemented app-side — needs a robot-side runtime TRICKS mutation API.
+
+---
+
 ## Session: 2026-04-25 — Build 87 (Cross-Device Restore + Session Identity + Multi-Dog + Per-Type Notifications)
 **Goal:** Coordinated 3-codebase change for cross-device data restore, WebRTC session lifecycle fix, multi-dog data model, per-type notification routing
 **Status:** Completed — pushed to main (Build 87: 01ae7a1). Plan file: `~/.claude/plans/ok-first-just-explain-curried-swing.md`
