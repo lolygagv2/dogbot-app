@@ -3,13 +3,16 @@ import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/network/websocket_client.dart';
-import 'dog_profiles_provider.dart';
 import 'mode_provider.dart';
 
 /// Coach session state
 class CoachState {
   final bool isActive;
-  final List<String> watchingFor;  // Behaviors being watched
+  /// Tricks the robot is currently watching for. Read-only mirror of the
+  /// robot's `tricks_available` (sent on `coaching_started`); falls back to
+  /// the default list below until the first event arrives. App cannot mutate
+  /// this — TRICKS is robot-side configuration with no runtime override API.
+  final List<String> watchingFor;
   final int rewardsGiven;
   final String? lastRewardBehavior;
   final DateTime? lastRewardTime;
@@ -104,22 +107,34 @@ class CoachNotifier extends StateNotifier<CoachState> {
         });
         break;
 
-      case 'coach_started':
-        print('Coach: started event');
+      case 'coaching_started':
+        // Build 93: Canonical event name is `coaching_started` (per robot
+        // coaching_engine.py:259-261). Robot broadcasts the authoritative
+        // TRICKS list as `tricks_available` — app's watchingFor is now a
+        // read-only mirror of robot defaults rather than something the app
+        // can mutate.
+        print('Coach: coaching_started event');
         final dogName = event.data['dog_name'] as String?;
-        final behaviors = (event.data['behaviors'] as List?)?.cast<String>();
+        final tricks = (event.data['tricks_available'] as List?)?.cast<String>();
         state = state.copyWith(
           isActive: true,
           dogName: dogName,
-          watchingFor: behaviors ?? state.watchingFor,
+          watchingFor: tricks ?? state.watchingFor,
           rewardsGiven: 0,
           clearError: true,
         );
         break;
 
-      case 'coach_stopped':
-        print('Coach: stopped event');
-        state = state.copyWith(isActive: false);
+      case 'mode_changed':
+        // Build 93: Unified teardown — coach mode exit is observed via
+        // mode_changed (away from 'coach') rather than the deprecated
+        // coach_stopped event. Robot's mode-change handler is the single
+        // source of truth for coach teardown.
+        final newMode = event.data['mode'] as String?;
+        if (newMode != null && newMode != 'coach' && state.isActive) {
+          print('Coach: mode changed to $newMode — deactivating');
+          state = state.copyWith(isActive: false);
+        }
         break;
 
       case 'detection':
@@ -136,38 +151,16 @@ class CoachNotifier extends StateNotifier<CoachState> {
 
   /// Start coach mode.
   ///
-  /// C2: [dogId] explicitly targets a single dog. If null, the caller chose
-  /// "any visible dog" mode and the robot will tag rewards with whichever
-  /// dog it actually detects. Pass [anyVisibleDog]=true to opt into the
-  /// null-dog mode without falling back to selectedDogProvider.
-  Future<void> startCoaching({
-    List<String>? behaviors,
-    String? dogId,
-    bool anyVisibleDog = false,
-  }) async {
-    final ws = _ref.read(websocketClientProvider);
-
-    // First set mode to coach
+  /// Build 93: Mode change is the entire start signal. The previous
+  /// `start_coach` WS frame's `behaviors` / `dog_id` / `dog_name` payload was
+  /// silently discarded by the robot — behaviors are robot-side configuration
+  /// (DEFAULT_TRICKS in coaching_engine.py) and dog identity comes from ArUco
+  /// vision. To pin a specific dog or trick for the session, send
+  /// `force_dog` / `force_trick` separately after the `mode_changed: coach`
+  /// event lands. The `behaviors` arg here is purely a local UI hint —
+  /// populates the watching-for chip wall, doesn't change robot behavior.
+  Future<void> startCoaching({List<String>? behaviors}) async {
     await _ref.read(modeStateProvider.notifier).setMode(RobotMode.coach);
-
-    // Resolve target dog: explicit dogId > "any visible" override > selected dog.
-    String? targetId;
-    String? targetName;
-    if (dogId != null) {
-      targetId = dogId;
-      final profile = _ref.read(dogProfilesProvider).where((p) => p.id == dogId);
-      targetName = profile.isNotEmpty ? profile.first.name : null;
-    } else if (!anyVisibleDog) {
-      final selectedDog = _ref.read(selectedDogProvider);
-      targetId = selectedDog?.id;
-      targetName = selectedDog?.name;
-    }
-
-    ws.sendCommand('start_coach', {
-      if (behaviors != null) 'behaviors': behaviors,
-      if (targetId != null) 'dog_id': targetId,
-      if (targetName != null) 'dog_name': targetName,
-    });
 
     state = state.copyWith(
       isActive: true,
@@ -178,27 +171,27 @@ class CoachNotifier extends StateNotifier<CoachState> {
     );
   }
 
-  /// Stop coach mode
-  /// Build 38: Only send stop_coach command. Let robot handle mode transition.
-  /// App should NOT send set_mode(idle) - that caused duplicate commands.
+  /// Stop coach mode.
+  ///
+  /// Build 93: Unified teardown via set_mode(idle) — the same code path the
+  /// home-screen EXIT button uses. The dedicated stop_coach WS command was a
+  /// no-op on the cloud-relay path the app actually uses, leaving coach mode
+  /// stuck running on the robot. Routing through set_mode hits the robot's
+  /// mode-change handler (the single source of truth for coach teardown via
+  /// engine.stop()) and avoids the FSM-override race that stop_coach didn't
+  /// participate in. Local isActive flips optimistically; the mode_changed
+  /// event arriving back from the robot also flips it as a safety net.
   void stopCoaching() {
-    final ws = _ref.read(websocketClientProvider);
-    ws.sendCommand('stop_coach', {});
-
+    _ref.read(modeStateProvider.notifier).setMode(RobotMode.idle, source: 'coach_exit');
     _rewardClearTimer?.cancel();
     state = state.copyWith(isActive: false);
-    // Mode will update when robot sends mode_changed event
   }
 
-  /// Update behaviors to watch for
-  void setBehaviors(List<String> behaviors) {
-    state = state.copyWith(watchingFor: behaviors);
-    if (state.isActive) {
-      // Update robot if coaching is active
-      final ws = _ref.read(websocketClientProvider);
-      ws.sendCommand('coach_set_behaviors', {'behaviors': behaviors});
-    }
-  }
+  // Build 93: setBehaviors() removed. The `coach_set_behaviors` WS command
+  // had no robot-side handler — TRICKS is loaded once at engine construction
+  // (coaching_engine.py, DEFAULT_TRICKS fallback) with no runtime mutation
+  // API. Robot broadcasts the authoritative list via the `tricks_available`
+  // field on `coaching_started`; the app treats watchingFor as read-only.
 
   /// Force a specific trick (Build 38)
   /// Sends force_trick command to robot - robot will start session for this trick

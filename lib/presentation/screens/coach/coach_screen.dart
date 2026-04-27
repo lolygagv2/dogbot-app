@@ -115,8 +115,10 @@ class _CoachScreenState extends ConsumerState<CoachScreen> {
                     IconButton(
                       icon: const Icon(Icons.arrow_back, color: Colors.white),
                       onPressed: () {
-                        // Build 38: Just navigate. No commands on back button.
-                        // Coach mode stays active on robot until user explicitly stops.
+                        // Build 93: Leaving the coach screen by any means exits
+                        // coach mode. stopCoaching() routes through set_mode(idle),
+                        // the only working teardown path on the cloud-relay route.
+                        ref.read(coachProvider.notifier).stopCoaching();
                         context.pop();
                       },
                     ),
@@ -150,14 +152,6 @@ class _CoachScreenState extends ConsumerState<CoachScreen> {
                         ],
                       ),
                     ),
-                    const SizedBox(width: 8),
-                    if (coachState.isActive)
-                      IconButton(
-                        icon: const Icon(Icons.stop, color: Colors.red),
-                        onPressed: () {
-                          ref.read(coachProvider.notifier).stopCoaching();
-                        },
-                      ),
                   ],
                 ),
               ),
@@ -278,7 +272,11 @@ class _CoachScreenState extends ConsumerState<CoachScreen> {
 
                     const SizedBox(height: 16),
 
-                    // Start/Stop button
+                    // Build 93: Unified Exit button — replaces "Stop Coaching".
+                    // Calls stopCoaching() (which routes through set_mode(idle))
+                    // and pops back to home. Same teardown path as the home-screen
+                    // EXIT button. If coach somehow isn't active, falls back to
+                    // a plain pop.
                     SizedBox(
                       width: double.infinity,
                       child: ElevatedButton.icon(
@@ -286,25 +284,22 @@ class _CoachScreenState extends ConsumerState<CoachScreen> {
                             ? () {
                                 if (coachState.isActive) {
                                   ref.read(coachProvider.notifier).stopCoaching();
-                                } else {
-                                  ref.read(coachProvider.notifier).startCoaching();
                                 }
+                                context.pop();
                               }
                             : null,
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: coachState.isActive
-                              ? Colors.red.shade700
-                              : Colors.green.shade700,
+                          backgroundColor: Colors.red.shade700,
                           foregroundColor: Colors.white,
                           padding: const EdgeInsets.symmetric(vertical: 14),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(12),
                           ),
                         ),
-                        icon: Icon(coachState.isActive ? Icons.stop : Icons.play_arrow),
-                        label: Text(
-                          coachState.isActive ? 'Stop Coaching' : 'Start Coaching',
-                          style: const TextStyle(
+                        icon: const Icon(Icons.stop_circle),
+                        label: const Text(
+                          'Exit Coach Mode',
+                          style: TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.bold,
                           ),
