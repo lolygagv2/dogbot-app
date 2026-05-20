@@ -93,18 +93,28 @@ class DeviceApi {
     }
   }
 
-  /// Unpair a device
-  Future<bool> unpairDevice(String deviceId) async {
+  /// Unpair a device. Returns the HTTP status code (200 on success, 404 when
+  /// the relay has no matching device — the pairing row is orphaned and the
+  /// caller can offer a local-dismiss fallback), or null on network error.
+  Future<int?> unpairDevice(String deviceId) async {
     try {
       final response = await _dio.post(
         ApiEndpoints.unpairDevice,
         data: {'device_id': deviceId},
         options: Options(headers: _authHeaders),
       );
-      return response.statusCode == 200;
+      return response.statusCode;
+    } on DioException catch (e) {
+      // HTTP errors come back here with a real statusCode (e.g. 404/409).
+      // Bubble that up rather than collapsing to a generic failure.
+      if (e.response?.statusCode != null) {
+        return e.response!.statusCode;
+      }
+      print('DeviceApi: unpair network error: $e');
+      return null;
     } catch (e) {
-      print('DeviceApi: Failed to unpair device: $e');
-      rethrow;
+      print('DeviceApi: unpair unexpected error: $e');
+      return null;
     }
   }
 }

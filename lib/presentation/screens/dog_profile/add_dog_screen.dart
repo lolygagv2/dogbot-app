@@ -5,9 +5,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:pdf/pdf.dart';
+import 'package:pdf/widgets.dart' as pw;
+import 'package:printing/printing.dart';
 
 import '../../../data/models/dog_profile.dart';
 import '../../../domain/providers/dog_profiles_provider.dart';
+import '../../widgets/aruco_marker_view.dart';
 
 /// Add Dog screen with stepper flow
 class AddDogScreen extends ConsumerStatefulWidget {
@@ -29,14 +33,31 @@ class _AddDogScreenState extends ConsumerState<AddDogScreen> {
   DogColor _selectedColor = DogColor.mixed;
   String? _photoPath;
   final _arucoController = TextEditingController();
+  // Build 94: true once we've auto-populated the ArUco field, so we don't
+  // overwrite the user's manual edits if they back-step into step 3 again.
+  bool _arucoAutofilled = false;
 
   @override
   void initState() {
     super.initState();
     if (widget.initialArucoId != null) {
       _arucoController.text = widget.initialArucoId.toString();
+      _arucoAutofilled = true;
     }
   }
+
+  /// Build 94: assign the next free DICT_4X4_1000 ID when the user first
+  /// reaches the ArUco step. Idempotent — only fills if the field is still
+  /// empty and the user hasn't touched it.
+  void _maybeAutofillAruco() {
+    if (_arucoAutofilled) return;
+    if (_arucoController.text.isNotEmpty) return;
+    final id = ref.read(dogProfilesProvider.notifier).nextFreeArucoId();
+    _arucoController.text = id.toString();
+    _arucoAutofilled = true;
+  }
+
+  int? get _currentArucoId => int.tryParse(_arucoController.text.trim());
 
   final _imagePicker = ImagePicker();
 
@@ -337,16 +358,17 @@ class _AddDogScreenState extends ConsumerState<AddDogScreen> {
   }
 
   Widget _buildArucoStep() {
+    final markerId = _currentArucoId;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const Text(
-          'If your dog wears an ARUCO marker tag, enter its ID:',
+          'WIM-Z uses an ARUCO marker on your dog\'s collar to tell them apart.',
           style: TextStyle(fontSize: 16),
         ),
         const SizedBox(height: 8),
         Text(
-          'This helps WIM-Z identify your specific dog when multiple dogs are present.',
+          'We picked the next free ID for you. Print this marker and attach it to the collar.',
           style: TextStyle(
             fontSize: 14,
             color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
@@ -362,8 +384,21 @@ class _AddDogScreenState extends ConsumerState<AddDogScreen> {
             prefixIcon: Icon(Icons.qr_code_2),
           ),
           keyboardType: TextInputType.number,
+          onChanged: (_) => setState(() {}), // refresh marker preview
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: 16),
+        if (markerId != null && markerId >= 0 && markerId <= 999) ...[
+          Center(child: ArucoMarkerView(markerId: markerId, size: 200)),
+          const SizedBox(height: 12),
+          Center(
+            child: OutlinedButton.icon(
+              onPressed: () => _printMarker(markerId, _nameController.text.trim()),
+              icon: const Icon(Icons.print),
+              label: const Text('Print marker'),
+            ),
+          ),
+          const SizedBox(height: 12),
+        ],
         Container(
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
@@ -380,7 +415,7 @@ class _AddDogScreenState extends ConsumerState<AddDogScreen> {
               const SizedBox(width: 12),
               Expanded(
                 child: Text(
-                  'Skip this step if you only have one dog or prefer to identify by appearance.',
+                  'You can clear this field to skip ArUco — useful if you only have one dog or prefer appearance-based ID.',
                   style: TextStyle(
                     fontSize: 13,
                     color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
@@ -391,6 +426,60 @@ class _AddDogScreenState extends ConsumerState<AddDogScreen> {
           ),
         ),
       ],
+    );
+  }
+
+  Future<void> _printMarker(int markerId, String dogName) async {
+    final bytes = await loadArucoMarkerBytes(markerId);
+    if (bytes == null) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Marker bundle not generated yet — run scripts/generate_aruco_markers.py',
+            ),
+          ),
+        );
+      }
+      return;
+    }
+
+    final pdfImage = pw.MemoryImage(bytes);
+    final pdf = pw.Document();
+    pdf.addPage(
+      pw.Page(
+        pageFormat: PdfPageFormat.letter,
+        build: (ctx) => pw.Center(
+          child: pw.Column(
+            mainAxisAlignment: pw.MainAxisAlignment.center,
+            children: [
+              pw.Text(
+                dogName.isNotEmpty ? dogName : 'Dog',
+                style: pw.TextStyle(
+                  fontSize: 32,
+                  fontWeight: pw.FontWeight.bold,
+                ),
+              ),
+              pw.SizedBox(height: 8),
+              pw.Text('ARUCO DICT_4X4_1000 — ID $markerId',
+                  style: const pw.TextStyle(fontSize: 14)),
+              pw.SizedBox(height: 24),
+              // 4 inches square — large enough for the robot's camera to lock
+              // onto from across a typical room.
+              pw.Container(
+                width: 4 * PdfPageFormat.inch,
+                height: 4 * PdfPageFormat.inch,
+                child: pw.Image(pdfImage, fit: pw.BoxFit.contain),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+
+    await Printing.layoutPdf(
+      onLayout: (PdfPageFormat format) async => pdf.save(),
+      name: 'WIM-Z ArUco $markerId.pdf',
     );
   }
 
@@ -486,6 +575,11 @@ class _AddDogScreenState extends ConsumerState<AddDogScreen> {
     }
 
     if (_currentStep < 3) {
+      // Build 94: assign the next free ArUco ID when first advancing into
+      // step 3, so the user sees a marker preview without having to type.
+      if (_currentStep == 2) {
+        _maybeAutofillAruco();
+      }
       setState(() => _currentStep++);
     } else {
       _saveDog();

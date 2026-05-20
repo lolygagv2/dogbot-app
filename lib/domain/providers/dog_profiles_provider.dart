@@ -245,6 +245,24 @@ class DogProfilesNotifier extends StateNotifier<List<DogProfile>> {
     }
   }
 
+  /// Lowest unused ArUco ID in [start, end] (inclusive). Used when adding a
+  /// new dog so each marker on the floor decodes to a unique profile. The
+  /// robot decodes DICT_4X4_1000 so we cap at 999.
+  ///
+  /// App-side allocation is fine for single-user single-device; if two
+  /// devices add at the exact same time they'd race, but the relay's
+  /// per-user unique-by-name guard catches duplicates downstream.
+  int nextFreeArucoId({int start = 0, int end = 999}) {
+    final used = <int>{
+      for (final p in state)
+        if (p.arucoMarkerId != null) p.arucoMarkerId!,
+    };
+    for (var id = start; id <= end; id++) {
+      if (!used.contains(id)) return id;
+    }
+    return end; // dictionary full — should be unreachable in practice
+  }
+
   /// Add a new dog profile (rejects duplicate names)
   /// Saves locally, syncs to relay server, and tells robot to reload.
   Future<bool> addProfile(DogProfile profile) async {

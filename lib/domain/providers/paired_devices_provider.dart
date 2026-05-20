@@ -1,11 +1,19 @@
 import 'dart:async';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../core/network/websocket_client.dart';
 import '../../core/services/local_connection_service.dart';
 import '../../data/datasources/device_api.dart';
+import 'auth_provider.dart';
 import 'device_provider.dart';
+
+/// Outcome of [PairedDevicesNotifier.unpairDevice]. [orphaned] means the relay
+/// reported 404 — i.e. the pairing row points to a device that doesn't exist
+/// server-side and can never be cleanly unpaired. The UI can offer to hide it
+/// locally via [PairedDevicesNotifier.dismissLocally].
+enum UnpairOutcome { success, orphaned, error }
 
 /// State for paired devices
 class PairedDevicesState {
@@ -52,8 +60,43 @@ class PairedDevicesNotifier extends StateNotifier<PairedDevicesState> {
   final Ref _ref;
   StreamSubscription? _deviceStatusSubscription;
 
+  /// Build 94: device IDs the user has chosen to hide from the list because
+  /// the relay refused to unpair them (orphaned pairing rows pointing at
+  /// non-existent devices). Loaded from SharedPrefs at startup; user-scoped
+  /// by email to match the rest of the app's storage conventions.
+  Set<String> _dismissedDeviceIds = {};
+
+  String _dismissedKeyForUser(String? email) =>
+      'dismissed_devices_${email ?? 'anonymous'}';
+
   PairedDevicesNotifier(this._ref) : super(const PairedDevicesState()) {
     _listenToDeviceStatus();
+    _loadDismissedDevices();
+  }
+
+  Future<void> _loadDismissedDevices() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final email = _ref.read(authProvider).email;
+      _dismissedDeviceIds =
+          (prefs.getStringList(_dismissedKeyForUser(email)) ?? const [])
+              .toSet();
+    } catch (e) {
+      print('PairedDevices: failed to load dismissed list: $e');
+    }
+  }
+
+  Future<void> _saveDismissedDevices() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final email = _ref.read(authProvider).email;
+      await prefs.setStringList(
+        _dismissedKeyForUser(email),
+        _dismissedDeviceIds.toList(),
+      );
+    } catch (e) {
+      print('PairedDevices: failed to save dismissed list: $e');
+    }
   }
 
   /// Listen to WebSocket device status updates
@@ -83,14 +126,21 @@ class PairedDevicesNotifier extends StateNotifier<PairedDevicesState> {
       final api = _ref.read(deviceApiProvider);
       final devices = await api.getDevices();
 
+      // Build 94: hide pairings the user dismissed locally because the relay
+      // refused to unpair them. The orphaned row stays on the relay, but the
+      // UI is no longer stuck.
+      final visible = devices
+          .where((d) => !_dismissedDeviceIds.contains(d.deviceId))
+          .toList();
+
       // Initialize online status from device data
       final onlineStatus = <String, bool>{};
-      for (final device in devices) {
+      for (final device in visible) {
         onlineStatus[device.deviceId] = device.isOnline;
       }
 
       state = state.copyWith(
-        devices: devices,
+        devices: visible,
         isLoading: false,
         deviceOnlineStatus: onlineStatus,
       );
@@ -130,45 +180,54 @@ class PairedDevicesNotifier extends StateNotifier<PairedDevicesState> {
     }
   }
 
-  /// Unpair a device
-  Future<bool> unpairDevice(String deviceId) async {
+  /// Unpair a device. Returns an [UnpairOutcome] so the UI can offer the
+  /// local-dismiss path on [UnpairOutcome.orphaned] (relay 404, dead pairing).
+  Future<UnpairOutcome> unpairDevice(String deviceId) async {
     state = state.copyWith(isLoading: true, error: null);
 
-    try {
-      final api = _ref.read(deviceApiProvider);
-      final success = await api.unpairDevice(deviceId);
+    final api = _ref.read(deviceApiProvider);
+    final code = await api.unpairDevice(deviceId);
 
-      if (success) {
-        // Check if unpaired device was the active one
-        final currentDeviceId = _ref.read(deviceIdProvider);
-        if (currentDeviceId == deviceId) {
-          // Clear active device or set to first remaining device
-          final remainingDevices = state.devices
-              .where((d) => d.deviceId != deviceId)
-              .toList();
-          if (remainingDevices.isNotEmpty) {
-            _ref
-                .read(deviceIdProvider.notifier)
-                .setDeviceId(remainingDevices.first.deviceId);
-          }
-        }
+    if (code == 200) {
+      _onDeviceRemovedFromList(deviceId);
+      await loadDevices();
+      return UnpairOutcome.success;
+    }
 
-        // Reload device list
-        await loadDevices();
-        return true;
-      } else {
-        state = state.copyWith(
-          isLoading: false,
-          error: 'Failed to unpair device',
-        );
-        return false;
-      }
-    } catch (e) {
-      state = state.copyWith(
-        isLoading: false,
-        error: _parseError(e),
-      );
-      return false;
+    if (code == 404) {
+      // Pairing row exists on the relay but the device record doesn't —
+      // server can't (or won't) finish the delete. Let the UI offer to
+      // hide it locally.
+      state = state.copyWith(isLoading: false);
+      return UnpairOutcome.orphaned;
+    }
+
+    state = state.copyWith(
+      isLoading: false,
+      error: code == null
+          ? 'Network error. Check your connection.'
+          : 'Failed to unpair device (status $code)',
+    );
+    return UnpairOutcome.error;
+  }
+
+  /// Build 94: hide a device locally — used when the relay can't unpair it.
+  /// The pairing row stays orphaned server-side, but the user is unblocked.
+  Future<void> dismissLocally(String deviceId) async {
+    _dismissedDeviceIds.add(deviceId);
+    await _saveDismissedDevices();
+    _onDeviceRemovedFromList(deviceId);
+    await loadDevices();
+  }
+
+  /// If the active device just disappeared from the list, fall back to
+  /// whichever paired device is still around (or clear it).
+  void _onDeviceRemovedFromList(String deviceId) {
+    final currentDeviceId = _ref.read(deviceIdProvider);
+    if (currentDeviceId != deviceId) return;
+    final remaining = state.devices.where((d) => d.deviceId != deviceId);
+    if (remaining.isNotEmpty) {
+      _ref.read(deviceIdProvider.notifier).setDeviceId(remaining.first.deviceId);
     }
   }
 

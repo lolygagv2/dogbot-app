@@ -1,6 +1,8 @@
 import 'dart:async';
+import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:flutter_joystick/flutter_joystick.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 
@@ -218,8 +220,8 @@ class _DriveScreenState extends ConsumerState<DriveScreen> {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
-                    // Drive D-pad (left) - press and hold to accelerate
-                    const _MotorDpad(),
+                    // Drive virtual analog joystick (left)
+                    const _MotorJoystick(),
 
                     // Center controls - treat, center, PTT mic
                     Column(
@@ -400,95 +402,109 @@ class _SpeedBar extends StatelessWidget {
   }
 }
 
-/// Motor D-pad control with acceleration on hold
-/// Layout:     [↑]
-///        [←] [■] [→]
-///            [↓]
-class _MotorDpad extends ConsumerStatefulWidget {
-  const _MotorDpad();
+/// Build 94: virtual analog joystick → arcade-mixed motor control.
+///
+/// Stick (x, y) ∈ [-1, 1]² with y inverted so forward = +y.
+/// A 10% radial deadzone suppresses idle drift; magnitudes above the
+/// deadzone are linearly remapped to [0, 1] so there is no step at the
+/// boundary. Arcade mix: left = y + x, right = y - x (clamped to ±1).
+/// A 50 ms ticker ramps current → target at 1/[_rampMs] per ms, giving an
+/// approximately 200 ms approach time. The ticker keeps running for one
+/// full ramp after release so the stop is smooth rather than jolting.
+class _MotorJoystick extends ConsumerStatefulWidget {
+  const _MotorJoystick();
 
   @override
-  ConsumerState<_MotorDpad> createState() => _MotorDpadState();
+  ConsumerState<_MotorJoystick> createState() => _MotorJoystickState();
 }
 
-class _MotorDpadState extends ConsumerState<_MotorDpad> {
-  Timer? _accelerationTimer;
-  double _currentSpeed = 0.0;
-  _MotorDirection? _activeDirection;
+class _MotorJoystickState extends ConsumerState<_MotorJoystick> {
+  static const double _deadzone = 0.10;
+  static const int _rampMs = 200;
+  static const Duration _tick = Duration(milliseconds: 50);
 
-  // Speed ramp: 20% -> 40% -> 60% -> 80% -> 100% over 1.5 seconds (100ms intervals = 15 steps)
-  static const double _startSpeed = 0.2;
-  static const double _maxSpeed = 1.0;
-  static const double _speedIncrement = (_maxSpeed - _startSpeed) / 15; // ~0.053 per step
-  static const Duration _updateInterval = Duration(milliseconds: 100);
+  Timer? _rampTimer;
+  double _targetLeft = 0.0;
+  double _targetRight = 0.0;
+  double _currentLeft = 0.0;
+  double _currentRight = 0.0;
+  bool _stickHeld = false;
 
   @override
   void dispose() {
-    _accelerationTimer?.cancel();
+    _rampTimer?.cancel();
     super.dispose();
   }
 
-  void _onDirectionStart(_MotorDirection direction) {
-    _activeDirection = direction;
-    _currentSpeed = _startSpeed;
-    _sendMotorCommand();
+  void _onStick(StickDragDetails details) {
+    final rawX = details.x;
+    final rawY = -details.y; // screen-coords → forward-positive
+    final mag = math.sqrt(rawX * rawX + rawY * rawY);
 
-    // Start acceleration timer
-    _accelerationTimer?.cancel();
-    _accelerationTimer = Timer.periodic(_updateInterval, (_) {
-      if (_currentSpeed < _maxSpeed) {
-        _currentSpeed = (_currentSpeed + _speedIncrement).clamp(0.0, _maxSpeed);
-      }
-      _sendMotorCommand();
-    });
+    double x = 0.0;
+    double y = 0.0;
+    if (mag > _deadzone) {
+      // Linear remap [_deadzone, 1] → [0, 1], scale per-axis to preserve angle.
+      final scale = ((mag - _deadzone) / (1.0 - _deadzone)).clamp(0.0, 1.0) / mag;
+      x = rawX * scale;
+      y = rawY * scale;
+    }
+
+    _targetLeft = (y + x).clamp(-1.0, 1.0);
+    _targetRight = (y - x).clamp(-1.0, 1.0);
+    _stickHeld = _targetLeft != 0.0 || _targetRight != 0.0;
+
+    _ensureRamp();
   }
 
-  void _onDirectionEnd() {
-    _accelerationTimer?.cancel();
-    _accelerationTimer = null;
-    _activeDirection = null;
-    _currentSpeed = 0.0;
-
-    // Send one stop command
-    ref.read(motorControlProvider.notifier).setMotorSpeeds(0, 0);
+  void _onStickReleased() {
+    _stickHeld = false;
+    _targetLeft = 0.0;
+    _targetRight = 0.0;
+    _ensureRamp();
   }
 
-  void _sendMotorCommand() {
-    if (_activeDirection == null) return;
+  void _ensureRamp() {
+    if (_rampTimer != null) return;
+    _rampTimer = Timer.periodic(_tick, (_) => _onRampTick());
+  }
 
-    final motorControl = ref.read(motorControlProvider.notifier);
-    final speed = _currentSpeed;
+  void _onRampTick() {
+    const stepPerTick = 1.0 / (_rampMs / 50.0); // 50 ms tick over 200 ms ramp = 0.25
+    _currentLeft = _approach(_currentLeft, _targetLeft, stepPerTick);
+    _currentRight = _approach(_currentRight, _targetRight, stepPerTick);
 
-    switch (_activeDirection!) {
-      case _MotorDirection.forward:
-        motorControl.setMotorSpeeds(speed, speed);
-        break;
-      case _MotorDirection.backward:
-        motorControl.setMotorSpeeds(-speed, -speed);
-        break;
-      case _MotorDirection.left:
-        // Turn left: left motor slow/reverse, right motor forward
-        motorControl.setMotorSpeeds(-speed, speed);
-        break;
-      case _MotorDirection.right:
-        // Turn right: left motor forward, right motor slow/reverse
-        motorControl.setMotorSpeeds(speed, -speed);
-        break;
+    ref
+        .read(motorControlProvider.notifier)
+        .setMotorSpeeds(_currentLeft, _currentRight);
+
+    if (!_stickHeld && _currentLeft == 0.0 && _currentRight == 0.0) {
+      _rampTimer?.cancel();
+      _rampTimer = null;
     }
   }
 
+  static double _approach(double current, double target, double step) {
+    final diff = target - current;
+    if (diff.abs() <= step) return target;
+    return current + (diff.isNegative ? -step : step);
+  }
+
   void _emergencyStop() {
-    _accelerationTimer?.cancel();
-    _accelerationTimer = null;
-    _activeDirection = null;
-    _currentSpeed = 0.0;
+    _rampTimer?.cancel();
+    _rampTimer = null;
+    _targetLeft = _targetRight = 0.0;
+    _currentLeft = _currentRight = 0.0;
+    _stickHeld = false;
     ref.read(motorControlProvider.notifier).emergencyStop();
   }
 
   @override
   Widget build(BuildContext context) {
     final motorState = ref.watch(motorControlProvider);
-    final speedPercent = (_currentSpeed * 100).round();
+    // Display speed = the larger-magnitude wheel, so pure turns still show a value.
+    final mag = math.max(_currentLeft.abs(), _currentRight.abs());
+    final speedPercent = (mag * 100).round();
 
     return Column(
       mainAxisSize: MainAxisSize.min,
@@ -503,83 +519,32 @@ class _MotorDpadState extends ConsumerState<_MotorDpad> {
           ),
         ),
         const SizedBox(height: 4),
-        Container(
-          width: 148,
-          height: 148,
-          decoration: BoxDecoration(
-            color: Colors.black38,
-            borderRadius: BorderRadius.circular(78),
-          ),
-          child: Stack(
-            clipBehavior: Clip.none,
-            alignment: Alignment.center,
-            children: [
-              // Up button (forward)
-              Positioned(
-                top: -4,
-                left: 0,
-                right: 0,
-                child: Center(
-                  child: _MotorDpadButton(
-                    icon: Icons.keyboard_arrow_up,
-                    isActive: _activeDirection == _MotorDirection.forward,
-                    onPressStart: () => _onDirectionStart(_MotorDirection.forward),
-                    onPressEnd: _onDirectionEnd,
-                  ),
-                ),
+        Stack(
+          clipBehavior: Clip.none,
+          children: [
+            SizedBox(
+              width: 148,
+              height: 148,
+              child: Joystick(
+                mode: JoystickMode.all,
+                period: _tick,
+                listener: _onStick,
+                onStickDragEnd: _onStickReleased,
               ),
-              // Down button (backward)
-              Positioned(
-                bottom: -4,
-                left: 0,
-                right: 0,
-                child: Center(
-                  child: _MotorDpadButton(
-                    icon: Icons.keyboard_arrow_down,
-                    isActive: _activeDirection == _MotorDirection.backward,
-                    onPressStart: () => _onDirectionStart(_MotorDirection.backward),
-                    onPressEnd: _onDirectionEnd,
-                  ),
-                ),
-              ),
-              // Left button (turn left)
-              Positioned(
-                left: -4,
-                top: 0,
-                bottom: 0,
-                child: Center(
-                  child: _MotorDpadButton(
-                    icon: Icons.keyboard_arrow_left,
-                    isActive: _activeDirection == _MotorDirection.left,
-                    onPressStart: () => _onDirectionStart(_MotorDirection.left),
-                    onPressEnd: _onDirectionEnd,
-                  ),
-                ),
-              ),
-              // Right button (turn right)
-              Positioned(
-                right: -4,
-                top: 0,
-                bottom: 0,
-                child: Center(
-                  child: _MotorDpadButton(
-                    icon: Icons.keyboard_arrow_right,
-                    isActive: _activeDirection == _MotorDirection.right,
-                    onPressStart: () => _onDirectionStart(_MotorDirection.right),
-                    onPressEnd: _onDirectionEnd,
-                  ),
-                ),
-              ),
-              // Center button (emergency stop)
-              GestureDetector(
+            ),
+            // Emergency stop / speed readout pinned to the top-right of the base.
+            Positioned(
+              top: -4,
+              right: -4,
+              child: GestureDetector(
                 onTap: _emergencyStop,
                 child: Container(
-                  width: 40,
-                  height: 40,
+                  width: 36,
+                  height: 36,
                   decoration: BoxDecoration(
                     color: motorState.isMoving
-                        ? Colors.red.withOpacity(0.8)
-                        : AppTheme.primary.withOpacity(0.3),
+                        ? Colors.red.withOpacity(0.85)
+                        : AppTheme.primary.withOpacity(0.5),
                     shape: BoxShape.circle,
                     border: Border.all(
                       color: motorState.isMoving ? Colors.red : AppTheme.primary,
@@ -596,61 +561,14 @@ class _MotorDpadState extends ConsumerState<_MotorDpad> {
                               fontWeight: FontWeight.bold,
                             ),
                           )
-                        : const Icon(Icons.stop, color: Colors.white, size: 20),
+                        : const Icon(Icons.stop, color: Colors.white, size: 16),
                   ),
                 ),
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ],
-    );
-  }
-}
-
-enum _MotorDirection { forward, backward, left, right }
-
-/// D-pad button for motor control with press/release detection
-class _MotorDpadButton extends StatelessWidget {
-  final IconData icon;
-  final bool isActive;
-  final VoidCallback onPressStart;
-  final VoidCallback onPressEnd;
-
-  const _MotorDpadButton({
-    required this.icon,
-    required this.isActive,
-    required this.onPressStart,
-    required this.onPressEnd,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      onTapDown: (_) => onPressStart(),
-      onTapUp: (_) => onPressEnd(),
-      onTapCancel: onPressEnd,
-      child: Container(
-        width: 56,
-        height: 56,
-        color: Colors.transparent,
-        alignment: Alignment.center,
-        child: Container(
-          width: 44,
-          height: 44,
-          decoration: BoxDecoration(
-            color: isActive
-                ? AppTheme.primary
-                : AppTheme.primary.withOpacity(0.7),
-            shape: BoxShape.circle,
-            boxShadow: isActive
-                ? [BoxShadow(color: AppTheme.primary.withOpacity(0.5), blurRadius: 8)]
-                : null,
-          ),
-          child: Icon(icon, color: Colors.white, size: 28),
-        ),
-      ),
     );
   }
 }

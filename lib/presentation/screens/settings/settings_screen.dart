@@ -389,8 +389,15 @@ class _InlineDeviceList extends ConsumerWidget {
                 ),
               );
             },
-            onDismissed: (_) {
-              ref.read(pairedDevicesProvider.notifier).unpairDevice(device.deviceId);
+            onDismissed: (_) async {
+              // Build 94: swipe-to-unpair. If the relay can't find the device
+              // (orphaned pairing row), the user has already confirmed via
+              // the swipe dialog — auto-hide locally instead of re-prompting.
+              final notifier = ref.read(pairedDevicesProvider.notifier);
+              final outcome = await notifier.unpairDevice(device.deviceId);
+              if (outcome == UnpairOutcome.orphaned) {
+                await notifier.dismissLocally(device.deviceId);
+              }
             },
             child: ListTile(
               leading: Stack(

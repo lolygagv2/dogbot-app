@@ -1,7 +1,7 @@
 name: wimz_app
 description: WIM-Z Robotic Dog Trainer - Mobile Control App
 publish_to: 'none'
-version: 1.0.0+93
+version: 1.0.0+94
  
 environment:
   sdk: '>=3.2.0 <4.0.0'
@@ -63,8 +63,13 @@ dependencies:
   # ============ File Picking ============
   file_picker: ^8.0.0
 
+  # ============ Printing ============
+  printing: ^5.13.4                # ArUco marker print/share via OS print dialog
+  pdf: ^3.11.1                     # PDF document construction (used with printing)
+
   # ============ Storage ============
   shared_preferences: ^2.2.2
+  flutter_secure_storage: ^9.2.2  # iOS Keychain / Android Keystore for JWT
   path_provider: ^2.1.2
   gal: ^2.3.0
   share_plus: ^10.1.4
@@ -106,6 +111,8 @@ flutter:
     - assets/icons/
     - assets/animations/    # For Rive/Lottie files
     # - assets/fonts/
+    # After running scripts/generate_aruco_markers.py, uncomment:
+    # - assets/markers/aruco_4x4_1000/
 
   # fonts:
   #   - family: SpaceMono

@@ -39,14 +39,11 @@ final motorControlProvider =
 /// Motor control notifier - handles joystick input
 class MotorControlNotifier extends StateNotifier<MotorState> {
   final Ref _ref;
-  Timer? _sendTimer;
-  bool _hasPendingCommand = false;
-  double _lastSentLeft = 0.0;
-  double _lastSentRight = 0.0;
 
   MotorControlNotifier(this._ref) : super(const MotorState());
 
-  /// Set motor speeds directly (for D-pad control)
+  /// Set motor speeds. The joystick widget calls this on its 20 Hz ramp tick;
+  /// each call goes straight out the WebRTC data channel (no debounce).
   /// left/right: -1.0 to 1.0
   void setMotorSpeeds(double left, double right) {
     state = MotorState(
@@ -57,15 +54,12 @@ class MotorControlNotifier extends StateNotifier<MotorState> {
     _sendCommandImmediate();
   }
 
-  /// Send motor command immediately (bypasses timer for D-pad)
   void _sendCommandImmediate() {
     if (!_ref.read(connectionProvider).isConnected) return;
 
+    // Positive trim slows the right motor (fixes left drift); negative speeds it up.
     final trim = _ref.read(motorTrimProvider);
     final adjustedRight = (state.right * (1 - trim)).clamp(-1.0, 1.0);
-
-    _lastSentLeft = state.left;
-    _lastSentRight = state.right;
 
     final webrtc = _ref.read(webrtcProvider.notifier);
     if (webrtc.isDataChannelOpen) {
@@ -73,47 +67,12 @@ class MotorControlNotifier extends StateNotifier<MotorState> {
     }
   }
 
-  /// Set motor speeds from joystick input (legacy - kept for compatibility)
-  /// x: left/right (-1 to 1), y: forward/backward (-1 to 1)
-  void setFromJoystick(double x, double y) {
-    // Convert to differential drive
-    final left = (y + x).clamp(-1.0, 1.0);
-    final right = (y - x).clamp(-1.0, 1.0);
-
-    // Only update state if values changed significantly (reduces jitter)
-    const threshold = 0.02;
-    final leftChanged = (left - state.left).abs() > threshold;
-    final rightChanged = (right - state.right).abs() > threshold;
-
-    if (!leftChanged && !rightChanged) return;
-
-    state = MotorState(
-      left: left,
-      right: right,
-      isMoving: left.abs() > 0.05 || right.abs() > 0.05,
-    );
-
-    // Only mark pending if values differ from last sent values
-    if ((left - _lastSentLeft).abs() > threshold ||
-        (right - _lastSentRight).abs() > threshold) {
-      _hasPendingCommand = true;
-    }
-    _ensureSendTimer();
-  }
-
-  /// Stop motors immediately
-  void stop() {
-    state = const MotorState(left: 0, right: 0, isMoving: false);
-    _sendCommand();
-  }
-
-  /// Emergency stop
+  /// Emergency stop — zeros state and sends the dedicated stop frame on the
+  /// lowest-latency channel available.
   void emergencyStop() {
     state = const MotorState(left: 0, right: 0, isMoving: false);
-    _sendTimer?.cancel();
 
     if (_ref.read(connectionProvider).isConnected) {
-      // Send via WebRTC for lowest latency, fallback to WebSocket
       final webrtc = _ref.read(webrtcProvider.notifier);
       if (webrtc.isDataChannelOpen) {
         webrtc.sendEmergencyStop();
@@ -121,44 +80,6 @@ class MotorControlNotifier extends StateNotifier<MotorState> {
         _ref.read(websocketClientProvider).sendEmergencyStop();
       }
     }
-  }
-
-  void _ensureSendTimer() {
-    if (_sendTimer != null) return;
-
-    // Send commands at fixed rate (20Hz)
-    _sendTimer = Timer.periodic(AppConstants.joystickSendInterval, (_) {
-      if (_hasPendingCommand) {
-        _sendCommand();
-        _hasPendingCommand = false;
-      }
-    });
-  }
-
-  void _sendCommand() {
-    if (!_ref.read(connectionProvider).isConnected) return;
-
-    // Apply motor trim to right motor
-    // Positive trim slows right motor (fixes left drift)
-    // Negative trim speeds up right motor (fixes right drift)
-    final trim = _ref.read(motorTrimProvider);
-    final adjustedRight = (state.right * (1 - trim)).clamp(-1.0, 1.0);
-
-    // Track last sent values to avoid redundant sends
-    _lastSentLeft = state.left;
-    _lastSentRight = state.right;
-
-    // Use WebRTC data channel for lowest latency (direct to robot)
-    final webrtc = _ref.read(webrtcProvider.notifier);
-    if (webrtc.isDataChannelOpen) {
-      webrtc.sendMotorCommand(state.left, adjustedRight);
-    }
-  }
-
-  @override
-  void dispose() {
-    _sendTimer?.cancel();
-    super.dispose();
   }
 }
 

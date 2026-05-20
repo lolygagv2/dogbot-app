@@ -5,11 +5,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import 'core/network/websocket_client.dart';
+import 'domain/providers/auth_provider.dart';
 import 'domain/providers/connection_provider.dart';
 import 'domain/providers/notifications_provider.dart';
 import 'domain/providers/settings_provider.dart';
 import 'domain/providers/webrtc_provider.dart';
 import 'presentation/screens/auth/login_screen.dart';
+import 'presentation/screens/splash_screen.dart';
 import 'presentation/screens/home/home_screen.dart';
 import 'presentation/screens/drive/drive_screen.dart';
 import 'presentation/screens/missions/missions_screen.dart';
@@ -43,10 +45,32 @@ enum NavTab {
 final _rootNavigatorKey = GlobalKey<NavigatorState>();
 final _shellNavigatorKey = GlobalKey<NavigatorState>();
 
-final _router = GoRouter(
+/// Builds the app router. Lives inside [_WimzAppState] so the redirect can
+/// read the current auth state from Riverpod.
+GoRouter _buildRouter(WidgetRef ref) => GoRouter(
   navigatorKey: _rootNavigatorKey,
-  initialLocation: '/login',
+  initialLocation: '/',
+  redirect: (context, state) {
+    final auth = ref.read(authProvider);
+    // While silent re-auth is in flight, stay on splash. The splash screen
+    // does the routing once bootstrapping completes.
+    if (auth.bootstrapping) {
+      return state.uri.path == '/' ? null : '/';
+    }
+    // Gate /login on isAuthenticated: an already-signed-in user shouldn't
+    // see the login screen.
+    if (state.uri.path == '/login' && auth.isAuthenticated) {
+      return '/home';
+    }
+    return null;
+  },
   routes: [
+    // Splash / silent re-auth gate (initial location)
+    GoRoute(
+      path: '/',
+      builder: (context, state) => const SplashScreen(),
+    ),
+
     // Login screen (no bottom nav)
     GoRoute(
       path: '/login',
@@ -504,11 +528,13 @@ class _WimzAppState extends ConsumerState<WimzApp> with WidgetsBindingObserver {
   /// half-dead PeerConnection on foreground.
   static const Duration _backgroundTeardownDelay = Duration(seconds: 30);
   Timer? _backgroundTeardownTimer;
+  late final GoRouter _router;
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    _router = _buildRouter(ref);
   }
 
   @override

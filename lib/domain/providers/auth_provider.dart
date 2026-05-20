@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../../core/storage/secure_token_storage.dart';
 import '../../data/datasources/auth_api.dart';
 import 'connection_provider.dart';
 import 'dog_profiles_provider.dart';
@@ -11,6 +12,9 @@ import 'voice_commands_provider.dart';
 
 /// Auth state
 class AuthState {
+  // Build 94: true until the silent-reauth probe finishes. The splash screen
+  // waits on this so we don't flash /login for already-authenticated users.
+  final bool bootstrapping;
   final bool isLoading;
   final bool isAuthenticated;
   final String? token;
@@ -22,6 +26,7 @@ class AuthState {
   final String? errorMessage;
 
   const AuthState({
+    this.bootstrapping = true,
     this.isLoading = false,
     this.isAuthenticated = false,
     this.token,
@@ -31,6 +36,7 @@ class AuthState {
   });
 
   AuthState copyWith({
+    bool? bootstrapping,
     bool? isLoading,
     bool? isAuthenticated,
     String? token,
@@ -39,6 +45,7 @@ class AuthState {
     String? errorMessage,
   }) {
     return AuthState(
+      bootstrapping: bootstrapping ?? this.bootstrapping,
       isLoading: isLoading ?? this.isLoading,
       isAuthenticated: isAuthenticated ?? this.isAuthenticated,
       token: token ?? this.token,
@@ -49,8 +56,9 @@ class AuthState {
   }
 }
 
-/// Storage keys
-const _keyAuthToken = 'auth_token';
+/// Storage keys. The JWT lives in secure storage (Keychain/Keystore); email
+/// and userId are non-secret and stay in SharedPreferences.
+const _keyAuthToken = 'auth_token'; // legacy SharedPrefs key — read once for migration
 const _keyAuthEmail = 'auth_email';
 const _keyAuthUserId = 'auth_user_id';
 
@@ -62,24 +70,65 @@ final authProvider = StateNotifierProvider<AuthNotifier, AuthState>((ref) {
 /// Auth state notifier
 class AuthNotifier extends StateNotifier<AuthState> {
   final Ref _ref;
+  final SecureTokenStorage _secureStorage = SecureTokenStorage();
 
   AuthNotifier(this._ref) : super(const AuthState()) {
     _loadSavedAuth();
   }
 
-  /// Load saved auth from storage
+  /// Load saved auth from storage and silent-reauth via /api/auth/validate.
+  ///
+  /// Build 94: JWT now lives in flutter_secure_storage. On first launch after
+  /// upgrade we migrate any token still in SharedPreferences. We treat the
+  /// token as valid only if /validate returns 200; an expired/revoked token
+  /// is cleared so the user is shown the login screen instead of failing
+  /// downstream API calls.
   Future<void> _loadSavedAuth() async {
-    final prefs = await SharedPreferences.getInstance();
-    final token = prefs.getString(_keyAuthToken);
-    final email = prefs.getString(_keyAuthEmail);
-    final userId = prefs.getString(_keyAuthUserId);
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final email = prefs.getString(_keyAuthEmail);
+      final userId = prefs.getString(_keyAuthUserId);
 
-    if (token != null) {
+      String? token = await _secureStorage.readToken();
+
+      // One-time migration: if the legacy SharedPrefs token exists, copy it
+      // into secure storage and remove the plaintext copy.
+      if (token == null) {
+        final legacyToken = prefs.getString(_keyAuthToken);
+        if (legacyToken != null && legacyToken.isNotEmpty) {
+          await _secureStorage.writeToken(legacyToken);
+          await prefs.remove(_keyAuthToken);
+          token = legacyToken;
+        }
+      } else {
+        // Token already in secure storage — clean up any stale SharedPrefs
+        // copy left behind by a previous build.
+        await prefs.remove(_keyAuthToken);
+      }
+
+      if (token == null || token.isEmpty) {
+        state = state.copyWith(bootstrapping: false);
+        return;
+      }
+
+      // Silent re-auth: only trust the token if the relay still accepts it.
+      final api = _ref.read(authApiProvider);
+      final ok = await api.validateToken(token);
+
+      if (!ok) {
+        await _secureStorage.deleteToken();
+        await prefs.remove(_keyAuthEmail);
+        await prefs.remove(_keyAuthUserId);
+        state = state.copyWith(bootstrapping: false);
+        return;
+      }
+
       // Cloud user restoring session — ensure local mode flag is off
       // so Manage Devices shows in settings (Build 83 fix)
       _ref.read(settingsProvider.notifier).setLocalModeEnabled(false);
 
       state = state.copyWith(
+        bootstrapping: false,
         isAuthenticated: true,
         token: token,
         email: email,
@@ -94,6 +143,9 @@ class AuthNotifier extends StateNotifier<AuthState> {
       // A1/A2/A3: hydrate cross-device data from relay. Best-effort —
       // failures (offline, 401, etc.) shouldn't block auth restoration.
       _hydrateAllFromRelay(scenario: 'restore');
+    } catch (e) {
+      print('Auth: silent re-auth failed: $e');
+      state = state.copyWith(bootstrapping: false);
     }
   }
 
@@ -120,10 +172,10 @@ class AuthNotifier extends StateNotifier<AuthState> {
     }
   }
 
-  /// Save auth to storage
+  /// Save auth to storage. JWT → secure storage; email/userId → SharedPrefs.
   Future<void> _saveAuth(String token, String? email, String? userId) async {
+    await _secureStorage.writeToken(token);
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_keyAuthToken, token);
     if (email != null) {
       await prefs.setString(_keyAuthEmail, email);
     }
@@ -134,10 +186,11 @@ class AuthNotifier extends StateNotifier<AuthState> {
     }
   }
 
-  /// Clear saved auth
+  /// Clear saved auth from both stores.
   Future<void> _clearAuth() async {
+    await _secureStorage.deleteToken();
     final prefs = await SharedPreferences.getInstance();
-    await prefs.remove(_keyAuthToken);
+    await prefs.remove(_keyAuthToken); // legacy
     await prefs.remove(_keyAuthEmail);
     await prefs.remove(_keyAuthUserId);
   }
@@ -153,6 +206,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
       await _saveAuth(response.token, email, response.userId);
 
       state = state.copyWith(
+        bootstrapping: false,
         isLoading: false,
         isAuthenticated: true,
         token: response.token,
@@ -193,6 +247,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
       await _saveAuth(response.token, email, response.userId);
 
       state = state.copyWith(
+        bootstrapping: false,
         isLoading: false,
         isAuthenticated: true,
         token: response.token,
@@ -237,7 +292,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
 
     // Clear stored auth
     await _clearAuth();
-    state = const AuthState();
+    state = const AuthState(bootstrapping: false);
   }
 
   /// Clear error message

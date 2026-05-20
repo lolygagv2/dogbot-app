@@ -33,11 +33,25 @@ class _DevicePairingScreenState extends ConsumerState<DevicePairingScreen> {
     super.dispose();
   }
 
+  /// Build 94: client-side guard against pairing garbage that the relay will
+  /// happily store but later refuse to clean up.
+  static final _deviceIdRegex = RegExp(r'^[a-zA-Z0-9][a-zA-Z0-9_-]{2,49}$');
+
   Future<void> _pairDevice() async {
-    final deviceId = _deviceIdController.text.trim();
+    final deviceId = _deviceIdController.text.trim().toLowerCase();
     if (deviceId.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Please enter a device ID')),
+      );
+      return;
+    }
+    if (!_deviceIdRegex.hasMatch(deviceId)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Device ID must be 3–50 characters: letters, numbers, _ or -',
+          ),
+        ),
       );
       return;
     }
@@ -79,15 +93,57 @@ class _DevicePairingScreenState extends ConsumerState<DevicePairingScreen> {
       ),
     );
 
-    if (confirmed == true) {
-      final success =
-          await ref.read(pairedDevicesProvider.notifier).unpairDevice(deviceId);
-      if (success && mounted) {
+    if (confirmed != true) return;
+
+    final outcome =
+        await ref.read(pairedDevicesProvider.notifier).unpairDevice(deviceId);
+    if (!mounted) return;
+
+    switch (outcome) {
+      case UnpairOutcome.success:
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Unpaired $deviceId')),
         );
-      }
+      case UnpairOutcome.orphaned:
+        await _offerLocalDismiss(deviceId);
+      case UnpairOutcome.error:
+        // Error message is surfaced via the state.error banner.
+        break;
     }
+  }
+
+  /// Build 94: relay said no such device — pairing row is orphaned. Offer to
+  /// hide it locally so the list isn't stuck.
+  Future<void> _offerLocalDismiss(String deviceId) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Robot Not Found'),
+        content: Text(
+          'The relay has no record of "$deviceId". This entry is orphaned '
+          'and can\'t be cleanly removed. Hide it from your list anyway?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Keep'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: FilledButton.styleFrom(backgroundColor: AppTheme.error),
+            child: const Text('Hide'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true || !mounted) return;
+
+    await ref.read(pairedDevicesProvider.notifier).dismissLocally(deviceId);
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Hid $deviceId from your list')),
+    );
   }
 
   void _selectDevice(String deviceId) {
