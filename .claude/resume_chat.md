@@ -1,5 +1,82 @@
 # WIM-Z Resume Chat Log
 
+## Session: 2026-05-20 — Builds 94 + 95 (Joystick, Secure Auth, ArUco Add-Dog, Pairing Fix, Save Password)
+**Goal:** Three user-requested features (analog joystick, password autofill / stored login, add-your-own-dog with ArUco) plus mid-session fixes (manage-pairing escape, silent re-auth bug, save-password polish).
+**Status:** Completed — both builds pushed to main. Build 95 building on Codemagic at end of session.
+
+### Build 94 — feat: Build 94 — analog joystick, secure-storage silent re-auth, ArUco add-dog, pairing fix (90c9eeb)
+
+**Drive — virtual analog joystick replaces D-pad**
+- New `_MotorJoystick` in `drive_screen.dart` using `flutter_joystick` (already in pubspec). 10% radial deadzone, linear remap above threshold, arcade mix (`left = y + x`, `right = y - x`), 50 ms ticker × 200 ms ramp = 0.25 advance per tick. Y inverted so up = forward. E-STOP badge pinned top-right of base; shows speed % while moving.
+- `MotorControlNotifier` cleanup: deleted dead `setFromJoystick`, `stop()`, `_sendCommand`, `_ensureSendTimer`, `_sendTimer`/`_hasPendingCommand`/`_lastSent*`. Down to 3 methods: `setMotorSpeeds`, `_sendCommandImmediate`, `emergencyStop`. Motor wire format unchanged.
+
+**Auth — JWT in Keychain/Keystore, silent re-auth, GoRouter splash gate**
+- `flutter_secure_storage: ^9.2.2` added. New `lib/core/storage/secure_token_storage.dart` wraps with `first_unlock_this_device` accessibility on iOS, `encryptedSharedPreferences` on Android.
+- `AuthState.bootstrapping` flag added (default true). `_loadSavedAuth` reads JWT from secure storage with one-time migration of legacy SharedPrefs token, calls `/api/auth/validate`, sets state accordingly.
+- New `lib/presentation/screens/splash_screen.dart` at `initialLocation: '/'` watches `bootstrapping` and routes to `/home` or `/login`. GoRouter redirect (moved into `_WimzAppState` so it can read Riverpod) pins to `/` during bootstrap and gates `/login` on `isAuthenticated`. `login/register/logout` set `bootstrapping: false` consistently.
+
+**Add Dog — auto-allocate ArUco ID, in-flow marker preview, print to PDF**
+- `DogProfilesNotifier.nextFreeArucoId({start=0, end=999})` walks the existing profiles' ArUco IDs and returns lowest unused (implicitly skips Elsa=315 and Bezik=832 because they're in state).
+- New `lib/presentation/widgets/aruco_marker_view.dart` loads `assets/markers/aruco_4x4_1000/{id}.png` with graceful `errorBuilder` placeholder when PNG bundle isn't generated yet. Exports `loadArucoMarkerBytes()` for the print path.
+- `AddDogScreen` step 3 now: auto-fills next free ID on first entry (idempotent via `_arucoAutofilled` flag), shows live `ArucoMarkerView` preview as the user types, "Print marker" button builds a Letter-size PDF (dog name + ID label + 4″ square marker) via `printing.layoutPdf`. Added `printing: ^5.13.4` and `pdf: ^3.11.1` to pubspec.
+- New `scripts/generate_aruco_markers.py` (executable) — one-shot OpenCV script that writes the 1000 DICT_4X4_1000 PNGs. **User must run this once** (`pip install opencv-contrib-python`, then `python scripts/generate_aruco_markers.py`) and uncomment the commented-out `- assets/markers/aruco_4x4_1000/` line in pubspec.yaml to activate the real markers. Until then, the placeholder fallback renders and the print button surfaces a clear "marker bundle not generated" snackbar.
+
+**Pairing — input validation + orphaned-unpair recovery (mid-session add-on)**
+- User reported: garbage device IDs got accepted by relay's pair endpoint but the unpair endpoint then returns 404 ("robot not found") because the device row doesn't exist in the relay's registry, leaving orphaned pairing rows the user can't escape.
+- Root cause is relay-side (unpair shouldn't require device-exists). App-side mitigation:
+  - `device_api.unpairDevice` returns `Future<int?>` (status code) instead of throw-on-4xx so the provider can distinguish 404 from real errors.
+  - New `UnpairOutcome { success, orphaned, error }` enum. Per-user SharedPrefs-persisted `_dismissedDeviceIds` set; `loadDevices` filters dismissed IDs out. New `dismissLocally(deviceId)` API.
+  - `device_pairing_screen._pairDevice` regex `^[a-zA-Z0-9][a-zA-Z0-9_-]{2,49}$` blocks garbage at the source; on `UnpairOutcome.orphaned`, follow-up "Robot Not Found — Hide?" dialog calls `dismissLocally`.
+  - `settings_screen` swipe-to-dismiss auto-falls-back to `dismissLocally` on orphaned (user already confirmed via swipe).
+- File a relay-side ticket: unpair should delete by `(user_id, device_id)` blindly.
+
+### Build 95 — fix: Build 95 — silent re-auth fail-open, save-password prefill (9a1041f)
+
+**Silent re-auth bug (user reported on Build 94 TestFlight: "logged in, closed app on iOS, asked to login again")**
+- Root cause: Build 94's `validateToken` returned `bool` (true only on 200), and `_loadSavedAuth` deleted the JWT on *any* non-200 — including transient 5xx, cold-start timeouts, DNS hiccups, etc.
+- Fix: `validateToken` now returns `TokenValidation { valid, invalid, unreachable }`. `_loadSavedAuth` only clears the JWT on a definitive `invalid` (401/403). On `unreachable` (5xx, network error, timeout), trust the locally-stored token and log the user in optimistically — any downstream 401 will land them on `/login` anyway, but a flaky relay no longer costs them a stored session.
+- Added print logs at each step (`Auth: no stored JWT — showing login`, `Auth: /validate → valid/invalid/unreachable`, `Auth: relay rejected JWT — clearing...`, `Auth: /validate unreachable — restoring session optimistically`) for next-time diagnosis via Xcode Console.
+
+**Save Password (user followup: "have a save password checkbox which is what I thought we were going to have")**
+- `SecureTokenStorage` extended with `readPassword/writePassword/deletePassword`. Keyed separately from the JWT.
+- `LoginScreen` `_loadSavedCredentials` now pulls both email (SharedPrefs, existing) and password (secure storage) on mount and prefills both controllers.
+- New "Save password" checkbox below the password field, default ON. On submit, password written to secure storage when checked, deleted when unchecked.
+- `_clearAuth` (logout path) now wipes the saved password too — explicit "next user starts clean" semantics.
+
+### Coordinated decisions (with the user)
+
+1. **Q1 joystick mechanism** → virtual on-screen joystick (replace D-pad), phone-only. Not hardware gamepad.
+2. **Q2 auth storage** → JWT in secure storage + `/validate` on launch (NOT password storage). Build 95 added the password-save layer on top.
+3. **Q3a ArUco dictionary** → DICT_4X4_1000 (matches robot vision pipeline).
+4. **Q3b ArUco allocation** → app allocates (not relay). Single-user single-device, races are theoretical.
+5. **ArUco render approach** → bundled PNGs via one-shot OpenCV Python script. NOT pure-Dart dictionary table (would need to transcribe ~4KB of OpenCV byte data unavailable in session) and NOT external generator (user wanted in-app flow).
+6. **Pairing dismiss storage** → app-side SharedPrefs (user: "relay can have garbage").
+7. **Build 95 vs hold on autofill** → user confirmed: bypass login when previously logged in, AND have password ready when login does show. Both shipped.
+
+### Commits this session
+```
+9a1041f fix: Build 95 — silent re-auth fail-open, save-password prefill
+90c9eeb feat: Build 94 — analog joystick, secure-storage silent re-auth, ArUco add-dog, pairing fix
+```
+
+### Files modified
+- Build 94: 13 modified, 4 new (`splash_screen.dart`, `secure_token_storage.dart`, `aruco_marker_view.dart`, `scripts/generate_aruco_markers.py`). 887 insertions, 340 deletions.
+- Build 95: 5 modified. 110 insertions, 17 deletions.
+- Version: 1.0.0+93 → 1.0.0+94 → 1.0.0+95.
+- New deps: `flutter_secure_storage`, `printing`, `pdf`.
+
+### Verification
+- `flutter analyze` on every touched file: clean. Remaining lints (`prefer_const_constructors`, `withOpacity` deprecation infos) are all in pre-existing untouched code.
+- No device testing performed in this session (WSL environment) — user shipped to TestFlight via Codemagic.
+
+### Open items / followups
+- **User must run `scripts/generate_aruco_markers.py`** and uncomment the assets line in `pubspec.yaml` to activate real ArUco marker PNGs. Until then, the AddDogScreen flow works end-to-end but shows a placeholder marker and the print button surfaces a "bundle not generated" snackbar.
+- **File relay-side ticket**: `POST /api/user/unpair-device` should delete by `(user_id, device_id)` without requiring the device row to exist. App-side dismissed-list is a workaround.
+- **Verify Build 95 silent re-auth on device**: user to grab `Auth:` lines from Xcode Console after TestFlight install if cold-launch still bounces to /login. Will tell us which branch fires.
+- **Manual UI verification** still needed: joystick feel, add-dog ArUco flow with real PNGs, pairing escape on the existing stuck entries, password prefill across logout/reinstall.
+
+---
+
 ## Session: 2026-04-27 — Build 93 (Coach Mode Exit Unified on `set_mode(idle)`)
 **Goal:** User-reported bug: in-screen "Stop Coaching" button does nothing. Diagnose, coordinate with robot session, fix.
 **Status:** Completed — pushed to main (Build 93: 031f1e5)
