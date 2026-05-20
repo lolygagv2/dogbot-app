@@ -55,8 +55,10 @@ class AuthApi {
     return AuthResponse.fromJson(response.data as Map<String, dynamic>);
   }
 
-  /// Validate token is still valid
-  Future<bool> validateToken(String token) async {
+  /// Build 95: tri-state token check. `unreachable` lets the caller fail-open
+  /// on transient relay issues (cold-start 5xx, DNS hiccup, timeout) without
+  /// blowing away the user's stored JWT.
+  Future<TokenValidation> validateToken(String token) async {
     try {
       final response = await _dio.get(
         '/api/auth/validate',
@@ -64,9 +66,21 @@ class AuthApi {
           headers: {'Authorization': 'Bearer $token'},
         ),
       );
-      return response.statusCode == 200;
-    } catch (e) {
-      return false;
+      if (response.statusCode == 200) return TokenValidation.valid;
+      if (response.statusCode == 401 || response.statusCode == 403) {
+        return TokenValidation.invalid;
+      }
+      return TokenValidation.unreachable;
+    } on DioException catch (e) {
+      final code = e.response?.statusCode;
+      if (code == 401 || code == 403) return TokenValidation.invalid;
+      return TokenValidation.unreachable;
+    } catch (_) {
+      return TokenValidation.unreachable;
     }
   }
 }
+
+/// Outcome of [AuthApi.validateToken]. `invalid` is the only state where the
+/// caller should delete the stored JWT — everything else is transient.
+enum TokenValidation { valid, invalid, unreachable }

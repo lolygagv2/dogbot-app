@@ -7,6 +7,7 @@ import '../../../core/config/environment.dart';
 import '../../../core/constants/app_constants.dart';
 import '../../../core/network/dio_client.dart';
 import '../../../core/services/local_connection_service.dart';
+import '../../../core/storage/secure_token_storage.dart';
 import '../../../domain/providers/auth_provider.dart';
 import '../../../domain/providers/connection_provider.dart';
 import '../../../domain/providers/settings_provider.dart';
@@ -27,10 +28,12 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _formKey = GlobalKey<FormState>();
+  final _secureStorage = SecureTokenStorage();
   bool _isLogin = true;
   bool _obscurePassword = true;
   bool _showLoginForm = false;
   bool _isConnectingLocal = false;
+  bool _savePassword = true; // Build 95: opt-in (default on) password persistence
   String? _localError;
 
   static const _keyLastEmail = 'last_login_email';
@@ -38,15 +41,27 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   @override
   void initState() {
     super.initState();
-    _loadSavedEmail();
+    _loadSavedCredentials();
   }
 
-  Future<void> _loadSavedEmail() async {
+  Future<void> _loadSavedCredentials() async {
     final prefs = await SharedPreferences.getInstance();
     final savedEmail = prefs.getString(_keyLastEmail);
-    if (mounted && savedEmail != null && savedEmail.isNotEmpty) {
-      _emailController.text = savedEmail;
-    }
+    final savedPassword = await _secureStorage.readPassword();
+    if (!mounted) return;
+    setState(() {
+      if (savedEmail != null && savedEmail.isNotEmpty) {
+        _emailController.text = savedEmail;
+      }
+      if (savedPassword != null && savedPassword.isNotEmpty) {
+        _passwordController.text = savedPassword;
+      }
+      // If there's no stored password the user is on a fresh install or
+      // previously opted out — uncheck so we don't surprise-save.
+      _savePassword = savedPassword != null && savedPassword.isNotEmpty
+          ? true
+          : _savePassword;
+    });
   }
 
   @override
@@ -79,6 +94,14 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     if (success && mounted) {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString(_keyLastEmail, email);
+
+      // Build 95: honor the Save Password toggle. Stored in secure storage
+      // (Keychain/Keystore) so we can pre-fill on the next visit to /login.
+      if (_savePassword) {
+        await _secureStorage.writePassword(password);
+      } else {
+        await _secureStorage.deletePassword();
+      }
 
       ref.read(settingsProvider.notifier).setLocalModeEnabled(false);
       await ref.read(connectionProvider.notifier).connect(host, port);
@@ -297,7 +320,24 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                             return null;
                           },
                         ),
-                        const SizedBox(height: 24),
+                        const SizedBox(height: 8),
+                        // Build 95: opt-in password persistence. Default ON so
+                        // the second visit to /login is one-tap.
+                        Row(
+                          children: [
+                            Checkbox(
+                              value: _savePassword,
+                              onChanged: (v) =>
+                                  setState(() => _savePassword = v ?? false),
+                            ),
+                            GestureDetector(
+                              onTap: () => setState(
+                                  () => _savePassword = !_savePassword),
+                              child: const Text('Save password'),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 16),
                         if (authState.errorMessage != null) ...[
                           Container(
                             padding: const EdgeInsets.all(12),

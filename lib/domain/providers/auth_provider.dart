@@ -107,20 +107,32 @@ class AuthNotifier extends StateNotifier<AuthState> {
       }
 
       if (token == null || token.isEmpty) {
+        print('Auth: no stored JWT — showing login');
         state = state.copyWith(bootstrapping: false);
         return;
       }
 
-      // Silent re-auth: only trust the token if the relay still accepts it.
+      // Build 95: tri-state validation. Only delete on a definitive
+      // invalid (401/403). Transient errors (network, 5xx, timeout) leave
+      // the JWT in place and we log the user in optimistically — any
+      // downstream 401 will land them on /login anyway, but a flaky relay
+      // never costs them a stored session.
       final api = _ref.read(authApiProvider);
-      final ok = await api.validateToken(token);
+      final result = await api.validateToken(token);
+      print('Auth: /validate → $result');
 
-      if (!ok) {
+      if (result == TokenValidation.invalid) {
+        print('Auth: relay rejected JWT — clearing and showing login');
         await _secureStorage.deleteToken();
         await prefs.remove(_keyAuthEmail);
         await prefs.remove(_keyAuthUserId);
         state = state.copyWith(bootstrapping: false);
         return;
+      }
+
+      // valid OR unreachable → trust the local token.
+      if (result == TokenValidation.unreachable) {
+        print('Auth: /validate unreachable — restoring session optimistically');
       }
 
       // Cloud user restoring session — ensure local mode flag is off
@@ -186,9 +198,12 @@ class AuthNotifier extends StateNotifier<AuthState> {
     }
   }
 
-  /// Clear saved auth from both stores.
+  /// Clear saved auth from both stores. Logout is an explicit "next user
+  /// starts clean" gesture — wipe the stored password too so the form
+  /// doesn't pre-fill someone else's credentials.
   Future<void> _clearAuth() async {
     await _secureStorage.deleteToken();
+    await _secureStorage.deletePassword();
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(_keyAuthToken); // legacy
     await prefs.remove(_keyAuthEmail);
