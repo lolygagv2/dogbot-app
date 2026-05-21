@@ -132,12 +132,10 @@ class ConnectionNotifier extends StateNotifier<ConnectionState> {
   StreamSubscription? _wsEventSubscription;
   StreamSubscription? _deviceStatusSubscription;
   StreamSubscription? _supersededSubscription; // B1
+  StreamSubscription? _closeReasonSubscription; // Fix #2
   Timer? _reconnectTimer;
   Timer? _statusCheckTimer;
   Timer? _statusDowngradeTimer; // Build 34: Debounce status downgrades
-  int _reconnectAttempts = 0;
-  static const int _maxReconnectAttempts = 10;
-  static const Duration _reconnectDelay = Duration(seconds: 3);
   static const Duration _statusCheckInterval = Duration(seconds: 30);
   // Build 34: Grace period before showing "Waiting for robot" after being online
   static const Duration _statusDowngradeDelay = Duration(milliseconds: 1500);
@@ -244,6 +242,12 @@ class ConnectionNotifier extends StateNotifier<ConnectionState> {
       _supersededSubscription =
           ws.sessionSupersededStream.listen(_onSessionSuperseded);
 
+      // Fix #2: close-reason stream — drives permanent-close routing
+      // (re-login / superseded) without a second reconnect loop.
+      _closeReasonSubscription?.cancel();
+      _closeReasonSubscription =
+          ws.closeReasonStream.listen(_onWsCloseReason);
+
       // Save connection settings
       await _saveConnection(host, port);
 
@@ -268,7 +272,6 @@ class ConnectionNotifier extends StateNotifier<ConnectionState> {
 
   void _onWsStateChange(WsConnectionState wsState) {
     if (wsState == WsConnectionState.connected) {
-      _reconnectAttempts = 0;
       _reconnectTimer?.cancel();
 
       // Only upgrade to relayConnected, not robotOnline
@@ -288,11 +291,50 @@ class ConnectionNotifier extends StateNotifier<ConnectionState> {
     } else if (wsState == WsConnectionState.error ||
         wsState == WsConnectionState.disconnected) {
       print('Connection: Lost relay connection');
+      // Fix #2: WebSocketClient owns reconnection now — retryable close
+      // codes only, exponential backoff. A second reconnect loop here was
+      // half the reconnect storm. Permanent-close routing is handled by
+      // _onWsCloseReason.
       state = state.copyWith(
         status: ConnectionStatus.error,
         errorMessage: 'Lost connection to server',
       );
-      _scheduleReconnect();
+    }
+  }
+
+  /// Fix #2: WebSocketClient classified the WS close code. Permanent codes
+  /// must not be retried — route them to the correct terminal UI.
+  void _onWsCloseReason(WsCloseReason reason) {
+    print('Connection: WS close reason = $reason');
+    switch (reason) {
+      case WsCloseReason.retryable:
+        // WebSocketClient is already retrying with backoff — nothing to do.
+        break;
+      case WsCloseReason.cleanClose:
+        // App-initiated close — quiet.
+        break;
+      case WsCloseReason.superseded:
+        // 4003: another app instance took over. Same handling as the
+        // session_superseded message — non-fatal banner, no reconnect.
+        _onSessionSuperseded(const <String, dynamic>{'by': 'another device'});
+        break;
+      case WsCloseReason.malformedHandshake:
+        // 4000: should not happen after Fix #1. Permanent — surface, no retry.
+        _reconnectTimer?.cancel();
+        state = state.copyWith(
+          status: ConnectionStatus.error,
+          errorMessage: 'Connection handshake failed. Please update the app.',
+        );
+        break;
+      case WsCloseReason.invalidToken:
+        // 4001: the stored token is invalid/expired — force re-login.
+        _reconnectTimer?.cancel();
+        state = state.copyWith(
+          status: ConnectionStatus.error,
+          errorMessage: 'Session expired — please sign in again.',
+        );
+        _ref.read(authProvider.notifier).logout();
+        break;
     }
   }
 
@@ -430,11 +472,11 @@ class ConnectionNotifier extends StateNotifier<ConnectionState> {
     _reconnectTimer?.cancel();
     _statusCheckTimer?.cancel();
     _statusDowngradeTimer?.cancel();
-    _reconnectAttempts = 0;
     _wsStateSubscription?.cancel();
     _wsEventSubscription?.cancel();
     _deviceStatusSubscription?.cancel();
     _supersededSubscription?.cancel();
+    _closeReasonSubscription?.cancel();
     await _ref.read(websocketClientProvider).disconnect();
     state = state.copyWith(
       status: ConnectionStatus.disconnected,
@@ -453,7 +495,6 @@ class ConnectionNotifier extends StateNotifier<ConnectionState> {
     _reconnectTimer?.cancel();
     _statusCheckTimer?.cancel();
     _statusDowngradeTimer?.cancel();
-    _reconnectAttempts = _maxReconnectAttempts; // suppress auto-reconnect loop
     // WebRTC teardown happens via webrtc_provider listening to connection state.
     // We deliberately do NOT call disconnect() here so the host/port stay set
     // (allowing the user to tap "take over" and reconnect with a new session).
@@ -467,7 +508,6 @@ class ConnectionNotifier extends StateNotifier<ConnectionState> {
   /// B1: User opted to take control back from the other device. Generates a
   /// new session id and reconnects, which will supersede the other session.
   Future<bool> takeOverSession() async {
-    _reconnectAttempts = 0;
     if (state.host == null) return false;
     return connect(state.host!, state.port ?? AppConstants.defaultPort);
   }
@@ -481,33 +521,10 @@ class ConnectionNotifier extends StateNotifier<ConnectionState> {
   }
 
   /// Schedule auto-reconnect with exponential backoff
-  void _scheduleReconnect() {
-    if (_reconnectAttempts >= _maxReconnectAttempts) {
-      print('Connection: Max reconnect attempts reached');
-      return;
-    }
-
-    _reconnectTimer?.cancel();
-    _reconnectAttempts++;
-
-    final delay = Duration(
-      milliseconds: _reconnectDelay.inMilliseconds * _reconnectAttempts,
-    );
-
-    print('Connection: Reconnecting in ${delay.inSeconds}s (attempt $_reconnectAttempts/$_maxReconnectAttempts)');
-
-    _reconnectTimer = Timer(delay, () async {
-      if (state.host != null && !state.isRelayConnected) {
-        await reconnect();
-      }
-    });
-  }
-
   /// Called when app resumes from background (phone lock, task switch)
   /// Resets reconnect counters and attempts to restore connection
   void onAppResumed() {
     print('Connection: App resumed — checking connection state');
-    _reconnectAttempts = 0;
     final ws = _ref.read(websocketClientProvider);
     ws.resetReconnectAttempts();
 

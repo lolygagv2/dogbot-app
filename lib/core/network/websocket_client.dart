@@ -18,6 +18,25 @@ enum WsConnectionState {
   error,
 }
 
+/// Fix #2: retry policy for a WS close, derived from the relay close code.
+enum WsCloseReason {
+  /// Clean, app-initiated close (1000) — do not reconnect.
+  cleanClose,
+
+  /// Transient failure (4002 heartbeat, 1006/1005/network) — reconnect
+  /// with exponential backoff.
+  retryable,
+
+  /// Relay rejected the handshake (4000) — permanent; a bug, not transient.
+  malformedHandshake,
+
+  /// Invalid / expired token (4001) — permanent; user must re-authenticate.
+  invalidToken,
+
+  /// Another app instance took over (4003) — expected; not an error.
+  superseded,
+}
+
 /// WebSocket event from the robot
 class WsEvent {
   final String type;
@@ -73,11 +92,6 @@ class WebSocketClient {
   String? _sessionId;
   String? _sessionUserId;
   String? _sessionDeviceId;
-  // Build 88: when the relay rejects our session_hello (close 4000) we
-  // suppress the handshake on the next reconnect attempt so the user
-  // isn't stuck in an infinite handshake-fail / reconnect loop. The
-  // relay can still derive user identity from the bearer token alone.
-  bool _suppressSessionHello = false;
   // Fix #1: relay handshake gate. The relay 4000-closes the socket unless
   // session_hello is the FIRST frame, and only confirms the connection by
   // replying with a session_ack frame. Until that ack arrives, every
@@ -145,6 +159,11 @@ class WebSocketClient {
   final _sessionSupersededController =
       StreamController<Map<String, dynamic>>.broadcast();
 
+  // Fix #2: close-reason stream — lets connection_provider distinguish a
+  // permanent close (no retry; route to re-login / superseded) from a
+  // retryable one (websocket_client handles the socket-level retry).
+  final _closeReasonController = StreamController<WsCloseReason>.broadcast();
+
   Stream<Map<String, dynamic>> get webrtcCredentialsStream =>
       _webrtcCredentialsController.stream;
   Stream<Map<String, dynamic>> get webrtcOfferStream =>
@@ -162,6 +181,7 @@ class WebSocketClient {
   Stream<String> get rateLimitStream => _rateLimitController.stream;
   Stream<Map<String, dynamic>> get sessionSupersededStream =>
       _sessionSupersededController.stream;
+  Stream<WsCloseReason> get closeReasonStream => _closeReasonController.stream;
 
   /// Get the current target device ID
   String? get targetDeviceId => _targetDeviceId;
@@ -202,10 +222,6 @@ class WebSocketClient {
     // Fix #1: local mode (local_connection_service) passes false — the
     // robot's local WS speaks no session_hello/session_ack handshake.
     _expectRelayHandshake = expectRelayHandshake;
-    // Build 88: a fresh connect() (e.g. user tapped reconnect, took over a
-    // superseded session, or logged in fresh) gets a fresh shot at the
-    // handshake. We only suppress it within a single connect→reconnect run.
-    _suppressSessionHello = false;
     _reconnectAttempts = 0;
 
     await _doConnect();
@@ -257,15 +273,15 @@ class WebSocketClient {
       // `sub` from the JWT itself in connection_provider).
       _sendSessionHello();
 
-      if (_expectRelayHandshake && !_suppressSessionHello) {
+      if (_expectRelayHandshake) {
         // Relay handshake in flight — arm a timeout. If session_ack never
         // arrives (e.g. the relay's _safe_send_json dropped it on a
         // half-broken socket) we close and retry rather than hang.
         _handshakeTimeoutTimer?.cancel();
         _handshakeTimeoutTimer = Timer(_handshakeTimeout, _onHandshakeTimeout);
       } else {
-        // Local mode, or session_hello suppressed — no session_ack will
-        // come. Open the gate now so queued frames can flow.
+        // Local mode — no relay handshake, no session_ack will come.
+        // Open the gate now so queued frames can flow.
         _openHandshakeGate();
       }
 
@@ -532,23 +548,44 @@ class WebSocketClient {
           'frame(s) — session not confirmed');
       _pendingFrames.clear();
     }
-    if (_state != WsConnectionState.disconnected) {
+    if (_state == WsConnectionState.disconnected) return;
+
+    // Fix #2: retry only on retryable close codes. Permanent codes
+    // (4000/4001/4003/1000) must not be retried — retrying them is what
+    // produced the reconnect storm.
+    final wsCloseReason = _classifyClose(code);
+    print('WebSocket: close classified as $wsCloseReason');
+    _closeReasonController.add(wsCloseReason);
+
+    if (wsCloseReason == WsCloseReason.retryable) {
       _setState(WsConnectionState.disconnected);
-      // 4001 — superseded by another session. Don't reconnect; the connection
-      // provider has already routed to ConnectionStatus.superseded.
-      if (code == 4001) {
-        print('WebSocket: superseded by another session, not reconnecting');
-        return;
-      }
-      // 4000 — relay rejected session_hello (handshake mismatch / timeout).
-      // Reconnecting with the same payload would just loop. Suppress
-      // session_hello on the next attempt so the relay falls back to
-      // bearer-token identity. We re-enable on the next connect() call.
-      if (code == 4000 && !_suppressSessionHello) {
-        print('WebSocket: handshake rejected (4000), suppressing session_hello on retry');
-        _suppressSessionHello = true;
-      }
       _scheduleReconnect();
+    } else {
+      // Permanent close — no reconnect. malformedHandshake / invalidToken
+      // are errors; superseded / cleanClose are quiet stops.
+      final isError = wsCloseReason == WsCloseReason.malformedHandshake ||
+          wsCloseReason == WsCloseReason.invalidToken;
+      _setState(isError
+          ? WsConnectionState.error
+          : WsConnectionState.disconnected);
+    }
+  }
+
+  /// Fix #2: map a WS close code to a retry policy per the relay contract.
+  /// 4000/4001/4003/1000 are permanent; everything else is retryable.
+  static WsCloseReason _classifyClose(int? code) {
+    switch (code) {
+      case 4000: // relay rejected the handshake — a bug, not transient
+        return WsCloseReason.malformedHandshake;
+      case 4001: // invalid / expired token — user must re-authenticate
+        return WsCloseReason.invalidToken;
+      case 4003: // another app instance took over — expected, not an error
+        return WsCloseReason.superseded;
+      case 1000: // clean close, app-initiated
+        return WsCloseReason.cleanClose;
+      case 4002: // heartbeat timeout — transient
+      default: // 1006 / 1005 / null / network errors — transient
+        return WsCloseReason.retryable;
     }
   }
 
@@ -562,12 +599,13 @@ class WebSocketClient {
     _reconnectAttempts++;
     _setState(WsConnectionState.reconnecting);
 
-    final delay = Duration(
-      milliseconds: AppConstants.websocketReconnectDelay.inMilliseconds *
-          _reconnectAttempts,
-    );
+    // Fix #2: exponential backoff — 1s, 2s, 4s, 8s, 16s — capped at 30s.
+    final delayMs =
+        (1000 * (1 << (_reconnectAttempts - 1))).clamp(1000, 30000);
+    final delay = Duration(milliseconds: delayMs);
 
-    print('Reconnecting in ${delay.inSeconds}s (attempt $_reconnectAttempts)');
+    print('Reconnecting in ${delay.inSeconds}s '
+        '(attempt $_reconnectAttempts/$_maxReconnectAttempts)');
 
     _reconnectTimer?.cancel();
     _reconnectTimer = Timer(delay, _doConnect);
@@ -596,13 +634,8 @@ class WebSocketClient {
     // Fix #1: session_hello is the relay handshake frame. Local-mode
     // connections (direct ws:// to the robot) have no relay and no
     // handshake. _sessionId is never null here — connect() always sets it
-    // to SessionId.current — so the only skip conditions are local mode
-    // and the post-4000 suppression flag.
+    // to SessionId.current — so the only skip condition is local mode.
     if (!_expectRelayHandshake) return;
-    if (_suppressSessionHello) {
-      print('WebSocket: skipping session_hello (suppressed after prior 4000)');
-      return;
-    }
     send({
       'type': 'session_hello',
       'session_id': _sessionId,
@@ -1060,5 +1093,6 @@ class WebSocketClient {
     _photoController.close();
     _videoController.close();
     _rateLimitController.close();
+    _closeReasonController.close();
   }
 }
