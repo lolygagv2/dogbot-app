@@ -1,5 +1,46 @@
 # WIM-Z Resume Chat Log
 
+## Session: 2026-05-21 — WebRTC 60s-Delay Diagnosis + Reconnect-Storm Fix (Builds 96/97)
+**Goal:** Diagnose why video feed took ~60s to appear after login; build on-device diagnostics; fix root cause.
+**Status:** Completed — root cause fixed, video feed confirmed back to a few seconds. 7 commits pushed to main. Ends on Build 1.0.0+97.
+
+### Root cause (3-codebase coordinated diagnosis: app + relay + robot)
+The 60s delay was **not** WebRTC. The app was in a relay reconnect storm and WebRTC never got to start:
+- App sent `debug_log` as the **first WS frame** instead of `session_hello` → relay 4000-closes (malformed handshake).
+- `RemoteLogger.onConnected()` flushed queued `debug_log` frames the instant `_state` flipped to `connected` — 15 lines *before* `_sendSessionHello()`.
+- Both 4000 (malformed) and 4001 (superseded) were treated as retryable → retry → another 4000/supersede → storm (8 `ws-relay-open` in 30s). Heartbeat 4002-timed-out twice (26.6s, 29.8s) inside the storm.
+
+### Work shipped (7 commits)
+1. **`99b96e3`** — `connTrace` signaling instrumentation: timestamped `[HH:MM:SS.mmm] [event] [details]` at login/ws-open/sdp/ice/pc-state/first-frame.
+2. **`e07bdb5`** — Build 96 version bump.
+3. **`899a075`** — On-device **Connection Diagnostics** viewer (`lib/presentation/screens/settings/connection_diagnostics_screen.dart`) — `connTrace` writes to a 500-entry ring buffer in `conn_trace.dart`; viewer at Settings → Diagnostics with Copy/Share/Clear. Built because the dev workflow has **no Mac/Xcode console** — only an iPhone.
+4. **`95f2165`** — Build 97: `NSLocationWhenInUseUsageDescription` added to `ios/Runner/Info.plist` — clears Apple's ITMS-90683 warning (flutter_webrtc links iOS location APIs).
+5. **`0631b55`** — **Fix #1**: WS handshake gate. `session_hello` guaranteed first frame; all other frames queue in `_pendingFrames` until inbound `session_ack`; WebRTC frames lossless, `debug_log` lossy under 50-cap; 10s handshake timeout; `expectRelayHandshake` flag exempts local mode (verified `_sessionId` is always non-null — Case A; the dead `_sessionId == null` branch removed).
+6. **`07dac1a`** — **Fix #2**: WS close-code handling. `_classifyClose()` → retry only retryable codes; exponential backoff 1s→30s (was linear). Contract: 4000 malformed/permanent, 4001 invalid_token/permanent→re-login, 4002 heartbeat/retryable, 4003 superseded/expected-silent, 1000 clean/no-retry, 1006/null/retryable. New `closeReasonStream`. **Removed the second reconnect engine** in `connection_provider` (it blindly reconnected on every `wsState→error`) — `WebSocketClient` is now the sole reconnection owner. Removed the Build 88 `_suppressSessionHello` hack.
+7. **`182dfce`** — **Fix #3**: heartbeat hardened. Cadence already 10s (Build 90). Ping now gated behind `_handshakeComplete`; `_pingTimer` cancelled in `_onDone` so it can't linger on a dead socket; every ping logged via `connTrace('ws-heartbeat')`.
+
+### Relay/robot contract changes coordinated this session
+- Relay confirmed `session_ack` already exists — the app gates on inbound `type=='session_ack'` (exact string, session_id echo verified).
+- Relay split 4001: now **4001 = invalid_token**, **4003 = session_superseded** (was overloaded). App close-code table matches.
+- Post-ack relay frame order (FYI): `session_ack → [session_restored] → auth_result → robot_status → metrics_sync`.
+
+### Verification
+- `flutter analyze` clean on every touched file.
+- User confirmed on-device: login→video show speed "pretty decent" — ~60s delay gone. Robot session's bet held: no real WebRTC issue was hiding behind the storm.
+
+### New files (2)
+- `lib/core/utils/conn_trace.dart` — `connTrace()` + `ConnTraceLog` ring buffer.
+- `lib/presentation/screens/settings/connection_diagnostics_screen.dart` — on-device trace viewer.
+
+### Open items / next steps
+- **Volume control task — UNFINISHED.** Decisions locked: app switches volume *set* to `POST /audio/volume` (REST, 200 = "syncing…" confirmation); robot adds `volume` to the 5s telemetry payload. **Blocked** on the robot session providing exact JSON shapes (GET response, POST body key, telemetry field name/range, clamp behavior) — a paste-ready request was drafted. Resume here when shapes arrive: add `RobotApi.getVolume/setVolume`, `VolumeNotifier` (`{int? level, bool syncing}`), telemetry `volume` field (+ build_runner), remove `_volumeProvider`'s hardcoded `=>70` in `quick_actions.dart`.
+- `.claude/local_notifications.md` — untracked spec for `flutter_local_notifications` (lock-screen/Watch alerts); not implemented.
+- Carried from Build 94/95: run `scripts/generate_aruco_markers.py` + uncomment the assets line; file relay ticket for blind `(user_id, device_id)` unpair.
+- `connTrace` + Connection Diagnostics screen intentionally left in — the only Mac-free way to diagnose connection regressions. Strip later if desired.
+- Trigger Codemagic for Build 97 (manual).
+
+---
+
 ## Session: 2026-05-20 — Builds 94 + 95 (Joystick, Secure Auth, ArUco Add-Dog, Pairing Fix, Save Password)
 **Goal:** Three user-requested features (analog joystick, password autofill / stored login, add-your-own-dog with ArUco) plus mid-session fixes (manage-pairing escape, silent re-auth bug, save-password polish).
 **Status:** Completed — both builds pushed to main. Build 95 building on Codemagic at end of session.

@@ -36,7 +36,9 @@ Architecture: Mobile App (this repo) → Server (intermediary) → Robot (Pi 5)
             app_constants.dart     Timeouts, defaults, UI constants
          📂 network/
             dio_client.dart        HTTP client (Singleton)
-            websocket_client.dart  WebSocket with auto-reconnect
+            websocket_client.dart  WebSocket: handshake gate, close-code retry, heartbeat
+         📂 utils/
+            conn_trace.dart        🆕 connTrace() + ConnTraceLog ring buffer (WebRTC signaling trace)
 
       📂 data/                     # Data layer
          📂 models/                # Freezed data classes
@@ -62,6 +64,7 @@ Architecture: Mobile App (this repo) → Server (intermediary) → Robot (Pi 5)
             missions/              Training session management
             notifications/         Activity dashboard + event feed (Build 59)
             settings/              Configuration & info
+                                   └ connection_diagnostics_screen.dart 🆕 on-device WebRTC trace viewer
          📂 widgets/
             video/                 MJPEG viewer
             controls/              Joystick, pan/tilt, quick actions
