@@ -53,8 +53,10 @@ Architecture: Mobile App (this repo) → Server (intermediary) → Robot (Pi 5)
       📂 domain/                   # Business logic
          📂 providers/             # Riverpod state management
             connection_provider.dart    Connection state
-            telemetry_provider.dart     Robot status updates
+            telemetry_provider.dart     Robot status updates (incl. volume)
             control_provider.dart       Motor, servo, treat, LED, audio
+            video_quality_provider.dart 🆕 robot adaptive-bitrate state + override
+            volume_provider.dart        🆕 system volume — reconciles to telemetry
 
       📂 presentation/             # UI layer
          📂 screens/

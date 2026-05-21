@@ -1,8 +1,49 @@
 # WIM-Z Resume Chat Log
 
-## Session: 2026-05-21 — WebRTC 60s-Delay Diagnosis + Reconnect-Storm Fix (Builds 96/97)
+## Session: 2026-05-21 — Reconnect-Storm Fix + Video-Quality Control + System Volume (Builds 96–98)
+**Goal:** Diagnose the ~60s video delay & fix it; then two coordinated robot-side features (adaptive-bitrate video quality, system volume).
+**Status:** Completed — all shipped. 11 commits pushed to main. Ends on Build 1.0.0+98.
+
+### Part C — Video quality (adaptive bitrate) — commit a5c0959
+Robot ships adaptive bitrate (480p/540p/720p) and publishes `video_quality_state` on the WebRTC data channel; app adds reception + user override.
+- **Task 1:** `webrtc_provider`'s data-channel handler was a bare `print()` — replaced with a discriminated-union dispatch (`_handleDataChannelMessage`, switch on `type`). New `video_quality_provider.dart`: `VideoTier`/`VideoQualityMode` enums, immutable `VideoQualityState`, `videoQualityStateProvider` (null = none yet; cleared on WebRTC teardown).
+- **Task 2:** `AppSettings.videoQualityMode` (auto/low/medium/high) persisted via SharedPreferences; `setVideoQualityMode()` also sends the `set_video_quality` command (`websocket_client.sendVideoQualityMode` → bare `{type,mode}` frame). New "Video" section in settings_screen with a 4-way SegmentedButton + live "Currently streaming: <tier>" line.
+- **Task 3:** No drive-mode connection warning exists in `lib/` — nothing to remove (`_IcePathBadge` is an informational LAN/WAN badge, not a warning).
+- Interpretation calls: "per-user" persistence → app-wide SharedPreferences key (single-user/-device app; key not robot-scoped, honoring "not per-robot"). No auto-re-send of the persisted mode on reconnect (not in spec).
+
+### Part D — System volume (robot VolumeManager contract) — commit abd60a9
+Robot's `VolumeManager` is the single source of truth (persists across reboots, default 60%, can change via Xbox Share button). App reconciles, never caches.
+- `telemetry.dart`: new `volume` field (`int?` 0-100, null=unavailable), parsed from `data.volume` in status telemetry. **Freezed regenerated.**
+- `telemetry_provider`: carries `volume` through status updates, preserving last value when omitted.
+- New `volume_provider.dart` — `VolumeNotifier` reconciles the slider to telemetry `volume` every ~5s (contract's preferred read); on user change sends the command, marks `syncing`, clears it on telemetry confirm (8s timeout fallback).
+- `websocket_client.sendAudioVolume` now sends both `volume` (canonical) + `level` (alias) — valid on every documented write path.
+- `quick_actions.dart`: removed the hard-coded `_volumeProvider` (default 70) + its debounce; new `_VolumeSlider` ConsumerWidget (drag=preview, release=commit, sync spinner).
+- **Superseded decision:** the earlier "REST POST for set" choice is dropped — the contract states cloud mode has no direct HTTP path to the robot, so the relay `audio_volume` command is the set path (works for both cloud and LAN).
+- This closes the volume task that was left UNFINISHED earlier in the session (it was blocked on the robot contract).
+
+### Builds
+- Build 96 (`e07bdb5`): trace logging. Build 97 (`95f2165`): ITMS-90683 fix. Build 98 (`4103c49`): version bump carrying Parts C + D.
+
+### Verification
+- `flutter analyze` clean on every touched file across Parts C & D (pre-existing infos/2 warnings only).
+- `dart run build_runner build` succeeded — only `telemetry.freezed/g.dart` changed.
+
+### New files this session (4)
+- `lib/core/utils/conn_trace.dart`, `lib/presentation/screens/settings/connection_diagnostics_screen.dart` (Part A/B)
+- `lib/domain/providers/video_quality_provider.dart` (Part C)
+- `lib/domain/providers/volume_provider.dart` (Part D)
+
+### Open items / next steps
+- Trigger Codemagic for **Build 98** (manual).
+- `.claude/local_notifications.md` — untracked `flutter_local_notifications` spec; not implemented.
+- Carried from Build 94/95: run `scripts/generate_aruco_markers.py` + uncomment the assets line; file relay ticket for blind `(user_id, device_id)` unpair.
+- `connTrace` + Connection Diagnostics screen intentionally retained — the only Mac-free way to diagnose connection regressions.
+
+---
+
+## Session: 2026-05-21 (Part A/B) — WebRTC 60s-Delay Diagnosis + Reconnect-Storm Fix (Builds 96/97)
 **Goal:** Diagnose why video feed took ~60s to appear after login; build on-device diagnostics; fix root cause.
-**Status:** Completed — root cause fixed, video feed confirmed back to a few seconds. 7 commits pushed to main. Ends on Build 1.0.0+97.
+**Status:** Completed — root cause fixed, video feed confirmed back to a few seconds. 7 commits pushed to main.
 
 ### Root cause (3-codebase coordinated diagnosis: app + relay + robot)
 The 60s delay was **not** WebRTC. The app was in a relay reconnect storm and WebRTC never got to start:
