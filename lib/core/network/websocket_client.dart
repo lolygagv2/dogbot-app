@@ -839,9 +839,12 @@ class WebSocketClient {
     sendCommand('audio_stop');
   }
 
-  /// Set audio volume
+  /// Set system audio volume (0-100) on the robot's VolumeManager.
+  /// Per the volume contract the relay command's canonical key is `volume`
+  /// (`level` is an accepted alias) and the local /ws command uses `level` —
+  /// so both keys are sent, making the frame valid on every path.
   void sendAudioVolume(int level) {
-    sendCommand('audio_volume', {'level': level});
+    sendCommand('audio_volume', {'volume': level, 'level': level});
   }
 
   /// Load next audio track (does NOT auto-play)

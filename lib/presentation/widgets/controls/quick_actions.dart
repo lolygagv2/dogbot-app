@@ -14,6 +14,7 @@ import '../../../domain/providers/control_provider.dart';
 import '../../../domain/providers/device_provider.dart';
 import '../../../domain/providers/dog_profiles_provider.dart';
 import '../../../domain/providers/push_to_talk_provider.dart';
+import '../../../domain/providers/volume_provider.dart';
 import '../../theme/app_theme.dart';
 
 /// Provider to track current lighting pattern index
@@ -34,9 +35,6 @@ final _playlistIndexProvider = StateProvider<int>((ref) => 0);
 /// Provider to track playlist length (synced from robot)
 final _playlistLengthProvider = StateProvider<int>((ref) => 0);
 
-/// Provider to track volume level (0-100)
-final _volumeProvider = StateProvider<int>((ref) => 70);
-
 class QuickActions extends ConsumerStatefulWidget {
   const QuickActions({super.key});
 
@@ -45,7 +43,6 @@ class QuickActions extends ConsumerStatefulWidget {
 }
 
 class _QuickActionsState extends ConsumerState<QuickActions> {
-  Timer? _volumeDebounce;
   StreamSubscription? _audioStateSubscription;
 
   // Debounce tracking for voice buttons (prevents command queue buildup)
@@ -182,23 +179,11 @@ class _QuickActionsState extends ConsumerState<QuickActions> {
 
   @override
   void dispose() {
-    _volumeDebounce?.cancel();
     _audioStateSubscription?.cancel();
     _uploadResultSubscription?.cancel();
     _uploadTimeoutTimer?.cancel();
     _songDeletedSubscription?.cancel();
     super.dispose();
-  }
-
-  void _onVolumeChanged(int volume) {
-    // Update UI immediately for responsive feel
-    ref.read(_volumeProvider.notifier).state = volume;
-
-    // Debounce the actual command to the robot
-    _volumeDebounce?.cancel();
-    _volumeDebounce = Timer(const Duration(milliseconds: 200), () {
-      ref.read(audioControlProvider).setVolume(volume);
-    });
   }
 
   @override
@@ -323,7 +308,6 @@ class _QuickActionsState extends ConsumerState<QuickActions> {
             Expanded(
               child: _MusicControlsWithVolume(
                 isPlaying: isPlaying,
-                volume: ref.watch(_volumeProvider),
                 trackName: ref.watch(_currentTrackProvider),
                 onPrev: () => audioControl.prev(),
                 onToggle: () {
@@ -332,7 +316,6 @@ class _QuickActionsState extends ConsumerState<QuickActions> {
                   audioControl.toggle();
                 },
                 onNext: () => audioControl.next(),
-                onVolumeChanged: _onVolumeChanged,
                 onUpload: () => _pickAndUploadSong(context, ref),
                 onDeleteTrack: (trackPath) => _confirmDeleteSong(trackPath),
               ),
@@ -843,27 +826,91 @@ class _BluLightButton extends StatelessWidget {
   }
 }
 
+/// System-audio volume slider. Reconciled to the robot's telemetry volume
+/// (the single source of truth in VolumeManager) — see [volumeProvider].
+/// Shows a sync indicator until the robot confirms a user change.
+class _VolumeSlider extends ConsumerWidget {
+  const _VolumeSlider();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final volume = ref.watch(volumeProvider);
+    final level = volume.level ?? 60; // 60 = VolumeManager's documented default
+    final primary = Theme.of(context).colorScheme.primary;
+
+    return SizedBox(
+      width: 140,
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            level == 0 ? Icons.volume_off : Icons.volume_down,
+            size: 14,
+            color: primary.withOpacity(0.7),
+          ),
+          Expanded(
+            child: SliderTheme(
+              data: SliderThemeData(
+                trackHeight: 3,
+                thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 6),
+                overlayShape:
+                    const RoundSliderOverlayShape(overlayRadius: 12),
+                activeTrackColor: primary,
+                inactiveTrackColor: primary.withOpacity(0.2),
+                thumbColor: primary,
+              ),
+              child: Slider(
+                value: level.toDouble(),
+                min: 0,
+                max: 100,
+                // Drag → optimistic preview; release → send to the robot.
+                onChanged: (v) =>
+                    ref.read(volumeProvider.notifier).preview(v.toInt()),
+                onChangeEnd: (v) =>
+                    ref.read(volumeProvider.notifier).commit(v.toInt()),
+              ),
+            ),
+          ),
+          // Trailing: volume icon, or a sync spinner while awaiting the
+          // robot's telemetry confirmation of a user change.
+          SizedBox(
+            width: 14,
+            height: 14,
+            child: volume.syncing
+                ? CircularProgressIndicator(
+                    strokeWidth: 1.6,
+                    valueColor:
+                        AlwaysStoppedAnimation(primary.withOpacity(0.7)),
+                  )
+                : Icon(
+                    Icons.volume_up,
+                    size: 14,
+                    color: primary.withOpacity(0.7),
+                  ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 /// Music playback controls with volume slider
 class _MusicControlsWithVolume extends StatelessWidget {
   final bool isPlaying;
-  final int volume;
   final String? trackName;
   final VoidCallback onPrev;
   final VoidCallback onToggle;
   final VoidCallback onNext;
-  final ValueChanged<int> onVolumeChanged;
   final VoidCallback? onUpload;
   // Build 41: Callback for deleting current track
   final void Function(String trackPath)? onDeleteTrack;
 
   const _MusicControlsWithVolume({
     required this.isPlaying,
-    required this.volume,
     this.trackName,
     required this.onPrev,
     required this.onToggle,
     required this.onNext,
-    required this.onVolumeChanged,
     this.onUpload,
     this.onDeleteTrack,
   });
@@ -972,43 +1019,7 @@ class _MusicControlsWithVolume extends StatelessWidget {
           ),
         ],
         const SizedBox(height: 8),
-        // Volume slider
-        SizedBox(
-          width: 140,
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                volume == 0 ? Icons.volume_off : Icons.volume_down,
-                size: 14,
-                color: Theme.of(context).colorScheme.primary.withOpacity(0.7),
-              ),
-              Expanded(
-                child: SliderTheme(
-                  data: SliderThemeData(
-                    trackHeight: 3,
-                    thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 6),
-                    overlayShape: const RoundSliderOverlayShape(overlayRadius: 12),
-                    activeTrackColor: Theme.of(context).colorScheme.primary,
-                    inactiveTrackColor: Theme.of(context).colorScheme.primary.withOpacity(0.2),
-                    thumbColor: Theme.of(context).colorScheme.primary,
-                  ),
-                  child: Slider(
-                    value: volume.toDouble(),
-                    min: 0,
-                    max: 100,
-                    onChanged: (v) => onVolumeChanged(v.toInt()),
-                  ),
-                ),
-              ),
-              Icon(
-                Icons.volume_up,
-                size: 14,
-                color: Theme.of(context).colorScheme.primary.withOpacity(0.7),
-              ),
-            ],
-          ),
-        ),
+        const _VolumeSlider(),
       ],
     );
   }

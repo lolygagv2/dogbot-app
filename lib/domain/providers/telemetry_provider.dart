@@ -67,6 +67,8 @@ class TelemetryNotifier extends StateNotifier<Telemetry> {
           treatsRemaining: parsed.treatsRemaining >= 0 ? parsed.treatsRemaining : state.treatsRemaining,
           activeMissionId: parsed.activeMissionId,
           connectionType: parsed.connectionType ?? state.connectionType,
+          // Robot's VolumeManager value — preserve if absent from this event.
+          volume: parsed.volume ?? state.volume,
           rawData: parsed.rawData,
         );
         print('Telemetry updated (${event.type}): battery=${state.battery}, mode=${state.mode}');
