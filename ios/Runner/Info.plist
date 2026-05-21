@@ -53,6 +53,8 @@
 	<string>WIM-Z needs access to your photo library to save photos of your dog.</string>
 	<key>NSPhotoLibraryAddUsageDescription</key>
 	<string>WIM-Z needs permission to save photos to your library.</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>WIM-Z does not track your location. This permission is required by the video streaming library to detect the local network for connecting to your robot.</string>
 	<key>UIBackgroundModes</key>
 	<array>
 		<string>audio</string>
