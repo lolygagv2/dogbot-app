@@ -108,7 +108,9 @@ class LocalConnectionNotifier extends StateNotifier<LocalConnectionData> {
       // Connect WebSocket directly to robot's local endpoint
       final wsUrl = 'ws://$ip:$port/ws/local';
       rprint('LocalConnection: Connecting WebSocket to $wsUrl');
-      await WebSocketClient.instance.connect(wsUrl);
+      // Fix #1: local mode talks straight to the robot's WS — no relay, no
+      // session_hello/session_ack handshake. Skip the handshake gate.
+      await WebSocketClient.instance.connect(wsUrl, expectRelayHandshake: false);
 
       // Set target device for local mode — Pi's local WS handler accepts this
       WebSocketClient.instance.setTargetDevice('local_robot');

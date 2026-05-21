@@ -78,6 +78,27 @@ class WebSocketClient {
   // isn't stuck in an infinite handshake-fail / reconnect loop. The
   // relay can still derive user identity from the bearer token alone.
   bool _suppressSessionHello = false;
+  // Fix #1: relay handshake gate. The relay 4000-closes the socket unless
+  // session_hello is the FIRST frame, and only confirms the connection by
+  // replying with a session_ack frame. Until that ack arrives, every
+  // outbound frame except session_hello is held in _pendingFrames.
+  //
+  // _expectRelayHandshake is false only for local mode (direct ws:// to the
+  // robot — no relay, no handshake). _sessionId itself is never null:
+  // connect() always sets it to SessionId.current.
+  bool _expectRelayHandshake = true;
+  bool _handshakeComplete = false;
+  final List<Map<String, dynamic>> _pendingFrames = [];
+  Timer? _handshakeTimeoutTimer;
+  static const Duration _handshakeTimeout = Duration(seconds: 10);
+  static const int _maxPendingLossyFrames = 50;
+  // WebRTC signaling frames must never be dropped from the pre-handshake
+  // queue — losing one breaks negotiation. Everything else is lossy.
+  static const Set<String> _losslessFrameTypes = {
+    'webrtc_request',
+    'webrtc_answer',
+    'webrtc_ice',
+  };
   int _reconnectAttempts = 0;
   static const int _maxReconnectAttempts = 5;
 
@@ -167,6 +188,7 @@ class WebSocketClient {
     String? sessionId,
     String? userId,
     String? deviceId,
+    bool expectRelayHandshake = true,
   }) async {
     if (_state == WsConnectionState.connected && _currentUrl == url) {
       return; // Already connected to this URL
@@ -177,6 +199,9 @@ class WebSocketClient {
     _sessionId = sessionId ?? SessionId.current;
     _sessionUserId = userId;
     _sessionDeviceId = deviceId;
+    // Fix #1: local mode (local_connection_service) passes false — the
+    // robot's local WS speaks no session_hello/session_ack handshake.
+    _expectRelayHandshake = expectRelayHandshake;
     // Build 88: a fresh connect() (e.g. user tapped reconnect, took over a
     // superseded session, or logged in fresh) gets a fresh shot at the
     // handshake. We only suppress it within a single connect→reconnect run.
@@ -190,6 +215,11 @@ class WebSocketClient {
     if (_currentUrl == null) return;
 
     _setState(WsConnectionState.connecting);
+    // Fix #1: each new socket needs a fresh handshake before non-hello
+    // frames may flow. Drop any frames queued against the previous socket.
+    _handshakeComplete = false;
+    _pendingFrames.clear();
+    _handshakeTimeoutTimer?.cancel();
 
     try {
       _channel = WebSocketChannel.connect(Uri.parse(_currentUrl!));
@@ -208,16 +238,17 @@ class WebSocketClient {
       _reconnectAttempts = 0;
       connTrace('ws-relay-open', _currentUrl ?? '');
 
-      // Flush any pending remote logs
-      RemoteLogger.onConnected();
-
-      // Listen for messages
+      // Listen for messages FIRST so the relay's session_ack is never missed.
       _subscription = _channel!.stream.listen(
         _onMessage,
         onError: _onError,
         onDone: _onDone,
       );
 
+      // Fix #1: session_hello MUST be the first frame on the socket. The
+      // handshake gate in send() holds every other outbound frame until the
+      // relay replies with session_ack (see _onMessage / _openHandshakeGate).
+      //
       // Build 90: session_hello RE-ENABLED. Diagnosed against the deployed
       // relay code (wimzrelay/app/routers/websocket.py): the handshake is
       // mandatory (4000 close on timeout) and validates `user_id` against
@@ -225,6 +256,22 @@ class WebSocketClient {
       // login response only returns `token`/`expires_in`, so we extract
       // `sub` from the JWT itself in connection_provider).
       _sendSessionHello();
+
+      if (_expectRelayHandshake && !_suppressSessionHello) {
+        // Relay handshake in flight — arm a timeout. If session_ack never
+        // arrives (e.g. the relay's _safe_send_json dropped it on a
+        // half-broken socket) we close and retry rather than hang.
+        _handshakeTimeoutTimer?.cancel();
+        _handshakeTimeoutTimer = Timer(_handshakeTimeout, _onHandshakeTimeout);
+      } else {
+        // Local mode, or session_hello suppressed — no session_ack will
+        // come. Open the gate now so queued frames can flow.
+        _openHandshakeGate();
+      }
+
+      // Flush pending remote logs — these queue behind session_hello while
+      // the handshake gate is still closed.
+      RemoteLogger.onConnected();
 
       // Start ping timer
       _startPingTimer();
@@ -258,6 +305,20 @@ class WebSocketClient {
 
       // Debug: log ALL messages to find battery data
       print('WS MSG [$msgType]: $json');
+
+      // Fix #1: the relay confirms the handshake with a session_ack frame.
+      // Until it arrives, every non-hello outbound frame is queued (send()).
+      if (!_handshakeComplete && msgType == 'session_ack') {
+        final ackSession = json['session_id'] as String?;
+        if (ackSession != null && ackSession != _sessionId) {
+          print('WS: ignoring session_ack for stale session '
+              '$ackSession (ours=$_sessionId)');
+        } else {
+          print('WS: session_ack received — handshake complete');
+          connTrace('ws-session-ack', _sessionId ?? '');
+          _openHandshakeGate();
+        }
+      }
 
       // Check if message contains battery data regardless of type
       if (json.containsKey('level') || json.containsKey('battery')) {
@@ -461,6 +522,16 @@ class WebSocketClient {
     final code = _channel?.closeCode;
     final reason = _channel?.closeReason;
     print('WebSocket closed (code=$code, reason=$reason)');
+    // Fix #1: a close before session_ack means the relay never confirmed
+    // this session — drop the queued frames. They are tied to this
+    // session_id and must not be replayed on the next connection;
+    // webrtc_provider resubmits webrtc_request on reconnect if needed.
+    _handshakeTimeoutTimer?.cancel();
+    if (!_handshakeComplete && _pendingFrames.isNotEmpty) {
+      print('WebSocket: dropping ${_pendingFrames.length} pre-handshake '
+          'frame(s) — session not confirmed');
+      _pendingFrames.clear();
+    }
     if (_state != WsConnectionState.disconnected) {
       _setState(WsConnectionState.disconnected);
       // 4001 — superseded by another session. Don't reconnect; the connection
@@ -522,11 +593,12 @@ class WebSocketClient {
   /// Build 88: skipped when [_suppressSessionHello] is set — used after a
   /// 4000 close so we don't keep banging on a handshake the relay rejects.
   void _sendSessionHello() {
-    if (_sessionId == null) {
-      // Connection started before sessionId/userId/deviceId were set — caller
-      // is on the legacy connect() path (e.g. local mode); skip handshake.
-      return;
-    }
+    // Fix #1: session_hello is the relay handshake frame. Local-mode
+    // connections (direct ws:// to the robot) have no relay and no
+    // handshake. _sessionId is never null here — connect() always sets it
+    // to SessionId.current — so the only skip conditions are local mode
+    // and the post-4000 suppression flag.
+    if (!_expectRelayHandshake) return;
     if (_suppressSessionHello) {
       print('WebSocket: skipping session_hello (suppressed after prior 4000)');
       return;
@@ -539,13 +611,37 @@ class WebSocketClient {
     });
   }
 
-  /// Send a message to the server
+  /// Send a message to the server.
+  ///
+  /// Fix #1: until the relay confirms the handshake with session_ack, every
+  /// frame except session_hello is held in [_pendingFrames]. Sending ahead
+  /// of session_hello makes the relay 4000-close the socket.
   void send(Map<String, dynamic> data) {
     if (_state != WsConnectionState.connected) {
       print('Cannot send: WebSocket not connected');
       return;
     }
 
+    if (!_handshakeComplete && data['type'] != 'session_hello') {
+      final type = data['type'] as String? ?? '';
+      if (_losslessFrameTypes.contains(type)) {
+        // WebRTC signaling — never dropped; losing one breaks negotiation.
+        _pendingFrames.add(data);
+        print('WS QUEUED (pre-handshake, lossless): $type');
+      } else if (_pendingFrames.length < _maxPendingLossyFrames) {
+        _pendingFrames.add(data);
+        print('WS QUEUED (pre-handshake): $type');
+      } else {
+        print('WS DROPPED (pre-handshake queue full): $type');
+      }
+      return;
+    }
+
+    _writeFrame(data);
+  }
+
+  /// Write a frame straight to the socket, bypassing the handshake gate.
+  void _writeFrame(Map<String, dynamic> data) {
     try {
       final json = jsonEncode(data);
       print('WS SEND: $json');
@@ -553,6 +649,36 @@ class WebSocketClient {
     } catch (e) {
       print('WebSocket send error: $e');
     }
+  }
+
+  /// Fix #1: open the handshake gate and flush queued frames in order.
+  /// Called when the relay replies with session_ack, or immediately when no
+  /// relay handshake applies (local mode / session_hello suppressed).
+  void _openHandshakeGate() {
+    if (_handshakeComplete) return;
+    _handshakeComplete = true;
+    _handshakeTimeoutTimer?.cancel();
+    _handshakeTimeoutTimer = null;
+    if (_pendingFrames.isEmpty) return;
+    print('WS: flushing ${_pendingFrames.length} queued frame(s) post-handshake');
+    final queued = List<Map<String, dynamic>>.from(_pendingFrames);
+    _pendingFrames.clear();
+    for (final frame in queued) {
+      _writeFrame(frame);
+    }
+  }
+
+  /// Fix #1: session_ack did not arrive in time. The relay may have dropped
+  /// it on a half-broken socket — treat as handshake failure: drop the
+  /// queued frames (they belong to a session the relay never confirmed) and
+  /// close the socket so _onDone schedules a reconnect.
+  void _onHandshakeTimeout() {
+    if (_handshakeComplete) return;
+    print('WebSocket: session_ack not received within '
+        '${_handshakeTimeout.inSeconds}s — handshake failed, closing');
+    connTrace('ws-handshake-timeout', '');
+    _pendingFrames.clear();
+    _channel?.sink.close();
   }
 
   /// Send a command to the robot via relay
@@ -897,7 +1023,10 @@ class WebSocketClient {
   Future<void> disconnect() async {
     _pingTimer?.cancel();
     _reconnectTimer?.cancel();
+    _handshakeTimeoutTimer?.cancel();
     _subscription?.cancel();
+    _handshakeComplete = false;
+    _pendingFrames.clear();
 
     // Close with timeout — if connection is already dead, don't hang
     if (_channel != null) {
