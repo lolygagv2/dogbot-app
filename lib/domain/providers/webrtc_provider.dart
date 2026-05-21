@@ -7,6 +7,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../core/network/websocket_client.dart';
 import '../../core/utils/conn_trace.dart';
 import 'device_provider.dart';
+import 'video_quality_provider.dart';
 
 /// WebRTC connection state
 enum WebRTCState { disconnected, connecting, connected, error }
@@ -674,8 +675,35 @@ class WebRTCNotifier extends StateNotifier<WebRTCConnectionState> {
     };
 
     channel.onMessage = (RTCDataChannelMessage message) {
-      print('WebRTC: Data channel message: ${message.text}');
+      _handleDataChannelMessage(message.text);
     };
+  }
+
+  /// Dispatch a structured message received from the robot on the WebRTC
+  /// data channel. Discriminated union — switch on the `type` field.
+  void _handleDataChannelMessage(String text) {
+    final Map<String, dynamic> json;
+    try {
+      final decoded = jsonDecode(text);
+      if (decoded is! Map<String, dynamic>) {
+        print('WebRTC: Data channel message not a JSON object: $text');
+        return;
+      }
+      json = decoded;
+    } catch (e) {
+      print('WebRTC: Data channel message not JSON: $text');
+      return;
+    }
+
+    final type = json['type'] as String?;
+    switch (type) {
+      case 'video_quality_state':
+        // Robot's adaptive-bitrate state — store it for the settings screen.
+        _ref.read(videoQualityStateProvider.notifier).updateFromRobot(json);
+        break;
+      default:
+        print('WebRTC: Unhandled data channel message type=$type: $text');
+    }
   }
 
   /// Send motor command via WebRTC data channel (low latency)
@@ -820,6 +848,9 @@ class WebRTCNotifier extends StateNotifier<WebRTCConnectionState> {
       state: WebRTCState.disconnected,
       sessionId: null,
     );
+    // Robot's video-quality state is per-session — clear it so the settings
+    // screen shows "not connected" instead of stale data.
+    _ref.read(videoQualityStateProvider.notifier).clear();
     print('WebRTC: _closeInternal complete - state is disconnected');
   }
 

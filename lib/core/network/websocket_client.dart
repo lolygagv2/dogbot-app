@@ -1060,6 +1060,16 @@ class WebSocketClient {
     sendCommand('set_tracking_enabled', {'enabled': enabled});
   }
 
+  /// Set the robot's video-quality mode.
+  /// 'auto' releases the robot's adaptive bitrate controller; 'low'/'medium'/
+  /// 'high' pin the tier and disable adaptation until set back to 'auto'.
+  /// Sent as a bare typed frame on the relay command channel (not the
+  /// WebRTC data channel) per the adaptive-bitrate contract.
+  void sendVideoQualityMode(String mode) {
+    print('WebSocket: sendVideoQualityMode mode=$mode');
+    send({'type': 'set_video_quality', 'mode': mode});
+  }
+
   // ============ Mission Commands (Build 38) ============
 
   /// Request current mission status from robot

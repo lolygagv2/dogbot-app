@@ -5,6 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../core/network/websocket_client.dart';
 import '../../data/models/notification_event.dart';
+import 'video_quality_provider.dart';
 
 /// Keys for persisted settings
 class SettingsKeys {
@@ -18,6 +19,7 @@ class SettingsKeys {
   static const localModePort = 'local_mode_port';
   static const notificationsEnabled = 'notifications_enabled';
   static const notificationChannels = 'notification_channels_v1';
+  static const videoQualityMode = 'video_quality_mode';
 }
 
 /// Per-event-type destination for a notification:
@@ -84,6 +86,10 @@ class AppSettings {
   /// Per-event-type routing. Missing keys fall back to defaults.
   final Map<NotificationEventType, NotificationChannel> notificationChannels;
 
+  /// User's video-quality override. `auto` lets the robot's adaptive
+  /// controller pick the tier; the others pin it. Persisted app-wide.
+  final VideoQualityMode videoQualityMode;
+
   const AppSettings({
     this.motorTrimRight = 0.0,
     this.cameraTrackingEnabled = false,
@@ -95,6 +101,7 @@ class AppSettings {
     this.localModePort = 8000,
     this.notificationsEnabled = true,
     this.notificationChannels = const {},
+    this.videoQualityMode = VideoQualityMode.auto,
   });
 
   /// Resolve the channel for an event type, applying defaults for missing keys.
@@ -112,6 +119,7 @@ class AppSettings {
     int? localModePort,
     bool? notificationsEnabled,
     Map<NotificationEventType, NotificationChannel>? notificationChannels,
+    VideoQualityMode? videoQualityMode,
   }) {
     return AppSettings(
       motorTrimRight: motorTrimRight ?? this.motorTrimRight,
@@ -124,6 +132,7 @@ class AppSettings {
       localModePort: localModePort ?? this.localModePort,
       notificationsEnabled: notificationsEnabled ?? this.notificationsEnabled,
       notificationChannels: notificationChannels ?? this.notificationChannels,
+      videoQualityMode: videoQualityMode ?? this.videoQualityMode,
     );
   }
 }
@@ -155,6 +164,8 @@ class SettingsNotifier extends StateNotifier<AppSettings> {
     final localModeIp = _prefs?.getString(SettingsKeys.localModeIp) ?? '';
     final localModePort = _prefs?.getInt(SettingsKeys.localModePort) ?? 8000;
     final notificationsEnabled = _prefs?.getBool(SettingsKeys.notificationsEnabled) ?? true;
+    final videoQualityMode = VideoQualityMode.fromName(
+        _prefs?.getString(SettingsKeys.videoQualityMode));
 
     // Channels persisted as JSON map of {eventTypeName: channelName}.
     final channelsJson = _prefs?.getString(SettingsKeys.notificationChannels);
@@ -189,6 +200,7 @@ class SettingsNotifier extends StateNotifier<AppSettings> {
       localModePort: localModePort,
       notificationsEnabled: notificationsEnabled,
       notificationChannels: channels,
+      videoQualityMode: videoQualityMode,
     );
   }
 
@@ -288,6 +300,16 @@ class SettingsNotifier extends StateNotifier<AppSettings> {
       SettingsKeys.notificationChannels,
       jsonEncode(encoded),
     );
+  }
+
+  /// Set the video-quality override mode and tell the robot.
+  /// 'auto' releases the robot's adaptive controller; 'low'/'medium'/'high'
+  /// pin the tier. The selection is persisted so it survives app restarts.
+  Future<void> setVideoQualityMode(VideoQualityMode mode) async {
+    state = state.copyWith(videoQualityMode: mode);
+    await _prefs?.setString(SettingsKeys.videoQualityMode, mode.name);
+    _ref.read(websocketClientProvider).sendVideoQualityMode(mode.name);
+    print('Settings: Video quality mode set to ${mode.name}');
   }
 
   /// Toggle local mode on/off

@@ -11,6 +11,8 @@ import '../../../domain/providers/paired_devices_provider.dart';
 import '../../../domain/providers/settings_provider.dart';
 import '../../../domain/providers/push_to_talk_provider.dart';
 import '../../../domain/providers/telemetry_provider.dart';
+import '../../../domain/providers/video_quality_provider.dart';
+import '../../../domain/providers/webrtc_provider.dart';
 import '../../../domain/providers/wifi_config_provider.dart';
 import '../../theme/app_theme.dart';
 
@@ -125,6 +127,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
 
           _SectionHeader('Camera'),
           const _CameraTrackingTile(),
+          const Divider(),
+
+          _SectionHeader('Video'),
+          const _VideoQualityTile(),
           const Divider(),
 
           _SectionHeader('Audio'),
@@ -576,6 +582,78 @@ class _CameraTrackingTile extends ConsumerWidget {
       onChanged: (value) {
         ref.read(settingsProvider.notifier).setCameraTrackingEnabled(value);
       },
+    );
+  }
+}
+
+/// Video-quality override selector + current robot streaming tier.
+/// The robot adapts bitrate on its own; this lets the user pin a tier.
+class _VideoQualityTile extends ConsumerWidget {
+  const _VideoQualityTile();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final mode = ref.watch(settingsProvider.select((s) => s.videoQualityMode));
+    final webrtcState = ref.watch(webrtcStateProvider);
+    final qualityState = ref.watch(videoQualityStateProvider);
+
+    // "Currently streaming" line — covers the three edge cases:
+    //  - WebRTC not connected        → "not connected"
+    //  - connected, no state yet     → "—"
+    //  - connected, state received   → the robot's live tier label
+    final String streamingLabel;
+    if (webrtcState != WebRTCState.connected) {
+      streamingLabel = 'not connected';
+    } else if (qualityState == null) {
+      streamingLabel = '—';
+    } else {
+      streamingLabel = qualityState.tier.label;
+    }
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.hd),
+              const SizedBox(width: 16),
+              Text(
+                'Video Quality',
+                style: Theme.of(context).textTheme.titleMedium,
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          SizedBox(
+            width: double.infinity,
+            child: SegmentedButton<VideoQualityMode>(
+              segments: const [
+                ButtonSegment(
+                    value: VideoQualityMode.auto, label: Text('Auto')),
+                ButtonSegment(value: VideoQualityMode.low, label: Text('Low')),
+                ButtonSegment(
+                    value: VideoQualityMode.medium, label: Text('Med')),
+                ButtonSegment(
+                    value: VideoQualityMode.high, label: Text('High')),
+              ],
+              selected: {mode},
+              showSelectedIcon: false,
+              onSelectionChanged: (selection) {
+                ref
+                    .read(settingsProvider.notifier)
+                    .setVideoQualityMode(selection.first);
+              },
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Currently streaming: $streamingLabel',
+            style: TextStyle(fontSize: 12, color: AppTheme.textTertiary),
+          ),
+        ],
+      ),
     );
   }
 }
