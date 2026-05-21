@@ -6,6 +6,7 @@ import 'package:web_socket_channel/web_socket_channel.dart';
 
 import '../constants/app_constants.dart';
 import '../session/session_id.dart';
+import '../utils/conn_trace.dart';
 import '../utils/remote_logger.dart';
 
 /// WebSocket connection state
@@ -205,6 +206,7 @@ class WebSocketClient {
 
       _setState(WsConnectionState.connected);
       _reconnectAttempts = 0;
+      connTrace('ws-relay-open', _currentUrl ?? '');
 
       // Flush any pending remote logs
       RemoteLogger.onConnected();

@@ -5,6 +5,7 @@ import 'package:flutter_webrtc/flutter_webrtc.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../core/network/websocket_client.dart';
+import '../../core/utils/conn_trace.dart';
 import 'device_provider.dart';
 
 /// WebRTC connection state
@@ -312,6 +313,9 @@ class WebRTCNotifier extends StateNotifier<WebRTCConnectionState> {
       _renderer = RTCVideoRenderer();
       await _renderer!.initialize();
       _rendererInitialized = true;
+      _renderer!.onFirstFrameRendered = () {
+        connTrace('first-video-frame', 'renderer rendered first frame');
+      };
       state = state.copyWith(renderer: _renderer);
     }
     return _renderer!;
@@ -368,6 +372,7 @@ class WebRTCNotifier extends StateNotifier<WebRTCConnectionState> {
         'device_id': deviceId,
       });
       print('WebRTC: Sent webrtc_request for device $deviceId');
+      connTrace('webrtc-request-sent', 'device=$deviceId');
     } finally {
       _isRequesting = false;
     }
@@ -392,6 +397,8 @@ class WebRTCNotifier extends StateNotifier<WebRTCConnectionState> {
         print('WebRTC: Received track: ${event.track.kind}');
         if (event.track.kind == 'video' && event.streams.isNotEmpty) {
           final stream = event.streams[0];
+          connTrace('video-track-recv',
+              'stream=${stream.id} tracks=${stream.getVideoTracks().length}');
           print('WebRTC: Setting srcObject with stream id=${stream.id}, tracks=${stream.getVideoTracks().length}');
 
           if (_renderer != null) {
@@ -426,6 +433,7 @@ class WebRTCNotifier extends StateNotifier<WebRTCConnectionState> {
       _peerConnection!.onIceCandidate = (RTCIceCandidate candidate) {
         final candidateType = _parseIceCandidateType(candidate.candidate);
         print('WebRTC: Local ICE candidate: $candidateType');
+        connTrace('ice-candidate', candidateType);
         final wsClient = _ref.read(websocketClientProvider);
         wsClient.send({
           'type': 'webrtc_ice',
@@ -441,6 +449,7 @@ class WebRTCNotifier extends StateNotifier<WebRTCConnectionState> {
       // Handle connection state changes and auto-reconnect
       _peerConnection!.onConnectionState = (RTCPeerConnectionState connState) {
         print('WebRTC: Connection state: $connState');
+        connTrace('pc-state', connState.toString());
         if (connState == RTCPeerConnectionState.RTCPeerConnectionStateFailed ||
             connState ==
                 RTCPeerConnectionState.RTCPeerConnectionStateDisconnected) {
@@ -462,6 +471,12 @@ class WebRTCNotifier extends StateNotifier<WebRTCConnectionState> {
       // Handle ICE connection state for debugging
       _peerConnection!.onIceConnectionState = (RTCIceConnectionState iceState) {
         print('WebRTC: ICE state: $iceState');
+      };
+
+      // ICE gathering progress (diagnostic) — fires 'gathering' when the
+      // native stack starts collecting local candidates.
+      _peerConnection!.onIceGatheringState = (RTCIceGatheringState gState) {
+        connTrace('ice-gathering', gState.toString());
       };
 
       // Handle incoming data channel from robot (use this one for sending)
@@ -489,6 +504,7 @@ class WebRTCNotifier extends StateNotifier<WebRTCConnectionState> {
     }
 
     print('WebRTC: Received offer, creating answer...');
+    connTrace('sdp-offer-recv', 'session=${state.sessionId}');
 
     try {
       final description = RTCSessionDescription(
@@ -513,6 +529,7 @@ class WebRTCNotifier extends StateNotifier<WebRTCConnectionState> {
         },
       });
       print('WebRTC: Sent answer');
+      connTrace('sdp-answer-sent', 'session=${state.sessionId}');
     } catch (e) {
       print('WebRTC: Error handling offer: $e');
       state = state.copyWith(

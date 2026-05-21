@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../../core/utils/conn_trace.dart';
 import '../../core/storage/secure_token_storage.dart';
 import '../../data/datasources/auth_api.dart';
 import 'connection_provider.dart';
@@ -146,6 +147,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
         email: email,
         userId: userId,
       );
+      connTrace('silent-reauth-success', 'user=$userId validate=$result');
 
       // Build 32 fix: Reload dog profiles for restored user session
       // This is critical - without this, dogs load before auth is ready
@@ -228,6 +230,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
         email: email,
         userId: response.userId,
       );
+      connTrace('register-success', 'user=${response.userId}');
 
       // Build 32: Reload dog profiles for this user (scoped storage)
       await _ref.read(dogProfilesProvider.notifier).reloadForCurrentUser();
@@ -269,6 +272,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
         email: email,
         userId: response.userId,
       );
+      connTrace('login-success', 'user=${response.userId}');
 
       // Build 32: Reload dog profiles for this user (scoped storage)
       await _ref.read(dogProfilesProvider.notifier).reloadForCurrentUser();
