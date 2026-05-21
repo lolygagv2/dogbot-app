@@ -543,6 +543,10 @@ class WebSocketClient {
     // session_id and must not be replayed on the next connection;
     // webrtc_provider resubmits webrtc_request on reconnect if needed.
     _handshakeTimeoutTimer?.cancel();
+    // Fix #3: stop the heartbeat the instant the socket closes — the next
+    // _doConnect starts a fresh timer; the old one must not linger and tick
+    // against a dead socket.
+    _pingTimer?.cancel();
     if (!_handshakeComplete && _pendingFrames.isNotEmpty) {
       print('WebSocket: dropping ${_pendingFrames.length} pre-handshake '
           'frame(s) — session not confirmed');
@@ -611,12 +615,24 @@ class WebSocketClient {
     _reconnectTimer = Timer(delay, _doConnect);
   }
 
+  /// Fix #3: heartbeat. Cancels any prior timer first — a reconnect runs
+  /// _doConnect → _startPingTimer, so exactly one ping timer is ever live
+  /// and it always belongs to the current socket. Cadence is 10s
+  /// (AppConstants.websocketPingInterval); the relay 4002-closes after
+  /// ~25s without a ping, so 10s gives 2-3 pings of margin for blips.
   void _startPingTimer() {
     _pingTimer?.cancel();
     _pingTimer = Timer.periodic(AppConstants.websocketPingInterval, (_) {
-      if (_state == WsConnectionState.connected) {
-        send({'type': 'ping'});
+      // Fix #3: only fire once the socket is open AND the handshake is
+      // complete — never ping a closed or pre-session_ack socket (the
+      // same root-cause family as the original debug_log-before-hello bug).
+      if (_state != WsConnectionState.connected || !_handshakeComplete) {
+        return;
       }
+      send({'type': 'ping'});
+      // Fix #3: log every heartbeat so cadence is verifiable in the
+      // Connection Diagnostics trace.
+      connTrace('ws-heartbeat', 'ping sent');
     });
   }
 
