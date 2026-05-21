@@ -21,6 +21,7 @@ import 'presentation/screens/coach/coach_screen.dart';
 import 'presentation/screens/history/history_screen.dart';
 import 'presentation/screens/settings/settings_screen.dart';
 import 'presentation/screens/settings/device_pairing_screen.dart';
+import 'presentation/screens/settings/connection_diagnostics_screen.dart';
 import 'presentation/screens/settings/notification_preferences_screen.dart';
 import 'presentation/screens/notifications/notifications_screen.dart';
 import 'presentation/screens/dog_profile/dog_profile_screen.dart';
@@ -190,6 +191,11 @@ GoRouter _buildRouter(WidgetRef ref) => GoRouter(
               path: 'notifications',
               builder: (context, state) =>
                   const NotificationPreferencesScreen(),
+            ),
+            GoRoute(
+              path: 'connection-diagnostics',
+              builder: (context, state) =>
+                  const ConnectionDiagnosticsScreen(),
             ),
           ],
         ),

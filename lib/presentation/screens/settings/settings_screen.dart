@@ -161,6 +161,13 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             trailing: const Icon(Icons.chevron_right),
             onTap: () => _showRecordingDiagnostics(context, ref),
           ),
+          ListTile(
+            leading: const Icon(Icons.lan),
+            title: const Text('Connection Diagnostics'),
+            subtitle: const Text('WebRTC signaling trace (video connect)'),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => context.push('/settings/connection-diagnostics'),
+          ),
           const Divider(),
 
           _SectionHeader('About'),
