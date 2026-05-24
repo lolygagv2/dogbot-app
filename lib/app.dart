@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import 'core/network/dio_client.dart';
 import 'core/network/websocket_client.dart';
 import 'domain/providers/auth_provider.dart';
 import 'domain/providers/connection_provider.dart';
@@ -46,22 +47,37 @@ enum NavTab {
 final _rootNavigatorKey = GlobalKey<NavigatorState>();
 final _shellNavigatorKey = GlobalKey<NavigatorState>();
 
+/// Paths reachable while signed out. Anything else is bounced to /login
+/// by the router's redirect guard when authProvider says !isAuthenticated.
+const _publicPaths = <String>{'/', '/login', '/demo'};
+
 /// Builds the app router. Lives inside [_WimzAppState] so the redirect can
-/// read the current auth state from Riverpod.
-GoRouter _buildRouter(WidgetRef ref) => GoRouter(
+/// read the current auth state from Riverpod. [refreshListenable] is bumped
+/// whenever authProvider's identity-affecting fields change so GoRouter
+/// re-evaluates redirects — without it, a logout() call while sitting on
+/// /home would leave the user stranded watching "Reconnecting…".
+GoRouter _buildRouter(WidgetRef ref, Listenable refreshListenable) => GoRouter(
   navigatorKey: _rootNavigatorKey,
   initialLocation: '/',
+  refreshListenable: refreshListenable,
   redirect: (context, state) {
     final auth = ref.read(authProvider);
+    final path = state.uri.path;
     // While silent re-auth is in flight, stay on splash. The splash screen
     // does the routing once bootstrapping completes.
     if (auth.bootstrapping) {
-      return state.uri.path == '/' ? null : '/';
+      return path == '/' ? null : '/';
     }
     // Gate /login on isAuthenticated: an already-signed-in user shouldn't
     // see the login screen.
-    if (state.uri.path == '/login' && auth.isAuthenticated) {
+    if (path == '/login' && auth.isAuthenticated) {
       return '/home';
+    }
+    // Protected-route guard: anyone hitting a non-public path while signed
+    // out gets bounced to /login. Pairs with logout(notice:) — the notice
+    // survives the auth-state reset so /login can explain the bounce.
+    if (!auth.isAuthenticated && !_publicPaths.contains(path)) {
+      return '/login';
     }
     return null;
   },
@@ -535,17 +551,40 @@ class _WimzAppState extends ConsumerState<WimzApp> with WidgetsBindingObserver {
   static const Duration _backgroundTeardownDelay = Duration(seconds: 30);
   Timer? _backgroundTeardownTimer;
   late final GoRouter _router;
+  // Bumped whenever authProvider's identity-affecting fields change; drives
+  // GoRouter.refreshListenable so a logout() (4001 or 401) immediately
+  // re-evaluates redirects and bounces the user to /login.
+  final ValueNotifier<int> _authRefresh = ValueNotifier<int>(0);
+  ProviderSubscription<AuthState>? _authSub;
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    _router = _buildRouter(ref);
+    _router = _buildRouter(ref, _authRefresh);
+    _authSub = ref.listenManual<AuthState>(authProvider, (prev, next) {
+      if (prev?.isAuthenticated != next.isAuthenticated ||
+          prev?.bootstrapping != next.bootstrapping) {
+        _authRefresh.value++;
+      }
+    });
+    // Wire Dio's 401 callback so REST auth failures route through the same
+    // logout(notice:) path as WS 4001. See dio_client.dart.
+    DioClient.onUnauthorized = () {
+      final auth = ref.read(authProvider);
+      if (!auth.isAuthenticated) return;
+      ref.read(authProvider.notifier).logout(
+            notice: 'Your session expired — please sign in again.',
+          );
+    };
   }
 
   @override
   void dispose() {
     _backgroundTeardownTimer?.cancel();
+    _authSub?.close();
+    _authRefresh.dispose();
+    DioClient.onUnauthorized = null;
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }

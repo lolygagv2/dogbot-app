@@ -327,13 +327,17 @@ class ConnectionNotifier extends StateNotifier<ConnectionState> {
         );
         break;
       case WsCloseReason.invalidToken:
-        // 4001: the stored token is invalid/expired — force re-login.
+        // 4001: the stored token is invalid/expired — force re-login. The
+        // notice survives the logout() reset so /login can explain why the
+        // user was bounced.
         _reconnectTimer?.cancel();
         state = state.copyWith(
           status: ConnectionStatus.error,
           errorMessage: 'Session expired — please sign in again.',
         );
-        _ref.read(authProvider.notifier).logout();
+        _ref.read(authProvider.notifier).logout(
+              notice: 'Your session expired — please sign in again.',
+            );
         break;
     }
   }

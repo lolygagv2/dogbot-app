@@ -185,6 +185,47 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                             .withValues(alpha: 0.6),
                       ),
                 ),
+                // Build 99: shown when the user is bounced here by an expired
+                // session (WS 4001 or REST 401) rather than an explicit Sign
+                // Out tap. Explains *why* they were kicked.
+                if (authState.loginNotice != null) ...[
+                  const SizedBox(height: 24),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 12, vertical: 10),
+                    decoration: BoxDecoration(
+                      color: AppTheme.primary.withValues(alpha: 0.10),
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(
+                          color: AppTheme.primary.withValues(alpha: 0.35)),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.info_outline,
+                            color: AppTheme.primary, size: 20),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Text(
+                            authState.loginNotice!,
+                            style: const TextStyle(
+                                color: AppTheme.primary, fontSize: 13),
+                          ),
+                        ),
+                        InkWell(
+                          onTap: () => ref
+                              .read(authProvider.notifier)
+                              .clearLoginNotice(),
+                          borderRadius: BorderRadius.circular(16),
+                          child: const Padding(
+                            padding: EdgeInsets.all(4),
+                            child: Icon(Icons.close,
+                                color: AppTheme.primary, size: 18),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
                 const SizedBox(height: 48),
 
                 // === Main 3 buttons ===

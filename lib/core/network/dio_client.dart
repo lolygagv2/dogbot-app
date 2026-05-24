@@ -13,6 +13,12 @@ final dioClientProvider = Provider<Dio>((ref) {
 class DioClient {
   DioClient._();
 
+  /// Set by _WimzAppState.initState. Invoked by [_AuthInterceptor] when a
+  /// request that carried a Bearer token comes back 401 — the registered
+  /// callback decides whether to log the user out (it gates on
+  /// isAuthenticated to avoid double-firing during sign-out races).
+  static void Function()? onUnauthorized;
+
   static final Dio instance = Dio(
     BaseOptions(
       // Initialize with production base URL by default
@@ -26,11 +32,34 @@ class DioClient {
     ),
   )..interceptors.addAll([
       _LoggingInterceptor(),
+      _AuthInterceptor(),
     ]);
 
   /// Update base URL when connecting to a different server
   static void setBaseUrl(String baseUrl) {
     instance.options.baseUrl = baseUrl;
+  }
+}
+
+/// Build 99: routes REST 401s through the same logout-with-notice path as
+/// WS 4001. Fires onUnauthorized() only when:
+///   - status code is 401, AND
+///   - the request carried an Authorization header (so /auth/login wrong-
+///     password etc. doesn't kick anyone out).
+/// The registered callback gates on isAuthenticated, so concurrent 401s
+/// don't double-fire logout.
+class _AuthInterceptor extends Interceptor {
+  @override
+  void onError(DioException err, ErrorInterceptorHandler handler) {
+    if (err.response?.statusCode == 401) {
+      final hadBearer = err.requestOptions.headers.containsKey('Authorization')
+          || err.requestOptions.headers.containsKey('authorization');
+      if (hadBearer) {
+        print('Auth: REST 401 with Bearer token — triggering logout');
+        DioClient.onUnauthorized?.call();
+      }
+    }
+    handler.next(err);
   }
 }
 

@@ -25,6 +25,10 @@ class AuthState {
   // subject, so it must match what the relay set.
   final String? userId;
   final String? errorMessage;
+  // Cross-session banner shown on /login when the user is bounced there by
+  // 4001/401, not by an explicit Sign Out tap. Survives the logout() reset
+  // and is cleared by clearLoginNotice() once acknowledged.
+  final String? loginNotice;
 
   const AuthState({
     this.bootstrapping = true,
@@ -34,6 +38,7 @@ class AuthState {
     this.email,
     this.userId,
     this.errorMessage,
+    this.loginNotice,
   });
 
   AuthState copyWith({
@@ -53,6 +58,7 @@ class AuthState {
       email: email ?? this.email,
       userId: userId ?? this.userId,
       errorMessage: errorMessage,
+      loginNotice: loginNotice,
     );
   }
 }
@@ -296,8 +302,12 @@ class AuthNotifier extends StateNotifier<AuthState> {
     }
   }
 
-  /// Logout - clears auth state and resets user-scoped data
-  Future<void> logout() async {
+  /// Logout - clears auth state and resets user-scoped data.
+  ///
+  /// [notice] survives the state reset and is shown as a banner on /login.
+  /// Pass it when logout is triggered by session expiry (4001/401) so the
+  /// user sees *why* they were bounced rather than a silent kick.
+  Future<void> logout({String? notice}) async {
     // Disconnect from relay/robot
     await _ref.read(connectionProvider.notifier).disconnect();
 
@@ -311,12 +321,26 @@ class AuthNotifier extends StateNotifier<AuthState> {
 
     // Clear stored auth
     await _clearAuth();
-    state = const AuthState(bootstrapping: false);
+    state = AuthState(bootstrapping: false, loginNotice: notice);
   }
 
   /// Clear error message
   void clearError() {
     state = state.copyWith(errorMessage: null);
+  }
+
+  /// Dismiss the session-expired banner on /login.
+  void clearLoginNotice() {
+    if (state.loginNotice == null) return;
+    state = AuthState(
+      bootstrapping: state.bootstrapping,
+      isLoading: state.isLoading,
+      isAuthenticated: state.isAuthenticated,
+      token: state.token,
+      email: state.email,
+      userId: state.userId,
+      errorMessage: state.errorMessage,
+    );
   }
 }
 
