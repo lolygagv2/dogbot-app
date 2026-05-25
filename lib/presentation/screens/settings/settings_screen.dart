@@ -15,6 +15,7 @@ import '../../../domain/providers/video_quality_provider.dart';
 import '../../../domain/providers/webrtc_provider.dart';
 import '../../../domain/providers/wifi_config_provider.dart';
 import '../../theme/app_theme.dart';
+import '../../widgets/night_mode/night_vision_settings_section.dart';
 
 class SettingsScreen extends ConsumerStatefulWidget {
   const SettingsScreen({super.key});
@@ -127,6 +128,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
 
           _SectionHeader('Camera'),
           const _CameraTrackingTile(),
+          const Divider(),
+
+          _SectionHeader('Night Vision'),
+          const NightVisionSettingsSection(),
           const Divider(),
 
           _SectionHeader('Video'),

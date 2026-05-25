@@ -11,6 +11,13 @@ class AppTheme {
   static const Color primaryDark = Color(0xFF00B8D4);
   static const Color primaryLight = Color(0xFF6EFFFF);
 
+  // Night-vision accent (Build 100): cooler steel-blue shown app-wide when
+  // the robot reports `night_mode_state.mode == 'night'`. Stays within the
+  // cool palette so it harmonises with the existing dark theme rather than
+  // clashing — but is unambiguously different from the daylight cyan.
+  static const Color primaryNight = Color(0xFF5B8EE8);
+  static const Color primaryNightDark = Color(0xFF3D6BC4);
+
   // Secondary: Electric Purple (for AI/detection highlights)
   static const Color secondary = Color(0xFFBB86FC);
   static const Color secondaryDark = Color(0xFF9C64FB);
@@ -303,6 +310,107 @@ class AppTheme {
 
   // Light theme (minimal - most users will prefer dark for this type of app)
   static ThemeData get light => dark; // Default to dark for robotics app
+
+  /// Night-vision theme (Build 100). Identical to [dark] but with the primary
+  /// accent shifted to a cooler steel-blue. App-wide chrome shift driven by
+  /// `nightModeProvider.currentMode` — see WimzApp.build().
+  static ThemeData get darkNight {
+    final base = dark;
+    return base.copyWith(
+      colorScheme: base.colorScheme.copyWith(
+        primary: primaryNight,
+      ),
+      // Re-derive widget themes that hard-bind the primary colour so the
+      // shift actually lands (ColorScheme alone doesn't cascade through these).
+      elevatedButtonTheme: ElevatedButtonThemeData(
+        style: ElevatedButton.styleFrom(
+          backgroundColor: primaryNight,
+          foregroundColor: background,
+          elevation: 0,
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(radiusSmall),
+          ),
+          textStyle: const TextStyle(
+            fontWeight: FontWeight.w600,
+            letterSpacing: 0.5,
+          ),
+        ),
+      ),
+      outlinedButtonTheme: OutlinedButtonThemeData(
+        style: OutlinedButton.styleFrom(
+          foregroundColor: primaryNight,
+          side: const BorderSide(color: primaryNight, width: 1.5),
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(radiusSmall),
+          ),
+        ),
+      ),
+      textButtonTheme: TextButtonThemeData(
+        style: TextButton.styleFrom(
+          foregroundColor: primaryNight,
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        ),
+      ),
+      floatingActionButtonTheme: const FloatingActionButtonThemeData(
+        backgroundColor: primaryNight,
+        foregroundColor: background,
+        elevation: 4,
+        shape: CircleBorder(),
+      ),
+      sliderTheme: SliderThemeData(
+        activeTrackColor: primaryNight,
+        inactiveTrackColor: surfaceLighter,
+        thumbColor: primaryNight,
+        overlayColor: primaryNight.withOpacity(0.2),
+        trackHeight: 4,
+      ),
+      switchTheme: SwitchThemeData(
+        thumbColor: WidgetStateProperty.resolveWith((states) {
+          if (states.contains(WidgetState.selected)) return primaryNight;
+          return textTertiary;
+        }),
+        trackColor: WidgetStateProperty.resolveWith((states) {
+          if (states.contains(WidgetState.selected)) {
+            return primaryNight.withOpacity(0.5);
+          }
+          return surfaceLighter;
+        }),
+      ),
+      bottomNavigationBarTheme: const BottomNavigationBarThemeData(
+        backgroundColor: surface,
+        selectedItemColor: primaryNight,
+        unselectedItemColor: textTertiary,
+        type: BottomNavigationBarType.fixed,
+        elevation: 0,
+      ),
+      inputDecorationTheme: InputDecorationTheme(
+        filled: true,
+        fillColor: surfaceLight,
+        contentPadding:
+            const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(radiusSmall),
+          borderSide: const BorderSide(color: glassBorder),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(radiusSmall),
+          borderSide: const BorderSide(color: glassBorder),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(radiusSmall),
+          borderSide: const BorderSide(color: primaryNight, width: 2),
+        ),
+        errorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(radiusSmall),
+          borderSide: const BorderSide(color: error),
+        ),
+        labelStyle: const TextStyle(color: textSecondary),
+        hintStyle: const TextStyle(color: textTertiary),
+      ),
+    );
+  }
 
   // ============ Helper Methods ============
 

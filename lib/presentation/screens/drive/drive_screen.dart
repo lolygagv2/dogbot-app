@@ -8,12 +8,15 @@ import 'package:wakelock_plus/wakelock_plus.dart';
 
 import 'package:go_router/go_router.dart';
 
+import '../../../data/models/night_mode_state.dart';
 import '../../../domain/providers/coach_provider.dart';
 import '../../../domain/providers/connection_provider.dart';
 import '../../../domain/providers/control_provider.dart';
 import '../../../domain/providers/missions_provider.dart';
 import '../../../domain/providers/mode_provider.dart';
+import '../../../domain/providers/night_mode_provider.dart';
 import '../../../domain/providers/telemetry_provider.dart';
+import '../../widgets/night_mode/mode_badge.dart';
 import '../../widgets/video/smart_video_view.dart';
 import '../../widgets/video/audio_mute_toggle.dart';
 import '../../widgets/controls/push_to_talk.dart';
@@ -95,6 +98,32 @@ class _DriveScreenState extends ConsumerState<DriveScreen> {
       _modeChangeRequested = false;
     }
 
+    // Build 100: when the robot reports a day↔night transition, show a brief
+    // floating banner so the user understands the ~3s AE settle. Controls are
+    // unaffected — the snackbar is non-blocking and auto-dismisses.
+    ref.listen<NightModeState?>(nightModeProvider, (prev, next) {
+      if (prev == null || next == null) return;
+      if (prev.currentMode == next.currentMode) return;
+      final messenger = ScaffoldMessenger.maybeOf(context);
+      if (messenger == null) return;
+      messenger.hideCurrentSnackBar();
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text(
+            next.currentMode == DayNight.night
+                ? 'Switching to night mode…'
+                : 'Switching to day mode…',
+          ),
+          duration: const Duration(seconds: 4),
+          behavior: SnackBarBehavior.floating,
+          backgroundColor: AppTheme.background.withOpacity(0.9),
+        ),
+      );
+    });
+
+    final nightState = ref.watch(nightModeProvider);
+    final isNightActive = nightState?.currentMode == DayNight.night;
+
     return Scaffold(
       extendBodyBehindAppBar: true,
       appBar: AppBar(
@@ -150,6 +179,31 @@ class _DriveScreenState extends ConsumerState<DriveScreen> {
         children: [
           // Full-screen video background
           const SmartVideoView(),
+
+          // Build 100: Night-mode chrome — thin cool-tone border framing the
+          // video. Pointer-transparent so it never blocks controls. The pixels
+          // of the IR feed are intentionally left untouched per nightvision.md.
+          if (isNightActive)
+            Positioned.fill(
+              child: IgnorePointer(
+                child: Container(
+                  decoration: BoxDecoration(
+                    border: Border.all(
+                      color: AppTheme.behaviorLying.withOpacity(0.55),
+                      width: 2,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+
+          // Build 100: Mode badge — top-right, below the existing status row.
+          // Display-only; override control lives in Settings → Night Vision.
+          Positioned(
+            top: MediaQuery.of(context).padding.top + 96,
+            right: 16,
+            child: const ModeBadge(),
+          ),
 
           // Top status bar
           Positioned(

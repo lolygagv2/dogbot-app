@@ -6,8 +6,10 @@ import 'package:go_router/go_router.dart';
 
 import 'core/network/dio_client.dart';
 import 'core/network/websocket_client.dart';
+import 'data/models/night_mode_state.dart';
 import 'domain/providers/auth_provider.dart';
 import 'domain/providers/connection_provider.dart';
+import 'domain/providers/night_mode_provider.dart';
 import 'domain/providers/notifications_provider.dart';
 import 'domain/providers/settings_provider.dart';
 import 'domain/providers/webrtc_provider.dart';
@@ -646,11 +648,17 @@ class _WimzAppState extends ConsumerState<WimzApp> with WidgetsBindingObserver {
 
   @override
   Widget build(BuildContext context) {
+    // Build 100: app-wide chrome shift driven by the robot's night_mode_state.
+    // Swapping the theme primary cyan → steel-blue makes every screen feel
+    // the mode change without modifying the IR video pixels themselves.
+    final nightState = ref.watch(nightModeProvider);
+    final isNight = nightState?.currentMode == DayNight.night;
+    final theme = isNight ? AppTheme.darkNight : AppTheme.dark;
     return MaterialApp.router(
       title: 'WIM-Z',
-      theme: AppTheme.light,
-      darkTheme: AppTheme.dark,
-      themeMode: ThemeMode.system,
+      theme: theme,
+      darkTheme: theme,
+      themeMode: ThemeMode.dark,
       routerConfig: _router,
       debugShowCheckedModeBanner: false,
     );

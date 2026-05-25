@@ -1073,6 +1073,16 @@ class WebSocketClient {
     send({'type': 'set_video_quality', 'mode': mode});
   }
 
+  /// Set the robot's day/night camera override.
+  /// `override` is one of 'auto' | 'force_day' | 'force_night' — the robot
+  /// persists the choice and publishes the next [night_mode_state] heartbeat
+  /// with it reflected. Inbound `night_mode_state` flows through the generic
+  /// event stream (see _onMessage default branch).
+  void sendNightModeOverride(String override) {
+    print('WebSocket: sendNightModeOverride override=$override');
+    send({'type': 'set_night_mode_override', 'override': override});
+  }
+
   // ============ Mission Commands (Build 38) ============
 
   /// Request current mission status from robot
