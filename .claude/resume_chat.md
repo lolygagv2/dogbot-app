@@ -1,5 +1,66 @@
 # WIM-Z Resume Chat Log
 
+## Session: 2026-05-25 — Build 99 (Night Vision + Cold-Open Fix + Multi-Robot Switch Fix)
+**Goal:** Bundle night-vision UI on top of carry-over expired-session UX (Build 99 from prior session, never shipped); diagnose & fix two reported user issues before Codemagic.
+**Status:** Completed — 5 commits pushed to main, tip `bc8f944`, pubspec `1.0.0+99`. User confirmed ready to trigger Codemagic.
+
+### Inherited from prior session (was already committed as 0e63028 before this session began)
+- Expired-session UX: router `refreshListenable` + protected-route guard; `_AuthInterceptor` for REST 401 → `DioClient.onUnauthorized`; `AuthState.loginNotice` survives `logout()` reset; login screen banner. Carries through.
+
+### Part A — Night vision app-side (commit 37783f4, originally tagged "Build 100")
+Robot decides day/night from NoIR + lux + 940nm IR illuminator; app reflects state and exposes Auto/Force Day/Force Night override. Spec was `.claude/nightvision.md` (now committed).
+- **Wire contract:** inbound `night_mode_state` (mode/override/lux/last_changed_at, 60s heartbeat) and outbound `set_night_mode_override`. WS client's generic typed-message dispatch already forwards inbound through `eventStream` — only added outbound helper `sendNightModeOverride()`.
+- **NEW** `lib/data/models/night_mode_state.dart` — `DayNight`/`NightModeOverride` enums + immutable `NightModeState` (plain Dart, matches `VideoQualityState` style) + `luxLabel()` thresholds.
+- **NEW** `lib/domain/providers/night_mode_provider.dart` — `StateNotifier<NightModeState?>` subscribed to `eventStream`, optimistic `setOverride()`, 90s heartbeat-stale flag via `Timer`-driven re-emit. Sibling `nightModeIsStaleProvider`.
+- **NEW** `lib/presentation/widgets/night_mode/mode_badge.dart` — display-only sun/moon badge for drive screen top-right (per user choice, override lives in settings, not on badge).
+- **NEW** `lib/presentation/widgets/night_mode/night_vision_settings_section.dart` — mode header, lux + label, last-changed relative timestamp, `SegmentedButton` for Auto/Day/Night, override-active warning, stale-state notice.
+- **MODIFIED** `drive_screen.dart` — embedded `ModeBadge`; added cool-tone night border via `Positioned.fill` + `IgnorePointer`; `ref.listen<NightModeState?>` triggers 4s "Switching to night/day mode…" SnackBar on transition.
+- **MODIFIED** `settings_screen.dart` — new "Night Vision" section after "Camera".
+- **MODIFIED** `app_theme.dart` — added `primaryNight` (steel-blue `0xFF5B8EE8`) + `darkNight` ThemeData variant that re-derives every widget theme binding the primary colour.
+- **MODIFIED** `app.dart` — `MaterialApp.router` theme picks `darkNight` when `nightModeProvider.currentMode == DayNight.night` (app-wide chrome shift per user choice).
+- **Pixel-purity preserved** — no `ColorFilter`/saturation/etc. applied to the video stream itself; only chrome adapts. Confirmed end-of-session via grep: zero color-manipulation primitives in `lib/`.
+
+### Part B — Cold-open auto-connect (commit 63d7624, originally tagged "Build 101")
+User-reported: cold-open with valid stored JWT lands on /home with WS never connecting; "Reconnecting…" forever; only logout+login fixes. Root cause: silent re-auth in `auth_provider._loadSavedAuth` set `isAuthenticated:true` but never called `connectionProvider.connect()` — login_screen.dart:107 does this explicitly post-login but the silent path didn't mirror it. Bug pre-dated Build 99 (likely Build 94 when silent re-auth was added) but became more visible because Build 95's tri-state validation reliably restores valid JWTs to a dead-WS state. **Fix:** read saved host/port from prefs inside `_loadSavedAuth` after successful validate and fire-and-forget `_ref.read(connectionProvider.notifier).connect(host, port)`. New import: `app_constants.dart` for the prefs keys.
+
+### Part C — Multi-robot in-session switch (commit bc8f944)
+User-reported: switching from robot A → robot B via Settings → "Manage Devices" list never loads video; only logout+login (with B selected) works. Root cause confirmed via reading `_sendSessionHello` in `websocket_client.dart:649-661`: **the relay binds each WS session to the `device_id` in `session_hello` ONCE at WS connect time**. `wsClient.setTargetDevice()` only updates the app-local inbound filter (`_isFromTargetDevice` at line 305) — it does NOT tell the relay to rebind, so every command (including `webrtc_request` for B) flows through a WS session the relay still routes to A. Logout/login worked because it produced a brand-new WS with brand-new session_hello.
+**Fix:** `webrtc_provider._handleDeviceSwitch` now: tear down WebRTC → set `_lastDeviceId = newId` → `connectionProvider.notifier.reconnect()` (closes WS, reopens with new session_hello carrying current `deviceIdProvider`). Existing `deviceStatusStream` listener at line 289-308 auto-fires `requestVideoStream(_lastDeviceId!)` once the freshly-bound relay reports the new robot online. Removed the old close+wait+request inline logic. Added `import 'connection_provider.dart'`.
+**Side-effect bonus:** this also closes the cold-open race where `connect()` may fire before `deviceIdProvider` finishes its async `_loadDeviceId` — the listener will now trigger a corrective reconnect when the saved id materialises.
+
+### Part D — Spec hygiene (commit 51fcc73)
+Discovered `.claude/local_notifications.md` (164-line spec) was actually already shipped: `lib/core/services/notification_service.dart` (`FlutterLocalNotificationsPlugin` singleton, iOS/Android init, `showForEvent`), `main.dart:22` init, `notifications_provider.dart:256-269` per-type routing via `settings.channelFor(type)` + `isAppBackgrounded` gate, plus `notification_preferences_screen.dart`. User confirmed they've actually been getting lock-screen pings — spec just lingered uncleaned. Moved spec to `archive/local_notifications_SPEC_SHIPPED.md` so future sessions don't re-read it as aspirational.
+
+### Build numbering
+Originally committed under sequential 99/100/101 message labels; consolidated to a single Build 99 in commit 1da423f because Codemagic was never triggered for the intermediate numbers. pubspec is currently `1.0.0+99`; the historical "Build 100/101" commit messages live in git log as harmless noise.
+
+### Verification
+- `flutter analyze lib/` — no errors introduced by this session. All 400+ findings are pre-existing `withOpacity → withValues` deprecation infos that pervade the codebase, plus pre-existing `unused_import`/`unused_element` warnings in files we didn't touch.
+- `flutter analyze` per-file on every modified/new file returned `No issues found`.
+- Outside `lib/`: a stray `/home/morgan/wimzapp/wimz-app-theme/` directory at the project root surfaces errors when running `flutter analyze` without an explicit `lib/` argument — pre-existing, unrelated, not in the iOS bundle. Surface in a future cleanup session if it bothers anyone.
+
+### New files this session (4)
+- `lib/data/models/night_mode_state.dart`
+- `lib/domain/providers/night_mode_provider.dart`
+- `lib/presentation/widgets/night_mode/mode_badge.dart`
+- `lib/presentation/widgets/night_mode/night_vision_settings_section.dart`
+
+### Modified files (8 + pubspec)
+- `lib/app.dart`, `lib/core/network/dio_client.dart` (carry-over from prior session), `lib/core/network/websocket_client.dart`, `lib/domain/providers/auth_provider.dart`, `lib/domain/providers/connection_provider.dart` (carry-over), `lib/domain/providers/webrtc_provider.dart`, `lib/presentation/screens/auth/login_screen.dart` (carry-over), `lib/presentation/screens/drive/drive_screen.dart`, `lib/presentation/screens/settings/settings_screen.dart`, `lib/presentation/theme/app_theme.dart`, `pubspec.yaml`.
+
+### Open items / next steps
+- **Trigger Codemagic for Build 99** — user said they'd build immediately after session.
+- **Robot-side night vision** — separate ticket. Wire contract is in `.claude/nightvision.md` (now committed). Pi-side needs: publish `night_mode_state` on transition + 60s heartbeat, accept `set_night_mode_override`, IR cut filter + 940nm illuminator + AE/gain switching.
+- **Separate WebRTC handshake bug seen in user's robot logs** (offer arrives, app never sends answer, ~4-5s close, repeats). Not addressed this session because diagnosis requires iOS Console.app logs from a TestFlight binary. **Recommendation logged:** ship Build 99, capture iOS logs filtered to `WebRTC:` prefix during a failure repro, then diagnose with ground truth. Suspect the catch block at `webrtc_provider.dart:534-540` is swallowing a useful error without stack trace — adding stack-trace logging there might be the first investigative move.
+- Carried from prior sessions (still open): trigger Codemagic; `scripts/generate_aruco_markers.py` + uncomment the assets line; relay-side ticket for blind `(user_id, device_id)` unpair.
+
+### Important Notes/Warnings
+- Build cost concern: user explicitly flagged that each Codemagic build costs money. Do not propose a second build without ground-truth data (e.g., iOS Console logs) that makes the next fix high-confidence.
+- The night-vision app-side ships ahead of the robot side intentionally — until robot starts publishing `night_mode_state`, badge is silently hidden and settings panel shows "Waiting for robot…". Both are intended fallbacks.
+- "Local notifications" lesson: feature was already implemented but the spec doc was never removed. User remarked "sometimes i've skipped session notes" — future sessions should sanity-check `.claude/*.md` spec docs against `lib/` before assuming they're aspirational.
+
+---
+
 ## Session: 2026-05-21 — Reconnect-Storm Fix + Video-Quality Control + System Volume (Builds 96–98)
 **Goal:** Diagnose the ~60s video delay & fix it; then two coordinated robot-side features (adaptive-bitrate video quality, system volume).
 **Status:** Completed — all shipped. 11 commits pushed to main. Ends on Build 1.0.0+98.

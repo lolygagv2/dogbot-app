@@ -1,5 +1,5 @@
 # WIM-Z Mobile App - Project Directory Structure
-*Last Updated: 2026-01-18 - Flutter Mobile App*
+*Last Updated: 2026-05-25 - Flutter Mobile App*
 
 ## ⚠️ IMPORTANT NOTES
 This is the **Flutter mobile app** that connects to the WIM-Z robot via a server.
@@ -41,9 +41,10 @@ Architecture: Mobile App (this repo) → Server (intermediary) → Robot (Pi 5)
             conn_trace.dart        🆕 connTrace() + ConnTraceLog ring buffer (WebRTC signaling trace)
 
       📂 data/                     # Data layer
-         📂 models/                # Freezed data classes
+         📂 models/                # Freezed data classes (and plain immutables)
             telemetry.dart         Robot status model
             mission.dart           Training mission config
+            night_mode_state.dart  🆕 day/night camera state + override enums (Build 99)
          📂 datasources/
             robot_api.dart         REST API client for WIM-Z
          📂 services/
@@ -55,8 +56,9 @@ Architecture: Mobile App (this repo) → Server (intermediary) → Robot (Pi 5)
             connection_provider.dart    Connection state
             telemetry_provider.dart     Robot status updates (incl. volume)
             control_provider.dart       Motor, servo, treat, LED, audio
-            video_quality_provider.dart 🆕 robot adaptive-bitrate state + override
-            volume_provider.dart        🆕 system volume — reconciles to telemetry
+            video_quality_provider.dart robot adaptive-bitrate state + override
+            volume_provider.dart        system volume — reconciles to telemetry
+            night_mode_provider.dart    🆕 day/night state + override; 90s heartbeat-stale (Build 99)
 
       📂 presentation/             # UI layer
          📂 screens/
@@ -72,6 +74,9 @@ Architecture: Mobile App (this repo) → Server (intermediary) → Robot (Pi 5)
             controls/              Joystick, pan/tilt, quick actions
             status/                Battery, connection, detection, treat counter
             common/                Loading, errors, shared UI
+            night_mode/            🆕 Build 99 — day/night UI
+               mode_badge.dart                     Drive-screen sun/moon badge (display-only)
+               night_vision_settings_section.dart  Settings panel: mode + lux + override
          📂 theme/
             app_theme.dart         Dark theme with neon aesthetics
 
@@ -140,6 +145,24 @@ When answering questions about Flutter mobile app functionality:
 7. **For "UI components"** → Check `lib/presentation/widgets/` and `lib/presentation/screens/`
 8. **For "data models"** → Check `lib/data/models/` (Freezed classes)
 9. **For "networking config"** → Check `lib/core/network/` and `lib/core/constants/`
+
+## ✨ Session Additions (2026-05-25 — Build 99)
+
+### Night Vision (app-side):
+- **New model:** `lib/data/models/night_mode_state.dart` — `DayNight` + `NightModeOverride` enums + `NightModeState` (immutable; plain Dart, mirrors `VideoQualityState` style)
+- **New provider:** `lib/domain/providers/night_mode_provider.dart` — subscribes to `wsClient.eventStream`, handles `night_mode_state`, exposes `setOverride()`, 90s heartbeat-stale flag
+- **New widgets directory:** `lib/presentation/widgets/night_mode/`
+  - `mode_badge.dart` — sun/moon badge (drive-screen, display-only)
+  - `night_vision_settings_section.dart` — full panel mounted in Settings → "Night Vision"
+- **Theme additions:** `AppTheme.primaryNight` (steel-blue) + `AppTheme.darkNight` variant; app.dart watches `nightModeProvider` and swaps theme cyan → steel-blue app-wide when robot is in night mode
+- **Wire contract spec:** `.claude/nightvision.md` (committed for robot-side reference)
+
+### Bug fixes also in Build 99:
+- **Cold-open auto-connect** — `auth_provider._loadSavedAuth` now mirrors `login()` by calling `connectionProvider.connect()` after silent re-auth (was leaving WS dead on cold open with valid JWT)
+- **Multi-robot in-session switch** — `webrtc_provider._handleDeviceSwitch` now triggers `connectionProvider.reconnect()` so the relay rebinds via fresh `session_hello` (was requiring logout+login to switch robots)
+
+### Documentation hygiene:
+- Moved `.claude/local_notifications.md` → `archive/local_notifications_SPEC_SHIPPED.md` — feature was already implemented (see `notification_service.dart`); spec lingered uncleaned
 
 ## ✨ Session Additions (2026-01-18)
 
