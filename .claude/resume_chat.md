@@ -1,5 +1,50 @@
 # WIM-Z Resume Chat Log
 
+## Session: 2026-05-25 (cont.) — Build 100 (Video-Lag Fix + Night-Mode Wire-Format Fix)
+**Goal:** User reported back during the same day with two remaining issues: (1) night-mode toggle "not exactly easy updating" — i.e. the UI was wired but commands weren't reaching the robot, and (2) the long-standing "1–5 second black screen when you tab away from /home and come back" lag was *still* present after Build 99. Robot side now accepts a new contract for night-mode override; need to align app side.
+**Status:** Completed — single commit `ed6e472` pushed to main, pubspec bumped to `1.0.0+100`. User said to bump, commit, push — done. Codemagic untriggered (their call).
+
+### Issue 1 — Night-mode commands silently dropped (websocket_client.dart:1081)
+Robot just got a working night-mode controller with both relay + HTTP endpoints. Wire contract (from `/home/morgan/dogbot/services/cloud/relay_client.py` per the user's brief): override commands MUST ride the standard relay-command envelope (`{type:command, command:set_night_mode_override, device_id, data:{override}, timestamp}`), same wrapper as `set_mode` and `mood_led`. Old `sendNightModeOverride()` emitted a *bare* typed frame `{type:set_night_mode_override, override}` — relay had no `_handle_command` path for that, so frames were dropped without ack. **Fix:** routed through `sendCommand('set_night_mode_override', {'override': override})` — one-line change, picks up `_targetDeviceId` + timestamp automatically. No other call sites needed updating; the optimistic local-state update in `night_mode_provider.setOverride()` is unchanged.
+
+### Issue 2 — `last_changed_at` parse silently nulled (night_mode_state.dart:94)
+Spec from this session's brief explicitly: `last_changed_at: 1779689015.24` (Unix epoch *float*, not ISO). Old `fromJson` was `if (ts is String) DateTime.tryParse(ts)` — robot never sends a string, so the field was always null and the "Last changed" line in the Settings panel was always blank. **Fix:** accept `num` (multiply by 1000 → `fromMillisecondsSinceEpoch`) with the ISO string path kept as a fallback. No call sites touched. Found via re-reading the brief; bug was latent from the moment the model was first added in Build 99.
+
+### Issue 3 — Tab-switch video lag (app.dart, ~150-line refactor)
+Root cause finally pinned: `ShellRoute` in GoRouter disposes the active branch's widget tree whenever the user switches branches. `HomeScreen` (which owns the `SmartVideoView` → `WebRTCVideoView` → `RTCVideoView`) was being **destroyed** on every nav to /missions or /settings. The Riverpod-held `RTCVideoRenderer` + peer connection + `MediaStream` all survived in the provider (`webrtcProvider`), so `requestVideoStream()` correctly skipped re-negotiation on return — but the iOS native `RTCVideoView` platform-view is a *fresh widget instance* on remount and has to re-bind its native texture to the surviving renderer. That binding handshake is what cost 1–5s of black. Provider-level fixes would never have caught this because the provider was never the problem.
+
+**Fix:** migrated the shell from `ShellRoute(builder, routes)` → `StatefulShellRoute.indexedStack(builder, branches)`. All 6 tabs (home, dogs, missions, gallery, activity, settings) become `StatefulShellBranch` entries; `MainShell` signature swapped from `Widget child` to `StatefulNavigationShell navigationShell`, which IS an IndexedStack under the hood. Tabs stay mounted across navigation; only visibility toggles. Bottom-nav onTaps now call `navigationShell.goBranch(index, initialLocation: index == currentIndex)` instead of `context.go(path)` (the conditional `initialLocation` preserves the previous "tap selected tab to pop nested stack" behavior). Removed dead `_getTabIndex(location)` helper. `_shellNavigatorKey` no longer used (each branch owns its own navigator key now).
+
+**Programs/missions merge:** the old shell had `/missions` and `/programs` as sibling routes pointing to the same `MissionsScreen`. Since `StatefulShellBranch` needs every tab's routes co-located, I put both under the missions branch — `/programs` and `/programs/:id` live alongside `/missions` and `/missions/:id` in branch 2. Both nav paths still reach the same screen; bottom-nav still highlights "Missions" because branch index is now owned by the shell (no more path-prefix parsing).
+
+**Top-level routes unchanged:** `/login`, `/`, `/demo`, `/drive`, `/coach`, `/history`, `/scheduler`, `/device-pairing`, `/voice-setup`, `/dog/:id` stay outside the shell, so they still cover the bottom nav when pushed (correct behavior).
+
+**Bonus side-effects:** Missions list no longer re-fetches on every tab return; Settings keeps its scroll position; Activity badge state survives tab switches. Memory cost is negligible — none of the offstage screens hold heavy state, and the only stream subscriptions are Riverpod-managed (already efficient under offstage rebuilds).
+
+### Verification
+- `flutter analyze lib/` — 403 issues, all pre-existing (`withOpacity → withValues` deprecation infos + scattered unused-import warnings). No new errors or warnings from this session's edits. Same surface as Build 99.
+- `flutter analyze` per-file on the 4 changed files (`app.dart`, `websocket_client.dart`, `night_mode_state.dart`, `pubspec.yaml`) — only `prefer_const_constructors` info-lints on `app.dart`, no errors.
+- Single `MainShell(` call site in `app.dart` itself — refactor signature change cleanly contained.
+
+### Files modified (4 — no new files this session)
+- `lib/app.dart` — ShellRoute → StatefulShellRoute refactor; `MainShell` signature; bottom-nav goBranch
+- `lib/core/network/websocket_client.dart` — `sendNightModeOverride` switched to relay-command envelope
+- `lib/data/models/night_mode_state.dart` — `last_changed_at` accepts numeric Unix epoch
+- `pubspec.yaml` — bumped `1.0.0+99` → `1.0.0+100`
+
+### Open items / next steps
+- **Trigger Codemagic for Build 100** — user's next action; this build should resolve both the night-mode controllability + the long-standing tab-switch lag in one shot.
+- **WebRTC handshake bug** still deferred from prior session — needs iOS Console.app logs from a TestFlight repro to make any further app-side change worth a paid build. If Build 100's tab-switch fix happens to make the handshake bug visible/easier-to-trigger, capture logs then.
+- **Robot-side night vision** — still a separate ticket per `.claude/nightvision.md`. Build 100 now correctly *talks* to the robot using the documented envelope, but robot must implement the controller side. User's brief in this session quotes the relay+HTTP handler signatures, suggesting the robot side is either done or in progress (the relay reference paths in `/home/morgan/dogbot/services/cloud/relay_client.py` and `/home/morgan/dogbot/modes/night_mode_controller.py` were cited as ground truth — those are on the robot repo, not this one).
+- Carried from prior sessions (still open): `scripts/generate_aruco_markers.py` + uncomment the assets line in pubspec; relay-side ticket for blind `(user_id, device_id)` unpair.
+
+### Important Notes/Warnings
+- **Why the lag fix had to be at the routing layer**, not the WebRTC provider: the provider was working correctly the whole time. Past investigations (Build 44's "always close on switching device") added defensive close+retry logic in `requestVideoStream` precisely because the lag *looked* like a provider issue. It wasn't — the provider was repeatedly skipping renegotiation as designed. The lag was at the texture-binding layer, one step further down. Worth noting for future "video is slow to appear" reports: always check whether the host widget is being unmounted first.
+- **`StatefulShellRoute` is a substantial routing refactor** — every screen that calls `context.go('/home')` or `context.push('/settings/...')` continues to work because GoRouter still resolves paths against the branch tree, but anything that subclassed `MainShell`-aware navigation logic (none found in current code, but worth checking on future PRs) would need updating to `navigationShell.goBranch`.
+- **Branch memory:** each tab stays mounted indefinitely. None of the current tab screens hold heavy off-screen state (lists/forms only). If we ever add a tab that subscribes to a high-frequency stream and doesn't pause off-screen, we'd want a `Visibility`/`Offstage`-aware subscription pattern there.
+
+---
+
 ## Session: 2026-05-25 — Build 99 (Night Vision + Cold-Open Fix + Multi-Robot Switch Fix)
 **Goal:** Bundle night-vision UI on top of carry-over expired-session UX (Build 99 from prior session, never shipped); diagnose & fix two reported user issues before Codemagic.
 **Status:** Completed — 5 commits pushed to main, tip `bc8f944`, pubspec `1.0.0+99`. User confirmed ready to trigger Codemagic.

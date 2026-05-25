@@ -146,6 +146,16 @@ When answering questions about Flutter mobile app functionality:
 8. **For "data models"** → Check `lib/data/models/` (Freezed classes)
 9. **For "networking config"** → Check `lib/core/network/` and `lib/core/constants/`
 
+## ✨ Session Additions (2026-05-25 cont. — Build 100)
+
+### Routing refactor (no new files, but architecturally significant):
+- **`lib/app.dart`** — `ShellRoute` → `StatefulShellRoute.indexedStack` so all 6 main-nav tabs stay mounted in an IndexedStack across navigation. Fixes the 1–5s black-screen on tab return to /home: the iOS `RTCVideoView` platform-view was being destroyed on every nav-away under the old `ShellRoute` and had to re-bind its native texture on return; now the widget tree persists. `MainShell` now accepts `StatefulNavigationShell` instead of `Widget child`; bottom-nav uses `navigationShell.goBranch(index)` instead of `context.go(path)`.
+- `/programs` and `/programs/:id` are now co-located with `/missions` under the missions branch (StatefulShellBranch requires each tab's routes to be branch-local).
+
+### Wire-contract corrections:
+- **`lib/core/network/websocket_client.dart`** — `sendNightModeOverride()` now uses the standard `sendCommand()` relay envelope (was emitting a bare typed frame the relay couldn't route).
+- **`lib/data/models/night_mode_state.dart`** — `fromJson` now parses `last_changed_at` as a Unix epoch float (the actual robot wire format), with ISO string fallback.
+
 ## ✨ Session Additions (2026-05-25 — Build 99)
 
 ### Night Vision (app-side):
