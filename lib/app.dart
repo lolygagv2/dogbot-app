@@ -47,7 +47,6 @@ enum NavTab {
 
 /// Key for the navigator in the shell
 final _rootNavigatorKey = GlobalKey<NavigatorState>();
-final _shellNavigatorKey = GlobalKey<NavigatorState>();
 
 /// Paths reachable while signed out. Anything else is bounced to /login
 /// by the router's redirect guard when authProvider says !isAuthenticated.
@@ -102,121 +101,138 @@ GoRouter _buildRouter(WidgetRef ref, Listenable refreshListenable) => GoRouter(
       builder: (context, state) => const _DemoModeEntry(),
     ),
 
-    // Main app shell with bottom navigation
-    ShellRoute(
-      navigatorKey: _shellNavigatorKey,
-      builder: (context, state, child) => MainShell(child: child),
-      routes: [
-        // Home tab
-        GoRoute(
-          path: '/home',
-          pageBuilder: (context, state) => const NoTransitionPage(
-            child: HomeScreen(),
-          ),
-        ),
-
-        // Dogs tab
-        GoRoute(
-          path: '/dogs',
-          pageBuilder: (context, state) => const NoTransitionPage(
-            child: DogsListScreen(),
-          ),
-          routes: [
-            // Add dog route - must be before :id to avoid conflict
-            GoRoute(
-              path: 'add',
-              builder: (context, state) {
-                final arucoId = int.tryParse(
-                  state.uri.queryParameters['arucoId'] ?? '',
-                );
-                return AddDogScreen(initialArucoId: arucoId);
-              },
+    // Main app shell with bottom navigation.
+    //
+    // Build 100: switched from ShellRoute → StatefulShellRoute.indexedStack so
+    // tab widget trees stay MOUNTED when the user switches tabs. The previous
+    // ShellRoute disposed HomeScreen on every nav-away, which destroyed the
+    // iOS RTCVideoView platform-view; the renderer's MediaStream survived in
+    // the provider, but rebinding the native texture cost 1–5s of black-screen
+    // on every return to /home. IndexedStack keeps every branch's tree alive
+    // so the texture binding is never torn down.
+    StatefulShellRoute.indexedStack(
+      builder: (context, state, navigationShell) =>
+          MainShell(navigationShell: navigationShell),
+      branches: [
+        // Branch 0 — Home tab
+        StatefulShellBranch(routes: [
+          GoRoute(
+            path: '/home',
+            pageBuilder: (context, state) => const NoTransitionPage(
+              child: HomeScreen(),
             ),
-            GoRoute(
-              path: ':id',
-              builder: (context, state) => DogProfileScreen(
-                dogId: state.pathParameters['id'],
+          ),
+        ]),
+
+        // Branch 1 — Dogs tab
+        StatefulShellBranch(routes: [
+          GoRoute(
+            path: '/dogs',
+            pageBuilder: (context, state) => const NoTransitionPage(
+              child: DogsListScreen(),
+            ),
+            routes: [
+              // Add dog route - must be before :id to avoid conflict
+              GoRoute(
+                path: 'add',
+                builder: (context, state) {
+                  final arucoId = int.tryParse(
+                    state.uri.queryParameters['arucoId'] ?? '',
+                  );
+                  return AddDogScreen(initialArucoId: arucoId);
+                },
               ),
-              routes: [
-                // Voice setup for this dog
-                GoRoute(
-                  path: 'voice',
-                  builder: (context, state) => VoiceSetupScreen(
-                    dogId: state.pathParameters['id'],
-                  ),
+              GoRoute(
+                path: ':id',
+                builder: (context, state) => DogProfileScreen(
+                  dogId: state.pathParameters['id'],
                 ),
-              ],
-            ),
-          ],
-        ),
-
-        // Missions tab
-        GoRoute(
-          path: '/missions',
-          pageBuilder: (context, state) => const NoTransitionPage(
-            child: MissionsScreen(),
-          ),
-          routes: [
-            GoRoute(
-              path: ':id',
-              builder: (context, state) => MissionDetailScreen(
-                missionId: state.pathParameters['id']!,
+                routes: [
+                  GoRoute(
+                    path: 'voice',
+                    builder: (context, state) => VoiceSetupScreen(
+                      dogId: state.pathParameters['id'],
+                    ),
+                  ),
+                ],
               ),
-            ),
-          ],
-        ),
-
-        // Programs (multi-mission sequences)
-        GoRoute(
-          path: '/programs',
-          pageBuilder: (context, state) => const NoTransitionPage(
-            child: MissionsScreen(), // Programs shown in missions screen
+            ],
           ),
-          routes: [
-            GoRoute(
-              path: ':id',
-              builder: (context, state) => ProgramDetailScreen(
-                programId: state.pathParameters['id']!,
+        ]),
+
+        // Branch 2 — Missions tab (also serves /programs since they share a screen)
+        StatefulShellBranch(routes: [
+          GoRoute(
+            path: '/missions',
+            pageBuilder: (context, state) => const NoTransitionPage(
+              child: MissionsScreen(),
+            ),
+            routes: [
+              GoRoute(
+                path: ':id',
+                builder: (context, state) => MissionDetailScreen(
+                  missionId: state.pathParameters['id']!,
+                ),
               ),
-            ),
-          ],
-        ),
-
-        // Photo Gallery tab
-        GoRoute(
-          path: '/gallery',
-          pageBuilder: (context, state) => const NoTransitionPage(
-            child: PhotoGalleryScreen(),
+            ],
           ),
-        ),
-
-        // Activity/Notifications tab
-        GoRoute(
-          path: '/activity',
-          pageBuilder: (context, state) => const NoTransitionPage(
-            child: NotificationsScreen(),
-          ),
-        ),
-
-        // Settings tab (v1.3: moved to bottom nav)
-        GoRoute(
-          path: '/settings',
-          pageBuilder: (context, state) => const NoTransitionPage(
-            child: SettingsScreen(),
-          ),
-          routes: [
-            GoRoute(
-              path: 'notifications',
-              builder: (context, state) =>
-                  const NotificationPreferencesScreen(),
+          GoRoute(
+            path: '/programs',
+            pageBuilder: (context, state) => const NoTransitionPage(
+              child: MissionsScreen(),
             ),
-            GoRoute(
-              path: 'connection-diagnostics',
-              builder: (context, state) =>
-                  const ConnectionDiagnosticsScreen(),
+            routes: [
+              GoRoute(
+                path: ':id',
+                builder: (context, state) => ProgramDetailScreen(
+                  programId: state.pathParameters['id']!,
+                ),
+              ),
+            ],
+          ),
+        ]),
+
+        // Branch 3 — Photo Gallery
+        StatefulShellBranch(routes: [
+          GoRoute(
+            path: '/gallery',
+            pageBuilder: (context, state) => const NoTransitionPage(
+              child: PhotoGalleryScreen(),
             ),
-          ],
-        ),
+          ),
+        ]),
+
+        // Branch 4 — Activity / Notifications
+        StatefulShellBranch(routes: [
+          GoRoute(
+            path: '/activity',
+            pageBuilder: (context, state) => const NoTransitionPage(
+              child: NotificationsScreen(),
+            ),
+          ),
+        ]),
+
+        // Branch 5 — Settings
+        StatefulShellBranch(routes: [
+          GoRoute(
+            path: '/settings',
+            pageBuilder: (context, state) => const NoTransitionPage(
+              child: SettingsScreen(),
+            ),
+            routes: [
+              GoRoute(
+                path: 'notifications',
+                builder: (context, state) =>
+                    const NotificationPreferencesScreen(),
+              ),
+              GoRoute(
+                path: 'connection-diagnostics',
+                builder: (context, state) =>
+                    const ConnectionDiagnosticsScreen(),
+              ),
+            ],
+          ),
+        ]),
       ],
     ),
 
@@ -286,17 +302,22 @@ GoRouter _buildRouter(WidgetRef ref, Listenable refreshListenable) => GoRouter(
   ],
 );
 
-/// Main shell with bottom navigation
+/// Main shell with bottom navigation.
+///
+/// Build 100: now hosts a [StatefulNavigationShell] from
+/// StatefulShellRoute.indexedStack. The shell internally uses IndexedStack so
+/// every branch's widget tree stays mounted between tab switches — critical
+/// for the home tab's WebRTC video, whose iOS native texture would otherwise
+/// re-bind on every return (1–5s black-screen).
 class MainShell extends ConsumerWidget {
-  final Widget child;
+  final StatefulNavigationShell navigationShell;
 
-  const MainShell({super.key, required this.child});
+  const MainShell({super.key, required this.navigationShell});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final unreadCount = ref.watch(unreadCountProvider);
     final connState = ref.watch(connectionProvider);
-    final location = GoRouterState.of(context).uri.path;
 
     // Show snackbar when rate-limited by relay
     ref.listen(rateLimitProvider, (previous, next) {
@@ -315,8 +336,8 @@ class MainShell extends ConsumerWidget {
       });
     });
 
-    // Determine current tab index from location
-    final currentIndex = _getTabIndex(location);
+    // Branch index is owned by the shell itself; no path parsing needed.
+    final currentIndex = navigationShell.currentIndex;
 
     // Show reconnecting banner when connection lost with saved host (not demo mode)
     final showReconnecting = !connState.isDemoMode &&
@@ -327,7 +348,7 @@ class MainShell extends ConsumerWidget {
     return Scaffold(
       body: Stack(
         children: [
-          child,
+          navigationShell,
           if (showReconnecting)
             Positioned(
               top: MediaQuery.of(context).padding.top,
@@ -395,38 +416,38 @@ class MainShell extends ConsumerWidget {
                   icon: Icons.home,
                   label: 'Home',
                   isSelected: currentIndex == 0,
-                  onTap: () => context.go('/home'),
+                  onTap: () => _goBranch(0),
                 ),
                 _NavBarItem(
                   icon: Icons.pets,
                   label: 'Dogs',
                   isSelected: currentIndex == 1,
-                  onTap: () => context.go('/dogs'),
+                  onTap: () => _goBranch(1),
                 ),
                 _NavBarItem(
                   icon: Icons.flag,
                   label: 'Missions',
                   isSelected: currentIndex == 2,
-                  onTap: () => context.go('/missions'),
+                  onTap: () => _goBranch(2),
                 ),
                 _NavBarItem(
                   icon: Icons.photo_library,
                   label: 'Photos',
                   isSelected: currentIndex == 3,
-                  onTap: () => context.go('/gallery'),
+                  onTap: () => _goBranch(3),
                 ),
                 _NavBarItem(
                   icon: Icons.notifications,
                   label: 'Activity',
                   isSelected: currentIndex == 4,
                   badgeCount: unreadCount,
-                  onTap: () => context.go('/activity'),
+                  onTap: () => _goBranch(4),
                 ),
                 _NavBarItem(
                   icon: Icons.settings,
                   label: 'Settings',
                   isSelected: currentIndex == 5,
-                  onTap: () => context.go('/settings'),
+                  onTap: () => _goBranch(5),
                 ),
               ],
             ),
@@ -436,14 +457,14 @@ class MainShell extends ConsumerWidget {
     );
   }
 
-  int _getTabIndex(String location) {
-    if (location.startsWith('/home')) return 0;
-    if (location.startsWith('/dogs')) return 1;
-    if (location.startsWith('/missions')) return 2;
-    if (location.startsWith('/gallery')) return 3;
-    if (location.startsWith('/activity')) return 4;
-    if (location.startsWith('/settings')) return 5;
-    return 0;
+  /// Switch to a branch. If the user taps the already-selected tab, reset that
+  /// branch's nested stack back to its initial route (matches the previous
+  /// `context.go('/home')` behavior, which collapsed pushed sub-routes).
+  void _goBranch(int index) {
+    navigationShell.goBranch(
+      index,
+      initialLocation: index == navigationShell.currentIndex,
+    );
   }
 }
 

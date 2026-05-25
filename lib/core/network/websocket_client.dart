@@ -1074,13 +1074,14 @@ class WebSocketClient {
   }
 
   /// Set the robot's day/night camera override.
-  /// `override` is one of 'auto' | 'force_day' | 'force_night' — the robot
-  /// persists the choice and publishes the next [night_mode_state] heartbeat
-  /// with it reflected. Inbound `night_mode_state` flows through the generic
-  /// event stream (see _onMessage default branch).
+  /// `override` is one of 'auto' | 'force_day' | 'force_night'. Per the robot
+  /// contract (nightvision.md / relay_client._handle_command) this rides the
+  /// standard relay-command envelope — same wrapper as set_mode and mood_led.
+  /// The robot persists the choice and publishes the next night_mode_state
+  /// heartbeat with it reflected.
   void sendNightModeOverride(String override) {
     print('WebSocket: sendNightModeOverride override=$override');
-    send({'type': 'set_night_mode_override', 'override': override});
+    sendCommand('set_night_mode_override', {'override': override});
   }
 
   // ============ Mission Commands (Build 38) ============

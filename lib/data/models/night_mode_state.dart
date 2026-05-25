@@ -93,7 +93,10 @@ class NightModeState {
     final double? lux = luxRaw is num ? luxRaw.toDouble() : null;
     DateTime? lastChanged;
     final ts = json['last_changed_at'];
-    if (ts is String) {
+    if (ts is num) {
+      lastChanged =
+          DateTime.fromMillisecondsSinceEpoch((ts.toDouble() * 1000).round());
+    } else if (ts is String) {
       lastChanged = DateTime.tryParse(ts);
     }
     return NightModeState(
