@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../../core/constants/app_constants.dart';
 import '../../core/utils/conn_trace.dart';
 import '../../core/storage/secure_token_storage.dart';
 import '../../data/datasources/auth_api.dart';
@@ -159,6 +160,27 @@ class AuthNotifier extends StateNotifier<AuthState> {
       // This is critical - without this, dogs load before auth is ready
       // and end up in the "anonymous" bucket
       await _ref.read(dogProfilesProvider.notifier).reloadForCurrentUser();
+
+      // Build 101: silent re-auth must also kick off the relay WS connection.
+      // login_screen does this explicitly post-login; without the equivalent
+      // call here, a cold open with a valid stored JWT lands on /home with
+      // host populated but status=disconnected — the WS never opens, neither
+      // 4001 nor Dio 401 ever fire, and the user sits on "Reconnecting…"
+      // until they manually sign out and back in. Fire-and-forget — connect()
+      // updates ConnectionState on its own; we don't want to block /home nav.
+      final savedHost = prefs.getString(AppConstants.keyServerHost);
+      final savedPort = prefs.getInt(AppConstants.keyServerPort);
+      if (savedHost != null && savedHost.isNotEmpty) {
+        connTrace('silent-reauth-connect',
+            'host=$savedHost port=${savedPort ?? AppConstants.defaultPort}');
+        // ignore: discarded_futures
+        _ref
+            .read(connectionProvider.notifier)
+            .connect(savedHost, savedPort ?? AppConstants.defaultPort);
+      } else {
+        print('Auth: silent re-auth restored session but no saved host — '
+            'user must pick one from /login');
+      }
 
       // A1/A2/A3: hydrate cross-device data from relay. Best-effort —
       // failures (offline, 401, etc.) shouldn't block auth restoration.
