@@ -311,6 +311,31 @@ class WebRTCNotifier extends StateNotifier<WebRTCConnectionState> {
       }),
     );
 
+    // Build 102: When WS transitions to `connected`, fire any pending video
+    // request. Without this, the request fired by WebRTCVideoView at mount
+    // time races the WS handshake — ws.send() bails when state != connected
+    // (websocket_client.dart:668-672) and the frame is silently dropped.
+    // The user sees "Connecting to video..." forever and has to leave the
+    // screen + tap "Tap to connect" to get the request fired again. Affects
+    // both cold-open and immediate post-login.
+    _subscriptions.add(
+      wsClient.stateStream.listen((wsState) {
+        if (wsState != WsConnectionState.connected) return;
+        if (_lastDeviceId == null) return;
+        if (_isPaused || _isRequesting) return;
+        // Only re-fire if we're stuck waiting (the original request was
+        // dropped). If state is already connected/error/disconnected, leave
+        // it alone — the user (or another listener) is in control.
+        if (state.state != WebRTCState.connecting) return;
+
+        print('WebRTC: WS now connected, re-firing dropped request for '
+            '$_lastDeviceId');
+        connTrace('webrtc-resend-on-ws-ready', 'device=$_lastDeviceId');
+        // ignore: discarded_futures
+        requestVideoStream(_lastDeviceId!);
+      }),
+    );
+
     // Listen for device status changes - auto-request video when device comes online
     _subscriptions.add(
       wsClient.deviceStatusStream.listen((message) {
