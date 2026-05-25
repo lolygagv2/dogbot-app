@@ -215,10 +215,13 @@ class WebRTCNotifier extends StateNotifier<WebRTCConnectionState> {
     if (oldDeviceId == null && state.state == WebRTCState.disconnected) {
       print('WebRTC: No active connection, just updating device ID');
       _lastDeviceId = newDeviceId;
+      connTrace('device-switch-noop',
+          'old=null new=$newDeviceId — no active WebRTC, deferred');
       return;
     }
 
     print('WebRTC: ⚠️ SWITCHING VIDEO from $oldDeviceId to $newDeviceId');
+    connTrace('device-switch-begin', 'old=$oldDeviceId new=$newDeviceId');
 
     _reconnectTimer?.cancel();
     _reconnectAttempts = 0;
@@ -239,6 +242,8 @@ class WebRTCNotifier extends StateNotifier<WebRTCConnectionState> {
 
     print('WebRTC: triggering WS reconnect so relay rebinds to $newDeviceId');
     final ok = await _ref.read(connectionProvider.notifier).reconnect();
+    connTrace('device-switch-reconnect',
+        'new=$newDeviceId reconnect=${ok ? "ok" : "failed"}');
     if (!ok) {
       print('WebRTC: WS reconnect for device switch failed — UI will surface '
           'reconnect state');

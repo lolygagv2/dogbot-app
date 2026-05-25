@@ -205,6 +205,15 @@ class ConnectionNotifier extends StateNotifier<ConnectionState> {
       final wsUrl = token != null
           ? AppConfig.wsUrlWithToken(host, token, port)
           : AppConfig.wsUrl(host, port);
+      // Build 101: on cold open, both _loadSavedAuth and DeviceIdNotifier's
+      // _loadDeviceId start async at the same time. If we read deviceIdProvider
+      // before the prefs load completes, we get the synchronous default
+      // ("wimz_robot_01") and bind the relay session to the wrong robot for
+      // the rest of the session — TestFlight logs caught this firing at
+      // 17:15:05.168 (webrtc-request-sent device=wimz_robot_01) before the WS
+      // was even open. Awaiting here guarantees session_hello carries the
+      // user's actual saved device.
+      await _ref.read(deviceIdProvider.notifier).loadReady;
       final deviceId = _ref.read(deviceIdProvider);
       // Build 90: extract user_id from the JWT `sub` claim. The relay
       // validates session_hello.user_id against this (e.g. `user_000042`,

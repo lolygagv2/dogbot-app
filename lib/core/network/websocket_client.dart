@@ -210,13 +210,28 @@ class WebSocketClient {
     String? deviceId,
     bool expectRelayHandshake = true,
   }) async {
-    if (_state == WsConnectionState.connected && _currentUrl == url) {
-      return; // Already connected to this URL
+    // Build 101: short-circuit only if EVERY session-relevant param matches
+    // what's already on the wire. A naked url-only check defeated multi-robot
+    // device switching: _handleDeviceSwitch generated a fresh session_id and
+    // passed the new device_id down, but this guard bailed before the new
+    // session_hello could be sent, leaving the relay's routing bound to the
+    // original device for the rest of the session. Logs across an entire
+    // 7-minute window showed session_id pinned to 1a99e462… across five
+    // device-switch attempts; only logout+login broke the binding.
+    final nextSessionId = sessionId ?? SessionId.current;
+    if (_state == WsConnectionState.connected &&
+        _currentUrl == url &&
+        _sessionId == nextSessionId &&
+        _sessionUserId == userId &&
+        _sessionDeviceId == deviceId) {
+      connTrace('ws-connect-noop',
+          'session=$nextSessionId device=$deviceId — params unchanged');
+      return;
     }
 
     await disconnect();
     _currentUrl = url;
-    _sessionId = sessionId ?? SessionId.current;
+    _sessionId = nextSessionId;
     _sessionUserId = userId;
     _sessionDeviceId = deviceId;
     // Fix #1: local mode (local_connection_service) passes false — the

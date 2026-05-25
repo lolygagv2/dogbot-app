@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -16,27 +18,38 @@ final deviceIdProvider =
 class DeviceIdNotifier extends StateNotifier<String> {
   final Ref _ref;
 
+  /// Build 101: completes when the initial prefs load finishes. Callers that
+  /// need the user's saved device_id (notably session_hello) must await this
+  /// before reading [state]; otherwise they'll read the synchronous default
+  /// ("wimz_robot_01") and bind the relay session to the wrong robot.
+  final Completer<void> _loadReady = Completer<void>();
+  Future<void> get loadReady => _loadReady.future;
+
   DeviceIdNotifier(this._ref) : super(AppConstants.defaultDeviceId) {
     _loadDeviceId();
   }
 
   Future<void> _loadDeviceId() async {
-    // In local mode, device ID is always 'local_robot' — no lookup needed
-    final localConn = _ref.read(localConnectionProvider);
-    if (localConn.isConnected) {
-      state = 'local_robot';
-      print('DeviceId: Local mode — using local_robot');
-      return;
-    }
+    try {
+      // In local mode, device ID is always 'local_robot' — no lookup needed
+      final localConn = _ref.read(localConnectionProvider);
+      if (localConn.isConnected) {
+        state = 'local_robot';
+        print('DeviceId: Local mode — using local_robot');
+        return;
+      }
 
-    final prefs = await SharedPreferences.getInstance();
-    final savedId = prefs.getString(AppConstants.keyDeviceId);
-    print('DeviceId: Loading saved device_id: ${savedId ?? 'null (using default: ${AppConstants.defaultDeviceId})'}');
-    if (savedId != null && savedId.isNotEmpty) {
-      state = savedId;
-      // Update WebSocket client with loaded device ID
-      _ref.read(websocketClientProvider).setTargetDevice(savedId);
-      print('DeviceId: Set WebSocket target to $savedId');
+      final prefs = await SharedPreferences.getInstance();
+      final savedId = prefs.getString(AppConstants.keyDeviceId);
+      print('DeviceId: Loading saved device_id: ${savedId ?? 'null (using default: ${AppConstants.defaultDeviceId})'}');
+      if (savedId != null && savedId.isNotEmpty) {
+        state = savedId;
+        // Update WebSocket client with loaded device ID
+        _ref.read(websocketClientProvider).setTargetDevice(savedId);
+        print('DeviceId: Set WebSocket target to $savedId');
+      }
+    } finally {
+      if (!_loadReady.isCompleted) _loadReady.complete();
     }
   }
 
