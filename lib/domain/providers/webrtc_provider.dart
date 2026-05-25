@@ -6,6 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../core/network/websocket_client.dart';
 import '../../core/utils/conn_trace.dart';
+import 'connection_provider.dart';
 import 'device_provider.dart';
 import 'video_quality_provider.dart';
 
@@ -190,12 +191,27 @@ class WebRTCNotifier extends StateNotifier<WebRTCConnectionState> {
     });
   }
 
-  /// Handle device switch - tear down old connection and establish new one
-  /// Build 44: More aggressive cleanup to prevent video bleeding between robots
+  /// Handle device switch.
+  ///
+  /// Build 99: switching robots mid-session requires a full WS reconnect —
+  /// not just a WebRTC close + re-request. The relay binds each WS session
+  /// to the device_id carried in `session_hello`, and that binding is set
+  /// ONCE at WS connect time. Calling `setTargetDevice` only updates the
+  /// app's local inbound filter; the relay still routes commands through
+  /// the original device_id. That's why every command (including a fresh
+  /// `webrtc_request`) effectively gets routed to the wrong robot — and
+  /// why logout→login was the only previous workaround (it forced a brand-
+  /// new WS with new session_hello).
+  ///
+  /// Fix: tear down WebRTC, then `connectionProvider.reconnect()` — which
+  /// closes/reopens the WS and re-sends session_hello with the now-current
+  /// deviceIdProvider value. The deviceStatusStream listener will fire
+  /// `requestVideoStream(_lastDeviceId!)` automatically when the new robot
+  /// reports online over the freshly-bound session.
   Future<void> _handleDeviceSwitch(String newDeviceId) async {
     final oldDeviceId = _lastDeviceId;
 
-    // Only switch if we have an active or pending connection
+    // No active connection — just record the new id and exit.
     if (oldDeviceId == null && state.state == WebRTCState.disconnected) {
       print('WebRTC: No active connection, just updating device ID');
       _lastDeviceId = newDeviceId;
@@ -204,24 +220,29 @@ class WebRTCNotifier extends StateNotifier<WebRTCConnectionState> {
 
     print('WebRTC: ⚠️ SWITCHING VIDEO from $oldDeviceId to $newDeviceId');
 
-    // Cancel any pending reconnect
     _reconnectTimer?.cancel();
     _reconnectAttempts = 0;
 
-    // Build 44: Aggressively clear the renderer FIRST to prevent old frames showing
+    // Clear renderer immediately so the old robot's last frame isn't shown
+    // during the swap.
     if (_renderer != null) {
       print('WebRTC: Clearing renderer srcObject before switch');
       _renderer!.srcObject = null;
     }
 
-    // Build 44: Force close old session completely before requesting new
     await _closeInternal();
 
-    // Build 44: Longer delay to ensure relay and robot have processed the close
-    await Future.delayed(const Duration(milliseconds: 1000));
+    // Set the new target BEFORE the WS reconnect so the deviceStatusStream
+    // listener auto-fires requestVideoStream(_lastDeviceId!) for the right
+    // device when the relay's first device_status comes back.
+    _lastDeviceId = newDeviceId;
 
-    // Now request new stream
-    await requestVideoStream(newDeviceId);
+    print('WebRTC: triggering WS reconnect so relay rebinds to $newDeviceId');
+    final ok = await _ref.read(connectionProvider.notifier).reconnect();
+    if (!ok) {
+      print('WebRTC: WS reconnect for device switch failed — UI will surface '
+          'reconnect state');
+    }
   }
 
   void _setupWebSocketListeners() {
