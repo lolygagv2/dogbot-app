@@ -1099,6 +1099,23 @@ class WebSocketClient {
     sendCommand('set_night_mode_override', {'override': override});
   }
 
+  /// Update Silent Guardian runtime config on the robot.
+  /// Only fields supplied are mutated; null fields are omitted from the payload.
+  /// `fastEscalationBpm`: 0 disables the fast-escalation jump; 10–90 BPM sets
+  /// the sustained-bark threshold above which the robot bypasses the L1→L4
+  /// ladder and goes straight to calming music.
+  /// Robot mutates in memory only — app is source of truth; re-send on
+  /// reconnect (see SilentGuardianNotifier).
+  void sendSgConfig({int? fastEscalationBpm}) {
+    final data = <String, dynamic>{};
+    if (fastEscalationBpm != null) {
+      data['fast_escalation_bpm'] = fastEscalationBpm;
+    }
+    if (data.isEmpty) return;
+    print('WebSocket: sendSgConfig $data');
+    sendCommand('sg_config', data);
+  }
+
   // ============ Mission Commands (Build 38) ============
 
   /// Request current mission status from robot

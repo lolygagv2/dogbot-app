@@ -98,29 +98,6 @@ class _DriveScreenState extends ConsumerState<DriveScreen> {
       _modeChangeRequested = false;
     }
 
-    // Build 100: when the robot reports a day↔night transition, show a brief
-    // floating banner so the user understands the ~3s AE settle. Controls are
-    // unaffected — the snackbar is non-blocking and auto-dismisses.
-    ref.listen<NightModeState?>(nightModeProvider, (prev, next) {
-      if (prev == null || next == null) return;
-      if (prev.currentMode == next.currentMode) return;
-      final messenger = ScaffoldMessenger.maybeOf(context);
-      if (messenger == null) return;
-      messenger.hideCurrentSnackBar();
-      messenger.showSnackBar(
-        SnackBar(
-          content: Text(
-            next.currentMode == DayNight.night
-                ? 'Switching to night mode…'
-                : 'Switching to day mode…',
-          ),
-          duration: const Duration(seconds: 4),
-          behavior: SnackBarBehavior.floating,
-          backgroundColor: AppTheme.background.withOpacity(0.9),
-        ),
-      );
-    });
-
     final nightState = ref.watch(nightModeProvider);
     final isNightActive = nightState?.currentMode == DayNight.night;
 
