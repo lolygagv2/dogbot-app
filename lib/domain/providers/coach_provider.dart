@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/network/websocket_client.dart';
+import 'dog_profiles_provider.dart';
 import 'mode_provider.dart';
 
 /// Coach session state
@@ -16,6 +17,7 @@ class CoachState {
   final int rewardsGiven;
   final String? lastRewardBehavior;
   final DateTime? lastRewardTime;
+  final String? dogId;
   final String? dogName;
   final String? error;
 
@@ -25,6 +27,7 @@ class CoachState {
     this.rewardsGiven = 0,
     this.lastRewardBehavior,
     this.lastRewardTime,
+    this.dogId,
     this.dogName,
     this.error,
   });
@@ -35,6 +38,7 @@ class CoachState {
     int? rewardsGiven,
     String? lastRewardBehavior,
     DateTime? lastRewardTime,
+    String? dogId,
     String? dogName,
     String? error,
     bool clearError = false,
@@ -46,6 +50,7 @@ class CoachState {
       rewardsGiven: rewardsGiven ?? this.rewardsGiven,
       lastRewardBehavior: clearLastReward ? null : (lastRewardBehavior ?? this.lastRewardBehavior),
       lastRewardTime: clearLastReward ? null : (lastRewardTime ?? this.lastRewardTime),
+      dogId: dogId ?? this.dogId,
       dogName: dogName ?? this.dogName,
       error: clearError ? null : (error ?? this.error),
     );
@@ -89,12 +94,14 @@ class CoachNotifier extends StateNotifier<CoachState> {
       case 'coach_reward':
         final behavior = event.data['behavior'] as String?;
         final dogName = event.data['dog_name'] as String?;
-        print('Coach: reward event - behavior=$behavior, dog=$dogName');
+        final dogId = event.data['dog_id'] as String?;
+        print('Coach: reward event - behavior=$behavior, dog=$dogName ($dogId)');
 
         state = state.copyWith(
           rewardsGiven: state.rewardsGiven + 1,
           lastRewardBehavior: behavior,
           lastRewardTime: DateTime.now(),
+          dogId: dogId,
           dogName: dogName,
         );
 
@@ -115,9 +122,11 @@ class CoachNotifier extends StateNotifier<CoachState> {
         // can mutate.
         print('Coach: coaching_started event');
         final dogName = event.data['dog_name'] as String?;
+        final dogId = event.data['dog_id'] as String?;
         final tricks = (event.data['tricks_available'] as List?)?.cast<String>();
         state = state.copyWith(
           isActive: true,
+          dogId: dogId,
           dogName: dogName,
           watchingFor: tricks ?? state.watchingFor,
           rewardsGiven: 0,
@@ -138,11 +147,12 @@ class CoachNotifier extends StateNotifier<CoachState> {
         break;
 
       case 'detection':
-        // Detection events while coaching - update dog name if present
+        // Detection events while coaching - update dog identity if present
         if (state.isActive) {
           final dogName = event.data['dog_name'] as String?;
-          if (dogName != null) {
-            state = state.copyWith(dogName: dogName);
+          final dogId = event.data['dog_id'] as String?;
+          if (dogName != null || dogId != null) {
+            state = state.copyWith(dogName: dogName, dogId: dogId);
           }
         }
         break;
@@ -193,14 +203,36 @@ class CoachNotifier extends StateNotifier<CoachState> {
   // API. Robot broadcasts the authoritative list via the `tricks_available`
   // field on `coaching_started`; the app treats watchingFor as read-only.
 
-  /// Force a specific trick (Build 38)
-  /// Sends force_trick command to robot - robot will start session for this trick
-  void forceTrick(String trick) {
-    if (!state.isActive) return;
+  /// Force a specific trick (Build 38; Build 106: now carries dog identity).
+  ///
+  /// Resolves dog identity in priority order:
+  ///   1. ArUco detection (coachState.dogId/dogName) — what the camera sees.
+  ///   2. Selected profile (selectedDogProvider) — user's intent when nothing
+  ///      is detected yet.
+  ///   3. None → return false. Caller should surface a snackbar telling the
+  ///      user to select a dog or wait for detection. Sending a nameless
+  ///      force_trick would have the robot fall back to a generic "Dog" TTS,
+  ///      which was the original complaint.
+  bool forceTrick(String trick) {
+    if (!state.isActive) return false;
+
+    String? dogId = state.dogId;
+    String? dogName = state.dogName;
+    if (dogId == null && dogName == null) {
+      final selected = _ref.read(selectedDogProvider);
+      dogId = selected?.id;
+      dogName = selected?.name;
+    }
+
+    if (dogId == null && dogName == null) {
+      print('Coach: forceTrick refused — no dog identified');
+      return false;
+    }
 
     final ws = _ref.read(websocketClientProvider);
-    ws.sendForceTrick(trick);
-    print('Coach: Forcing trick: $trick');
+    ws.sendForceTrick(trick, dogId: dogId, dogName: dogName);
+    print('Coach: Forcing trick: $trick for $dogName ($dogId)');
+    return true;
   }
 
   /// Clear state

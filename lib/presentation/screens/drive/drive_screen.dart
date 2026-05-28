@@ -848,7 +848,21 @@ class _DriveCoachOverlay extends ConsumerWidget {
                     final isHighlighted = coachState.lastRewardBehavior?.toLowerCase() == behavior.toLowerCase();
                     return GestureDetector(
                       onTap: coachState.isActive && isConnected
-                          ? () => ref.read(coachProvider.notifier).forceTrick(behavior)
+                          ? () {
+                              final ok = ref
+                                  .read(coachProvider.notifier)
+                                  .forceTrick(behavior);
+                              if (!ok && context.mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text(
+                                      'Select a dog or wait for the camera to identify one.',
+                                    ),
+                                    duration: Duration(seconds: 2),
+                                  ),
+                                );
+                              }
+                            }
                           : null,
                       child: Container(
                         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),

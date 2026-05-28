@@ -1066,10 +1066,19 @@ class WebSocketClient {
 
   // ============ Coach Commands (Build 38) ============
 
-  /// Force a specific trick in coach mode
-  void sendForceTrick(String trick) {
-    print('WebSocket: sendForceTrick trick=$trick');
-    sendCommand('force_trick', {'trick': trick});
+  /// Force a specific trick in coach mode.
+  ///
+  /// Build 106: now carries `dog_id`/`dog_name` so the robot's TTS substitutes
+  /// the real name into the prompt instead of falling back to "Dog". Robot
+  /// should treat both as optional — the app refuses to send a force_trick
+  /// without at least one of them — but if a future caller does send neither,
+  /// robot can still fall back to its previous behaviour.
+  void sendForceTrick(String trick, {String? dogId, String? dogName}) {
+    print('WebSocket: sendForceTrick trick=$trick dog=$dogName ($dogId)');
+    final data = <String, dynamic>{'trick': trick};
+    if (dogId != null) data['dog_id'] = dogId;
+    if (dogName != null) data['dog_name'] = dogName;
+    sendCommand('force_trick', data);
   }
 
   /// Enable/disable camera tracking

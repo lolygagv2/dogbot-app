@@ -261,7 +261,20 @@ class _CoachScreenState extends ConsumerState<CoachScreen> {
                                 isHighlighted: isHighlighted,
                                 isActive: coachState.isActive,
                                 onTap: coachState.isActive && isConnected
-                                    ? () => ref.read(coachProvider.notifier).forceTrick(behavior)
+                                    ? () {
+                                        final ok = ref
+                                            .read(coachProvider.notifier)
+                                            .forceTrick(behavior);
+                                        if (!ok && context.mounted) {
+                                          ScaffoldMessenger.of(context)
+                                              .showSnackBar(const SnackBar(
+                                            content: Text(
+                                              'Select a dog or wait for the camera to identify one.',
+                                            ),
+                                            duration: Duration(seconds: 2),
+                                          ));
+                                        }
+                                      }
                                     : null,
                               );
                             }).toList(),

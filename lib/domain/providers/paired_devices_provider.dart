@@ -7,6 +7,7 @@ import '../../core/network/websocket_client.dart';
 import '../../core/services/local_connection_service.dart';
 import '../../data/datasources/device_api.dart';
 import 'auth_provider.dart';
+import 'connection_provider.dart';
 import 'device_provider.dart';
 
 /// Outcome of [PairedDevicesNotifier.unpairDevice]. [orphaned] means the relay
@@ -144,6 +145,18 @@ class PairedDevicesNotifier extends StateNotifier<PairedDevicesState> {
         mergedStatus.putIfAbsent(device.deviceId, () => device.isOnline);
       }
 
+      // Build 106: if we're actively connected to a device right now (robot
+      // online via WS), force it online regardless of stale REST. We KNOW
+      // it's online — we're talking to it. Closes the window where REST
+      // returns is_online=false but the user is currently streaming video
+      // from it. Demo mode is excluded — we only trust a real robotOnline.
+      final activeDeviceId = _ref.read(deviceIdProvider);
+      final conn = _ref.read(connectionProvider);
+      if (activeDeviceId != null &&
+          conn.status == ConnectionStatus.robotOnline) {
+        mergedStatus[activeDeviceId] = true;
+      }
+
       state = state.copyWith(
         devices: visible,
         isLoading: false,
@@ -209,10 +222,14 @@ class PairedDevicesNotifier extends StateNotifier<PairedDevicesState> {
       return UnpairOutcome.success;
     }
 
-    if (code == 404) {
-      // Pairing row exists on the relay but the device record doesn't —
-      // server can't (or won't) finish the delete. Let the UI offer to
-      // hide it locally.
+    if (code == 404 || code == 500) {
+      // 404: pairing row exists on the relay but the device record doesn't —
+      // server can't (or won't) finish the delete.
+      // 500 (Build 106): user reports an Error 500 on first unpair attempt
+      // that succeeds after app restart. Root cause is either a stale auth
+      // token at provider construction time or a relay-side bug returning
+      // 500 for orphaned pairings. Either way the user is stuck — fall back
+      // to local dismissal so they can move on. Tracked robot-side as R5.
       state = state.copyWith(isLoading: false);
       return UnpairOutcome.orphaned;
     }
