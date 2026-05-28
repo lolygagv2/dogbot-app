@@ -376,6 +376,29 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                   () => _savePassword = !_savePassword),
                               child: const Text('Save password'),
                             ),
+                            const Spacer(),
+                            if (_isLogin)
+                              TextButton(
+                                style: TextButton.styleFrom(
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 8),
+                                  minimumSize: const Size(0, 36),
+                                  tapTargetSize:
+                                      MaterialTapTargetSize.shrinkWrap,
+                                ),
+                                onPressed: () {
+                                  ref
+                                      .read(authProvider.notifier)
+                                      .clearError();
+                                  context.push(
+                                    '/forgot-password',
+                                    extra: {
+                                      'email': _emailController.text.trim(),
+                                    },
+                                  );
+                                },
+                                child: const Text('Forgot password?'),
+                              ),
                           ],
                         ),
                         const SizedBox(height: 16),

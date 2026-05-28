@@ -14,6 +14,7 @@ import 'domain/providers/notifications_provider.dart';
 import 'domain/providers/settings_provider.dart';
 import 'domain/providers/voice_commands_provider.dart';
 import 'domain/providers/webrtc_provider.dart';
+import 'presentation/screens/auth/forgot_password_screen.dart';
 import 'presentation/screens/auth/login_screen.dart';
 import 'presentation/screens/splash_screen.dart';
 import 'presentation/screens/home/home_screen.dart';
@@ -52,7 +53,7 @@ final _rootNavigatorKey = GlobalKey<NavigatorState>();
 
 /// Paths reachable while signed out. Anything else is bounced to /login
 /// by the router's redirect guard when authProvider says !isAuthenticated.
-const _publicPaths = <String>{'/', '/login', '/demo'};
+const _publicPaths = <String>{'/', '/login', '/demo', '/forgot-password'};
 
 /// Builds the app router. Lives inside [_WimzAppState] so the redirect can
 /// read the current auth state from Riverpod. [refreshListenable] is bumped
@@ -101,6 +102,17 @@ GoRouter _buildRouter(WidgetRef ref, Listenable refreshListenable) => GoRouter(
     GoRoute(
       path: '/demo',
       builder: (context, state) => const _DemoModeEntry(),
+    ),
+
+    // Password recovery (public — reachable while signed out)
+    GoRoute(
+      path: '/forgot-password',
+      builder: (context, state) {
+        final extra = state.extra as Map<String, dynamic>?;
+        return ForgotPasswordScreen(
+          initialEmail: extra?['email'] as String?,
+        );
+      },
     ),
 
     // Main app shell with bottom navigation.

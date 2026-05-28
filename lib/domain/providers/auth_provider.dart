@@ -343,6 +343,71 @@ class AuthNotifier extends StateNotifier<AuthState> {
     }
   }
 
+  /// Step 1 of password recovery — ask the relay to email a 6-digit code.
+  ///
+  /// The relay always returns 200 regardless of whether the email is on file
+  /// (deliberate, so the UI can't be used as an email-existence oracle), so
+  /// we surface only transport-level failures via [errorMessage]. Returns
+  /// true if the network call succeeded.
+  Future<bool> requestPasswordReset(String email) async {
+    state = state.copyWith(isLoading: true, errorMessage: null);
+    try {
+      final api = _ref.read(authApiProvider);
+      await api.requestPasswordReset(email);
+      state = state.copyWith(isLoading: false);
+      return true;
+    } catch (e) {
+      state = state.copyWith(
+        isLoading: false,
+        errorMessage: 'Could not send reset code. Check your connection.',
+      );
+      return false;
+    }
+  }
+
+  /// Step 2 of password recovery — submit code + new password, treat the
+  /// returned JWT as a fresh login so the user lands on /home without a
+  /// second sign-in. Mirrors [login]'s success path (save auth, reload dog
+  /// profiles, hydrate from relay).
+  Future<bool> resetPassword(
+      String email, String code, String newPassword) async {
+    state = state.copyWith(isLoading: true, errorMessage: null);
+
+    try {
+      final api = _ref.read(authApiProvider);
+      final response = await api.resetPassword(email, code, newPassword);
+
+      await _saveAuth(response.token, email, response.userId);
+
+      state = state.copyWith(
+        bootstrapping: false,
+        isLoading: false,
+        isAuthenticated: true,
+        token: response.token,
+        email: email,
+        userId: response.userId,
+      );
+      connTrace('reset-password-success', 'user=${response.userId}');
+
+      await _ref.read(dogProfilesProvider.notifier).reloadForCurrentUser();
+      _hydrateAllFromRelay(scenario: 'reset-password');
+
+      return true;
+    } catch (e) {
+      String errorMsg = 'Reset failed';
+      if (e.toString().contains('400')) {
+        errorMsg = 'Invalid or expired code';
+      } else if (e.toString().contains('429')) {
+        errorMsg = 'Too many attempts — try again later';
+      }
+      state = state.copyWith(
+        isLoading: false,
+        errorMessage: errorMsg,
+      );
+      return false;
+    }
+  }
+
   /// Logout - clears auth state and resets user-scoped data.
   ///
   /// [notice] survives the state reset and is shown as a banner on /login.

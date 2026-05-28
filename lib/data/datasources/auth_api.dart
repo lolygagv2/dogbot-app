@@ -55,6 +55,33 @@ class AuthApi {
     return AuthResponse.fromJson(response.data as Map<String, dynamic>);
   }
 
+  /// Step 1 of password recovery — relay emails a 6-digit code (15-min TTL)
+  /// via AWS SES. Relay always returns 200 with a generic message to avoid
+  /// leaking which emails are registered, so this method has no useful
+  /// return value beyond "the request didn't error."
+  Future<void> requestPasswordReset(String email) async {
+    await _dio.post(
+      '/api/auth/request-reset',
+      data: {'email': email},
+    );
+  }
+
+  /// Step 2 of password recovery — exchange the 6-digit code + new password
+  /// for a JWT. Same TokenResponse shape as /login, so the caller can drop
+  /// the user straight into the app without a second sign-in round-trip.
+  Future<AuthResponse> resetPassword(
+      String email, String code, String newPassword) async {
+    final response = await _dio.post(
+      '/api/auth/reset-password',
+      data: {
+        'email': email,
+        'code': code,
+        'new_password': newPassword,
+      },
+    );
+    return AuthResponse.fromJson(response.data as Map<String, dynamic>);
+  }
+
   /// Build 95: tri-state token check. `unreachable` lets the caller fail-open
   /// on transient relay issues (cold-start 5xx, DNS hiccup, timeout) without
   /// blowing away the user's stored JWT.
