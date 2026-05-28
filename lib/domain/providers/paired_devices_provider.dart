@@ -133,16 +133,21 @@ class PairedDevicesNotifier extends StateNotifier<PairedDevicesState> {
           .where((d) => !_dismissedDeviceIds.contains(d.deviceId))
           .toList();
 
-      // Initialize online status from device data
-      final onlineStatus = <String, bool>{};
+      // Build 104: merge REST + live WS status. The live deviceStatusStream is
+      // the truth — REST `device.isOnline` lags right after pairing and was
+      // overwriting the WS-derived "online" with a stale "offline", which
+      // caused the settings + pairing screens to disagree with each other and
+      // with reality. Keep any existing live entry; use REST only for devices
+      // we haven't heard about over WS yet.
+      final mergedStatus = Map<String, bool>.from(state.deviceOnlineStatus);
       for (final device in visible) {
-        onlineStatus[device.deviceId] = device.isOnline;
+        mergedStatus.putIfAbsent(device.deviceId, () => device.isOnline);
       }
 
       state = state.copyWith(
         devices: visible,
         isLoading: false,
-        deviceOnlineStatus: onlineStatus,
+        deviceOnlineStatus: mergedStatus,
       );
     } catch (e) {
       state = state.copyWith(
@@ -161,6 +166,16 @@ class PairedDevicesNotifier extends StateNotifier<PairedDevicesState> {
       final success = await api.pairDevice(deviceId);
 
       if (success) {
+        // Build 104: optimistic — if the user successfully paired this
+        // device, they almost certainly tapped it from the discoverable list
+        // where it was showing "online". Seed the live status map before
+        // loadDevices() runs so the post-pair UI doesn't briefly flip to
+        // "offline" while the relay catches up. The next deviceStatusStream
+        // tick will overwrite this with truth.
+        final seeded = Map<String, bool>.from(state.deviceOnlineStatus);
+        seeded[deviceId] = true;
+        state = state.copyWith(deviceOnlineStatus: seeded);
+
         // Reload device list
         await loadDevices();
         return true;

@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/constants/app_constants.dart';
 import '../../../data/models/dog_profile.dart';
 import '../../../domain/providers/device_provider.dart';
 import '../../../domain/providers/dog_profiles_provider.dart';
@@ -31,6 +32,7 @@ class HomeScreen extends ConsumerWidget {
     // No redirect needed - user stays in app and can reconnect from banner
     final telemetry = ref.watch(telemetryProvider);
     final deviceId = ref.watch(deviceIdProvider);
+    final hasPairedDevice = deviceId != AppConstants.defaultDeviceId;
 
     return Scaffold(
       appBar: AppBar(
@@ -40,13 +42,27 @@ class HomeScreen extends ConsumerWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const Text('WIM-Z'),
-            Text(
-              deviceId,
-              style: TextStyle(
-                fontSize: 12,
-                color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+            if (hasPairedDevice)
+              Text(
+                deviceId,
+                style: TextStyle(
+                  fontSize: 12,
+                  color:
+                      Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+                ),
+              )
+            else
+              GestureDetector(
+                onTap: () => context.push('/device-pairing'),
+                child: Text(
+                  'Find your robot →',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: AppTheme.primary,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
               ),
-            ),
           ],
         ),
         actions: [

@@ -13,7 +13,17 @@ import '../../theme/app_theme.dart';
 class WebRTCVideoView extends ConsumerStatefulWidget {
   final String? deviceId;
 
-  const WebRTCVideoView({super.key, this.deviceId});
+  /// When false, the in-video camera + record button overlay is suppressed —
+  /// callers that already provide their own non-overlapping placement
+  /// (e.g. the drive screen, where the bottom-left is the joystick zone)
+  /// can opt out. Defaults to true so the home screen layout is unchanged.
+  final bool showOverlayButtons;
+
+  const WebRTCVideoView({
+    super.key,
+    this.deviceId,
+    this.showOverlayButtons = true,
+  });
 
   @override
   ConsumerState<WebRTCVideoView> createState() => _WebRTCVideoViewState();
@@ -244,31 +254,36 @@ class _WebRTCVideoViewState extends ConsumerState<WebRTCVideoView> {
           ),
         ),
 
-        // Camera button overlay (bottom-left to avoid audio mute toggle on bottom-right)
-        Positioned(
-          bottom: 16,
-          left: 16,
-          child: _CameraButton(),
-        ),
+        if (widget.showOverlayButtons) ...[
+          // Camera button overlay (bottom-left to avoid audio mute toggle on bottom-right)
+          Positioned(
+            bottom: 16,
+            left: 16,
+            child: CameraButton(),
+          ),
 
-        // Video record button (next to camera button)
-        Positioned(
-          bottom: 16,
-          left: 72,
-          child: _VideoRecordButton(),
-        ),
+          // Video record button (next to camera button)
+          Positioned(
+            bottom: 16,
+            left: 72,
+            child: VideoRecordButton(),
+          ),
+        ],
       ],
     );
   }
 }
 
+
 /// Video record button widget with pulsing red indicator
-class _VideoRecordButton extends ConsumerStatefulWidget {
+class VideoRecordButton extends ConsumerStatefulWidget {
+  const VideoRecordButton({super.key});
+
   @override
-  ConsumerState<_VideoRecordButton> createState() => _VideoRecordButtonState();
+  ConsumerState<VideoRecordButton> createState() => VideoRecordButtonState();
 }
 
-class _VideoRecordButtonState extends ConsumerState<_VideoRecordButton>
+class VideoRecordButtonState extends ConsumerState<VideoRecordButton>
     with SingleTickerProviderStateMixin {
   late AnimationController _pulseController;
 
@@ -394,7 +409,9 @@ class _VideoRecordButtonState extends ConsumerState<_VideoRecordButton>
 }
 
 /// Camera button widget for taking photos
-class _CameraButton extends ConsumerWidget {
+class CameraButton extends ConsumerWidget {
+  const CameraButton({super.key});
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final photoState = ref.watch(photoProvider);

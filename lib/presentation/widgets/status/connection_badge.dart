@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/constants/app_constants.dart';
 import '../../../domain/providers/connection_provider.dart';
+import '../../../domain/providers/device_provider.dart';
 import '../../theme/app_theme.dart';
 
 class ConnectionBadge extends ConsumerWidget {
@@ -10,11 +12,24 @@ class ConnectionBadge extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final connection = ref.watch(connectionProvider);
+    final deviceId = ref.watch(deviceIdProvider);
+    final hasPairedDevice = deviceId != AppConstants.defaultDeviceId;
 
     // Determine color and text based on 3-tier status
     Color color;
     String text;
     IconData? icon;
+
+    // Build 104: when no device is paired yet, don't show "Connecting…" —
+    // there's nothing to connect to. Show "No Robot" so the user knows the
+    // next step is pairing, not waiting.
+    if (!hasPairedDevice && !connection.isDemoMode) {
+      return _PillContainer(
+        color: AppTheme.disconnected,
+        icon: Icons.device_unknown,
+        text: 'No Robot',
+      );
+    }
 
     switch (connection.status) {
       case ConnectionStatus.disconnected:
@@ -57,6 +72,30 @@ class ConnectionBadge extends ConsumerWidget {
       icon = Icons.play_circle_outline;
     }
 
+    return _PillContainer(
+      color: color,
+      icon: icon,
+      text: text,
+      glow: connection.status == ConnectionStatus.robotOnline,
+    );
+  }
+}
+
+class _PillContainer extends StatelessWidget {
+  final Color color;
+  final IconData? icon;
+  final String text;
+  final bool glow;
+
+  const _PillContainer({
+    required this.color,
+    required this.icon,
+    required this.text,
+    this.glow = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
@@ -77,7 +116,7 @@ class ConnectionBadge extends ConsumerWidget {
             decoration: BoxDecoration(
               color: color,
               shape: BoxShape.circle,
-              boxShadow: connection.status == ConnectionStatus.robotOnline
+              boxShadow: glow
                   ? [
                       BoxShadow(
                         color: color.withOpacity(0.5),

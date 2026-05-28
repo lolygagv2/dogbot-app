@@ -13,6 +13,7 @@ import '../../core/network/websocket_client.dart';
 import '../../core/services/local_connection_service.dart';
 import '../../core/utils/remote_logger.dart';
 import 'auth_provider.dart';
+import 'dog_profiles_provider.dart';
 
 const String _voiceCommandsKey = 'voice_commands';
 
@@ -520,5 +521,72 @@ class VoiceCommandsNotifier extends StateNotifier<DogVoiceCommands> {
 
   int get syncedCount {
     return state.commands.values.where((c) => c.isSynced).length;
+  }
+}
+
+/// Build 104 — voice commands auto-sync coordinator.
+///
+/// Background: users were recording voice commands while the robot was
+/// offline (or while WS was disconnected) and then losing them — the only
+/// path to actually deliver them was the user manually tapping "Sync All"
+/// while connected. This provider closes that loop: whenever the WS
+/// transitions into `connected`, every dog's notifier is told to syncAll(),
+/// which re-pushes any commands flagged `isSynced=false`. Commands already
+/// confirmed synced are skipped.
+///
+/// Instantiated once at app startup via `ref.read(voiceCommandsAutoSyncProvider)`
+/// in app.dart so the subscription exists for the life of the process.
+final voiceCommandsAutoSyncProvider = Provider<VoiceCommandsAutoSync>((ref) {
+  final coordinator = VoiceCommandsAutoSync(ref);
+  ref.onDispose(coordinator.dispose);
+  return coordinator;
+});
+
+class VoiceCommandsAutoSync {
+  final Ref _ref;
+  StreamSubscription<WsConnectionState>? _wsSub;
+  WsConnectionState _last = WsConnectionState.disconnected;
+
+  VoiceCommandsAutoSync(this._ref) {
+    final ws = _ref.read(websocketClientProvider);
+    _last = ws.state;
+    _wsSub = ws.stateStream.listen((next) {
+      if (next == WsConnectionState.connected &&
+          _last != WsConnectionState.connected) {
+        // Fire-and-forget: don't block the WS event loop on uploads.
+        // ignore: discarded_futures
+        _pushAllPending();
+      }
+      _last = next;
+    });
+  }
+
+  Future<void> _pushAllPending() async {
+    try {
+      final dogs = _ref.read(dogProfilesProvider);
+      var totalPending = 0;
+      var totalSynced = 0;
+      for (final dog in dogs) {
+        final notifier = _ref.read(voiceCommandsProvider(dog.id).notifier);
+        final state = _ref.read(voiceCommandsProvider(dog.id));
+        final pending = state.commands.values
+            .where((c) => c.localPath != null && !c.isSynced)
+            .length;
+        if (pending == 0) continue;
+        totalPending += pending;
+        final synced = await notifier.syncAll();
+        totalSynced += synced;
+      }
+      if (totalPending > 0) {
+        print('VoiceCommands: auto-sync on reconnect '
+            '— $totalSynced/$totalPending pushed across ${dogs.length} dogs');
+      }
+    } catch (e) {
+      print('VoiceCommands: auto-sync error: $e');
+    }
+  }
+
+  void dispose() {
+    _wsSub?.cancel();
   }
 }

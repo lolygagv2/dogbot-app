@@ -18,6 +18,7 @@ import '../../../domain/providers/night_mode_provider.dart';
 import '../../../domain/providers/telemetry_provider.dart';
 import '../../widgets/night_mode/mode_badge.dart';
 import '../../widgets/video/smart_video_view.dart';
+import '../../widgets/video/webrtc_video_view.dart' show CameraButton, VideoRecordButton;
 import '../../widgets/video/audio_mute_toggle.dart';
 import '../../widgets/controls/push_to_talk.dart';
 import '../../theme/app_theme.dart';
@@ -154,8 +155,11 @@ class _DriveScreenState extends ConsumerState<DriveScreen> {
       body: Stack(
         fit: StackFit.expand,
         children: [
-          // Full-screen video background
-          const SmartVideoView(),
+          // Full-screen video background. showOverlayButtons:false because
+          // the drive screen already crowds the bottom-left with the motor
+          // joystick — let the parent place camera/record at top-right
+          // instead so they don't sit under the joystick (Build 104).
+          const SmartVideoView(showOverlayButtons: false),
 
           // Build 100: Night-mode chrome — thin cool-tone border framing the
           // video. Pointer-transparent so it never blocks controls. The pixels
@@ -306,11 +310,30 @@ class _DriveScreenState extends ConsumerState<DriveScreen> {
           if (modeState.currentMode == RobotMode.coach)
             _DriveCoachOverlay(),
 
-          // WebRTC ICE path diagnostic badge
-          const Positioned(
-            bottom: 180,
-            left: 24,
-            child: _IcePathBadge(),
+          // WebRTC ICE path diagnostic badge — moved out of the joystick zone
+          // (Build 104). Sits below the audio mute toggle on the top-left.
+          Positioned(
+            top: MediaQuery.of(context).padding.top + 96,
+            left: 16,
+            child: const _IcePathBadge(),
+          ),
+
+          // Camera + video-record buttons — placed at top-right beneath the
+          // mode badge so they don't overlap the bottom joystick row
+          // (Build 104). Same widgets that ride inside WebRTCVideoView when
+          // showOverlayButtons:true.
+          Positioned(
+            top: MediaQuery.of(context).padding.top + 140,
+            right: 16,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                CameraButton(),
+                const SizedBox(height: 8),
+                VideoRecordButton(),
+              ],
+            ),
           ),
 
           // v1.3: Brief toast overlay during mode transition (auto-dismisses)

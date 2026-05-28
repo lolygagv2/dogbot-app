@@ -111,7 +111,28 @@ class ServoControlNotifier extends StateNotifier<ServoState> {
   bool _hasPendingCommand = false;
   bool _isDragging = false;  // Track if user is actively dragging
 
-  ServoControlNotifier(this._ref) : super(const ServoState());
+  // Build 104: subscribe to WS state so we can re-assert the app's known
+  // servo position whenever we (re)connect. Without this, the robot keeps
+  // its persisted position across reboots while the app starts at (0,0),
+  // so the first D-pad tap teleports the camera to where the app *thinks*
+  // we are — user reported as a "violent snap in the wrong direction" on
+  // first tap. Re-asserting on connect makes the app the source of truth.
+  StreamSubscription<WsConnectionState>? _wsSub;
+  WsConnectionState _lastWsState = WsConnectionState.disconnected;
+
+  ServoControlNotifier(this._ref) : super(const ServoState()) {
+    final ws = _ref.read(websocketClientProvider);
+    _lastWsState = ws.state;
+    _wsSub = ws.stateStream.listen((next) {
+      if (next == WsConnectionState.connected &&
+          _lastWsState != WsConnectionState.connected) {
+        // Fire the current app-side position so the robot snaps to it now
+        // (out of the user's way) rather than on the first D-pad tap.
+        ws.sendServoCommand(state.pan, state.tilt);
+      }
+      _lastWsState = next;
+    });
+  }
 
   /// Set pan/tilt from control input (only sends while dragging)
   void setPosition(double pan, double tilt) {
@@ -189,6 +210,7 @@ class ServoControlNotifier extends StateNotifier<ServoState> {
   @override
   void dispose() {
     _sendTimer?.cancel();
+    _wsSub?.cancel();
     super.dispose();
   }
 }

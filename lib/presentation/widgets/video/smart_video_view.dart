@@ -14,7 +14,16 @@ import 'webrtc_video_view.dart';
 class SmartVideoView extends ConsumerStatefulWidget {
   final String? deviceId;
 
-  const SmartVideoView({super.key, this.deviceId});
+  /// Forwarded to WebRTCVideoView. False suppresses the in-video
+  /// camera/record button overlay so a parent screen can render them in a
+  /// non-overlapping spot (see drive_screen — joystick lives at bottom-left).
+  final bool showOverlayButtons;
+
+  const SmartVideoView({
+    super.key,
+    this.deviceId,
+    this.showOverlayButtons = true,
+  });
 
   @override
   ConsumerState<SmartVideoView> createState() => _SmartVideoViewState();
@@ -60,7 +69,10 @@ class _SmartVideoViewState extends ConsumerState<SmartVideoView> {
 
     // Relay mode: always WebRTC
     if (!isLocal) {
-      return WebRTCVideoView(deviceId: widget.deviceId);
+      return WebRTCVideoView(
+      deviceId: widget.deviceId,
+      showOverlayButtons: widget.showOverlayButtons,
+    );
     }
 
     // Local mode with MJPEG fallback active
@@ -108,6 +120,9 @@ class _SmartVideoViewState extends ConsumerState<SmartVideoView> {
       _fallbackTimer?.cancel();
     }
 
-    return WebRTCVideoView(deviceId: widget.deviceId);
+    return WebRTCVideoView(
+      deviceId: widget.deviceId,
+      showOverlayButtons: widget.showOverlayButtons,
+    );
   }
 }

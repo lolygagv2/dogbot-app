@@ -12,6 +12,7 @@ import 'domain/providers/connection_provider.dart';
 import 'domain/providers/night_mode_provider.dart';
 import 'domain/providers/notifications_provider.dart';
 import 'domain/providers/settings_provider.dart';
+import 'domain/providers/voice_commands_provider.dart';
 import 'domain/providers/webrtc_provider.dart';
 import 'presentation/screens/auth/login_screen.dart';
 import 'presentation/screens/splash_screen.dart';
@@ -29,6 +30,7 @@ import 'presentation/screens/settings/notification_preferences_screen.dart';
 import 'presentation/screens/notifications/notifications_screen.dart';
 import 'presentation/screens/dog_profile/dog_profile_screen.dart';
 import 'presentation/screens/dog_profile/add_dog_screen.dart';
+import 'presentation/screens/dog_profile/edit_dog_screen.dart';
 import 'presentation/screens/gallery/photo_gallery_screen.dart';
 import 'presentation/screens/voice/voice_setup_screen.dart';
 import 'presentation/screens/scheduler/scheduler_screen.dart';
@@ -298,6 +300,14 @@ GoRouter _buildRouter(WidgetRef ref, Listenable refreshListenable) => GoRouter(
       builder: (context, state) => DogProfileScreen(
         dogId: state.pathParameters['id'],
       ),
+      routes: [
+        GoRoute(
+          path: 'edit',
+          builder: (context, state) => EditDogScreen(
+            dogId: state.pathParameters['id']!,
+          ),
+        ),
+      ],
     ),
   ],
 );
@@ -591,6 +601,11 @@ class _WimzAppState extends ConsumerState<WimzApp> with WidgetsBindingObserver {
         _authRefresh.value++;
       }
     });
+    // Build 104: instantiate the voice-commands auto-sync coordinator. It
+    // subscribes to the WS state stream and re-pushes any unsynced
+    // recordings the moment we go connected.
+    ref.read(voiceCommandsAutoSyncProvider);
+
     // Wire Dio's 401 callback so REST auth failures route through the same
     // logout(notice:) path as WS 4001. See dio_client.dart.
     DioClient.onUnauthorized = () {

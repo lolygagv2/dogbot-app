@@ -120,6 +120,25 @@ class AuthNotifier extends StateNotifier<AuthState> {
         return;
       }
 
+      // Build 104: iOS Keychain persists across app delete by default, but
+      // SharedPreferences is wiped. After reinstall we'd otherwise find a
+      // valid token with NO email/userId/host and land the user at /home in
+      // a half-authenticated state with no robot binding. If the prefs side
+      // is empty, treat this as a fresh install: clear the orphaned token
+      // and force login.
+      final savedHostForBootstrap =
+          prefs.getString(AppConstants.keyServerHost);
+      final hasPrefsContext = (email != null && email.isNotEmpty) ||
+          (userId != null && userId.isNotEmpty) ||
+          (savedHostForBootstrap != null && savedHostForBootstrap.isNotEmpty);
+      if (!hasPrefsContext) {
+        print('Auth: stored JWT but no prefs context — assuming reinstall, '
+            'clearing keychain and showing login');
+        await _secureStorage.deleteToken();
+        state = state.copyWith(bootstrapping: false);
+        return;
+      }
+
       // Build 95: tri-state validation. Only delete on a definitive
       // invalid (401/403). Transient errors (network, 5xx, timeout) leave
       // the JWT in place and we log the user in optimistically — any
