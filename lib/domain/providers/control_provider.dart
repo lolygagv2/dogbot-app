@@ -224,9 +224,14 @@ final treatControlProvider = Provider<TreatControl>((ref) {
 class TreatControl {
   final Ref _ref;
 
-  // Debounce - treats should have longer cooldown to prevent overfeeding
-  static const _debounceMs = 1000; // 1 second between treats
+  // Debounce — single-tap cooldown (entire multi-dispense session counts
+  // as one tap). Mechanical dispenser intra-treat spacing is separate.
+  static const _debounceMs = 1000;
+  // Time the mechanical dispenser needs between consecutive treats.
+  // Going faster causes the carousel to skip; slower wastes user time.
+  static const _interTreatMs = 700;
   DateTime? _lastDispense;
+  bool _dispensing = false;
 
   TreatControl(this._ref);
 
@@ -235,8 +240,15 @@ class TreatControl {
     return DateTime.now().difference(lastTime).inMilliseconds > _debounceMs;
   }
 
-  /// Dispense a treat (debounced - 1 second cooldown)
-  Future<void> dispense() async {
+  /// Dispense N treats (defaults to the selected dog's `treatsPerReward`).
+  /// Loops N sends spaced by [_interTreatMs] so the mechanical carousel has
+  /// time to rotate between treats. Debounces the whole session as one tap
+  /// — back-to-back taps still respect [_debounceMs].
+  Future<void> dispense({int? count}) async {
+    if (_dispensing) {
+      print('TreatControl: dispense() in flight, ignoring');
+      return;
+    }
     final isConnected = _ref.read(connectionProvider).isConnected;
     print('TreatControl: dispense() — isConnected=$isConnected');
     if (!isConnected) return;
@@ -244,9 +256,30 @@ class TreatControl {
       print('TreatControl: dispense() debounced');
       return;
     }
+
+    // Resolve count: explicit arg > selected dog's preference > 1.
+    final selectedDog = _ref.read(selectedDogProvider);
+    final resolved = (count ?? selectedDog?.treatsPerReward ?? 1).clamp(1, 5);
+
     _lastDispense = DateTime.now();
-    print('TreatControl: dispense() sent');
-    _ref.read(websocketClientProvider).sendTreatCommand();
+    _dispensing = true;
+    try {
+      final ws = _ref.read(websocketClientProvider);
+      for (var i = 0; i < resolved; i++) {
+        if (i > 0) {
+          await Future.delayed(const Duration(milliseconds: _interTreatMs));
+          // Re-check connection mid-loop — dispensing into a dead WS is wasted.
+          if (!_ref.read(connectionProvider).isConnected) {
+            print('TreatControl: lost connection mid-dispense after ${i}/$resolved');
+            return;
+          }
+        }
+        ws.sendTreatCommand();
+        print('TreatControl: dispensed ${i + 1}/$resolved');
+      }
+    } finally {
+      _dispensing = false;
+    }
   }
 
   /// Rotate carousel (for refilling)

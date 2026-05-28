@@ -32,6 +32,7 @@ _$DogProfileImpl _$$DogProfileImplFromJson(Map<String, dynamic> json) =>
           ? null
           : DateTime.parse(json['updatedAt'] as String),
       photoVersion: (json['photoVersion'] as num?)?.toInt() ?? 0,
+      treatsPerReward: (json['treatsPerReward'] as num?)?.toInt() ?? 1,
     );
 
 Map<String, dynamic> _$$DogProfileImplToJson(_$DogProfileImpl instance) =>
@@ -51,6 +52,7 @@ Map<String, dynamic> _$$DogProfileImplToJson(_$DogProfileImpl instance) =>
       'createdAt': instance.createdAt?.toIso8601String(),
       'updatedAt': instance.updatedAt?.toIso8601String(),
       'photoVersion': instance.photoVersion,
+      'treatsPerReward': instance.treatsPerReward,
     };
 
 const _$DogColorEnumMap = {

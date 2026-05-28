@@ -31,6 +31,7 @@ class _EditDogScreenState extends ConsumerState<EditDogScreen> {
   late final TextEditingController _nameController;
   late final TextEditingController _breedController;
   DogColor _color = DogColor.mixed;
+  int _treatsPerReward = 1;
   bool _isSaving = false;
   bool _initialised = false;
 
@@ -45,6 +46,7 @@ class _EditDogScreenState extends ConsumerState<EditDogScreen> {
     _nameController.text = profile.name;
     _breedController.text = profile.breed ?? '';
     _color = profile.color;
+    _treatsPerReward = profile.treatsPerReward.clamp(1, 5);
     _initialised = true;
   }
 
@@ -127,6 +129,11 @@ class _EditDogScreenState extends ConsumerState<EditDogScreen> {
               },
             ),
             const SizedBox(height: 24),
+            _TreatsPerRewardStepper(
+              value: _treatsPerReward,
+              onChanged: (n) => setState(() => _treatsPerReward = n),
+            ),
+            const SizedBox(height: 24),
             _MarkerSection(profile: profile),
             const SizedBox(height: 24),
             OutlinedButton.icon(
@@ -164,6 +171,7 @@ class _EditDogScreenState extends ConsumerState<EditDogScreen> {
               name: newName,
               breed: newBreed.isEmpty ? null : newBreed,
               color: _color,
+              treatsPerReward: _treatsPerReward.clamp(1, 5),
             ),
           );
       messenger.showSnackBar(const SnackBar(content: Text('Saved')));
@@ -324,6 +332,92 @@ class _PhotoEditor extends ConsumerWidget {
           backgroundColor: AppTheme.error,
         ),
       );
+    }
+  }
+}
+
+class _TreatsPerRewardStepper extends StatelessWidget {
+  final int value;
+  final ValueChanged<int> onChanged;
+
+  const _TreatsPerRewardStepper({
+    required this.value,
+    required this.onChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppTheme.surfaceLight,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppTheme.glassBorder),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.cookie, color: AppTheme.accent, size: 24),
+              const SizedBox(width: 8),
+              const Expanded(
+                child: Text(
+                  'Treats per reward',
+                  style: TextStyle(
+                    color: AppTheme.textPrimary,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+              IconButton(
+                onPressed: value > 1 ? () => onChanged(value - 1) : null,
+                icon: const Icon(Icons.remove_circle_outline),
+                color: AppTheme.primary,
+              ),
+              SizedBox(
+                width: 32,
+                child: Text(
+                  '$value',
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    color: AppTheme.textPrimary,
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+              IconButton(
+                onPressed: value < 5 ? () => onChanged(value + 1) : null,
+                icon: const Icon(Icons.add_circle_outline),
+                color: AppTheme.primary,
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Text(
+            _helperFor(value),
+            style: const TextStyle(
+              color: AppTheme.textSecondary,
+              fontSize: 12,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  String _helperFor(int n) {
+    switch (n) {
+      case 1:
+        return 'Default — one treat per reward.';
+      case 2:
+        return 'Medium dogs may benefit from two.';
+      case 3:
+        return 'Big dogs need more to feel rewarded.';
+      default:
+        return 'Very large dogs / high-energy training.';
     }
   }
 }

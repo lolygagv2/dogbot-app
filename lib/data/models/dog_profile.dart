@@ -46,6 +46,10 @@ class DogProfile with _$DogProfile {
     DateTime? updatedAt,
     // Build 32: Cache-busting version number for photo refresh
     @Default(0) int photoVersion,
+    // Build 104: per-dog treats dispensed per reward event. 1 by default;
+    // big dogs may need 2-3 to feel rewarded. Clamped to 1-5 in the UI +
+    // again in dispense logic.
+    @Default(1) int treatsPerReward,
   }) = _DogProfile;
 
   factory DogProfile.fromJson(Map<String, dynamic> json) =>
@@ -83,6 +87,9 @@ class DogProfile with _$DogProfile {
           : data['updatedAt'] != null
               ? DateTime.parse(data['updatedAt'] as String)
               : null,
+      treatsPerReward:
+          ((data['treats_per_reward'] as int?) ?? (data['treatsPerReward'] as int?) ?? 1)
+              .clamp(1, 5),
     );
   }
 }
