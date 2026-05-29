@@ -1,7 +1,7 @@
 name: wimz_app
 description: WIM-Z Robotic Dog Trainer - Mobile Control App
 publish_to: 'none'
-version: 1.0.0+108
+version: 1.0.0+109
  
 environment:
   sdk: '>=3.2.0 <4.0.0'
@@ -111,7 +111,7 @@ flutter:
     - assets/icons/
     - assets/animations/    # For Rive/Lottie files
     # - assets/fonts/
-    - assets/markers/aruco_4x4_1000/    # DICT_4X4_1000 markers (IDs 0–49 bundled, Build 106)
+    - assets/markers/aruco_4x4_1000/    # DICT_4X4_1000 markers (IDs 0–999 bundled, Build 109)
 
   # fonts:
   #   - family: SpaceMono
