@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
+import '../../../core/constants/app_constants.dart';
 import '../../../core/services/local_connection_service.dart';
 import '../../../domain/providers/auth_provider.dart';
 import '../../../domain/providers/connection_provider.dart';
@@ -88,10 +88,14 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           _ConnectionInfoTile(isLocalMode: isLocalMode),
           const Divider(),
 
-          // Section 3: Manage Devices (cloud mode only)
+          // My Robots (cloud mode only). Build 110: collapsed the old inline
+          // device list into a single tap-through tile. The list, select,
+          // pair-new, and unpair actions all live on the unified /device-pairing
+          // ("My Robots") screen now — having both was the source of the
+          // "why do I see my robot twice" confusion.
           if (!isLocalMode) ...[
-            _SectionHeader('Manage Devices'),
-            const _InlineDeviceList(),
+            _SectionHeader('My Robots'),
+            const _ManageDevicesTile(),
             const Divider(),
           ],
 
@@ -293,208 +297,52 @@ class _ConnectionInfoTile extends ConsumerWidget {
   }
 }
 
-/// Device list for cloud mode — kept for relay connection management
-class _SimpleConnectionTile extends ConsumerWidget {
-  const _SimpleConnectionTile();
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    // Local mode temporarily disabled for debugging
-    final connection = ref.watch(connectionProvider);
-    final deviceId = ref.watch(deviceIdProvider);
-
-    final isRobotOnline = connection.status == ConnectionStatus.robotOnline;
-
-    return ListTile(
-      leading: Icon(
-        isRobotOnline ? Icons.smart_toy : Icons.cloud_off,
-        color: isRobotOnline ? AppTheme.accent : AppTheme.textTertiary,
-        size: 32,
-      ),
-      title: Text(
-        isRobotOnline ? 'Connected to $deviceId' : 'Not connected',
-        style: TextStyle(
-          fontWeight: FontWeight.bold,
-          color: isRobotOnline ? AppTheme.accent : null,
-        ),
-      ),
-      subtitle: isRobotOnline
-          ? null
-          : Text(
-              connection.status == ConnectionStatus.connecting
-                  ? 'Connecting...'
-                  : 'Tap a device below to connect',
-              style: TextStyle(color: AppTheme.textTertiary),
-            ),
-      trailing: isRobotOnline
-          ? TextButton(
-              onPressed: () async {
-                await ref.read(connectionProvider.notifier).disconnect();
-                if (context.mounted) context.go('/login');
-              },
-              child: const Text('Disconnect'),
-            )
-          : null,
-    );
-  }
-}
-
-/// Inline device list with online/offline indicators
-class _InlineDeviceList extends ConsumerWidget {
-  const _InlineDeviceList();
+/// Single tap-through tile that summarises the user's robots and opens the
+/// unified My Robots (/device-pairing) screen. Build 110: replaced the old
+/// inline list — the full list, select, pair, and unpair flows live on that
+/// one screen now, so users no longer see their devices in two places.
+class _ManageDevicesTile extends ConsumerWidget {
+  const _ManageDevicesTile();
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final pairedDevices = ref.watch(pairedDevicesProvider);
     final activeDeviceId = ref.watch(deviceIdProvider);
+    final count = pairedDevices.devices.length;
 
-    if (pairedDevices.isLoading && pairedDevices.devices.isEmpty) {
-      return const Padding(
-        padding: EdgeInsets.all(16),
-        child: Center(child: CircularProgressIndicator()),
-      );
+    // Resolve the active device's display name (falls back to its id).
+    String? activeName;
+    final hasActive = count > 0 &&
+        activeDeviceId != AppConstants.defaultDeviceId;
+    if (hasActive) {
+      final match = pairedDevices.devices
+          .where((d) => d.deviceId == activeDeviceId);
+      if (match.isNotEmpty) {
+        activeName = match.first.name ?? match.first.deviceId;
+      }
     }
 
-    if (pairedDevices.devices.isEmpty) {
-      return Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          children: [
-            Icon(Icons.devices, size: 48, color: AppTheme.textTertiary),
-            const SizedBox(height: 8),
-            Text(
-              'No paired devices',
-              style: TextStyle(color: AppTheme.textTertiary),
-            ),
-            const SizedBox(height: 16),
-            OutlinedButton.icon(
-              onPressed: () => context.push('/device-pairing'),
-              icon: const Icon(Icons.add),
-              label: const Text('Add Device'),
-            ),
-          ],
-        ),
-      );
+    final String subtitle;
+    if (pairedDevices.isLoading && count == 0) {
+      subtitle = 'Loading…';
+    } else if (count == 0) {
+      subtitle = 'No robots paired — tap to add one';
+    } else {
+      final plural = count == 1 ? 'robot' : 'robots';
+      subtitle = activeName != null
+          ? '$activeName · $count $plural paired'
+          : '$count $plural paired — tap to select';
     }
 
-    return Column(
-      children: [
-        ...pairedDevices.devices.map((device) {
-          final isActive = device.deviceId == activeDeviceId;
-          final isOnline = pairedDevices.isDeviceOnline(device.deviceId);
-
-          return Dismissible(
-            key: Key(device.deviceId),
-            direction: DismissDirection.endToStart,
-            background: Container(
-              color: AppTheme.error,
-              alignment: Alignment.centerRight,
-              padding: const EdgeInsets.only(right: 16),
-              child: const Icon(Icons.delete, color: Colors.white),
-            ),
-            confirmDismiss: (direction) async {
-              return await showDialog<bool>(
-                context: context,
-                builder: (context) => AlertDialog(
-                  title: const Text('Unpair Device'),
-                  content: Text('Unpair ${device.deviceId}?'),
-                  actions: [
-                    TextButton(
-                      onPressed: () => Navigator.pop(context, false),
-                      child: const Text('Cancel'),
-                    ),
-                    FilledButton(
-                      onPressed: () => Navigator.pop(context, true),
-                      style: FilledButton.styleFrom(backgroundColor: AppTheme.error),
-                      child: const Text('Unpair'),
-                    ),
-                  ],
-                ),
-              );
-            },
-            onDismissed: (_) async {
-              // Build 94: swipe-to-unpair. If the relay can't find the device
-              // (orphaned pairing row), the user has already confirmed via
-              // the swipe dialog — auto-hide locally instead of re-prompting.
-              final notifier = ref.read(pairedDevicesProvider.notifier);
-              final outcome = await notifier.unpairDevice(device.deviceId);
-              if (outcome == UnpairOutcome.orphaned) {
-                await notifier.dismissLocally(device.deviceId);
-              }
-            },
-            child: ListTile(
-              leading: Stack(
-                children: [
-                  Icon(
-                    Icons.smart_toy,
-                    color: isOnline ? AppTheme.accent : AppTheme.textTertiary,
-                  ),
-                  Positioned(
-                    right: 0,
-                    bottom: 0,
-                    child: Container(
-                      width: 10,
-                      height: 10,
-                      decoration: BoxDecoration(
-                        color: isOnline ? AppTheme.accent : AppTheme.textTertiary,
-                        shape: BoxShape.circle,
-                        border: Border.all(color: AppTheme.surface, width: 2),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              title: Row(
-                children: [
-                  Text(device.name ?? device.deviceId),
-                  if (isActive) ...[
-                    const SizedBox(width: 8),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                      decoration: BoxDecoration(
-                        color: AppTheme.primary,
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: const Text(
-                        'ACTIVE',
-                        style: TextStyle(fontSize: 9, color: Colors.white, fontWeight: FontWeight.bold),
-                      ),
-                    ),
-                  ],
-                ],
-              ),
-              subtitle: Text(
-                isOnline ? 'Online' : 'Offline',
-                style: TextStyle(
-                  color: isOnline ? AppTheme.accent : AppTheme.textTertiary,
-                  fontSize: 12,
-                ),
-              ),
-              trailing: isOnline && !isActive
-                  ? TextButton(
-                      onPressed: () {
-                        print('Settings: User tapped to select device ${device.deviceId}');
-                        ref.read(pairedDevicesProvider.notifier).selectDevice(device.deviceId);
-                      },
-                      child: const Text('Connect'),
-                    )
-                  : const Icon(Icons.chevron_right, color: AppTheme.textTertiary),
-              onTap: () {
-                print('Settings: User tapped device ${device.deviceId} (online=$isOnline, active=$isActive)');
-                if (isOnline && !isActive) {
-                  ref.read(pairedDevicesProvider.notifier).selectDevice(device.deviceId);
-                }
-              },
-            ),
-          );
-        }),
-        // Add device button
-        ListTile(
-          leading: const Icon(Icons.add_circle_outline),
-          title: const Text('Add Device'),
-          onTap: () => context.push('/device-pairing'),
-        ),
-      ],
+    return ListTile(
+      leading: const Icon(Icons.smart_toy),
+      title: const Text('Manage Robots'),
+      subtitle: Text(
+        subtitle,
+        style: TextStyle(color: AppTheme.textTertiary, fontSize: 12),
+      ),
+      trailing: const Icon(Icons.chevron_right),
+      onTap: () => context.push('/device-pairing'),
     );
   }
 }

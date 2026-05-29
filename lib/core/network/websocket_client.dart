@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 
+import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
 
@@ -334,8 +335,9 @@ class WebSocketClient {
       final json = jsonDecode(message as String) as Map<String, dynamic>;
       final msgType = json['type'] as String? ?? json['event'] as String?;
 
-      // Debug: log ALL messages to find battery data
-      print('WS MSG [$msgType]: $json');
+      // Per-message firehose — debug builds only. Gated so release logs don't
+      // carry device/robot state (and to cut log spam). Build 110.
+      if (kDebugMode) print('WS MSG [$msgType]: $json');
 
       // Fix #1: the relay confirms the handshake with a session_ack frame.
       // Until it arrives, every non-hello outbound frame is queued (send()).
@@ -708,7 +710,7 @@ class WebSocketClient {
   void _writeFrame(Map<String, dynamic> data) {
     try {
       final json = jsonEncode(data);
-      print('WS SEND: $json');
+      if (kDebugMode) print('WS SEND: $json'); // debug-only firehose — Build 110
       _channel?.sink.add(json);
     } catch (e) {
       print('WebSocket send error: $e');

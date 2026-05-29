@@ -88,11 +88,10 @@ class _DogHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        // Photo avatar
+        // Photo avatar — tapping opens the edit screen, which owns the
+        // image_picker flow (avoids duplicating photo-pick logic here).
         GestureDetector(
-          onTap: () {
-            // TODO: Implement photo picker
-          },
+          onTap: () => context.push('/dog/${profile.id}/edit'),
           child: Container(
             width: 100,
             height: 100,
@@ -627,16 +626,6 @@ class _QuickActionsGrid extends StatelessWidget {
                 },
               ),
             ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: _ActionButton(
-                icon: Icons.flag,
-                label: 'Goals',
-                onTap: () {
-                  // TODO: Navigate to goals
-                },
-              ),
-            ),
           ],
         ),
       ],
@@ -720,7 +709,9 @@ class _RecentActivity extends ConsumerWidget {
             ),
             TextButton(
               onPressed: () {
-                // TODO: Navigate to full activity/notifications
+                // Jump to the Activity screen's Events tab (index 1).
+                ref.read(activityTabIndexProvider.notifier).state = 1;
+                context.go('/activity');
               },
               child: const Text('See all'),
             ),

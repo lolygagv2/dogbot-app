@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../data/datasources/device_api.dart';
 import '../../../domain/providers/device_provider.dart';
@@ -146,11 +147,21 @@ class _DevicePairingScreenState extends ConsumerState<DevicePairingScreen> {
     );
   }
 
-  void _selectDevice(String deviceId) {
-    ref.read(pairedDevicesProvider.notifier).selectDevice(deviceId);
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Now controlling $deviceId')),
-    );
+  void _selectDevice(PairedDevice device) {
+    final label = device.name ?? device.deviceId;
+    ref.read(pairedDevicesProvider.notifier).selectDevice(device.deviceId);
+    // Optimistic feedback: jump straight to Home so the user watches the
+    // connection/video come up (badge moves Waiting… → Robot Online) rather
+    // than sitting on the list wondering if the tap registered. Build 110.
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(
+          content: Text('Connecting to $label…'),
+          duration: const Duration(seconds: 2),
+        ),
+      );
+    context.go('/home');
   }
 
   @override
@@ -160,7 +171,7 @@ class _DevicePairingScreenState extends ConsumerState<DevicePairingScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Device Pairing'),
+        title: const Text('My Robots'),
       ),
       body: Column(
         children: [
@@ -273,7 +284,7 @@ class _DevicePairingScreenState extends ConsumerState<DevicePairingScreen> {
                               device: device,
                               isActive: isActive,
                               isOnline: isOnline,
-                              onTap: () => _selectDevice(device.deviceId),
+                              onTap: () => _selectDevice(device),
                               onUnpair: () => _unpairDevice(device.deviceId),
                             );
                           },
