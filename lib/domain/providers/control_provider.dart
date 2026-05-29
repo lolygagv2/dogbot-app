@@ -146,10 +146,11 @@ class ServoControlNotifier extends StateNotifier<ServoState> {
     // User is actively dragging
     _isDragging = true;
 
-    state = ServoState(
-      pan: pan.clamp(-AppConstants.maxPanAngle, AppConstants.maxPanAngle),
-      tilt: tilt.clamp(-AppConstants.maxTiltAngle, AppConstants.maxTiltAngle),
-    );
+    // No app-side clamp — each robot has different physical ranges, so the
+    // robot is the authority on its own servo limits. Out-of-range values
+    // are rejected/clamped robot-side and the app picks up the truth via
+    // future servo_state echoes.
+    state = ServoState(pan: pan, tilt: tilt);
 
     _hasPendingCommand = true;
     _ensureSendTimer();
@@ -162,17 +163,17 @@ class ServoControlNotifier extends StateNotifier<ServoState> {
     // Don't send anything on release - servo stays where it was
   }
 
-  /// Adjust pan by delta (D-pad style - immediate send)
+  /// Adjust pan by delta (D-pad style - immediate send). No app-side clamp;
+  /// robot enforces its own physical range.
   void adjustPan(double delta) {
-    final newPan = (state.pan + delta).clamp(-AppConstants.maxPanAngle, AppConstants.maxPanAngle);
-    state = ServoState(pan: newPan, tilt: state.tilt);
+    state = ServoState(pan: state.pan + delta, tilt: state.tilt);
     _sendCommandImmediate();
   }
 
-  /// Adjust tilt by delta (D-pad style - immediate send)
+  /// Adjust tilt by delta (D-pad style - immediate send). No app-side clamp;
+  /// robot enforces its own physical range.
   void adjustTilt(double delta) {
-    final newTilt = (state.tilt + delta).clamp(-AppConstants.maxTiltAngle, AppConstants.maxTiltAngle);
-    state = ServoState(pan: state.pan, tilt: newTilt);
+    state = ServoState(pan: state.pan, tilt: state.tilt + delta);
     _sendCommandImmediate();
   }
 
