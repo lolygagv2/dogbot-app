@@ -1,5 +1,129 @@
 # WIM-Z Resume Chat Log
 
+## Session: 2026-05-29 — Builds 107–110 (password recovery, servo clamps, ArUco full set, device/UX cleanup)
+**Goal:** Multi-topic working session. Started as password-recovery feature, expanded into servo-clamp removal, an ArUco bundle bug I'd introduced in Build 106, and a pre-ship cleanup pass (device-menu merge, dead buttons, debug prints). Plus cross-repo coordination on the relay DB-lock fix.
+**Status:** All four builds committed AND pushed to `origin/main` (https://github.com/lolygagv2/dogbot-app). pubspec at `1.0.0+110`.
+
+### Build 107 — Password recovery via emailed 6-digit code (commit `b01dd6d`)
+Client side of the AWS SES-backed reset flow. A sibling Claude Code instance on the Lightsail relay built the backend in parallel; user relayed messages between us. Both ends independently proposed the same contract → zero rework.
+- **Contract:** `POST /api/auth/request-reset {email}` → 200 always (no enumeration leak). `POST /api/auth/reset-password {email, code, new_password}` → `{token, expires_in}` (= login TokenResponse). 6-digit code, 15-min TTL, new code invalidates old. New password min **8 chars** (register still 6 — user said keep as-is, intentional asymmetry).
+- **Files:** `auth_api.dart` (requestPasswordReset, resetPassword), `auth_provider.dart` (matching AuthNotifier methods; reset mirrors login() success path — _saveAuth, reloadForCurrentUser, _hydrateAllFromRelay), `forgot_password_screen.dart` (NEW, two-stage email→code+password via _Stage enum), `app.dart` (/forgot-password route + added to _publicPaths), `login_screen.dart` ("Forgot password?" link, sign-in mode only).
+- Reset success auto-logs-in → /home. 400→"Invalid or expired code", 429→"Too many attempts".
+
+### Build 108 — Remove app-side servo clamps (commit `6e86549`)
+User: gimbal clamps (±90 pan / ±45 tilt) are "out of alignment with real physics" and every robot's gimbal + mounting is different. Removed all three `.clamp()` sites in `control_provider.dart` (setPosition, adjustPan, adjustTilt). Robot is now sole authority on its physical servo range; out-of-range gets clamped robot-side. `AppConstants.maxPanAngle/maxTiltAngle` constants KEPT — still used by the analog joystick widget (`pan_tilt_control.dart`) as deflection→degrees scale factors. Those ALSO need per-robot calibration but that's a deeper per-device-profile change, deferred.
+
+### Build 109 — Bundle full ArUco 0–999 marker set (commit `c9c873b`)
+**My own Build 106 bug.** In 106 I ran `generate_aruco_markers.py --count 50`, bundling only IDs 0–49. User's dogs use 3-digit collar markers (100–999, which the camera tracks natively) → those showed the "Marker bundle not generated" placeholder, couldn't preview/print, couldn't recreate dogs. Regenerated full DICT_4X4_1000 set (1000 PNGs, ~4 MB) via `/tmp/aruco-venv2` (opencv-contrib-python). NO code change needed — input field, save path, preview already accepted 0–999; only the assets were missing. 950 new PNGs committed; pubspec comment updated to "IDs 0–999".
+
+### Build 110 — Device-menu merge + dead buttons + select UX + debug prints (commit `1ffeed2`)
+Pre-ship cleanup. Net −148 lines.
+- **Device-menu merge (user: "confusing as fuck"):** Settings had an inline `_InlineDeviceList` ("Manage Devices") AND a standalone `/device-pairing` screen that BOTH listed+selected devices → users saw their robot twice. Now: Settings shows ONE `_ManageDevicesTile` (active robot + paired count) → opens the unified `/device-pairing` screen, retitled **"My Robots"**, which owns list/select/pair/unpair. Deleted `_InlineDeviceList` AND dead `_SimpleConnectionTile`. Removed now-unused shared_preferences import.
+- **3 dead buttons in `dog_profile_screen.dart`** (all were empty `// TODO`): photo avatar → opens edit screen (which owns image_picker); "See all" → Activity›Events tab (activityTabIndexProvider=1); "Goals" quick-action REMOVED (no destination existed).
+- **Faster select UX:** selecting a robot shows "Connecting to <name>…" snackbar + `context.go('/home')` so user watches it connect instead of sitting on the list. Badge already moves Waiting…→Robot Online; list shows ACTIVE instantly. (Snackbar survives the go() because MaterialApp.router hosts a root ScaffoldMessenger.)
+- **Debug prints:** gated the per-message WS firehose (`WS MSG`/`WS SEND`) in `websocket_client.dart` behind `kDebugMode` (added `flutter/foundation` import). Other low-volume state prints left as-is.
+
+### Pre-ship audit (Explore agent) — corrected two false positives
+Ran a broad audit agent. Real find: the 3 dead buttons (fixed). **Downgraded:** `auth_api.dart:105` "silent catch" is the INTENTIONAL tri-state (`return TokenValidation.unreachable`) — not a bug. WS prints were NOT a "CRITICAL security leak" (no tokens in payloads) — just noise, now gated.
+
+### Relay DB-lock fix (cross-repo, Lightsail Claude — VERIFIED)
+Root cause of BOTH the password-reset failures AND slow/stuck video connect: relay's raw sqlite3 was `journal_mode=delete` + `busy_timeout=0` → a robot-status write colliding with a reset-code insert failed instantly with SQLITE_BUSY → 500. My SES-in-transaction guess was WRONG (SES was already post-commit). Lightsail Claude fixed: `journal_mode=WAL` + `busy_timeout=5000` on every connection, + wrapped all 52 DB functions in a `with db_connection()` context manager (leak protection). Verified: service restarted, WAL sidecars (`-wal`/`-shm`) confirmed created with correct dir perms. App-side confirmed: Dio timeouts (10s connect / 30s receive, `app_constants.dart:6-7`) comfortably exceed the 5s busy_timeout, so the retry window is fully usable — NO app change needed.
+
+### Unresolved / next session
+1. **END-TO-END TEST password reset in the app** — only unverified link. Tap "Forgot password?", confirm SES email arrives + reset completes. (Earlier failure today was the DB locks, now fixed.)
+2. **Codemagic** — Builds 107–110 pushed; trigger is user's call (manual).
+3. **Per-robot servo calibration** — analog joystick (`pan_tilt_control.dart`) still scales by the old ±90/±45 constants. Needs a per-device calibration profile (range + mount orientation). Robot-side ticket territory.
+4. **Carry-over:** motor controls reportedly not working (user-reported since Build 56/57), never investigated.
+5. WAL checkpoint-on-close under bursty traffic is an optimization knob (`wal_autocheckpoint`/`synchronous=NORMAL`) — only touch if latency spikes appear under load. Not pre-ship.
+
+---
+
+## Session: 2026-05-28 — Build 106 (6-item user-complaint triage + ArUco bundle + robot brief)
+**Goal:** User came in with six complaints from Build 104/105 testing — ArUco UX, generic "dog" name in coach mode, coach trick TTS skipping, bark spam, device online/offline disagreement, unpair 500. Diagnose each, fix what's app-side, write a robot brief for the rest.
+**Status:** Completed — single commit `6d32a52` (`feat: 6-item triage sweep + ArUco bundle + robot brief — Build 106`) on main, pubspec at `1.0.0+106`. Untriggered Codemagic — user's call.
+
+### Triage outcome (six complaints → three app-side fixes + three robot tickets)
+
+| # | Complaint | Where it lives | Action |
+|---|-----------|----------------|--------|
+| 1 | ArUco markers route user to chev.me — print flow felt "meh" | Setup never ran `scripts/generate_aruco_markers.py`; pubspec assets line was commented since the script was written | **App-side fix** — generated first 50 markers (204 KB), uncommented pubspec. Embeds direct PNG now for IDs 0–49; chev.me fallback only fires for IDs ≥50 |
+| 2 | Coach mode calls dog by generic "Dog" instead of profile name | `force_trick` payload was bare `{trick}` — no identity carried | **App-side fix** — see "Fix #2" below |
+| 3 | "Sit" audio doesn't play at trick start, inconsistent prompt audio | App only sends `force_trick` over WS; no local audio. Robot is supposed to TTS but skips it | **Robot ticket R3** — app cannot fix, robot's coach engine must reliably TTS before wait window starts. Offered as future option: local audio fallback in app (assets/audio/{sit,stay,…}.mp3 via audioplayers, already in pubspec) — punted until R3 ships and is confirmed insufficient |
+| 4 | Bark events still flooding feed | Already documented as robot-side R2 in `.claude/ROBOT_ISSUES_2026-05-27.md`. App-side already routes to in-app-only by default | **Robot ticket R2** (carryover) |
+| 5 | Manage Devices shows "offline" while video is actively streaming; "Add Device" shows same paired device, confusing | (a) REST `is_online` lagging behind WS-truth during initial render; (b) Add Device intentionally lists paired devices — UX confusion, not a bug | **App-side fix (5a)** — see "Fix #5a" below. **Deferred (5b)** — rename Add Device flow / split screen, needs UX call from user |
+| 6 | Unpair returns Error 500; works after app restart | Either (a) stale JWT at `device_api_provider` construction, or (b) relay returns 500 for orphan pairings instead of 404. Pre-existing 404→`dismissLocally()` recovery path didn't catch 500 | **App-side fix** — treat 500 same as 404 (belt-and-suspenders). Robot ticket **R5** to return proper status codes |
+
+### Fix #2 — `force_trick` carries dog identity
+**Problem:** `coach_provider.forceTrick(String trick)` sent only `{trick: 'sit'}`. Robot's TTS template substituted "Dog" because there was no `dog_name` in the payload, even when the user had a profile selected and/or an ArUco-detected dog visible. The comment at `coach_screen.dart:210` already said "Do NOT use selectedDog.name for display — that locks to profile selection," but commands need *intent*, not just camera ground truth.
+
+**Solution:** Resolve identity in priority order inside the notifier:
+1. Detected (ArUco via `coachState.dogId`/`dogName`)
+2. Selected profile (`selectedDogProvider.id`/`name`) — fallback when nothing detected yet
+3. Neither → return `false`, caller shows snackbar
+
+Concrete edits:
+- `coach_provider.dart`: added `dogId` field to `CoachState`; updated `copyWith`; capture `dog_id` in three event handlers (`detection`, `coach_reward`, `coaching_started`); `forceTrick` returns `bool`, resolves identity, refuses with `false` if no dog known.
+- `websocket_client.dart`: `sendForceTrick(String trick, {String? dogId, String? dogName})` — only adds fields to payload when non-null, so robot can still fall back to its previous behaviour if a future caller skips them.
+- `coach_screen.dart` + `drive_screen.dart`: both had trick chips wired to `forceTrick(behavior)`. Both now wrap the call — show "Select a dog or wait for the camera to identify one." snackbar when `forceTrick` returns false.
+
+### Fix #5a — Active device forced "online" in Manage Devices
+**Problem:** REST `device.isOnline` lags after WS connect. Build 104's merge logic at `paired_devices_provider.dart:142-145` already trusts WS over REST (`putIfAbsent` for REST), but if the relay hasn't pushed a `device_status` event yet for the active device, the map is empty and REST's stale `false` seeds it. Result: "offline" badge while user is literally streaming video from the device.
+
+**Solution:** After the merge, if `deviceIdProvider != null` and `connectionProvider.status == ConnectionStatus.robotOnline`, force-set that device id to `true` in `mergedStatus`. We KNOW it's online — we're talking to it. Demo mode is excluded (status check is direct enum compare, not `isRobotOnline` getter which includes demo).
+
+Added `import 'connection_provider.dart'` to `paired_devices_provider.dart`.
+
+### Fix #6 — Unpair 500 → local-dismiss recovery
+**Problem:** User reports Error 500 on first unpair attempt, succeeds after cold restart. Two candidate root causes — stale auth token (provider built once at app start) or relay 500'ing instead of 404'ing for orphan pairings. Either way the user was stuck.
+
+**Solution:** One-line change in `paired_devices_provider.unpairDevice` — `if (code == 404 || code == 500)` returns `UnpairOutcome.orphaned`. The existing Build 94 recovery (`dismissLocally()` hides the device locally so the pairing row stays orphaned server-side but the UI unblocks) now catches 500 too. True root cause still needs robot/relay fix (logged as R5).
+
+### ArUco bundle
+- Spun up `/tmp/aruco-venv` (system Python 3.12 blocked PEP 668 install). `pip install opencv-contrib-python` → ran `scripts/generate_aruco_markers.py --count 50`.
+- Output: `assets/markers/aruco_4x4_1000/{0..49}.png`, 204 KB total, ~3 KB each.
+- Uncommented pubspec assets line; tagged with `# DICT_4X4_1000 markers (IDs 0–49 bundled, Build 106)`.
+- `_printMarker` in `edit_dog_screen.dart:480` already had embed-vs-chev.me branching (Build 104). With markers bundled, the common case (IDs 0–49) hits the embed branch. chev.me fallback only triggers if a user manually enters ID ≥50 — acceptable corner case.
+
+### Robot brief — `.claude/ROBOT_ISSUES_2026-05-28.md`
+New file (NOT to be confused with `.claude/ROBOT_ISSUES_2026-05-27.md`). Covers:
+- **R3** — Coach trick TTS skipping. Suggests synchronous speak-then-unblock + a new `coach_trick_prompted` ack event the app can use to detect failures + interlock concerns with bark-detection self-mute gate.
+- **R4** — `force_trick` payload now carries `dog_name`. Robot must substitute it into TTS template. Also addresses autonomous coach rewards (no `force_trick`) — should still skip name rather than say "Dog" if `select_dog` state is empty.
+- **R5** — Unpair 500. Includes orphan-pairing handling guidance, JWT/race candidates, request format the app currently sends, and the app's `{200, 404, 500} = unblocked` Build 106 contract.
+- Carries forward **R1** (spin classifier false positive while dog ran into wall) and **R2** (bark spam) from 2026-05-27.
+
+### Verification
+- `flutter analyze` on the 5 modified Dart files: 37 issues, all pre-existing `withOpacity → withValues` infos and `prefer_const_*` style nits. **No new errors or warnings from Build 106.**
+- All callers of `forceTrick` audited (`grep -rn forceTrick lib/`) — two callsites (coach_screen + drive_screen), both updated to handle the new `bool` return + snackbar.
+
+### Files modified (6) + new files (2)
+**Modified:**
+- `lib/core/network/websocket_client.dart` — `sendForceTrick` signature
+- `lib/domain/providers/coach_provider.dart` — `CoachState.dogId`, 3 event handlers, `forceTrick → bool`
+- `lib/domain/providers/paired_devices_provider.dart` — connection_provider import, active-device force-online, 500→orphan
+- `lib/presentation/screens/coach/coach_screen.dart` — snackbar fallback
+- `lib/presentation/screens/drive/drive_screen.dart` — snackbar fallback (same logic)
+- `pubspec.yaml` — version 1.0.0+105 → +106, uncommented assets/markers line
+
+**New:**
+- `.claude/ROBOT_ISSUES_2026-05-28.md` — robot-team brief
+- `assets/markers/aruco_4x4_1000/{0..49}.png` — 50 ArUco PNGs
+
+### Open items / next steps
+- **Trigger Codemagic for Build 106** — user's next action. Single bundled build covers all three app-side fixes + ArUco assets.
+- **Hand off robot brief** — R3, R4, R5. R1 + R2 still pending from 2026-05-27.
+- **Issue #5b deferred** — "Add Device shows already-paired devices" is a UX call. Options: rename to "Pair / Manage Devices", split into separate screens, or leave with better section labels. Awaiting user direction.
+- **R3 follow-on** — if robot-side TTS fix lands and audio is still flaky, fall back to local audio assets (audioplayers is already in pubspec; would need `assets/audio/{sit,stay,laydown,come,spin,speak}.mp3` recorded and bundled).
+- Carried from prior sessions (still open): relay-side ticket for blind `(user_id, device_id)` unpair (now interlocks with R5 — same recovery code path).
+
+### Important notes / warnings
+- **`forceTrick` is now `bool`-returning.** Any future caller must handle the false case (currently: coach_screen + drive_screen both snackbar). If a third caller is added without the check, "no dog identified" will silently swallow the tap.
+- **The `force_trick` payload now includes optional `dog_id`/`dog_name`.** Robot must be backward-compatible — `data['dog_name']` may be missing on older app builds, and `force_trick` from non-app sources (CLI tests?) may also lack it. Robot should not assume presence.
+- **Active-device force-online (#5a) is a one-shot during `loadDevices()`.** If the user disconnects while looking at Manage Devices, the map won't auto-revert to "offline" for that device until the next `device_status` WS event lands. Acceptable — disconnect path is rare and the WS event normally fires.
+- **The 500→orphan recovery (#6) masks real server errors.** If the relay starts 500'ing for a *new* reason (not orphan, not stale JWT), users will silently see the device disappear from their list. R5 must be solved properly server-side; this is a mitigation, not a fix.
+- **Protected files:** `notes.txt` and `/docs/` are still MISSING — flagged at session start. Not touched by this session.
+
+---
+
 ## Session: 2026-05-25 (cont.) — Build 100 (Video-Lag Fix + Night-Mode Wire-Format Fix)
 **Goal:** User reported back during the same day with two remaining issues: (1) night-mode toggle "not exactly easy updating" — i.e. the UI was wired but commands weren't reaching the robot, and (2) the long-standing "1–5 second black screen when you tab away from /home and come back" lag was *still* present after Build 99. Robot side now accepts a new contract for night-mode override; need to align app side.
 **Status:** Completed — single commit `ed6e472` pushed to main, pubspec bumped to `1.0.0+100`. User said to bump, commit, push — done. Codemagic untriggered (their call).
