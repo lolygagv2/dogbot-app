@@ -3,6 +3,7 @@ import 'dart:convert';
 
 import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
 
 import '../constants/app_constants.dart';
@@ -43,7 +44,36 @@ class WsEvent {
   final String type;
   final Map<String, dynamic> data;
 
-  WsEvent({required this.type, required this.data});
+  /// Relay replay-buffer sequence number — per-device, monotonic. Tagged on
+  /// every feed-worthy event (live and buffered) by the relay's store-and-
+  /// forward buffer. Null on messages the relay doesn't sequence (local mode,
+  /// WebRTC signaling, acks).
+  final int? seq;
+
+  /// True when this event was replayed from the relay's per-device buffer on
+  /// (re)connect rather than delivered live. Used to timestamp the feed entry
+  /// with [tsServer] (its real time) instead of arrival time, and available
+  /// for callers that want to avoid re-alerting on a backlog.
+  final bool buffered;
+
+  /// Authoritative server timestamp (ISO8601) the relay assigns on ingest.
+  /// Preferred over device/robot clocks for feed ordering. Null in local mode.
+  final String? tsServer;
+
+  /// Stable relay event id (top-level). Used to dedup the feed across the two
+  /// hydration sources (REST `/api/activity` history + WS replay buffer) — the
+  /// relay must assign the SAME id to an event in both. Null for live robot
+  /// events that don't carry one (the feed then falls back to an ephemeral id).
+  final String? id;
+
+  WsEvent({
+    required this.type,
+    required this.data,
+    this.seq,
+    this.buffered = false,
+    this.tsServer,
+    this.id,
+  });
 
   factory WsEvent.fromJson(Map<String, dynamic> json) {
     // Use 'type' as primary, fall back to 'event' for backward compatibility
@@ -65,6 +95,15 @@ class WsEvent {
     return WsEvent(
       type: messageType ?? 'unknown',
       data: eventData,
+      // Store-and-forward envelope fields live at the TOP level, siblings of
+      // type/device_id — they'd be discarded by the nested-data branch above.
+      seq: json['seq'] as int?,
+      buffered: json['buffered'] == true,
+      tsServer: json['ts_server'] as String?,
+      // Relay emits the stable dedup id as top-level `id` on replay frames but
+      // as `event_id` on live-forwarded messages — accept either so live and
+      // REST-hydrated copies of the same event share an id and dedup.
+      id: json['id'] as String? ?? json['event_id'] as String?,
     );
   }
 }
@@ -116,6 +155,18 @@ class WebSocketClient {
   };
   int _reconnectAttempts = 0;
   static const int _maxReconnectAttempts = 5;
+
+  // ===== Store-and-forward: relay replay-buffer watermark =====
+  // Per-device monotonic seq of the last feed event we've durably accepted.
+  // Sent in session_hello (last_seen_seq) so the relay replays everything
+  // newer on (re)connect; advanced as buffered + live events arrive; persisted
+  // so it survives app restart. The relay keeps the seq counter persistent per
+  // device (contract item (a)), so this watermark stays comparable across
+  // sessions AND relay restarts — no epoch/reset handshake needed.
+  int _lastSeenSeq = 0;
+  String? _watermarkDeviceId;
+  Timer? _watermarkPersistTimer;
+  static const String _watermarkPrefix = 'ws_seq_watermark_';
 
   /// The current session id sent with the session_hello frame and tagged on
   /// every signaling frame. Null until [connect] is called.
@@ -240,6 +291,16 @@ class WebSocketClient {
     _expectRelayHandshake = expectRelayHandshake;
     _reconnectAttempts = 0;
 
+    // Store-and-forward: load this device's replay watermark before the first
+    // session_hello so last_seen_seq is correct. Local mode has no relay
+    // buffer — clear the watermark so stale relay seqs can't dedup local events.
+    if (expectRelayHandshake && deviceId != null) {
+      await _loadWatermark(deviceId);
+    } else {
+      _lastSeenSeq = 0;
+      _watermarkDeviceId = null;
+    }
+
     await _doConnect();
   }
 
@@ -351,6 +412,19 @@ class WebSocketClient {
           connTrace('ws-session-ack', _sessionId ?? '');
           _openHandshakeGate();
         }
+      }
+
+      // Store-and-forward: dedup + advance the replay watermark. The relay
+      // tags every feed event (buffered replays AND live) with a per-device
+      // monotonic `seq`. Drop anything at-or-below the watermark — this
+      // collapses overlapping replays across reconnects — and advance on
+      // anything newer. Messages without a seq (acks, signaling, local mode)
+      // are untouched and fall through to normal routing below.
+      final seq = json['seq'];
+      if (seq is int) {
+        if (seq <= _lastSeenSeq) return; // already accepted — duplicate
+        _lastSeenSeq = seq;
+        _scheduleWatermarkPersist();
       }
 
       // Check if message contains battery data regardless of type
@@ -483,13 +557,24 @@ class WebSocketClient {
         // Bark event - forward as guardian event for event feed
         case 'bark':
           if (!_isFromTargetDevice(json)) break;
+          final barkTsServer = json['ts_server'] as String?;
+          final barkBuffered = json['buffered'] == true;
           final barkEvent = WsEvent(
             type: 'event',
+            seq: json['seq'] as int?,
+            buffered: barkBuffered,
+            tsServer: barkTsServer,
+            // Replay frames carry `id`; live ones carry `event_id` — take either.
+            id: json['id'] as String? ?? json['event_id'] as String?,
             data: {
               ...json, // Spread robot data first
               // Our overrides AFTER spread so they take precedence:
               'event_type': 'barking',
-              'timestamp': DateTime.now().toIso8601String(), // Always use local device time
+              // Buffered (replayed) barks keep their real server time so they
+              // land at the right point in the feed, not bunched at "now".
+              // Live barks fall back to device time when the relay supplied no
+              // ts_server (local mode).
+              'timestamp': barkTsServer ?? DateTime.now().toIso8601String(),
               'details': json['details'] ?? json['message'] ?? 'Bark detected',
             },
           );
@@ -674,6 +759,9 @@ class WebSocketClient {
       'session_id': _sessionId,
       if (_sessionUserId != null) 'user_id': _sessionUserId,
       if (_sessionDeviceId != null) 'device_id': _sessionDeviceId,
+      // Store-and-forward: relay replays every buffered event with seq >
+      // last_seen_seq for this device, oldest→newest, before resuming live.
+      'last_seen_seq': _lastSeenSeq,
     });
   }
 
@@ -1135,11 +1223,49 @@ class WebSocketClient {
     sendCommand('get_mission_status', {});
   }
 
+  // ===== Store-and-forward watermark persistence =====
+
+  /// Load the persisted replay watermark for [deviceId] into memory. Keyed by
+  /// device so multi-robot users keep an independent catch-up point per robot.
+  Future<void> _loadWatermark(String deviceId) async {
+    if (_watermarkDeviceId == deviceId) return; // already in memory
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      _lastSeenSeq = prefs.getInt('$_watermarkPrefix$deviceId') ?? 0;
+    } catch (e) {
+      _lastSeenSeq = 0;
+    }
+    _watermarkDeviceId = deviceId;
+  }
+
+  /// Debounce watermark writes — a replay burst advances seq many times in a
+  /// few ms; persist at most once a second (and on disconnect).
+  void _scheduleWatermarkPersist() {
+    _watermarkPersistTimer?.cancel();
+    _watermarkPersistTimer =
+        Timer(const Duration(seconds: 1), _persistWatermark);
+  }
+
+  Future<void> _persistWatermark() async {
+    final device = _watermarkDeviceId;
+    if (device == null) return;
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setInt('$_watermarkPrefix$device', _lastSeenSeq);
+    } catch (_) {
+      // Best-effort: the relay buffer still holds the events for next time.
+    }
+  }
+
   /// Disconnect from WebSocket server
   Future<void> disconnect() async {
     _pingTimer?.cancel();
     _reconnectTimer?.cancel();
     _handshakeTimeoutTimer?.cancel();
+    // Store-and-forward: flush the watermark before tearing down so an advance
+    // from the last replay burst isn't lost if the debounce hadn't fired.
+    _watermarkPersistTimer?.cancel();
+    unawaited(_persistWatermark());
     _subscription?.cancel();
     _handshakeComplete = false;
     _pendingFrames.clear();
@@ -1165,6 +1291,7 @@ class WebSocketClient {
 
   /// Dispose resources
   void dispose() {
+    _watermarkPersistTimer?.cancel();
     disconnect();
     _stateController.close();
     _eventController.close();

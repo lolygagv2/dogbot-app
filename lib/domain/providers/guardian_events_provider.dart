@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/network/websocket_client.dart';
 import '../../data/models/guardian_event.dart';
+import 'connection_provider.dart';
 import 'mode_provider.dart';
 
 /// Maximum number of events to keep in memory
@@ -52,7 +53,22 @@ class GuardianEventsNotifier extends StateNotifier<GuardianEventsState> {
   final Ref _ref;
   StreamSubscription<WsEvent>? _wsSubscription;
 
-  GuardianEventsNotifier(this._ref) : super(const GuardianEventsState());
+  GuardianEventsNotifier(this._ref) : super(const GuardianEventsState()) {
+    // Stay subscribed across the connection lifecycle (like notificationsProvider)
+    // so store-and-forward replays — which arrive on WS (re)connect, before the
+    // user opens the guardian screen — are captured rather than missed. The
+    // screen still calls startListening(); it's idempotent (isListening guard).
+    _ref.listen<ConnectionState>(connectionProvider, (prev, next) {
+      if (next.isConnected && prev?.isConnected != true) {
+        startListening();
+      } else if (!next.isConnected) {
+        stopListening();
+      }
+    });
+    if (_ref.read(connectionProvider).isConnected) {
+      startListening();
+    }
+  }
 
   /// Start listening for guardian events from WebSocket
   void startListening() {
@@ -76,9 +92,11 @@ class GuardianEventsNotifier extends StateNotifier<GuardianEventsState> {
 
   /// Handle incoming WebSocket events
   void _handleWsEvent(WsEvent wsEvent) {
-    // Only process events when in Silent Guardian mode
+    // Live events are only relevant in Silent Guardian mode, but ALWAYS ingest
+    // buffered (store-and-forward) replays — they're the offline SG backlog and
+    // arrive regardless of the mode the app is in on reconnect.
     final currentMode = _ref.read(modeStateProvider).currentMode;
-    if (currentMode != RobotMode.silentGuardian) return;
+    if (!wsEvent.buffered && currentMode != RobotMode.silentGuardian) return;
 
     // Look for guardian/event type messages
     if (wsEvent.type == 'event' ||
@@ -86,7 +104,15 @@ class GuardianEventsNotifier extends StateNotifier<GuardianEventsState> {
         wsEvent.data.containsKey('event_type')) {
 
       try {
-        final event = GuardianEvent.fromJson(wsEvent.data);
+        // Prefer the relay's authoritative server time and stable id (top-level
+        // envelope fields) over anything inside the payload, so replays land at
+        // their real moment.
+        final data = {
+          ...wsEvent.data,
+          if (wsEvent.tsServer != null) 'timestamp': wsEvent.tsServer,
+          if (wsEvent.id != null) 'id': wsEvent.id,
+        };
+        final event = GuardianEvent.fromJson(data);
         _addEvent(event);
         print('GuardianEvents: Received ${event.type.label}');
       } catch (e) {

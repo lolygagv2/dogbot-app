@@ -64,6 +64,11 @@ class NotificationsNotifier extends StateNotifier<List<NotificationEvent>> {
   }
 
   void _handleWsEvent(WsEvent event) {
+    // Store-and-forward: a replayed (buffered) event must keep its real time
+    // and stable id, not be stamped "now" with an ephemeral id on arrival.
+    // Prefer the relay's ts_server / id; fall back to live/local behaviour.
+    final eventTime = _resolveTimestamp(event);
+    final eventId = event.id;
     // Convert WebSocket events to notifications
     NotificationEvent? notification;
 
@@ -73,7 +78,8 @@ class NotificationsNotifier extends StateNotifier<List<NotificationEvent>> {
         // like tags on water bottles, furniture, etc.)
         final behavior = event.data['behavior'] as String?;
         if (behavior != null && _isKnownDog(event.data)) {
-          notification = _createBehaviorNotification(behavior, event.data);
+          notification =
+              _createBehaviorNotification(behavior, event.data, eventTime, eventId);
         }
         break;
 
@@ -82,9 +88,9 @@ class NotificationsNotifier extends StateNotifier<List<NotificationEvent>> {
         final eventType = event.data['event_type'] as String?;
         if (eventType == 'barking') {
           notification = NotificationEvent(
-            id: DateTime.now().millisecondsSinceEpoch.toString(),
+            id: eventId ?? DateTime.now().millisecondsSinceEpoch.toString(),
             type: NotificationEventType.bark,
-            timestamp: DateTime.now(),
+            timestamp: eventTime,
             title: 'Barking Detected',
             subtitle: event.data['details'] as String?,
           );
@@ -95,7 +101,7 @@ class NotificationsNotifier extends StateNotifier<List<NotificationEvent>> {
         notification = NotificationEvent(
           id: DateTime.now().millisecondsSinceEpoch.toString(),
           type: NotificationEventType.treatDispensed,
-          timestamp: DateTime.now(),
+          timestamp: eventTime,
           title: 'Treat Dispensed',
           subtitle: 'Good job!',
         );
@@ -105,9 +111,9 @@ class NotificationsNotifier extends StateNotifier<List<NotificationEvent>> {
         if (event.data['subtype'] == 'treat_dispensed') {
           final remaining = event.data['treats_remaining'] as int?;
           notification = NotificationEvent(
-            id: DateTime.now().millisecondsSinceEpoch.toString(),
+            id: eventId ?? DateTime.now().millisecondsSinceEpoch.toString(),
             type: NotificationEventType.treatDispensed,
-            timestamp: DateTime.now(),
+            timestamp: eventTime,
             title: 'Treat Dispensed',
             subtitle: remaining != null ? '$remaining treats remaining' : 'Good job!',
           );
@@ -120,9 +126,9 @@ class NotificationsNotifier extends StateNotifier<List<NotificationEvent>> {
         if (treatsLow) {
           final remaining = event.data['treats_remaining'] as int? ?? 0;
           notification = NotificationEvent(
-            id: DateTime.now().millisecondsSinceEpoch.toString(),
+            id: eventId ?? DateTime.now().millisecondsSinceEpoch.toString(),
             type: NotificationEventType.alert,
-            timestamp: DateTime.now(),
+            timestamp: eventTime,
             title: 'Treats Running Low',
             subtitle: '$remaining treats remaining — time to refill!',
           );
@@ -133,7 +139,7 @@ class NotificationsNotifier extends StateNotifier<List<NotificationEvent>> {
         notification = NotificationEvent(
           id: DateTime.now().millisecondsSinceEpoch.toString(),
           type: NotificationEventType.missionStarted,
-          timestamp: DateTime.now(),
+          timestamp: eventTime,
           title: 'Mission Started',
           subtitle: event.data['name'] as String?,
           missionId: event.data['id'] as String?,
@@ -144,7 +150,7 @@ class NotificationsNotifier extends StateNotifier<List<NotificationEvent>> {
         notification = NotificationEvent(
           id: DateTime.now().millisecondsSinceEpoch.toString(),
           type: NotificationEventType.missionCompleted,
-          timestamp: DateTime.now(),
+          timestamp: eventTime,
           title: 'Mission Completed',
           subtitle: event.data['name'] as String?,
           missionId: event.data['id'] as String?,
@@ -158,7 +164,7 @@ class NotificationsNotifier extends StateNotifier<List<NotificationEvent>> {
         notification = NotificationEvent(
           id: DateTime.now().millisecondsSinceEpoch.toString(),
           type: NotificationEventType.coachReward,
-          timestamp: DateTime.now(),
+          timestamp: eventTime,
           title: dogName != null ? '$dogName: $behaviorLabel rewarded' : '$behaviorLabel rewarded',
           subtitle: 'Coach mode',
           dogId: event.data['dog_id'] as String?,
@@ -169,9 +175,9 @@ class NotificationsNotifier extends StateNotifier<List<NotificationEvent>> {
         final level = (event.data['level'] as num?)?.toDouble() ?? 100;
         if (level < 20) {
           notification = NotificationEvent(
-            id: DateTime.now().millisecondsSinceEpoch.toString(),
+            id: eventId ?? DateTime.now().millisecondsSinceEpoch.toString(),
             type: NotificationEventType.lowBattery,
-            timestamp: DateTime.now(),
+            timestamp: eventTime,
             title: 'Low Battery',
             subtitle: '${level.toInt()}% remaining',
           );
@@ -182,6 +188,18 @@ class NotificationsNotifier extends StateNotifier<List<NotificationEvent>> {
     if (notification != null) {
       addNotification(notification);
     }
+  }
+
+  /// Feed timestamp for a live or buffered event: prefer the relay's
+  /// authoritative `ts_server`, then any timestamp in the payload, then now.
+  /// This keeps store-and-forward replays at their real moment in the feed.
+  DateTime _resolveTimestamp(WsEvent event) {
+    final raw = event.tsServer ?? event.data['timestamp'];
+    if (raw is String) {
+      return DateTime.tryParse(raw)?.toLocal() ?? DateTime.now();
+    }
+    if (raw is int) return DateTime.fromMillisecondsSinceEpoch(raw);
+    return DateTime.now();
   }
 
   /// Check if detection is from a known dog (has dog_id, or aruco_id matches a profile,
@@ -198,7 +216,8 @@ class NotificationsNotifier extends StateNotifier<List<NotificationEvent>> {
   }
 
   NotificationEvent? _createBehaviorNotification(
-      String behavior, Map<String, dynamic> data) {
+      String behavior, Map<String, dynamic> data, DateTime eventTime,
+      String? eventId) {
     final type = switch (behavior.toLowerCase()) {
       'sit' || 'sitting' => NotificationEventType.sit,
       'laydown' || 'lie' || 'lying' || 'down' || 'lie_down' => NotificationEventType.lieDown,
@@ -256,6 +275,13 @@ class NotificationsNotifier extends StateNotifier<List<NotificationEvent>> {
     final channel = settings.channelFor(notification.type);
 
     if (channel == NotificationChannel.off) return;
+
+    // Idempotent by id: store-and-forward can deliver the same event twice —
+    // once from the REST activity hydrate (7-day history) and once from the WS
+    // replay buffer (24h) — on app launch. Drop the duplicate so it shows once.
+    // Relies on the relay sharing a stable id across both sources; WS-vs-WS
+    // dupes are already dropped by the seq watermark in WebSocketClient.
+    if (state.any((n) => n.id == notification.id)) return;
 
     state = [notification, ...state];
     if (state.length > 100) {
