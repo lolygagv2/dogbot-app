@@ -427,7 +427,12 @@ class WebRTCNotifier extends StateNotifier<WebRTCConnectionState> {
     try {
       print('WebRTC: requestVideoStream for $deviceId (switching=$switchingDevice, prev=$_lastDeviceId)');
 
-      _reconnectAttempts = 0;
+      // Build 112: do NOT reset _reconnectAttempts here. This runs on every
+      // reconnect-timer-driven call (_scheduleReconnect → requestVideoStream),
+      // so resetting defeated the backoff cap entirely → an infinite, instant
+      // reconnect loop that hammered the robot's 2-session cap. The genuine
+      // "fresh start" callers (device-online, retryConnection, resume,
+      // device-switch) reset the counter themselves before calling.
       _reconnectTimer?.cancel();
 
       // Build 44: Always close existing session when switching devices or if we have one
@@ -575,7 +580,7 @@ class WebRTCNotifier extends StateNotifier<WebRTCConnectionState> {
               state: WebRTCState.error,
               errorMessage: 'Connection failed',
             );
-            _scheduleReconnect();
+            _failAndReconnect();
             break;
           case RTCPeerConnectionState.RTCPeerConnectionStateDisconnected:
             // Transient — give it a window to self-recover before failing.
@@ -592,7 +597,7 @@ class WebRTCNotifier extends StateNotifier<WebRTCConnectionState> {
                 state: WebRTCState.error,
                 errorMessage: 'Connection lost',
               );
-              _scheduleReconnect();
+              _failAndReconnect();
             });
             break;
           default:
@@ -862,6 +867,18 @@ class WebRTCNotifier extends StateNotifier<WebRTCConnectionState> {
 
     final json = jsonEncode({'command': 'emergency_stop'});
     _dataChannel!.send(RTCDataChannelMessage(json));
+  }
+
+  /// Build 112: tear the dead session down cleanly BEFORE reconnecting. The PC
+  /// hitting `failed`/`closed` (or grace-expiry) used to call _scheduleReconnect
+  /// directly, leaving _peerConnection non-null and never sending `webrtc_close`
+  /// — so the robot's session slot (it caps at 2) leaked on every drop. After a
+  /// couple of drops the robot stopped sending offers and every reconnect timed
+  /// out forever (the death-spiral). _closeInternal sends `webrtc_close` and
+  /// disposes the PC; only then do we schedule the retry.
+  void _failAndReconnect() {
+    // ignore: discarded_futures
+    _closeInternal().whenComplete(_scheduleReconnect);
   }
 
   /// Schedule auto-reconnect with exponential backoff

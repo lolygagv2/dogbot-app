@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../../core/constants/app_constants.dart';
 import '../../../core/services/local_connection_service.dart';
 import '../../../domain/providers/auth_provider.dart';
+import '../../../domain/providers/connection_mode_provider.dart';
 import '../../../domain/providers/connection_provider.dart';
 import '../../../domain/providers/device_provider.dart';
 import '../../../domain/providers/paired_devices_provider.dart';
@@ -308,6 +309,7 @@ class _ManageDevicesTile extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final pairedDevices = ref.watch(pairedDevicesProvider);
     final activeDeviceId = ref.watch(deviceIdProvider);
+    final isLocal = ref.watch(isLocalModeProvider);
     final count = pairedDevices.devices.length;
 
     // Resolve the active device's display name (falls back to its id).
@@ -323,7 +325,12 @@ class _ManageDevicesTile extends ConsumerWidget {
     }
 
     final String subtitle;
-    if (pairedDevices.isLoading && count == 0) {
+    if (isLocal) {
+      // Build 112: local AP mode is a single direct connection with no relay
+      // device list. Never surface the stale saved relay id here — it can name
+      // a different robot than the one we're physically connected to.
+      subtitle = 'Local Robot · direct connection (192.168.4.1)';
+    } else if (pairedDevices.isLoading && count == 0) {
       subtitle = 'Loading…';
     } else if (count == 0) {
       subtitle = 'No robots paired — tap to add one';

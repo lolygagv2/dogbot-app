@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../core/constants/app_constants.dart';
 import '../../../data/models/dog_profile.dart';
+import '../../../domain/providers/connection_mode_provider.dart';
 import '../../../domain/providers/device_provider.dart';
 import '../../../domain/providers/dog_profiles_provider.dart';
 import '../../../domain/providers/guardian_events_provider.dart';
@@ -32,7 +33,12 @@ class HomeScreen extends ConsumerWidget {
     // No redirect needed - user stays in app and can reconnect from banner
     final telemetry = ref.watch(telemetryProvider);
     final deviceId = ref.watch(deviceIdProvider);
-    final hasPairedDevice = deviceId != AppConstants.defaultDeviceId;
+    // Build 112: in local AP mode the saved relay device id (e.g. wimz_robot_02)
+    // is stale and MUST NOT be shown — it can name a DIFFERENT robot than the
+    // one we're physically connected to. Show a neutral local label instead.
+    final isLocal = ref.watch(isLocalModeProvider);
+    final displayName = isLocal ? 'Local Robot' : deviceId;
+    final hasPairedDevice = isLocal || deviceId != AppConstants.defaultDeviceId;
 
     return Scaffold(
       appBar: AppBar(
@@ -44,7 +50,7 @@ class HomeScreen extends ConsumerWidget {
             const Text('WIM-Z'),
             if (hasPairedDevice)
               Text(
-                deviceId,
+                displayName,
                 style: TextStyle(
                   fontSize: 12,
                   color:

@@ -9,6 +9,7 @@ import '../../data/datasources/device_api.dart';
 import 'auth_provider.dart';
 import 'connection_provider.dart';
 import 'device_provider.dart';
+import 'settings_provider.dart';
 
 /// Outcome of [PairedDevicesNotifier.unpairDevice]. [orphaned] means the relay
 /// reported 404 — i.e. the pairing row points to a device that doesn't exist
@@ -117,15 +118,29 @@ class PairedDevicesNotifier extends StateNotifier<PairedDevicesState> {
 
   /// Load paired devices from API (skip in local mode — no relay)
   Future<void> loadDevices() async {
-    // In local mode, no relay API — treat as single paired device
-    final isLocal = _ref.read(localConnectionProvider).isConnected;
-    if (isLocal) return;
+    // In local mode, no relay API — treat as single paired device. Build 112:
+    // check BOTH signals. The relay (api.wimzai.com) is unreachable on the
+    // robot's internet-less AP, so hitting it hangs the "Manage Devices"
+    // spinner; localConnectionProvider.isConnected and localModeEnabled can
+    // disagree, so either being set means "don't touch the relay".
+    final isLocal = _ref.read(localConnectionProvider).isConnected ||
+        _ref.read(settingsProvider).localModeEnabled;
+    if (isLocal) {
+      state = state.copyWith(isLoading: false, error: null);
+      return;
+    }
 
     state = state.copyWith(isLoading: true, error: null);
 
     try {
       final api = _ref.read(deviceApiProvider);
-      final devices = await api.getDevices();
+      // Hard timeout so a hung socket (e.g. flaky network) can never leave the
+      // spinner stuck — the catch below resolves isLoading + surfaces an error.
+      final devices = await api.getDevices().timeout(
+            const Duration(seconds: 12),
+            onTimeout: () =>
+                throw TimeoutException('Device list timed out', const Duration(seconds: 12)),
+          );
 
       // Build 94: hide pairings the user dismissed locally because the relay
       // refused to unpair them. The orphaned row stays on the relay, but the

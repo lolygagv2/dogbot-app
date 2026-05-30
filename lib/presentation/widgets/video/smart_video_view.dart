@@ -39,9 +39,14 @@ class _SmartVideoViewState extends ConsumerState<SmartVideoView> {
   @override
   void initState() {
     super.initState();
+    // Build 112: local AP mode DEFAULTS to the reliable MJPEG stream. WebRTC in
+    // local mode dies ~100s in (robot-side ICE consent-freshness / Pi load) and
+    // can't be fixed app-side, so we don't bet the live view on it. Users can
+    // tap "Try WebRTC" for the crisp low-latency stream when the link is happy;
+    // if it then drops we return to MJPEG automatically (see build()).
     final isLocal = ref.read(settingsProvider).localModeEnabled;
     if (isLocal) {
-      _startFallbackTimer();
+      _useMjpegFallback = true;
     }
   }
 
@@ -66,6 +71,18 @@ class _SmartVideoViewState extends ConsumerState<SmartVideoView> {
   @override
   Widget build(BuildContext context) {
     final isLocal = ref.watch(settingsProvider).localModeEnabled;
+
+    // Build 112: if the user opted into WebRTC (local mode) and it drops after
+    // connecting, fall straight back to the reliable MJPEG stream instead of
+    // freezing on "buffering". Harmless in relay mode (which ignores the flag).
+    ref.listen<WebRTCConnectionState>(webrtcProvider, (prev, next) {
+      final dropped = prev?.state == WebRTCState.connected &&
+          next.state != WebRTCState.connected;
+      if (dropped && !_useMjpegFallback && mounted) {
+        print('SmartVideo: WebRTC dropped after connecting — back to MJPEG');
+        setState(() => _useMjpegFallback = true);
+      }
+    });
 
     // Relay mode: always WebRTC
     if (!isLocal) {

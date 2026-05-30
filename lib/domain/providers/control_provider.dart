@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/constants/app_constants.dart';
 import '../../core/network/websocket_client.dart';
+import 'connection_mode_provider.dart';
 import 'connection_provider.dart';
 import 'dog_profiles_provider.dart';
 import 'settings_provider.dart';
@@ -40,10 +41,54 @@ final motorControlProvider =
 class MotorControlNotifier extends StateNotifier<MotorState> {
   final Ref _ref;
 
-  MotorControlNotifier(this._ref) : super(const MotorState());
+  // SAFETY deadman subscriptions — see _onMotorLinkLost.
+  StreamSubscription<WsConnectionState>? _wsSub;
+  ProviderSubscription<WebRTCState>? _webrtcSub;
+  WsConnectionState _lastWsState = WsConnectionState.disconnected;
+
+  MotorControlNotifier(this._ref) : super(const MotorState()) {
+    // SAFETY deadman. Drive commands ride the WebSocket in local mode and the
+    // WebRTC data channel in relay mode. If the ACTIVE motor transport drops
+    // while the wheels are commanded to move, we can no longer steer or stop
+    // the robot over it — react immediately rather than leaving it running at
+    // its last commanded speed. This is defense-in-depth, NOT a substitute for
+    // the robot-side command-timeout watchdog (the app cannot stop a robot it
+    // can't reach). See .claude/ROBOT_ISSUES_2026-05-30.md (R-SAFETY-1).
+    final ws = _ref.read(websocketClientProvider);
+    _lastWsState = ws.state;
+    _wsSub = ws.stateStream.listen((next) {
+      final lost = _lastWsState == WsConnectionState.connected &&
+          next != WsConnectionState.connected;
+      _lastWsState = next;
+      // Local mode drives over the WS, so its loss IS the motor-transport loss.
+      if (lost && state.isMoving && _ref.read(isLocalModeProvider)) {
+        _onMotorLinkLost('WebSocket');
+      }
+    });
+    _webrtcSub = _ref.listen<WebRTCState>(webrtcStateProvider, (prev, next) {
+      final lost =
+          prev == WebRTCState.connected && next != WebRTCState.connected;
+      // Relay mode drives over the WebRTC data channel.
+      if (lost && state.isMoving && !_ref.read(isLocalModeProvider)) {
+        _onMotorLinkLost('WebRTC data channel');
+      }
+    });
+  }
+
+  /// SAFETY: the active motor transport dropped mid-drive. Zero our command
+  /// state — so the 50 ms joystick ramp re-send (drive_screen.dart) and any
+  /// reconnect can't resume the robot at speed — and fire an emergency stop
+  /// over whatever transport still survives (in local mode the WS is normally
+  /// still up, so the stop actually reaches the robot).
+  void _onMotorLinkLost(String which) {
+    if (!mounted) return;
+    print('MotorControl: ⚠️ SAFETY — $which lost while moving; zero + e-stop');
+    state = const MotorState(left: 0, right: 0, isMoving: false);
+    emergencyStop();
+  }
 
   /// Set motor speeds. The joystick widget calls this on its 20 Hz ramp tick;
-  /// each call goes straight out the WebRTC data channel (no debounce).
+  /// each call goes straight out the active transport (no debounce).
   /// left/right: -1.0 to 1.0
   void setMotorSpeeds(double left, double right) {
     state = MotorState(
@@ -61,25 +106,57 @@ class MotorControlNotifier extends StateNotifier<MotorState> {
     final trim = _ref.read(motorTrimProvider);
     final adjustedRight = (state.right * (1 - trim)).clamp(-1.0, 1.0);
 
+    // SAFETY: in local AP mode drive over the rock-solid WebSocket, NOT the
+    // WebRTC data channel (which dies ~100 s in and strands the robot at its
+    // last command). Every other control already rides the WS in local mode.
+    if (_ref.read(isLocalModeProvider)) {
+      _ref
+          .read(websocketClientProvider)
+          .sendMotorCommand(state.left, adjustedRight);
+      return;
+    }
+
+    // Relay mode: low-latency WebRTC data channel, falling back to the WS when
+    // the channel is closed (safer than the old silent drop).
     final webrtc = _ref.read(webrtcProvider.notifier);
     if (webrtc.isDataChannelOpen) {
       webrtc.sendMotorCommand(state.left, adjustedRight);
+    } else {
+      _ref
+          .read(websocketClientProvider)
+          .sendMotorCommand(state.left, adjustedRight);
     }
   }
 
   /// Emergency stop — zeros state and sends the dedicated stop frame on the
-  /// lowest-latency channel available.
+  /// most reliable channel for the current mode.
   void emergencyStop() {
     state = const MotorState(left: 0, right: 0, isMoving: false);
 
-    if (_ref.read(connectionProvider).isConnected) {
-      final webrtc = _ref.read(webrtcProvider.notifier);
-      if (webrtc.isDataChannelOpen) {
-        webrtc.sendEmergencyStop();
-      } else {
-        _ref.read(websocketClientProvider).sendEmergencyStop();
-      }
+    if (!_ref.read(connectionProvider).isConnected) return;
+    final ws = _ref.read(websocketClientProvider);
+
+    // Local mode: the WS is the stable transport; the data channel is the one
+    // that fails. Always stop over the WS.
+    if (_ref.read(isLocalModeProvider)) {
+      ws.sendEmergencyStop();
+      return;
     }
+
+    // Relay mode: prefer the low-latency data channel, fall back to the WS.
+    final webrtc = _ref.read(webrtcProvider.notifier);
+    if (webrtc.isDataChannelOpen) {
+      webrtc.sendEmergencyStop();
+    } else {
+      ws.sendEmergencyStop();
+    }
+  }
+
+  @override
+  void dispose() {
+    _wsSub?.cancel();
+    _webrtcSub?.close();
+    super.dispose();
   }
 }
 
