@@ -9,6 +9,7 @@ import 'core/network/websocket_client.dart';
 import 'data/models/night_mode_state.dart';
 import 'domain/providers/auth_provider.dart';
 import 'domain/providers/connection_provider.dart';
+import 'domain/providers/control_provider.dart';
 import 'domain/providers/night_mode_provider.dart';
 import 'domain/providers/notifications_provider.dart';
 import 'domain/providers/settings_provider.dart';
@@ -677,6 +678,12 @@ class _WimzAppState extends ConsumerState<WimzApp> with WidgetsBindingObserver {
     switch (state) {
       case AppLifecycleState.paused:
       case AppLifecycleState.inactive:
+        // Build 113: stop the wheels the instant we lose foreground while
+        // driving. The robot's 500ms motor watchdog is the backstop; this
+        // makes the stop immediate (sends a zero over whatever transport is
+        // alive, and zeros local state so resume can't pick up at speed).
+        ref.read(motorControlProvider.notifier).emergencyStop();
+
         final bgAudio = ref.read(settingsProvider).backgroundAudioEnabled;
         if (bgAudio) {
           print('App: Lifecycle → $state — pausing video only (background audio ON)');

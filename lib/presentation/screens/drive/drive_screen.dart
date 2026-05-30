@@ -60,6 +60,11 @@ class _DriveScreenState extends ConsumerState<DriveScreen> {
 
   @override
   void dispose() {
+    // Build 113: send an explicit motor stop when leaving the drive screen so
+    // the robot halts instantly instead of waiting out its 500ms watchdog.
+    // (Build 38 removed the mode-control command here; a motor zero is a
+    // different, safe thing to send.)
+    ref.read(motorControlProvider.notifier).emergencyStop();
     // Build 38: Removed sendManualControlInactive() - no commands on screen dispose
     // Allow screen to sleep again
     WakelockPlus.disable();
