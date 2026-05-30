@@ -89,8 +89,16 @@ class WebRTCNotifier extends StateNotifier<WebRTCConnectionState> {
   bool _isVideoOnlyPause = false;  // True when only video is paused (background audio)
   bool _isRequesting = false;  // Guard against concurrent requestVideoStream calls
   Timer? _autoListenTimer;  // Auto-listen after PTT send
+  Timer? _connectTimeoutTimer;  // Build 111: bound the "connecting" window
+  Timer? _disconnectGraceTimer;  // Build 111: grace before failing on transient disconnect
   static const int _maxReconnectAttempts = 3;
   static const Duration _reconnectDelay = Duration(seconds: 5);
+  // Build 111: host-only LAN ICE needs ~0.5–2s for the first STUN binding;
+  // give a fresh connect up to 15s before declaring failure.
+  static const Duration _connectTimeout = Duration(seconds: 15);
+  // Build 111: RTCPeerConnectionStateDisconnected is transient per spec — wait
+  // this long for it to recover to connected before tearing the session down.
+  static const Duration _disconnectGrace = Duration(seconds: 8);
   static const String _mutePrefsKey = 'webrtc_audio_muted';
 
   /// Whether the data channel is ready for sending
@@ -211,6 +219,18 @@ class WebRTCNotifier extends StateNotifier<WebRTCConnectionState> {
   Future<void> _handleDeviceSwitch(String newDeviceId) async {
     final oldDeviceId = _lastDeviceId;
 
+    // Build 111: a "switch" to the SAME device is a no-op. Without this guard,
+    // deviceIdProvider settling from its synchronous default to 'local_robot'
+    // (after the async _loadDeviceId completes, ~0.5s into a fresh local-AP
+    // handshake) fired _closeInternal() (→ webrtc_close) + a full WS reconnect()
+    // mid-ICE — tearing down a healthy connection. The robot logged
+    // "closed by app" → WS drop → 3s retry loop = permanent "Connecting…".
+    if (oldDeviceId != null && newDeviceId == oldDeviceId) {
+      print('WebRTC: device-switch to same id ($newDeviceId) — ignoring no-op');
+      connTrace('device-switch-sameid', 'id=$newDeviceId — no-op');
+      return;
+    }
+
     // No active connection — just record the new id and exit.
     if (oldDeviceId == null && state.state == WebRTCState.disconnected) {
       print('WebRTC: No active connection, just updating device ID');
@@ -327,6 +347,15 @@ class WebRTCNotifier extends StateNotifier<WebRTCConnectionState> {
         // dropped). If state is already connected/error/disconnected, leave
         // it alone — the user (or another listener) is in control.
         if (state.state != WebRTCState.connecting) return;
+        // Build 111: only re-fire if the request was genuinely dropped before
+        // any peer connection was built. If a PC already exists the offer/answer
+        // is in flight — re-firing would _closeInternal() it (spurious
+        // webrtc_close) and restart the very handshake that's progressing.
+        if (_peerConnection != null) {
+          print('WebRTC: WS reconnected but PC already exists — letting '
+              'handshake continue');
+          return;
+        }
 
         print('WebRTC: WS now connected, re-firing dropped request for '
             '$_lastDeviceId');
@@ -425,6 +454,23 @@ class WebRTCNotifier extends StateNotifier<WebRTCConnectionState> {
       });
       print('WebRTC: Sent webrtc_request for device $deviceId');
       connTrace('webrtc-request-sent', 'device=$deviceId');
+
+      // Build 111: bound the "connecting" window. host-only LAN ICE normally
+      // completes in 0.5–2s; if we're still not connected after 15s, declare
+      // failure so the UI shows a retryable error instead of spinning forever.
+      // Cleared on connected (onTrack / onConnectionState) and in _closeInternal.
+      _connectTimeoutTimer?.cancel();
+      _connectTimeoutTimer = Timer(_connectTimeout, () {
+        if (state.state == WebRTCState.connected) return;
+        print('WebRTC: connect timeout (${_connectTimeout.inSeconds}s) — '
+            'declaring failure for $deviceId');
+        connTrace('webrtc-connect-timeout', 'device=$deviceId');
+        state = state.copyWith(
+          state: WebRTCState.error,
+          errorMessage: 'Connection timed out — tap to retry',
+        );
+        _scheduleReconnect();
+      });
     } finally {
       _isRequesting = false;
     }
@@ -464,6 +510,11 @@ class WebRTCNotifier extends StateNotifier<WebRTCConnectionState> {
             });
           }
 
+          // Build 111: video track arriving IS success — clear the connect
+          // timeout / disconnect grace so neither fires a spurious failure.
+          _connectTimeoutTimer?.cancel();
+          _disconnectGraceTimer?.cancel();
+
           // Update state with renderer reference to trigger UI rebuild
           state = state.copyWith(
             state: WebRTCState.connected,
@@ -502,21 +553,51 @@ class WebRTCNotifier extends StateNotifier<WebRTCConnectionState> {
       _peerConnection!.onConnectionState = (RTCPeerConnectionState connState) {
         print('WebRTC: Connection state: $connState');
         connTrace('pc-state', connState.toString());
-        if (connState == RTCPeerConnectionState.RTCPeerConnectionStateFailed ||
-            connState ==
-                RTCPeerConnectionState.RTCPeerConnectionStateDisconnected) {
-          state = state.copyWith(
-            state: WebRTCState.error,
-            errorMessage: 'Connection failed',
-          );
-          // Auto-reconnect if we have a device ID
-          _scheduleReconnect();
-        } else if (connState == RTCPeerConnectionState.RTCPeerConnectionStateConnected) {
-          // Reset reconnect attempts on successful connection
-          _reconnectAttempts = 0;
-          _reconnectTimer?.cancel();
-          // Log the active ICE candidate pair to diagnose relay vs P2P
-          _logSelectedCandidatePair();
+        // Build 111: only `failed`/`closed` (or the connect timeout) are
+        // terminal. `disconnected` is transient per the WebRTC spec and
+        // routinely flickers during LAN ICE checking — treating it as instant
+        // failure was tearing the session down ~0.5s in. `new`/`connecting`
+        // are in-progress and must be ignored.
+        switch (connState) {
+          case RTCPeerConnectionState.RTCPeerConnectionStateConnected:
+            // Success — clear every pending failure timer.
+            _reconnectAttempts = 0;
+            _reconnectTimer?.cancel();
+            _connectTimeoutTimer?.cancel();
+            _disconnectGraceTimer?.cancel();
+            // Log the active ICE candidate pair to diagnose relay vs P2P
+            _logSelectedCandidatePair();
+            break;
+          case RTCPeerConnectionState.RTCPeerConnectionStateFailed:
+          case RTCPeerConnectionState.RTCPeerConnectionStateClosed:
+            _disconnectGraceTimer?.cancel();
+            state = state.copyWith(
+              state: WebRTCState.error,
+              errorMessage: 'Connection failed',
+            );
+            _scheduleReconnect();
+            break;
+          case RTCPeerConnectionState.RTCPeerConnectionStateDisconnected:
+            // Transient — give it a window to self-recover before failing.
+            print('WebRTC: PC disconnected — arming '
+                '${_disconnectGrace.inSeconds}s grace before failing');
+            _disconnectGraceTimer?.cancel();
+            _disconnectGraceTimer = Timer(_disconnectGrace, () {
+              if (_peerConnection?.connectionState ==
+                  RTCPeerConnectionState.RTCPeerConnectionStateConnected) {
+                return; // recovered on its own
+              }
+              print('WebRTC: still disconnected after grace — failing');
+              state = state.copyWith(
+                state: WebRTCState.error,
+                errorMessage: 'Connection lost',
+              );
+              _scheduleReconnect();
+            });
+            break;
+          default:
+            // new / connecting — handshake in progress, ignore.
+            break;
         }
       };
 
@@ -840,6 +921,10 @@ class WebRTCNotifier extends StateNotifier<WebRTCConnectionState> {
   Future<void> _closeInternal() async {
     print('WebRTC: _closeInternal - stopping all streams and connections');
     cancelAutoListen();
+    // Build 111: kill the connect-timeout / disconnect-grace timers so a stale
+    // one can't fire an error or reconnect after we've already torn down.
+    _connectTimeoutTimer?.cancel();
+    _disconnectGraceTimer?.cancel();
 
     // Build 44: Clear renderer FIRST to immediately stop showing old video
     if (_renderer != null && _renderer!.srcObject != null) {
@@ -998,6 +1083,8 @@ class WebRTCNotifier extends StateNotifier<WebRTCConnectionState> {
   void dispose() {
     _reconnectTimer?.cancel();
     _autoListenTimer?.cancel();
+    _connectTimeoutTimer?.cancel();
+    _disconnectGraceTimer?.cancel();
     for (final sub in _subscriptions) {
       sub.cancel();
     }

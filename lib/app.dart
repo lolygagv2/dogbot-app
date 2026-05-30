@@ -80,8 +80,20 @@ GoRouter _buildRouter(WidgetRef ref, Listenable refreshListenable) => GoRouter(
     // Protected-route guard: anyone hitting a non-public path while signed
     // out gets bounced to /login. Pairs with logout(notice:) — the notice
     // survives the auth-state reset so /login can explain the bounce.
+    //
+    // Build 111: local-AP and demo mode never authenticate against the relay
+    // (setLocalConnected()/enableDemoMode() touch connectionProvider, not
+    // authProvider), but they are legitimately connected and MUST be allowed
+    // onto protected routes. The Build 99 guard didn't account for them, so
+    // "Connect to Robot" and "Demo Mode" both navigated to /home and were
+    // instantly bounced back to /login — the user could never get past the
+    // login screen (and the stuck "Connecting…" spinner made it look frozen).
     if (!auth.isAuthenticated && !_publicPaths.contains(path)) {
-      return '/login';
+      final inDemoMode = ref.read(connectionProvider).isDemoMode;
+      final inLocalMode = ref.read(settingsProvider).localModeEnabled;
+      if (!inDemoMode && !inLocalMode) {
+        return '/login';
+      }
     }
     return null;
   },
@@ -601,6 +613,8 @@ class _WimzAppState extends ConsumerState<WimzApp> with WidgetsBindingObserver {
   // re-evaluates redirects and bounces the user to /login.
   final ValueNotifier<int> _authRefresh = ValueNotifier<int>(0);
   ProviderSubscription<AuthState>? _authSub;
+  ProviderSubscription<bool>? _localModeSub;
+  ProviderSubscription<bool>? _demoModeSub;
 
   @override
   void initState() {
@@ -613,6 +627,23 @@ class _WimzAppState extends ConsumerState<WimzApp> with WidgetsBindingObserver {
         _authRefresh.value++;
       }
     });
+    // Build 111: the redirect guard now also treats local-AP and demo mode as
+    // "may access protected routes". Re-evaluate routing when EITHER toggles,
+    // so exiting those modes (e.g. local→sign out) re-applies the guard. Keyed
+    // on the specific flags — not on connection status — so the 2s status-check
+    // churn can't trigger a redirect storm.
+    _localModeSub = ref.listenManual<bool>(
+      settingsProvider.select((s) => s.localModeEnabled),
+      (prev, next) {
+        if (prev != next) _authRefresh.value++;
+      },
+    );
+    _demoModeSub = ref.listenManual<bool>(
+      connectionProvider.select((c) => c.isDemoMode),
+      (prev, next) {
+        if (prev != next) _authRefresh.value++;
+      },
+    );
     // Build 104: instantiate the voice-commands auto-sync coordinator. It
     // subscribes to the WS state stream and re-pushes any unsynced
     // recordings the moment we go connected.
@@ -633,6 +664,8 @@ class _WimzAppState extends ConsumerState<WimzApp> with WidgetsBindingObserver {
   void dispose() {
     _backgroundTeardownTimer?.cancel();
     _authSub?.close();
+    _localModeSub?.close();
+    _demoModeSub?.close();
     _authRefresh.dispose();
     DioClient.onUnauthorized = null;
     WidgetsBinding.instance.removeObserver(this);
