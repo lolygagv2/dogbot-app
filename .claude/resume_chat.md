@@ -1,5 +1,86 @@
 # WIM-Z Resume Chat Log
 
+## Session: 2026-05-31 — Build 115 (local-AP video fixes: MJPEG endpoint + LAN cleartext)
+**Goal:** User reported Phone→Robot local-AP connection is broken: can now log in + connect + give commands, but (a) video says "connecting" forever, (b) connection feels shaky/unresponsive, drops after ~2 commands, and the AP "WIMZ-Demo" never comes back. Robot Claude suggested checking the app's MJPEG fallback URL.
+**Status:** ✅ App-side fixes committed `7329fb4` AND pushed to `origin/main`. pubspec `1.0.0+115`. Analyzer-clean. **BUT the real show-stopper is robot-side (R-AP-1) — see below — so video can't be fully verified until that's fixed.**
+
+### Root-cause split (robot-Claude's 4 checks, verified against real code)
+1. **MJPEG URL — 🔴 WRONG (fixed).** App was pinned to legacy `/camera/stream`; robot now serves `/video/feed`. Fix: `local_connection_service._resolveMjpegUrl()` PROBES `/video/feed` then `/camera/stream` at connect, stores whichever returns 200 as `LocalConnectionData.mjpegUrl`; `smart_video_view` reads that instead of the hard-coded const (falls back to const if unresolved). Endpoint rename can't silently 404 again.
+2. **Fallback trigger — ✅ already fine.** Local mode SKIPS WebRTC entirely — `smart_video_view.initState` sets `_useMjpegFallback=true` immediately when `localModeEnabled`. So "connecting forever" was the **MJPEG feed itself failing** (wrong path + cleartext block), NOT a WebRTC hang. Shortened the user-initiated "Try WebRTC" give-up 10s→6s anyway (no STUN/TURN on AP → ICE never connects).
+3. **Base URL on robot wifi — ✅ already fine.** `connectDirect` points Dio + WS at `192.168.4.1:8000`, not relay.
+4. **Cleartext block — 🔴 REAL GAP (fixed).** Neither platform allowed plain `http://` — silently kills MJPEG, looks like "connecting forever." Android: NEW `android/app/src/main/res/xml/network_security_config.xml` (scoped to 192.168.4.1 + 192.168.0/1.x + 10.0.0.x, NOT global) + manifest `networkSecurityConfig` ref. iOS: `NSAppTransportSecurity/NSAllowsLocalNetworking` (ATS stays on for relay HTTPS) + `NSLocalNetworkUsageDescription` for the iOS 14+ LAN prompt.
+
+→ TWO independent app bugs each sufficient to kill local video: wrong endpoint AND cleartext blocked. Both fixed.
+
+### 🔴 The actual show-stopper is ROBOT-SIDE (R-AP-1) — brief written
+User's timelog shows the robot **kills its own AP ~1s after the phone associates**:
+```
+17:31:43 Phone associates → SAME SECOND: "WiFi monitor: Attempting to reconnect to known networks" + "Stopping hotspot..."
+17:32:08 AP down, home-wifi rejoin FAILS ("A 'wireless' setting is required")
+17:33:13 user power-cycled
+```
+A Pi connectivity watchdog treats "no internet/not on known network" as a fault and tries to rejoin known wifi — which tears down the hotspot (single radio can't AP+STA at once). Fires the instant a client connects → every successful connection triggers AP teardown. That's the "shaky," "dropped after 2 commands," "AP never came back." App CANNOT fix an AP the robot dismantles. Wrote **`.claude/ROBOT_ISSUES_2026-05-31.md`** (NEW): R-AP-1 (gate wifi-monitor on `hotspot_active`, never tear down AP while STA associated — CRITICAL), R-AP-2 (confirm `/video/feed` multipart contract), R-AP-3 (WebRTC-on-AP expected-dead, app handles it).
+
+### Files changed (commit `7329fb4`)
+- `lib/core/services/local_connection_service.dart` — `mjpegUrl` field on `LocalConnectionData`; `_resolveMjpegUrl()` probe; resolves on connect.
+- `lib/presentation/widgets/video/smart_video_view.dart` — reads `localConnectionProvider.mjpegUrl`; default const now `/video/feed`; WebRTC timeout 10s→6s; import added.
+- `android/app/src/main/res/xml/network_security_config.xml` (NEW) + `AndroidManifest.xml` (ref).
+- `ios/Runner/Info.plist` — ATS local-networking + usage description.
+- `.claude/ROBOT_ISSUES_2026-05-31.md` (NEW), `pubspec.yaml` → 115.
+
+### Gotchas (recurring)
+- Several Edits failed on assumed surrounding text (smart_video_view MJPEG block, iOS `UIBackgroundModes` was `audio` not `voip`, pubspec bare `version:` line). Pattern this session + last: ALWAYS Read the exact lines before Edit; don't trust memory/agent line numbers. All fixed against real content.
+- Bash tool relay had intermittent empty-output hiccups; used temp-file + Read workaround to confirm push (local==remote `7329fb4`).
+
+### Unresolved / next session
+1. **R-AP-1 robot-side is the blocker** — until the Pi stops tearing down its own AP, local-AP video/commands can't be validated. Hand `ROBOT_ISSUES_2026-05-31.md` to the Pi Claude.
+2. **Verify Build 115 video** ONCE R-AP-1 lands: AP stays up with phone connected → confirm `/video/feed` MJPEG renders, no cleartext block.
+3. **Codemagic** Builds 114+115 pushed; manual trigger is user's call.
+4. **Carry-overs:** Build 114 store-and-forward still untested E2E; password-reset E2E (Build 107) untested; motor controls reportedly dead since Build 56/57, never investigated; per-robot servo calibration deferred.
+
+---
+
+## Session: 2026-05-30 — Build 114 (store-and-forward event replay — app side of relay buffer)
+**Goal:** SG events logged on the robot while the app was offline were lost — the relay forwarded device→app events live and dropped them when no app was connected for that device_id. SG ran all morning with the app closed → hours of bark/activity events went nowhere. Build the app-side half of a per-device replay buffer (relay side built in parallel by the Lightsail Claude).
+**Status:** ✅ Complete. Committed `db7b616` AND pushed to `origin/main`. pubspec at `1.0.0+114`. All touched Dart files analyzer-clean. NOT yet tested end-to-end against the live relay.
+
+### The problem & the split
+Robot is fine (sends every event, logs locally). The relay had no durable buffer for offline apps. The app already pulls 7-day history via REST `GET /api/activity` on auth transitions, but real-time WS events were in-memory only and lost if the app wasn't connected. Fix = relay keeps a per-device replay buffer + the app does a watermark handshake on (re)connect. Cross-repo contract nailed BEFORE coding (per the cross-repo coordination pattern) — relay landed as commit `a597e91`.
+
+### Contract (final, both sides confirmed)
+- **A — `last_seen_seq` on `session_hello`:** the app's connect/identify frame (relay's "user_connected path"). Relay reads it off the hello frame; missing/0 → full replay. One device_id per hello → replay is naturally per-device.
+- **B — seq survives relay restart:** seq persisted to SQLite (`replay_seq`), seeded at **`persisted + 10`** on startup so the resumed counter always exceeds anything an app already saw (closes the unclean-restart reuse window I flagged). Buffered events themselves are in-memory (lost on restart) but the app then just sees an empty replay, never dupes.
+- **C — shared dedup id:** stable UUID assigned once at ingest. Emitted **top-level `id` on replay frames** but **`event_id` on live-forwarded messages**; `/api/activity` reuses the same UUID for its DB row. App reads **either key** so live/buffered/REST copies of one event share an id.
+- **Envelope:** `seq`, `ts_server`, `buffered`, `id`/`event_id` are top-level siblings of `type`/`event`/`device_id`.
+
+### App-side changes (commit `db7b616`)
+- **`lib/core/network/websocket_client.dart`** (the engine):
+  - `WsEvent` surfaces top-level `seq`, `tsServer`, `buffered`, `id` (`id ?? event_id`) — previously discarded by the nested-`data` branch of `fromJson`.
+  - `session_hello` carries `last_seen_seq` (per-device watermark), loaded from SharedPreferences in `connect()` before the frame fires.
+  - `_onMessage` dedups by seq (drops `<= watermark`, collapsing overlapping replays across reconnects) and advances + persists the watermark (debounced 1s, flushed on disconnect, cancelled on dispose). Keyed per device_id. Local mode clears it (no relay buffer).
+  - Bark normalization preserves seq/buffered/id and uses **server time for buffered** barks instead of stamping "now".
+- **`lib/domain/providers/notifications_provider.dart`** (main activity feed):
+  - Each WS-built notification uses `ts_server` for timestamp (`_resolveTimestamp`: ts_server → payload ts → now) and the relay's stable id (→ ephemeral fallback) instead of `DateTime.now()` for both. Threaded `eventTime`/`eventId` through `_createBehaviorNotification` too.
+  - `addNotification` now **idempotent by id** — collapses the REST 7-day hydrate vs WS 24h replay overlap on launch into one entry.
+- **`lib/domain/providers/guardian_events_provider.dart`** (SG events widget):
+  - Now **subscribes across the connection lifecycle** (was screen-open only, via `event_feed.dart`) by listening to `connectionProvider` in the constructor — so replays arriving on reconnect are captured before the user opens the screen. (Discovered the screen-only subscription would otherwise miss the broadcast replay burst.)
+  - Buffered events **bypass the SG-mode gate** (`if (!wsEvent.buffered && currentMode != silentGuardian) return;`) and use server time/id (injected into the data map passed to `GuardianEvent.fromJson`).
+- **`.claude/STORE_AND_FORWARD_CONTRACT.md`** (NEW) — cross-repo contract note, marked RESOLVED.
+- **`pubspec.yaml`** → `1.0.0+114`.
+
+### Gotchas hit this session
+- The Explore agent's line numbers for the providers were wrong/hallucinated (claimed a `_wsEventToNotification`/`_mapWsEventType` structure that doesn't exist). First batch of provider edits failed against phantom code — re-did them against the real inline-switch `_handleWsEvent`. Lesson: trust direct reads over agent line numbers for editing.
+- Two pubspec version-bump edits failed (assumed strings that didn't exist; never Read the file first). Real line is a bare `version: 1.0.0+112`. Fixed + amended.
+
+### Unresolved / next session
+1. **END-TO-END TEST (only unverified link):** SG running with app closed for a while → reopen → confirm backlog appears **once** (no dupes), at the **right times**, in both the main activity feed and the SG events widget. Logic compiles + is analyzer-clean but has not run against the live relay.
+2. **Codemagic** — Build 114 pushed; trigger is user's call (manual).
+3. **seq reuse hardening (relay, low priority):** `persisted + 10` closes the common case; only matters if >10 events arrive in the unclean-restart window before the next persist.
+4. **Carry-over (still open):** password-reset end-to-end never verified (Build 107); motor controls reportedly not working since Build 56/57, never investigated; per-robot servo calibration deferred.
+5. Two stray untracked files predating this session: `archive/fits1024x1024.jpg`, `archive/treatbot2.log` (not touched).
+
+---
+
 ## Session: 2026-05-29 — Builds 107–110 (password recovery, servo clamps, ArUco full set, device/UX cleanup)
 **Goal:** Multi-topic working session. Started as password-recovery feature, expanded into servo-clamp removal, an ArUco bundle bug I'd introduced in Build 106, and a pre-ship cleanup pass (device-menu merge, dead buttons, debug prints). Plus cross-repo coordination on the relay DB-lock fix.
 **Status:** All four builds committed AND pushed to `origin/main` (https://github.com/lolygagv2/dogbot-app). pubspec at `1.0.0+110`.
