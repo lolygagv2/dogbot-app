@@ -24,12 +24,21 @@ class LocalConnectionData {
   final String? errorMessage;
   final List<String> discoveredDevices;
 
+  /// Resolved MJPEG stream URL for this robot, probed at connect time. The
+  /// robot's endpoint has historically disagreed between builds (`/video/feed`
+  /// vs `/camera/stream`) — rather than hard-code one and risk a silent 404
+  /// ("connecting forever"), we probe both on connect and store whichever
+  /// answers 200. Null until resolved; the video widget falls back to a
+  /// default if so.
+  final String? mjpegUrl;
+
   const LocalConnectionData({
     this.state = LocalConnectionState.disconnected,
     this.robotIp,
     this.port = 8000,
     this.errorMessage,
     this.discoveredDevices = const [],
+    this.mjpegUrl,
   });
 
   LocalConnectionData copyWith({
@@ -38,6 +47,7 @@ class LocalConnectionData {
     int? port,
     String? errorMessage,
     List<String>? discoveredDevices,
+    String? mjpegUrl,
     bool clearError = false,
   }) {
     return LocalConnectionData(
@@ -46,6 +56,7 @@ class LocalConnectionData {
       port: port ?? this.port,
       errorMessage: clearError ? null : (errorMessage ?? this.errorMessage),
       discoveredDevices: discoveredDevices ?? this.discoveredDevices,
+      mjpegUrl: mjpegUrl ?? this.mjpegUrl,
     );
   }
 
@@ -115,13 +126,20 @@ class LocalConnectionNotifier extends StateNotifier<LocalConnectionData> {
       // Set target device for local mode — Pi's local WS handler accepts this
       WebSocketClient.instance.setTargetDevice('local_robot');
 
+      // Resolve which MJPEG endpoint this robot actually serves (see mjpegUrl
+      // doc). Probed, not hard-coded, so an endpoint rename can't silently
+      // break local video again.
+      final mjpeg = await _resolveMjpegUrl(ip, port);
+
       state = state.copyWith(
         state: LocalConnectionState.connected,
         robotIp: ip,
         port: port,
+        mjpegUrl: mjpeg,
       );
 
-      rprint('LocalConnection: Connected successfully to $ip:$port');
+      rprint('LocalConnection: Connected successfully to $ip:$port '
+          '(mjpeg=$mjpeg)');
       return true;
     } catch (e) {
       rprint('LocalConnection: Connection failed: $e');
@@ -202,6 +220,46 @@ class LocalConnectionNotifier extends StateNotifier<LocalConnectionData> {
       // Connection failed - not a robot here
     }
     return null;
+  }
+
+  /// Candidate MJPEG stream paths, in priority order. `/video/feed` is the
+  /// robot's current canonical endpoint (confirmed robot-side); `/camera/stream`
+  /// is the legacy path some builds/docs still use. Probed at connect.
+  static const List<String> _mjpegPaths = ['/video/feed', '/camera/stream'];
+
+  /// Probe the candidate MJPEG paths and return the first that responds 200.
+  /// For a live multipart stream the status arrives with the headers, so we
+  /// can decide without draining the body — we read the status then destroy
+  /// the connection immediately. Falls back to the first candidate if none
+  /// answer (e.g. the AP is already collapsing), so the viewer still has a URL
+  /// to retry against rather than nothing.
+  Future<String> _resolveMjpegUrl(String ip, int port) async {
+    for (final path in _mjpegPaths) {
+      final url = 'http://$ip:$port$path';
+      HttpClient? client;
+      try {
+        client = HttpClient();
+        client.connectionTimeout = const Duration(seconds: 2);
+        final request = await client.getUrl(Uri.parse(url));
+        final response = await request.close().timeout(
+          const Duration(seconds: 2),
+          onTimeout: () => throw Exception('mjpeg probe timed out'),
+        );
+        final ok = response.statusCode == 200;
+        client.close(force: true);
+        if (ok) {
+          rprint('LocalConnection: MJPEG endpoint resolved → $url');
+          return url;
+        }
+        rprint('LocalConnection: MJPEG $path → HTTP ${response.statusCode}');
+      } catch (e) {
+        rprint('LocalConnection: MJPEG probe $path failed: $e');
+        client?.close(force: true);
+      }
+    }
+    final fallback = 'http://$ip:$port${_mjpegPaths.first}';
+    rprint('LocalConnection: no MJPEG endpoint answered, defaulting → $fallback');
+    return fallback;
   }
 
   /// Check robot health endpoint with retry (3-second timeout per attempt)

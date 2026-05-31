@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/services/local_connection_service.dart';
 import '../../../domain/providers/settings_provider.dart';
 import '../../../domain/providers/webrtc_provider.dart';
 import 'mjpeg_viewer.dart';
@@ -33,8 +34,14 @@ class _SmartVideoViewState extends ConsumerState<SmartVideoView> {
   bool _useMjpegFallback = false;
   Timer? _fallbackTimer;
 
-  static const _mjpegUrl = 'http://192.168.4.1:8000/camera/stream';
-  static const _webrtcTimeout = Duration(seconds: 10);
+  // Legacy fallback only — the live URL is resolved (probed) at connect time
+  // and read from localConnectionProvider.mjpegUrl. Robot now serves
+  // /video/feed; /camera/stream was the old path.
+  static const _mjpegUrl = 'http://192.168.4.1:8000/video/feed';
+  // On the robot AP there is no STUN/TURN, so ICE can never reach `connected`.
+  // Keep this short so a WebRTC attempt that will never succeed flips to MJPEG
+  // fast instead of spinning on "connecting" (robot-Claude check #2).
+  static const _webrtcTimeout = Duration(seconds: 6);
 
   @override
   void initState() {
@@ -94,10 +101,14 @@ class _SmartVideoViewState extends ConsumerState<SmartVideoView> {
 
     // Local mode with MJPEG fallback active
     if (_useMjpegFallback) {
+      // Use the endpoint resolved (probed) at connect time so we don't 404 on
+      // an endpoint rename; fall back to the default const if unresolved.
+      final streamUrl =
+          ref.watch(localConnectionProvider).mjpegUrl ?? _mjpegUrl;
       return Stack(
         fit: StackFit.expand,
         children: [
-          const MjpegViewer(streamUrl: _mjpegUrl),
+          MjpegViewer(streamUrl: streamUrl),
           Positioned(
             top: 8,
             right: 8,

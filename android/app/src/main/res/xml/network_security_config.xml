@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  WIM-Z talks plain HTTP/WS to the robot over its local AP (no TLS on the Pi).
+  Android blocks cleartext by default on targetSdk >= 28, which silently breaks
+  the local MJPEG video feed (http://192.168.4.1:8000/video/feed) and any
+  http:// REST in local mode — it looks like "connecting forever".
+
+  Scope: cleartext is permitted ONLY for the robot AP IP and common private
+  LAN subnets, NOT globally — relay traffic stays HTTPS-only.
+-->
+<network-security-config>
+    <domain-config cleartextTrafficPermitted="true">
+        <!-- Robot AP gateway -->
+        <domain includeSubdomains="false">192.168.4.1</domain>
+        <!-- Common home-LAN gateways (robot on the user's wifi, not its own AP) -->
+        <domain includeSubdomains="true">192.168.0.0</domain>
+        <domain includeSubdomains="true">192.168.1.0</domain>
+        <domain includeSubdomains="true">10.0.0.0</domain>
+    </domain-config>
+</network-security-config>
