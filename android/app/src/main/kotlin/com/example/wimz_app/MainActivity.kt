@@ -1,10 +1,12 @@
 package com.wimzai.app
 
 import android.content.Context
+import android.content.Intent
 import android.net.ConnectivityManager
 import android.net.Network
 import android.net.NetworkCapabilities
 import android.net.NetworkRequest
+import android.os.Build
 import android.os.Handler
 import android.os.Looper
 import io.flutter.embedding.android.FlutterActivity
@@ -23,7 +25,8 @@ import io.flutter.plugin.common.MethodChannel
  * equivalent problem, so the Dart side no-ops there.
  */
 class MainActivity : FlutterActivity() {
-    private val channelName = "com.wimzai.app/wifi_bind"
+    private val wifiChannelName = "com.wimzai.app/wifi_bind"
+    private val foregroundChannelName = "com.wimzai.app/foreground"
     private var connectivityManager: ConnectivityManager? = null
     private var networkCallback: ConnectivityManager.NetworkCallback? = null
     private val mainHandler = Handler(Looper.getMainLooper())
@@ -33,7 +36,7 @@ class MainActivity : FlutterActivity() {
         connectivityManager =
             applicationContext.getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager
 
-        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, channelName)
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, wifiChannelName)
             .setMethodCallHandler { call, result ->
                 when (call.method) {
                     "bindToWifi" -> bindToWifi(result)
@@ -44,6 +47,39 @@ class MainActivity : FlutterActivity() {
                     else -> result.notImplemented()
                 }
             }
+
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, foregroundChannelName)
+            .setMethodCallHandler { call, result ->
+                when (call.method) {
+                    "start" -> {
+                        startSessionService()
+                        result.success(true)
+                    }
+                    "stop" -> {
+                        stopSessionService()
+                        result.success(true)
+                    }
+                    else -> result.notImplemented()
+                }
+            }
+    }
+
+    private fun startSessionService() {
+        val intent = Intent(this, WimzForegroundService::class.java).apply {
+            action = WimzForegroundService.ACTION_START
+        }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            startForegroundService(intent)
+        } else {
+            startService(intent)
+        }
+    }
+
+    private fun stopSessionService() {
+        val intent = Intent(this, WimzForegroundService::class.java).apply {
+            action = WimzForegroundService.ACTION_STOP
+        }
+        startService(intent)
     }
 
     private fun bindToWifi(result: MethodChannel.Result) {

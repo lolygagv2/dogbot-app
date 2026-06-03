@@ -8,6 +8,7 @@ import 'package:wakelock_plus/wakelock_plus.dart';
 
 import 'package:go_router/go_router.dart';
 
+import '../../../core/services/foreground_session_service.dart';
 import '../../../data/models/night_mode_state.dart';
 import '../../../domain/providers/coach_provider.dart';
 import '../../../domain/providers/connection_provider.dart';
@@ -40,6 +41,12 @@ class _DriveScreenState extends ConsumerState<DriveScreen> {
     WakelockPlus.enable();
     print('DriveScreen: Wakelock enabled');
 
+    // Android: start the foreground service so the live link (WS/WebRTC/two-way
+    // audio) survives backgrounding instead of being killed by OEM battery
+    // optimizers. Started here while foregrounded so a microphone/data session
+    // can legitimately continue into the background. No-op on iOS.
+    ForegroundSessionService.start();
+
     // v1.3: Store portrait mode before switching to manual
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final modeState = ref.read(modeStateProvider);
@@ -69,6 +76,8 @@ class _DriveScreenState extends ConsumerState<DriveScreen> {
     // Allow screen to sleep again
     WakelockPlus.disable();
     print('DriveScreen: Wakelock disabled');
+    // Android: tear down the foreground service — the live session is over.
+    ForegroundSessionService.stop();
     super.dispose();
   }
 
