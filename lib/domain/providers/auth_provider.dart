@@ -187,19 +187,24 @@ class AuthNotifier extends StateNotifier<AuthState> {
       // 4001 nor Dio 401 ever fire, and the user sits on "Reconnecting…"
       // until they manually sign out and back in. Fire-and-forget — connect()
       // updates ConnectionState on its own; we don't want to block /home nav.
+      // Build 122: fall back to the default prod host when none was persisted.
+      // The Build 101 fix gated this connect() on a saved host, but a cold open
+      // with a valid token and NO saved keyServerHost (observed on Android,
+      // where the host-saving connect() had never completed — iOS had it set)
+      // fell into a dead else that only printed, so connect() never ran:
+      // /home with the relay WS never attempted, just the webrtc retry loop.
+      // The app is hardwired to prod, so there is no "restore session but don't
+      // connect" state — always connect, defaulting the host when absent.
       final savedHost = prefs.getString(AppConstants.keyServerHost);
       final savedPort = prefs.getInt(AppConstants.keyServerPort);
-      if (savedHost != null && savedHost.isNotEmpty) {
-        connTrace('silent-reauth-connect',
-            'host=$savedHost port=${savedPort ?? AppConstants.defaultPort}');
-        // ignore: discarded_futures
-        _ref
-            .read(connectionProvider.notifier)
-            .connect(savedHost, savedPort ?? AppConstants.defaultPort);
-      } else {
-        print('Auth: silent re-auth restored session but no saved host — '
-            'user must pick one from /login');
-      }
+      final reauthHost = (savedHost != null && savedHost.isNotEmpty)
+          ? savedHost
+          : AppConstants.defaultHost;
+      final reauthPort = savedPort ?? AppConstants.defaultPort;
+      connTrace('silent-reauth-connect',
+          'host=$reauthHost port=$reauthPort saved=${savedHost != null && savedHost.isNotEmpty}');
+      // ignore: discarded_futures
+      _ref.read(connectionProvider.notifier).connect(reauthHost, reauthPort);
 
       // A1/A2/A3: hydrate cross-device data from relay. Best-effort —
       // failures (offline, 401, etc.) shouldn't block auth restoration.
