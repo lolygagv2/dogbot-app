@@ -7,11 +7,28 @@
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
 
+    <!-- Local-AP networking. CHANGE_NETWORK_STATE is required to bind the
+         process to the WIMZ- WiFi interface (ConnectivityManager.requestNetwork
+         + bindProcessToNetwork) so Android doesn't route robot traffic out over
+         cellular when the AP has "no internet". ACCESS_WIFI_STATE lets us read
+         the current network. -->
+    <uses-permission android:name="android.permission.ACCESS_WIFI_STATE"/>
+    <uses-permission android:name="android.permission.CHANGE_NETWORK_STATE"/>
+    <!-- WiFi scan/connect gating: pre-13 sat behind location; 13+ uses the
+         dedicated NEARBY_WIFI_DEVICES (neverForLocation — we don't derive
+         physical location from WiFi). -->
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"
+        android:maxSdkVersion="32"/>
+    <uses-permission android:name="android.permission.NEARBY_WIFI_DEVICES"
+        android:usesPermissionFlags="neverForLocation"/>
+
     <application
         android:label="wimz_app"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher"
-        android:networkSecurityConfig="@xml/network_security_config">
+        android:networkSecurityConfig="@xml/network_security_config"
+        android:allowBackup="false"
+        android:fullBackupContent="false">
         <activity
             android:name=".MainActivity"
             android:exported="true"

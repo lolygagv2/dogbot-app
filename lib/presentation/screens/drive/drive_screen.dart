@@ -81,6 +81,27 @@ class _DriveScreenState extends ConsumerState<DriveScreen> {
     }
   }
 
+  /// Mode/mission cleanup that must run whether the user leaves via the AppBar
+  /// back button OR the Android hardware/gesture back. Without this routed
+  /// through PopScope, a hardware back on Android would pop the route directly
+  /// and skip stopping the mission / restoring portrait mode. (The motor
+  /// emergency-stop still happens in dispose(), so this is mode state only.)
+  void _handleExitCleanup() {
+    final modeState = ref.read(modeStateProvider);
+    if (modeState.isMissionActive || modeState.isModeLocked) {
+      // Mission active — stop it and exit to idle
+      ref.read(missionsProvider.notifier).stopMission();
+      ref.read(modeStateProvider.notifier).setMode(
+            RobotMode.idle,
+            source: 'mission_end',
+          );
+    } else if (modeState.currentMode != RobotMode.coach) {
+      // Not in coach or mission — restore previous portrait mode
+      ref.read(modeStateProvider.notifier).restorePortraitMode();
+    }
+    // Coach stays active when leaving drive screen
+  }
+
   @override
   Widget build(BuildContext context) {
     final telemetry = ref.watch(telemetryProvider);
@@ -107,26 +128,23 @@ class _DriveScreenState extends ConsumerState<DriveScreen> {
     final nightState = ref.watch(nightModeProvider);
     final isNightActive = nightState?.currentMode == DayNight.night;
 
-    return Scaffold(
+    return PopScope(
+      // Intercept Android hardware/gesture back so it runs the same mission/mode
+      // cleanup as the AppBar back button instead of popping the route raw.
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) {
+        if (didPop) return;
+        _handleExitCleanup();
+        if (context.mounted) context.pop();
+      },
+      child: Scaffold(
       extendBodyBehindAppBar: true,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
         leading: IconButton(
           onPressed: () {
-            final modeState = ref.read(modeStateProvider);
-            if (modeState.isMissionActive || modeState.isModeLocked) {
-              // Mission active — stop it and exit to idle
-              ref.read(missionsProvider.notifier).stopMission();
-              ref.read(modeStateProvider.notifier).setMode(
-                RobotMode.idle,
-                source: 'mission_end',
-              );
-            } else if (modeState.currentMode != RobotMode.coach) {
-              // Not in coach or mission — restore previous portrait mode
-              ref.read(modeStateProvider.notifier).restorePortraitMode();
-            }
-            // Coach stays active when leaving drive screen
+            _handleExitCleanup();
             context.pop();
           },
           icon: Container(
@@ -380,6 +398,7 @@ class _DriveScreenState extends ConsumerState<DriveScreen> {
               ),
             ),
         ],
+      ),
       ),
     );
   }

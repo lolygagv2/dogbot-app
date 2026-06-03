@@ -43,6 +43,17 @@ android {
     buildTypes {
         release {
             signingConfig = signingConfigs.getByName("release")
+            // Minification stays OFF for now (matches current shipping behavior,
+            // zero risk to the active build). The keep rules in proguard-rules.pro
+            // are referenced ahead of time so flipping isMinifyEnabled = true later
+            // is a one-line change that won't strip flutter_webrtc / notification /
+            // audio plugins reached via reflection or JNI.
+            isMinifyEnabled = false
+            isShrinkResources = false
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro"
+            )
         }
     }
 }
