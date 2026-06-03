@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 
 import 'core/network/dio_client.dart';
 import 'core/network/websocket_client.dart';
+import 'core/services/wifi_binder.dart';
 import 'data/models/night_mode_state.dart';
 import 'domain/providers/auth_provider.dart';
 import 'domain/providers/connection_provider.dart';
@@ -636,7 +637,13 @@ class _WimzAppState extends ConsumerState<WimzApp> with WidgetsBindingObserver {
     _localModeSub = ref.listenManual<bool>(
       settingsProvider.select((s) => s.localModeEnabled),
       (prev, next) {
-        if (prev != next) _authRefresh.value++;
+        if (prev != next) {
+          _authRefresh.value++;
+          // Leaving local-AP mode: release the Android WiFi pin so relay/remote
+          // traffic (HTTPS to Lightsail) can route normally again. A process
+          // still bound to the no-internet AP would fail every relay request.
+          if (next == false) WifiBinder.unbind();
+        }
       },
     );
     _demoModeSub = ref.listenManual<bool>(

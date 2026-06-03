@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../network/dio_client.dart';
 import '../network/websocket_client.dart';
 import '../utils/remote_logger.dart';
+import 'wifi_binder.dart';
 
 /// Local connection state
 enum LocalConnectionState {
@@ -101,6 +102,14 @@ class LocalConnectionNotifier extends StateNotifier<LocalConnectionData> {
     try {
       // Force-disconnect any stale WebSocket from previous session
       await WebSocketClient.instance.disconnect();
+
+      // Android: pin the process to the WiFi interface BEFORE the health check.
+      // The robot AP has no internet, so without this Android may route the
+      // very first health-check socket out over cellular and the connect spins
+      // forever. Best-effort: no-op on iOS, returns false if WiFi isn't up
+      // (we still try — the socket may already be on the right interface).
+      final bound = await WifiBinder.bindToWifi();
+      rprint('LocalConnection: WiFi bind ${bound ? 'succeeded' : 'skipped/failed'}');
 
       // Configure Dio for local connection
       final baseUrl = 'http://$ip:$port';
@@ -297,6 +306,10 @@ class LocalConnectionNotifier extends StateNotifier<LocalConnectionData> {
     rprint('LocalConnection: Disconnecting');
     _scanTimer?.cancel();
     await WebSocketClient.instance.disconnect();
+    // Release the WiFi pin so relay/remote mode (HTTPS to Lightsail) can route
+    // normally again — a process still bound to the no-internet AP would fail
+    // every relay request.
+    await WifiBinder.unbind();
     state = const LocalConnectionData();
   }
 
