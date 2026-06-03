@@ -75,7 +75,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   Future<void> _submitLogin() async {
     if (!_formKey.currentState!.validate()) return;
 
-    final host = AppConstants.defaultHost;
+    const host = AppConstants.defaultHost;
     const port = AppConstants.defaultPort;
 
     final baseUrl = AppConfig.baseUrl(host, port);
@@ -103,8 +103,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         await _secureStorage.deletePassword();
       }
 
-      ref.read(settingsProvider.notifier).setLocalModeEnabled(false);
-      await ref.read(connectionProvider.notifier).connect(host, port);
+      // Build 123: relay connect + local-mode reset now happen inside
+      // authProvider.login()/register() (see _connectRelay) so they can't be
+      // skipped if this screen is torn down or login() unwinds post-auth.
       if (mounted) context.go('/home');
     }
   }

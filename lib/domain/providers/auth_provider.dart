@@ -187,24 +187,10 @@ class AuthNotifier extends StateNotifier<AuthState> {
       // 4001 nor Dio 401 ever fire, and the user sits on "Reconnecting…"
       // until they manually sign out and back in. Fire-and-forget — connect()
       // updates ConnectionState on its own; we don't want to block /home nav.
-      // Build 122: fall back to the default prod host when none was persisted.
-      // The Build 101 fix gated this connect() on a saved host, but a cold open
-      // with a valid token and NO saved keyServerHost (observed on Android,
-      // where the host-saving connect() had never completed — iOS had it set)
-      // fell into a dead else that only printed, so connect() never ran:
-      // /home with the relay WS never attempted, just the webrtc retry loop.
-      // The app is hardwired to prod, so there is no "restore session but don't
-      // connect" state — always connect, defaulting the host when absent.
-      final savedHost = prefs.getString(AppConstants.keyServerHost);
-      final savedPort = prefs.getInt(AppConstants.keyServerPort);
-      final reauthHost = (savedHost != null && savedHost.isNotEmpty)
-          ? savedHost
-          : AppConstants.defaultHost;
-      final reauthPort = savedPort ?? AppConstants.defaultPort;
-      connTrace('silent-reauth-connect',
-          'host=$reauthHost port=$reauthPort saved=${savedHost != null && savedHost.isNotEmpty}');
-      // ignore: discarded_futures
-      _ref.read(connectionProvider.notifier).connect(reauthHost, reauthPort);
+      // Build 122/123: always connect on cold open with a valid token, via the
+      // shared helper (defaults host→prod when none was persisted). The old
+      // code gated this on a saved host and fell into a dead else when absent.
+      await _connectRelay('silent-reauth');
 
       // A1/A2/A3: hydrate cross-device data from relay. Best-effort —
       // failures (offline, 401, etc.) shouldn't block auth restoration.
@@ -284,8 +270,16 @@ class AuthNotifier extends StateNotifier<AuthState> {
       );
       connTrace('register-success', 'user=${response.userId}');
 
-      // Build 32: Reload dog profiles for this user (scoped storage)
-      await _ref.read(dogProfilesProvider.notifier).reloadForCurrentUser();
+      // Build 123: connect before anything below can throw (see login()).
+      await _connectRelay('register');
+
+      // Build 32: Reload dog profiles for this user (scoped storage). Defensive:
+      // a profile-store failure must never unwind register() / skip the connect.
+      try {
+        await _ref.read(dogProfilesProvider.notifier).reloadForCurrentUser();
+      } catch (e) {
+        connTrace('register-dogreload-fail', '$e');
+      }
 
       // A1/A2/A3: hydrate from relay so a fresh install/new device restores data.
       _hydrateAllFromRelay(scenario: 'register');
@@ -304,6 +298,27 @@ class AuthNotifier extends StateNotifier<AuthState> {
       );
       return false;
     }
+  }
+
+  /// Build 123: bring up the relay WS after any auth success, from the provider
+  /// rather than the login screen. On Android the screen's post-login connect()
+  /// was being skipped (login() unwound before it ran), so the relay never came
+  /// up on a fresh sign-in; iOS happened to reach it. Triggering it here makes
+  /// it independent of widget lifecycle. Fire-and-forget — connect() drives
+  /// ConnectionState itself. Defaults host→prod when none is persisted.
+  Future<void> _connectRelay(String scenario) async {
+    _ref.read(settingsProvider.notifier).setLocalModeEnabled(false);
+    final prefs = await SharedPreferences.getInstance();
+    final savedHost = prefs.getString(AppConstants.keyServerHost);
+    final savedPort = prefs.getInt(AppConstants.keyServerPort);
+    final host = (savedHost != null && savedHost.isNotEmpty)
+        ? savedHost
+        : AppConstants.defaultHost;
+    final port = savedPort ?? AppConstants.defaultPort;
+    connTrace('$scenario-connect',
+        'host=$host port=$port saved=${savedHost != null && savedHost.isNotEmpty}');
+    // ignore: discarded_futures
+    _ref.read(connectionProvider.notifier).connect(host, port);
   }
 
   /// Login with existing account
@@ -326,8 +341,19 @@ class AuthNotifier extends StateNotifier<AuthState> {
       );
       connTrace('login-success', 'user=${response.userId}');
 
-      // Build 32: Reload dog profiles for this user (scoped storage)
-      await _ref.read(dogProfilesProvider.notifier).reloadForCurrentUser();
+      // Build 123: connect to the relay HERE, before anything below can throw.
+      // The dog-profile reload was unwinding login() on Android (returning
+      // false), so login_screen's post-login connect() was skipped and the
+      // relay never came up — iOS reached it, Android didn't.
+      await _connectRelay('login');
+
+      // Build 32: Reload dog profiles for this user (scoped storage). Defensive:
+      // a profile-store failure must never unwind login() / skip the connect.
+      try {
+        await _ref.read(dogProfilesProvider.notifier).reloadForCurrentUser();
+      } catch (e) {
+        connTrace('login-dogreload-fail', '$e');
+      }
 
       // A1/A2/A3: hydrate from relay so a fresh install/new device restores data.
       _hydrateAllFromRelay(scenario: 'login');
