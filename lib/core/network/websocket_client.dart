@@ -370,6 +370,7 @@ class WebSocketClient {
       _startPingTimer();
     } catch (e) {
       print('WebSocket connection error: $e');
+      connTrace('ws-connect-error', '$e');
       _setState(WsConnectionState.error);
       _scheduleReconnect();
     }

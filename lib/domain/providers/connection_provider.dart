@@ -9,6 +9,7 @@ import '../../core/network/dio_client.dart';
 import '../../core/network/websocket_client.dart';
 import '../../core/services/local_connection_service.dart';
 import '../../core/session/session_id.dart';
+import '../../core/utils/conn_trace.dart';
 import '../../core/utils/jwt_decode.dart';
 import '../../data/datasources/robot_api.dart';
 import 'auth_provider.dart';
@@ -167,6 +168,7 @@ class ConnectionNotifier extends StateNotifier<ConnectionState> {
 
   /// Connect to WIM-Z relay server
   Future<bool> connect(String host, [int port = 8000]) async {
+    connTrace('conn-begin', 'host=$host port=$port');
     state = state.copyWith(
       status: ConnectionStatus.connecting,
       pairingStatus: PairingStatus.unknown,
@@ -185,12 +187,14 @@ class ConnectionNotifier extends StateNotifier<ConnectionState> {
       final isHealthy = await api.healthCheck();
 
       if (!isHealthy) {
+        connTrace('health-fail', '$baseUrl/health');
         state = state.copyWith(
           status: ConnectionStatus.error,
           errorMessage: 'Server not responding',
         );
         return false;
       }
+      connTrace('health-ok', baseUrl);
 
       // Get auth token for WebSocket connection
       final authState = _ref.read(authProvider);
@@ -222,6 +226,8 @@ class ConnectionNotifier extends StateNotifier<ConnectionState> {
       final sessionUserId =
           jwtSub(token) ?? authState.userId ?? authState.email;
       print('Connecting WebSocket to: $wsUrl (session=$newSessionId, user=$sessionUserId)');
+      connTrace('ws-connect-attempt',
+          'user=$sessionUserId device=$deviceId hasToken=${token != null}');
       await ws.connect(
         wsUrl,
         sessionId: newSessionId,
@@ -271,6 +277,7 @@ class ConnectionNotifier extends StateNotifier<ConnectionState> {
 
       return true;
     } catch (e) {
+      connTrace('conn-error', '$e');
       state = state.copyWith(
         status: ConnectionStatus.error,
         errorMessage: e.toString(),
