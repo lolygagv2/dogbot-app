@@ -32,8 +32,13 @@ Codemagic build `index 149` = "finished with **post-processing failed**", commit
 - No console for installed builds — debug via Settings → Connection Diagnostics (`conn_trace`). ([[debug-via-in-app-diagnostics]])
 - Relay auth API drifted: register 500, no `user_id` in token (app uses JWT `sub`), `/api/auth/validate` 404. ([[relay-auth-contract-drift]])
 
+### Post-session addendum (2026-06-04)
+- ✅ **Signup confirmed working on-device** (relay register-500 fix landed — new account created).
+- 🟡 **UNCOMMITTED working-tree fix** (Build 125, not yet committed/built — user chose to batch it with the next change): `lib/domain/providers/paired_devices_provider.dart` — `pairDevice()` now calls `setDeviceId(deviceId)` after pairing so the just-paired robot becomes the ACTIVE device. Without it, a freshly-paired robot (esp. first on a new account) left the app on the `wimz_robot_01` placeholder → "Device not paired" until the user manually selected the robot. Long-standing bug, finally fixed. **COMMIT THIS with the next batch — don't lose it / don't `git checkout` that file.**
+
 ### Next session
-1. **Verify Build 124 on device** (watch the publish step — manual APK if post-processing fails again). Confirm: `login-connect` canary present, center button recenters in local mode, **signup creates an account** (relay fix).
+1. **Commit the uncommitted pairing fix above** (bump to +125) with the next batch of changes.
+2. **Verify Build 124 on device** (watch the publish step — manual APK if post-processing fails again). Confirm: `login-connect` canary present, center button recenters in local mode, **signup creates an account** (relay fix — already confirmed working).
 2. **Fix the Codemagic→Play auto-publish** so manual uploads aren't needed (the manual release may have unblocked it).
 3. Carry-overs from prior sessions still open (store-and-forward E2E, password-reset E2E, per-robot servo calibration).
 
