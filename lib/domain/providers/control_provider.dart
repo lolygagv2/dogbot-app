@@ -265,7 +265,15 @@ class ServoControlNotifier extends StateNotifier<ServoState> {
     state = const ServoState(pan: 0, tilt: 0);
 
     if (_ref.read(connectionProvider).isConnected) {
-      _ref.read(websocketClientProvider).sendServoCenter();
+      final ws = _ref.read(websocketClientProvider);
+      // Center via an explicit servo command (pan=0, tilt=0) — the same 'servo'
+      // message the joystick uses, which the local-AP robot handler honors. The
+      // dedicated 'servo_center' type isn't handled on the local/AP path, so the
+      // button did nothing there. sendServoCommand bypasses the _sendCommand
+      // deadzone (that guard lives in _sendCommand, not here), so 0,0 is actually
+      // transmitted. Also send servo_center for relay/robot builds that act on it.
+      ws.sendServoCommand(0, 0);
+      ws.sendServoCenter();
     }
   }
 
