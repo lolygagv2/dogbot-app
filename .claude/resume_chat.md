@@ -1,5 +1,44 @@
 # WIM-Z Resume Chat Log
 
+## Session: 2026-06-03/04 — Builds 121–124 (Android relay-connect fix + issue triage)
+**Goal:** "Android app logs in, reaches main menu, says server disconnected." Cloud relay is useless without it. Then a follow-up list: center button (local), no detection boxes (local), signup broken, push-to-talk (Android).
+**Status:** ✅ Root cause found and fixed; validated on-device. All app-side items resolved or triaged. Builds 121→124 pushed to `origin/main` (synced).
+
+### The big one — Android relay connection (FIXED, Build 123)
+Symptom: `login-success` then a webrtc retry loop, "disconnected"; iOS worked fine on both fresh login AND reopen. Long hunt (I was wrong on cert-chain, `/health`, and a GoRouter-redirect theory — all ruled out by direct testing).
+**Real cause:** `auth_provider.login()` set auth state, fired `login-success`, then `await dogProfilesProvider.reloadForCurrentUser()` — which **threw on Android**, so `login()` returned false, so `login_screen`'s `if (success && mounted)` post-login block (which called `connect()`) was **skipped** → relay WS never attempted. iOS didn't hit the throw.
+**Fix:** new `AuthNotifier._connectRelay(scenario)` connects to the relay from the provider (default host→prod when none saved), called from `login()`/`register()`/silent-reauth **before** the dog reload, and the reload is now wrapped so it can't unwind auth. `login_screen` no longer connects (avoids iOS double-connect). Build 122 added the silent-reauth default-host fallback; Build 121 added `conn_trace` instrumentation across the connect→WSS blind spot (`conn-begin`, `health-ok`, `ws-connect-attempt`, `ws-connect-error`, `login-connect`).
+**Validated:** on-device log showed `login-connect → conn-begin → health-ok → ws-connect-attempt → ws-relay-open → ws-session-ack → ws-heartbeat`, Settings "Server connected."
+
+### THE meta-blocker — stale builds (cost most of the session)
+Codemagic build `index 149` = "finished with **post-processing failed**", commit `40b46f0`. Compile succeeded, **Play publish failed**, so the device ran **pre-121 code under a "123" label** the whole time → every "installed it, nothing changed" was a dead end. Proven by the on-device log showing `ws-relay-open` with NO `conn-begin`/`login-connect` (impossible in new code). Likely cause: Google Play "first release must be created manually" rule. Workaround that worked: download APK artifact from Codemagic → manual upload to Play release → install. **Lesson saved to memory** ([[codemagic-publish-trap]]): verify the device is running current code via a canary trace BEFORE debugging app logic.
+
+### Issue triage
+- **① Center button (local/AP):** ✅ FIXED Build 124. Was sending `servo_center`, which the robot's local handler doesn't implement; now sends `servo {0,0}` (the command the D-pad uses — confirmed working locally) + `servo_center`.
+- **② Detection boxes (local):** ⛔ NOT FIXABLE. No `detection` events arrive in local mode (user confirmed: no chips, no boxes). No relay in local mode + **robots frozen in beta** → dead end. Works in cloud. Leave off.
+- **③ Signup:** 🛰️ RELAY bug — `POST /api/auth/register` → HTTP 500 (direct-tested). Brief handed to relay Claude; user ran a relay update — **VERIFY register returns 200 on next build.**
+- **④ Push-to-talk (Android):** ✅ resolved — it was the dead relay WS (PTT sends audio over WS); worked once real code connected.
+
+### Builds
+```
+4c0d63d Build 124 — camera center works in local/AP mode
+40b46f0 Build 123 — connect to relay from auth provider, not login screen (THE fix)
+401f378 Build 122 — silent re-auth always connects (default host fallback)
+1614823 Build 121 — conn_trace diagnostics across the connect→WSS blind spot
+```
+
+### Constraints learned
+- **Robots are FROZEN (beta) — only app + relay/server can change.** ([[robot-frozen-local-ap-limits]])
+- No console for installed builds — debug via Settings → Connection Diagnostics (`conn_trace`). ([[debug-via-in-app-diagnostics]])
+- Relay auth API drifted: register 500, no `user_id` in token (app uses JWT `sub`), `/api/auth/validate` 404. ([[relay-auth-contract-drift]])
+
+### Next session
+1. **Verify Build 124 on device** (watch the publish step — manual APK if post-processing fails again). Confirm: `login-connect` canary present, center button recenters in local mode, **signup creates an account** (relay fix).
+2. **Fix the Codemagic→Play auto-publish** so manual uploads aren't needed (the manual release may have unblocked it).
+3. Carry-overs from prior sessions still open (store-and-forward E2E, password-reset E2E, per-robot servo calibration).
+
+---
+
 ## Session: 2026-05-31 — Build 115 (local-AP video fixes: MJPEG endpoint + LAN cleartext)
 **Goal:** User reported Phone→Robot local-AP connection is broken: can now log in + connect + give commands, but (a) video says "connecting" forever, (b) connection feels shaky/unresponsive, drops after ~2 commands, and the AP "WIMZ-Demo" never comes back. Robot Claude suggested checking the app's MJPEG fallback URL.
 **Status:** ✅ App-side fixes committed `7329fb4` AND pushed to `origin/main`. pubspec `1.0.0+115`. Analyzer-clean. **BUT the real show-stopper is robot-side (R-AP-1) — see below — so video can't be fully verified until that's fixed.**
