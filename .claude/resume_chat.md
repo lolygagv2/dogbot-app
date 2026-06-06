@@ -1,5 +1,40 @@
 # WIM-Z Resume Chat Log
 
+## Session: 2026-06-06 — Builds 125–126 (real data, unified SG history, local profiles, robot guardian contract)
+**Goal:** User frustrated with beta regressions. Three reported defects, treated as a "fix everything now, no to-be-continued" mandate: (1) Silent Guardian history doesn't load when reopening the app after backgrounding for hours; (2) the events shown are FAKE; (3) local-mode dog profile vanishes on app close.
+**Status:** ✅ All app-side fixes shipped (Builds 125 + 126), pushed to `origin/main` (synced). Backend (robot + relay) confirmed live by their Claude instances. Feature is closed end-to-end pending on-device verification + a runtime-captured escalation payload.
+
+### Root cause (shared across all three)
+App state was silently scoped to a cloud-auth identity that local mode doesn't have, AND mock data was wired at provider-CONSTRUCTOR level (not behind `isDemoMode`) — which **masked** the real bugs: the fake events were stamped `now()` so the feed was never visibly empty, so every "did history load?" check looked fine. Removing the mock is what made the real bug visible. (Saved to memory: [[fake-data-masked-bugs]], [[work-style-fix-completely]].)
+
+### Build 125 (commit `b3e8bf5`) — app
+1. **Ripped out all fake data:** deleted `_generateMockData()` (14 fake notifications); `dogDailySummaryProvider` 5/3/12 → real today aggregation; `dogWeeklyStatsProvider` `Random()` chart → real 7-day aggregation; `setRange()` ×7/×30 → real today/week/lifetime; removed debug "Add Test Event" button. Fixed a replay bug where buffered events were stamped `now()`/fresh-id (broke ordering + dedup) → now keep `ts_server` time + stable id.
+2. **Unified the two event lists:** `notificationsProvider` is the single history source; `guardianEventsProvider` is now a PROJECTION of it (alert→alertTriggered etc.). The SG feed gets the same live + REST + store-and-forward as the Activity tab. Removed its independent WS subscription.
+3. **Hydrate on RESUME, not just login:** `connection_provider.onAppResumed()` now calls `notificationsProvider.hydrateFromRelay()` — fixes the 2-hour-gap. (Self-skips in local mode / no token.)
+4. **Local-mode profiles:** stable `'local'` storage scope (independent of cloud email) + one-time `anonymous`→`local` migration + `reloadForCurrentUser()` on local connect. `SelectedDogNotifier` uses the same scope.
+- New file: `lib/data/models/activity_aggregation.dart` (real summarize helpers). New: `.claude/BACKEND_BRIEF_2026-06-06.md`. Bumped `pubspec` → `1.0.0+125`. Also committed the previously-staged pairing auto-select fix (`paired_devices_provider.dart`).
+
+### Backend (other Claude instances — confirmed live)
+- **Robot (commit `c17c0cd`, deployed to treatbot5):** barks now carry `dog_id`/`dog_name`; SG events forwarded as `{event:'guardian', action: started|stopped|escalation|reset}`; every relay event gets uuid4 `id` + ISO8601-UTC `timestamp` (via setdefault, doesn't clobber existing). Robot is now authoritative for id+timestamp. **Caveat:** could NOT live-fire a real bark/escalation (needs a barking dog) — those two runtime payloads are inferred, not captured.
+- **Relay:** confirmed set (durable persist + `GET /api/activity`). Relay maps `event`→`type`.
+
+### Build 126 (commit `3dfae46`) — app, responding to robot contract
+The app had NO `guardian` case, so the robot's new guardian events arrived (via WS `default` route + from REST) and were **silently dropped** — same masking trap. Fixed:
+- `notifications_provider._handleWsEvent`: added `case 'guardian'` → `_guardianNotification()`. Lifecycle actions (start/stop/reset) skipped; escalation/intervention → alert. Action normalized defensively (strips `sg_`/`silent_guardian_`) since exact escalation string is inferred.
+- REST `_activityEventToNotification`: added `case 'guardian'` (action read from payload or top-level).
+- Bark live path now carries `dog_id` → per-dog stats attribute it.
+- Bumped `pubspec` → `1.0.0+126`.
+
+### Explicitly OUT of scope (flagged, not silent)
+- **True background push (FCM/APNs)** — app only has `flutter_local_notifications` (fires while app process alive). Real "ping while app killed" needs FCM/APNs + relay push service + device-token registration. Separate future track. User chose in-app-history-only this pass.
+
+### Next session
+1. **On-device verify Build 126** (watch Codemagic publish; manual APK if post-processing fails — [[codemagic-publish-trap]]). Order: `login-connect` canary present → Activity tab starts EMPTY (no "Max earned a reward") → start SG, generate a bark, background 2+ min, reopen → events show in SG feed + Activity → add dog in local mode, close, reopen → dog persists.
+2. **Get robot Claude to synthesize a fake bark/escalation onto the bus** and capture the exact payload, so the inferred `action`/field names are confirmed (one-line app fix if they differ). Robot Claude offered this.
+3. Carry-overs still open: store-and-forward E2E, password-reset E2E, per-robot servo calibration, Codemagic→Play auto-publish.
+
+---
+
 ## Session: 2026-06-03/04 — Builds 121–124 (Android relay-connect fix + issue triage)
 **Goal:** "Android app logs in, reaches main menu, says server disconnected." Cloud relay is useless without it. Then a follow-up list: center button (local), no detection boxes (local), signup broken, push-to-talk (Android).
 **Status:** ✅ Root cause found and fixed; validated on-device. All app-side items resolved or triaged. Builds 121→124 pushed to `origin/main` (synced).
