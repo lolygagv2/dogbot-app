@@ -83,18 +83,29 @@ class NotificationsNotifier extends StateNotifier<List<NotificationEvent>> {
         }
         break;
 
-      // Bark events (forwarded as 'event' type with event_type: 'barking')
+      // Bark events (forwarded as 'event' type with event_type: 'barking').
+      // Build 125: the robot now attributes barks to a dog (dog_id/dog_name) —
+      // carry dog_id through so per-dog stats count it.
       case 'event':
         final eventType = event.data['event_type'] as String?;
         if (eventType == 'barking') {
           notification = NotificationEvent(
-            id: eventId ?? DateTime.now().millisecondsSinceEpoch.toString(),
+            id: eventId ?? eventTime.millisecondsSinceEpoch.toString(),
             type: NotificationEventType.bark,
             timestamp: eventTime,
             title: 'Barking Detected',
             subtitle: event.data['details'] as String?,
+            dogId: event.data['dog_id'] as String?,
           );
         }
+        break;
+
+      // Silent Guardian events. The robot emits these as {event:'guardian',
+      // action:'started'|'stopped'|'escalation'|'reset'|...} (Build 125 robot
+      // contract). Session-lifecycle actions are skipped; an intervention/
+      // escalation surfaces as an alert — see _guardianNotification.
+      case 'guardian':
+        notification = _guardianNotification(event.data, eventTime, eventId);
         break;
 
       case 'treat':
@@ -244,6 +255,46 @@ class NotificationsNotifier extends StateNotifier<List<NotificationEvent>> {
       timestamp: eventTime,
       title: _getDefaultTitle(type),
       subtitle: confidenceStr,
+      dogId: data['dog_id'] as String?,
+    );
+  }
+
+  /// Normalize a robot guardian action: lowercase + strip the `sg_` /
+  /// `silent_guardian_` prefixes so 'sg_escalation' and 'escalation' match.
+  String _normalizeGuardianAction(String? raw) =>
+      (raw ?? '')
+          .toLowerCase()
+          .replaceAll('silent_guardian_', '')
+          .replaceAll('sg_', '');
+
+  /// True for SG session-lifecycle actions (start/stop/reset) that are NOT
+  /// per-dog activity and shouldn't clutter the history feed.
+  bool _isGuardianLifecycle(String action) =>
+      action == 'started' ||
+      action == 'start' ||
+      action == 'stopped' ||
+      action == 'stop' ||
+      action == 'reset' ||
+      action.isEmpty;
+
+  /// Build a notification from a robot 'guardian' event. Lifecycle actions are
+  /// dropped (return null); an escalation/intervention (or any other meaningful
+  /// action) becomes an alert. Action strings are normalized defensively since
+  /// the exact escalation payload couldn't be live-captured robot-side.
+  NotificationEvent? _guardianNotification(
+      Map<String, dynamic> data, DateTime eventTime, String? eventId) {
+    final action = _normalizeGuardianAction(data['action'] as String?);
+    if (_isGuardianLifecycle(action)) return null;
+
+    final reason = data['reason'] as String? ??
+        data['details'] as String? ??
+        data['message'] as String?;
+    return NotificationEvent(
+      id: eventId ?? eventTime.millisecondsSinceEpoch.toString(),
+      type: NotificationEventType.alert,
+      timestamp: eventTime,
+      title: 'Guardian Alert',
+      subtitle: reason ?? 'Intervention',
       dogId: data['dog_id'] as String?,
     );
   }
@@ -414,6 +465,20 @@ class NotificationsNotifier extends StateNotifier<List<NotificationEvent>> {
         final reason = payload['reason'] as String? ?? 'Alert';
         title = 'Guardian: $reason';
         subtitle = payload['severity'] as String?;
+        break;
+      // Build 125: robot's unified guardian event ({type:'guardian',
+      // action:...}). Lifecycle actions (start/stop/reset) are skipped; an
+      // escalation/intervention surfaces as an alert. action may live in the
+      // payload or at the row top-level depending on relay persistence.
+      case 'guardian':
+        final action = _normalizeGuardianAction(
+            (payload['action'] ?? event['action']) as String?);
+        if (_isGuardianLifecycle(action)) return null;
+        mapped = NotificationEventType.alert;
+        title = 'Guardian Alert';
+        subtitle = payload['reason'] as String? ??
+            payload['details'] as String? ??
+            payload['message'] as String?;
         break;
       case 'mission_started':
         mapped = NotificationEventType.missionStarted;
