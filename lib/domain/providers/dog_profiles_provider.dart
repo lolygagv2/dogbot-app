@@ -7,14 +7,21 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../core/network/websocket_client.dart';
 import '../../core/services/local_connection_service.dart';
 import '../../data/datasources/robot_api.dart';
+import '../../data/models/activity_aggregation.dart';
 import '../../data/models/dog_profile.dart';
 import 'auth_provider.dart';
 import 'connection_provider.dart';
+import 'notifications_provider.dart';
+import 'settings_provider.dart';
 
 // Build 32: Dogs scoped by user email to fix security issue (Issue 6)
-// Keys are now functions that include user scope
-String _dogsKeyForUser(String? email) => 'dog_profiles_${email ?? 'anonymous'}';
-String _selectedDogKeyForUser(String? email) => 'selected_dog_${email ?? 'anonymous'}';
+// Keys are now functions that include user scope.
+// Build 125: in LOCAL mode there is no authenticated user (email is null), and
+// a stale cloud JWT could otherwise shift the scope between save and load —
+// stranding the just-added dog. So local mode uses a fixed 'local' scope that
+// is stable across restarts regardless of any leftover auth state.
+String _dogsKeyForScope(String scope) => 'dog_profiles_$scope';
+String _selectedDogKeyForScope(String scope) => 'selected_dog_$scope';
 
 /// Provider for list of dog profiles
 final dogProfilesProvider =
@@ -26,8 +33,10 @@ final dogProfilesProvider =
 final selectedDogProvider =
     StateNotifierProvider<SelectedDogNotifier, DogProfile?>((ref) {
   final profiles = ref.watch(dogProfilesProvider);
+  final localMode = ref.watch(settingsProvider).localModeEnabled;
   final userEmail = ref.watch(authProvider).email;
-  return SelectedDogNotifier(profiles, userEmail: userEmail);
+  final scope = localMode ? 'local' : (userEmail ?? 'anonymous');
+  return SelectedDogNotifier(profiles, scope: scope);
 });
 
 /// Provider for a specific dog by ID
@@ -40,28 +49,18 @@ final dogProfileProvider = Provider.family<DogProfile?, String>((ref, id) {
   }
 });
 
-/// Provider for dog daily summary
+/// Provider for dog daily summary — REAL data, derived from today's activity
+/// events (live WS + relay history). No more hardcoded 5/3/12 baseline.
 final dogDailySummaryProvider =
     Provider.family<DogDailySummary, String>((ref, dogId) {
-  // In real implementation, fetch from API
-  // For now, return mock data
-  return DogDailySummary(
-    dogId: dogId,
-    date: DateTime.now(),
-    treatCount: 5,
-    sitCount: 3,
-    barkCount: 12,
-    goalProgress: 0.85,
-    missionCount: 2,
-    missionSuccessCount: 2,
-  );
+  final events = ref.watch(notificationsProvider);
+  return summarizeDay(events, dogId: dogId, day: DateTime.now());
 });
 
 /// Dog profiles state notifier with persistence (Build 32: scoped by user)
 class DogProfilesNotifier extends StateNotifier<List<DogProfile>> {
   final Ref _ref;
   SharedPreferences? _prefs;
-  String? _currentUserEmail;
 
   DogProfilesNotifier(this._ref) : super([]) {
     _loadProfiles().then((_) {
@@ -79,10 +78,16 @@ class DogProfilesNotifier extends StateNotifier<List<DogProfile>> {
         _syncProfilesToRobot();
       }
     });
-    // Also sync when local connection comes online
+    // Also sync when local connection comes online.
+    // Build 125: reload first — the provider may have been built before local
+    // mode was set / connection resolved, so its in-memory list could be from
+    // the wrong scope. reloadForCurrentUser() re-reads the correct ('local')
+    // bucket, THEN we push to the robot.
     _ref.listen<LocalConnectionData>(localConnectionProvider, (prev, next) {
-      if (next.isConnected && prev?.isConnected != true && state.isNotEmpty) {
-        _syncProfilesToRobot();
+      if (next.isConnected && prev?.isConnected != true) {
+        reloadForCurrentUser().then((_) {
+          if (state.isNotEmpty) _syncProfilesToRobot();
+        });
       }
     });
   }
@@ -90,13 +95,33 @@ class DogProfilesNotifier extends StateNotifier<List<DogProfile>> {
   /// Get current user's email for scoped storage
   String? get _userEmail => _ref.read(authProvider).email;
 
+  /// Build 125: storage scope. In local mode there's no auth identity, so use a
+  /// fixed 'local' scope that's stable across restarts (persisted via settings).
+  /// In cloud mode, scope by user email (unchanged behavior).
+  String get _scope {
+    if (_ref.read(settingsProvider).localModeEnabled) return 'local';
+    return _userEmail ?? 'anonymous';
+  }
+
   Future<void> _loadProfiles() async {
     _prefs = await SharedPreferences.getInstance();
-    _currentUserEmail = _userEmail;
-    final key = _dogsKeyForUser(_currentUserEmail);
-    final json = _prefs?.getString(key);
+    final scope = _scope;
+    final key = _dogsKeyForScope(scope);
+    var json = _prefs?.getString(key);
 
-    print('DogProfiles: Loading for user $_currentUserEmail (key: $key)');
+    // Build 125 migration: earlier local builds saved dogs under the
+    // 'anonymous' scope. If we're now on 'local' and it's empty but 'anonymous'
+    // has data, adopt it so existing local users don't lose their dogs.
+    if ((json == null || json.isEmpty) && scope == 'local') {
+      final legacy = _prefs?.getString(_dogsKeyForScope('anonymous'));
+      if (legacy != null && legacy.isNotEmpty) {
+        json = legacy;
+        await _prefs?.setString(key, legacy);
+        print('DogProfiles: migrated anonymous → local scope');
+      }
+    }
+
+    print('DogProfiles: Loading for scope "$scope" (key: $key)');
 
     if (json != null && json.isNotEmpty) {
       try {
@@ -109,19 +134,16 @@ class DogProfilesNotifier extends StateNotifier<List<DogProfile>> {
       }
     } else {
       state = [];
-      print('DogProfiles: No profiles found for this user');
+      print('DogProfiles: No profiles found for this scope');
     }
   }
 
   Future<void> _saveProfiles() async {
     _prefs ??= await SharedPreferences.getInstance();
-    // Build 32 fix: Always use fresh email from auth, not cached value
-    // This prevents saving to wrong key if auth loaded after dogs
-    final email = _userEmail ?? _currentUserEmail;
-    final key = _dogsKeyForUser(email);
+    final key = _dogsKeyForScope(_scope);
     final json = jsonEncode(state.map((p) => p.toJson()).toList());
     await _prefs?.setString(key, json);
-    print('DogProfiles: Saved ${state.length} profiles for user $email');
+    print('DogProfiles: Saved ${state.length} profiles (key: $key)');
   }
 
   /// Reload profiles for current user (call after login/logout)
@@ -398,15 +420,17 @@ class DogProfilesNotifier extends StateNotifier<List<DogProfile>> {
 class SelectedDogNotifier extends StateNotifier<DogProfile?> {
   final List<DogProfile> _profiles;
   SharedPreferences? _prefs;
-  String? _userEmail;
+  final String _scope;
 
-  SelectedDogNotifier(this._profiles, {String? userEmail}) : _userEmail = userEmail, super(null) {
+  SelectedDogNotifier(this._profiles, {required String scope})
+      : _scope = scope,
+        super(null) {
     _loadSelectedDog();
   }
 
   Future<void> _loadSelectedDog() async {
     _prefs = await SharedPreferences.getInstance();
-    final key = _selectedDogKeyForUser(_userEmail);
+    final key = _selectedDogKeyForScope(_scope);
     final selectedId = _prefs?.getString(key);
 
     if (selectedId != null && _profiles.isNotEmpty) {
@@ -428,7 +452,7 @@ class SelectedDogNotifier extends StateNotifier<DogProfile?> {
   Future<void> selectDog(DogProfile dog) async {
     state = dog;
     _prefs ??= await SharedPreferences.getInstance();
-    final key = _selectedDogKeyForUser(_userEmail);
+    final key = _selectedDogKeyForScope(_scope);
     await _prefs?.setString(key, dog.id);
     // Build 91 (C3 app-side): tell the robot which dog is now "active"
     // so autonomous voice playback (coach rewards, Silent Guardian, Xbox

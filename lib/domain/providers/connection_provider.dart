@@ -14,6 +14,7 @@ import '../../core/utils/jwt_decode.dart';
 import '../../data/datasources/robot_api.dart';
 import 'auth_provider.dart';
 import 'device_provider.dart';
+import 'notifications_provider.dart';
 
 /// 3-tier connection state - honest about what's actually connected
 enum ConnectionStatus {
@@ -549,6 +550,13 @@ class ConnectionNotifier extends StateNotifier<ConnectionState> {
     ws.resetReconnectAttempts();
 
     if (state.isDemoMode) return;
+
+    // Build 125: refresh activity/SG history on resume. The 7-day REST hydrate
+    // previously ran ONLY at login, so backgrounding for hours then reopening
+    // showed no new events (the 2-hour-gap bug). notificationsProvider is the
+    // single history source now, so the SG feed updates from this too.
+    // Self-skips in local mode / when no token is available.
+    _ref.read(notificationsProvider.notifier).hydrateFromRelay();
 
     // Don't attempt relay reconnect if WebSocket is already connected
     // (e.g., local mode has its own active connection)

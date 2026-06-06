@@ -1,13 +1,10 @@
-import 'dart:async';
-
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../core/network/websocket_client.dart';
 import '../../data/models/guardian_event.dart';
-import 'connection_provider.dart';
-import 'mode_provider.dart';
+import '../../data/models/notification_event.dart';
+import 'notifications_provider.dart';
 
-/// Maximum number of events to keep in memory
+/// Maximum number of events to keep in the projected feed
 const int _maxEvents = 100;
 
 /// State for guardian events
@@ -42,128 +39,91 @@ class GuardianEventsState {
   }
 }
 
-/// Provider for guardian events state
+/// Provider for guardian events state.
+///
+/// Build 125: this is now a PROJECTION of the single source of truth
+/// (`notificationsProvider`), not a separate WebSocket-only list. Unifying the
+/// two lists fixes the "two-list rot": the SG feed now gets the same live WS
+/// events, the same relay REST history (hydrate on open + resume), and the same
+/// store-and-forward replay that the Activity tab gets — so opening the app
+/// hours later shows the real backlog here too.
 final guardianEventsProvider =
     StateNotifierProvider<GuardianEventsNotifier, GuardianEventsState>((ref) {
   return GuardianEventsNotifier(ref);
 });
 
-/// Notifier for managing guardian events
+/// Notifier projecting notification events into the guardian feed.
 class GuardianEventsNotifier extends StateNotifier<GuardianEventsState> {
   final Ref _ref;
-  StreamSubscription<WsEvent>? _wsSubscription;
 
   GuardianEventsNotifier(this._ref) : super(const GuardianEventsState()) {
-    // Stay subscribed across the connection lifecycle (like notificationsProvider)
-    // so store-and-forward replays — which arrive on WS (re)connect, before the
-    // user opens the guardian screen — are captured rather than missed. The
-    // screen still calls startListening(); it's idempotent (isListening guard).
-    _ref.listen<ConnectionState>(connectionProvider, (prev, next) {
-      if (next.isConnected && prev?.isConnected != true) {
-        startListening();
-      } else if (!next.isConnected) {
-        stopListening();
-      }
+    // Recompute whenever the single source changes.
+    _ref.listen<List<NotificationEvent>>(notificationsProvider, (_, next) {
+      _recompute(next);
     });
-    if (_ref.read(connectionProvider).isConnected) {
-      startListening();
-    }
+    _recompute(_ref.read(notificationsProvider));
   }
 
-  /// Start listening for guardian events from WebSocket
-  void startListening() {
-    if (state.isListening) return;
-
-    final ws = _ref.read(websocketClientProvider);
-    _wsSubscription?.cancel();
-    _wsSubscription = ws.eventStream.listen(_handleWsEvent);
-
-    state = state.copyWith(isListening: true);
-    print('GuardianEvents: Started listening for events');
-  }
-
-  /// Stop listening for events
-  void stopListening() {
-    _wsSubscription?.cancel();
-    _wsSubscription = null;
-    state = state.copyWith(isListening: false);
-    print('GuardianEvents: Stopped listening for events');
-  }
-
-  /// Handle incoming WebSocket events
-  void _handleWsEvent(WsEvent wsEvent) {
-    // Live events are only relevant in Silent Guardian mode, but ALWAYS ingest
-    // buffered (store-and-forward) replays — they're the offline SG backlog and
-    // arrive regardless of the mode the app is in on reconnect.
-    final currentMode = _ref.read(modeStateProvider).currentMode;
-    if (!wsEvent.buffered && currentMode != RobotMode.silentGuardian) return;
-
-    // Look for guardian/event type messages
-    if (wsEvent.type == 'event' ||
-        wsEvent.type == 'guardian_event' ||
-        wsEvent.data.containsKey('event_type')) {
-
-      try {
-        // Prefer the relay's authoritative server time and stable id (top-level
-        // envelope fields) over anything inside the payload, so replays land at
-        // their real moment.
-        final data = {
-          ...wsEvent.data,
-          if (wsEvent.tsServer != null) 'timestamp': wsEvent.tsServer,
-          if (wsEvent.id != null) 'id': wsEvent.id,
-        };
-        final event = GuardianEvent.fromJson(data);
-        _addEvent(event);
-        print('GuardianEvents: Received ${event.type.label}');
-      } catch (e) {
-        print('GuardianEvents: Failed to parse event: $e');
-      }
-    }
-  }
-
-  /// Add a new event to the list
-  void _addEvent(GuardianEvent event) {
-    final newEvents = [event, ...state.events];
-
-    // Trim to max events
-    final trimmedEvents = newEvents.length > _maxEvents
-        ? newEvents.sublist(0, _maxEvents)
-        : newEvents;
-
-    state = state.copyWith(
-      events: trimmedEvents,
-      unreadCount: state.unreadCount + 1,
+  /// Map a notification to a guardian event, or null if it isn't a
+  /// guardian-relevant type (missions, battery, connect/disconnect are excluded
+  /// from the SG feed but still live in the Activity tab).
+  GuardianEvent? _toGuardianEvent(NotificationEvent n) {
+    final type = switch (n.type) {
+      NotificationEventType.bark => GuardianEventType.barkingDetected,
+      NotificationEventType.sit ||
+      NotificationEventType.lieDown ||
+      NotificationEventType.stand ||
+      NotificationEventType.happy =>
+        GuardianEventType.behaviorChange,
+      NotificationEventType.treatDispensed => GuardianEventType.treatDispensed,
+      NotificationEventType.coachReward => GuardianEventType.quietReward,
+      NotificationEventType.alert => GuardianEventType.alertTriggered,
+      _ => null,
+    };
+    if (type == null) return null;
+    return GuardianEvent(
+      id: n.id,
+      type: type,
+      timestamp: n.timestamp,
+      details: n.subtitle,
+      metadata: n.metadata,
     );
   }
 
-  /// Mark all events as read (reset unread count)
+  void _recompute(List<NotificationEvent> notifications) {
+    final events = <GuardianEvent>[];
+    var unread = 0;
+    for (final n in notifications) {
+      final g = _toGuardianEvent(n);
+      if (g == null) continue;
+      events.add(g);
+      if (!n.isRead) unread++;
+    }
+    final trimmed =
+        events.length > _maxEvents ? events.sublist(0, _maxEvents) : events;
+    state = state.copyWith(events: trimmed, unreadCount: unread);
+  }
+
+  /// Kept for widget API compatibility — ingestion is global now, so these are
+  /// no-ops (the projection already tracks the single source).
+  void startListening() {
+    if (!state.isListening) state = state.copyWith(isListening: true);
+  }
+
+  void stopListening() {
+    if (state.isListening) state = state.copyWith(isListening: false);
+  }
+
+  /// Mark guardian events as read by clearing the unread badge. Delegates to
+  /// the single source so the Activity tab stays consistent.
   void markAllRead() {
+    _ref.read(notificationsProvider.notifier).markAllAsRead();
     state = state.copyWith(unreadCount: 0);
   }
 
-  /// Clear all events
+  /// Clear the feed — clears the single source (Activity tab clears too).
   void clearEvents() {
-    state = state.copyWith(
-      events: [],
-      unreadCount: 0,
-    );
-  }
-
-  /// Add a test event (for debugging)
-  void addTestEvent(GuardianEventType type, String? details) {
-    final event = GuardianEvent(
-      id: DateTime.now().millisecondsSinceEpoch.toString(),
-      type: type,
-      timestamp: DateTime.now(),
-      details: details,
-    );
-    _addEvent(event);
-  }
-
-  @override
-  void dispose() {
-    _wsSubscription?.cancel();
-    super.dispose();
+    _ref.read(notificationsProvider.notifier).clearAll();
   }
 }
 

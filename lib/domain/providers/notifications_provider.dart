@@ -38,7 +38,7 @@ class NotificationsNotifier extends StateNotifier<List<NotificationEvent>> {
   final Ref _ref;
   StreamSubscription? _wsSubscription;
 
-  NotificationsNotifier(this._ref) : super(_generateMockData()) {
+  NotificationsNotifier(this._ref) : super(const []) {
     // Listen for WebSocket events to add real notifications
     _ref.listen<ConnectionState>(connectionProvider, (prev, next) {
       if (next.isConnected && prev?.isConnected != true) {
@@ -234,10 +234,14 @@ class NotificationsNotifier extends StateNotifier<List<NotificationEvent>> {
     final confidenceStr =
         confidence != null ? '${(confidence * 100).toInt()}% confidence' : null;
 
+    // Use the resolved event time / stable id passed in by the caller, NOT
+    // DateTime.now(). Buffered store-and-forward replays must keep their real
+    // moment and id so ordering and id-dedup work (a "now" stamp would float
+    // a 2-hour-old detection to the top and a fresh id would defeat dedup).
     return NotificationEvent(
-      id: DateTime.now().millisecondsSinceEpoch.toString(),
+      id: eventId ?? eventTime.millisecondsSinceEpoch.toString(),
       type: type,
-      timestamp: DateTime.now(),
+      timestamp: eventTime,
       title: _getDefaultTitle(type),
       subtitle: confidenceStr,
       dogId: data['dog_id'] as String?,
@@ -457,124 +461,4 @@ class NotificationsNotifier extends StateNotifier<List<NotificationEvent>> {
     _stopListening();
     super.dispose();
   }
-}
-
-/// Generate mock notification data for testing
-List<NotificationEvent> _generateMockData() {
-  final now = DateTime.now();
-  return [
-    // Today
-    NotificationEvent(
-      id: '1',
-      type: NotificationEventType.treatDispensed,
-      timestamp: now.subtract(const Duration(minutes: 5)),
-      title: 'Treat Dispensed',
-      subtitle: 'Max earned a reward for sitting',
-      dogId: 'dog_1',
-    ),
-    NotificationEvent(
-      id: '2',
-      type: NotificationEventType.sit,
-      timestamp: now.subtract(const Duration(minutes: 6)),
-      title: 'Sitting Detected',
-      subtitle: '94% confidence',
-      dogId: 'dog_1',
-    ),
-    NotificationEvent(
-      id: '3',
-      type: NotificationEventType.bark,
-      timestamp: now.subtract(const Duration(hours: 1)),
-      title: 'Barking Alert',
-      subtitle: '3 barks detected',
-      dogId: 'dog_1',
-    ),
-    NotificationEvent(
-      id: '4',
-      type: NotificationEventType.happy,
-      timestamp: now.subtract(const Duration(hours: 2)),
-      title: 'Happy Dog',
-      subtitle: 'Positive behavior detected',
-      dogId: 'dog_1',
-    ),
-    // Yesterday
-    NotificationEvent(
-      id: '5',
-      type: NotificationEventType.missionCompleted,
-      timestamp: now.subtract(const Duration(days: 1, hours: 2)),
-      title: 'Mission Completed',
-      subtitle: '"Sit Training" - 5/5 treats',
-      missionId: 'mission_1',
-      dogId: 'dog_1',
-    ),
-    NotificationEvent(
-      id: '6',
-      type: NotificationEventType.missionStarted,
-      timestamp: now.subtract(const Duration(days: 1, hours: 2, minutes: 30)),
-      title: 'Mission Started',
-      subtitle: '"Sit Training"',
-      missionId: 'mission_1',
-      dogId: 'dog_1',
-    ),
-    NotificationEvent(
-      id: '7',
-      type: NotificationEventType.treatDispensed,
-      timestamp: now.subtract(const Duration(days: 1, hours: 4)),
-      title: 'Treat Dispensed',
-      subtitle: 'Manual treat given',
-    ),
-    NotificationEvent(
-      id: '8',
-      type: NotificationEventType.lowBattery,
-      timestamp: now.subtract(const Duration(days: 1, hours: 6)),
-      title: 'Low Battery',
-      subtitle: '15% remaining',
-    ),
-    // This week
-    NotificationEvent(
-      id: '9',
-      type: NotificationEventType.connected,
-      timestamp: now.subtract(const Duration(days: 2)),
-      title: 'Connected',
-      subtitle: 'WIM-Z came online',
-    ),
-    NotificationEvent(
-      id: '10',
-      type: NotificationEventType.disconnected,
-      timestamp: now.subtract(const Duration(days: 2, hours: 1)),
-      title: 'Disconnected',
-      subtitle: 'WIM-Z went offline',
-    ),
-    NotificationEvent(
-      id: '11',
-      type: NotificationEventType.missionFailed,
-      timestamp: now.subtract(const Duration(days: 3)),
-      title: 'Mission Failed',
-      subtitle: '"Quiet Training" - Timeout',
-      missionId: 'mission_2',
-      dogId: 'dog_1',
-    ),
-    NotificationEvent(
-      id: '12',
-      type: NotificationEventType.lieDown,
-      timestamp: now.subtract(const Duration(days: 4)),
-      title: 'Lay Down',
-      subtitle: '87% confidence',
-      dogId: 'dog_1',
-    ),
-    NotificationEvent(
-      id: '13',
-      type: NotificationEventType.stand,
-      timestamp: now.subtract(const Duration(days: 5)),
-      title: 'Come',
-      subtitle: '91% confidence',
-      dogId: 'dog_1',
-    ),
-    NotificationEvent(
-      id: '14',
-      type: NotificationEventType.alert,
-      timestamp: now.subtract(const Duration(days: 6)),
-      title: 'Alert',
-      subtitle: 'Unknown movement detected',
-    ),
-  ];
 }

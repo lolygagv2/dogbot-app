@@ -62,18 +62,6 @@ class _EventFeedState extends ConsumerState<EventFeed> {
                         .withOpacity(0.6),
                   ),
             ),
-            const SizedBox(height: 24),
-            // Debug: Add test event button
-            OutlinedButton.icon(
-              onPressed: () {
-                ref.read(guardianEventsProvider.notifier).addTestEvent(
-                      GuardianEventType.dogDetected,
-                      'Test detection',
-                    );
-              },
-              icon: const Icon(Icons.bug_report, size: 16),
-              label: const Text('Add Test Event'),
-            ),
           ],
         ),
       );

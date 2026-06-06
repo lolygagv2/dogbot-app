@@ -1,11 +1,12 @@
 import 'dart:async';
-import 'dart:math';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/network/websocket_client.dart';
+import '../../data/models/activity_aggregation.dart';
 import '../../data/models/dog_profile.dart';
 import 'dog_profiles_provider.dart';
+import 'notifications_provider.dart';
 
 /// Analytics time range
 enum AnalyticsRange { today, week, lifetime }
@@ -179,25 +180,47 @@ class DogAnalyticsNotifier extends StateNotifier<AnalyticsData> {
     state = AnalyticsData(dogId: _dogId, range: AnalyticsRange.today);
   }
 
-  /// Update the range (reloads data from summary)
+  /// Update the range. Build 125: REAL data — no multiplied mock. today = the
+  /// real daily summary; week = sum of the real 7-day stats; lifetime =
+  /// best-effort aggregate of all available history (bounded by the relay's
+  /// 7-day window the app currently holds).
   void setRange(AnalyticsRange range) {
-    // For week/lifetime we'd fetch from API; for now use multiplied mock data
-    final summary = _ref.read(dogDailySummaryProvider(_dogId));
-    final multiplier = range == AnalyticsRange.today
-        ? 1
-        : range == AnalyticsRange.week
-            ? 7
-            : 30;
-    state = AnalyticsData(
-      dogId: _dogId,
-      range: range,
-      treatCount: summary.treatCount * multiplier,
-      detectionCount: (summary.sitCount + summary.barkCount) * multiplier,
-      missionsAttempted: summary.missionCount * multiplier,
-      missionsSucceeded: summary.missionSuccessCount * multiplier,
-      activeMinutes: 15 * multiplier, // Estimated
-      coachRewards: 3 * multiplier, // Estimated
-    );
+    final events = _ref.read(notificationsProvider);
+    switch (range) {
+      case AnalyticsRange.today:
+        final s = summarizeDay(events, dogId: _dogId, day: DateTime.now());
+        state = AnalyticsData(
+          dogId: _dogId,
+          range: range,
+          treatCount: s.treatCount,
+          detectionCount: s.sitCount + s.barkCount,
+          missionsAttempted: s.missionCount,
+          missionsSucceeded: s.missionSuccessCount,
+        );
+        break;
+      case AnalyticsRange.week:
+        final week = summarizeWeek(events, dogId: _dogId);
+        state = AnalyticsData(
+          dogId: _dogId,
+          range: range,
+          treatCount: week.fold(0, (a, s) => a + s.treatCount),
+          detectionCount: week.fold(0, (a, s) => a + s.sitCount + s.barkCount),
+          missionsAttempted: week.fold(0, (a, s) => a + s.missionCount),
+          missionsSucceeded: week.fold(0, (a, s) => a + s.missionSuccessCount),
+        );
+        break;
+      case AnalyticsRange.lifetime:
+        final s = summarizeAll(events, dogId: _dogId);
+        state = AnalyticsData(
+          dogId: _dogId,
+          range: range,
+          treatCount: s.treatCount,
+          detectionCount: s.sitCount + s.barkCount,
+          missionsAttempted: s.missionCount,
+          missionsSucceeded: s.missionSuccessCount,
+        );
+        break;
+    }
   }
 
   @override
@@ -300,30 +323,11 @@ class AllDogsAnalyticsNotifier extends StateNotifier<AnalyticsData> {
   }
 }
 
-/// 7-day demo data for the dashboard chart, keyed by dogId
+/// 7-day stats for the dashboard chart, keyed by dogId.
+/// Build 125: REAL data, aggregated from the activity history — no more
+/// `Random()` upward-trending fake chart.
 final dogWeeklyStatsProvider =
     Provider.family<List<DogDailySummary>, String>((ref, dogId) {
-  final now = DateTime.now();
-  final rng = Random(dogId.hashCode); // deterministic per-dog
-
-  return List.generate(7, (i) {
-    final day = now.subtract(Duration(days: 6 - i));
-    // Trending upward: base values increase with i
-    final treats = 3 + rng.nextInt(3) + (i ~/ 2);
-    final sits = 2 + rng.nextInt(3) + (i ~/ 3);
-    final barks = max(1, 12 - i - rng.nextInt(3));
-    final missions = 1 + rng.nextInt(2);
-    final missionSuccess = rng.nextDouble() > 0.3 ? missions : missions - 1;
-
-    return DogDailySummary(
-      dogId: dogId,
-      date: day,
-      treatCount: treats,
-      sitCount: sits,
-      barkCount: barks,
-      missionCount: missions,
-      missionSuccessCount: max(0, missionSuccess),
-      goalProgress: min(1.0, 0.4 + (i * 0.08) + rng.nextDouble() * 0.1),
-    );
-  });
+  final events = ref.watch(notificationsProvider);
+  return summarizeWeek(events, dogId: dogId);
 });

@@ -206,6 +206,15 @@ class PairedDevicesNotifier extends StateNotifier<PairedDevicesState> {
 
         // Reload device list
         await loadDevices();
+
+        // Build 125: make the just-paired device the ACTIVE one. Without this,
+        // a freshly-paired robot (especially the first on a new account) leaves
+        // deviceIdProvider at the default placeholder (wimz_robot_01), so the
+        // relay status check runs against an UNpaired id and the UI shows
+        // "Device not paired" even though pairing succeeded. setDeviceId
+        // persists it, retargets the WS, and re-requests status for the right
+        // device (→ "paired, waiting for robot" when it's offline).
+        await _ref.read(deviceIdProvider.notifier).setDeviceId(deviceId);
         return true;
       } else {
         state = state.copyWith(
