@@ -28,6 +28,7 @@ import 'presentation/screens/coach/coach_screen.dart';
 import 'presentation/screens/history/history_screen.dart';
 import 'presentation/screens/settings/settings_screen.dart';
 import 'presentation/screens/settings/device_pairing_screen.dart';
+import 'presentation/screens/settings/controller_pairing_screen.dart';
 import 'presentation/screens/settings/connection_diagnostics_screen.dart';
 import 'presentation/screens/settings/notification_preferences_screen.dart';
 import 'presentation/screens/notifications/notifications_screen.dart';
@@ -308,6 +309,12 @@ GoRouter _buildRouter(WidgetRef ref, Listenable refreshListenable) => GoRouter(
     GoRoute(
       path: '/device-pairing',
       builder: (context, state) => const DevicePairingScreen(),
+    ),
+
+    // Xbox / game controller pairing (robot-hosted Bluetooth)
+    GoRoute(
+      path: '/controller-pairing',
+      builder: (context, state) => const ControllerPairingScreen(),
     ),
 
     // Voice commands setup (standalone route from settings or dog profile)

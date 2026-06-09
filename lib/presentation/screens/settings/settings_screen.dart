@@ -104,6 +104,19 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           const _WiFiSetupHelp(),
           const Divider(),
 
+          // Controller pairing (robot-hosted Bluetooth). Shown in both modes —
+          // most useful in local-AP during field deployment, where re-pairing a
+          // dropped Xbox controller otherwise means SSH.
+          _SectionHeader('Controller'),
+          ListTile(
+            leading: const Icon(Icons.sports_esports),
+            title: const Text('Game Controller'),
+            subtitle: const Text('Pair an Xbox controller to the robot'),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => context.push('/controller-pairing'),
+          ),
+          const Divider(),
+
           _SectionHeader('Robot Status'),
           ListTile(
             leading: Icon(
