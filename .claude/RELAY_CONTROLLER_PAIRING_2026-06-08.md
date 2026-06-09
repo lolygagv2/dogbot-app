@@ -19,6 +19,12 @@ Commands carry `timestamp` (ms). If you reject commands older than ~2s, that's f
 ## Please AVOID (1): do not persist these to the activity feed
 `controller_*` events are **transient live state**, not user-facing history. Do **not** write them into the durable activity store / `GET /api/activity`, and don't assign them store-and-forward `seq`/replay. If a controller flapping connected/disconnected got logged as activity events, it would spam the Activity + Silent Guardian feeds (which are now a single unified history source on the app side — see Builds 125/126). Treat them as pass-through only.
 
+## Note (2026-06-09): generic controllers
+The feature is being generalized beyond Xbox to any Bluetooth controller. The
+only contract change is an **optional `kind` field** (`xbox|playstation|8bitdo|generic`)
+added by the robot to `controller_status` / `controller_scan_result`. It's just
+another pass-through field — **no relay impact**. Forwarding stays transparent.
+
 ## No change expected to
 - REST endpoints, auth/JWT, dog/voice/activity APIs, store-and-forward buffer.
 

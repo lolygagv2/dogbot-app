@@ -6,11 +6,19 @@
 // robot pushes back over WebSocket. Plain classes (no codegen) to match the
 // `WifiNetwork` / `NetworkStatusData` pattern in wifi_config_provider.dart.
 
+/// Controller family, used only for display (glyph + pairing instructions).
+/// The robot reports this; the app treats anything unknown as [generic] so a
+/// new controller type can never break the screen.
+enum ControllerKind { xbox, playstation, eightBitDo, generic }
+
 /// A single Bluetooth game controller as the robot sees it.
 class ControllerInfo {
   /// BlueZ device address, e.g. "DC:26:39:AA:BB:CC". Stable identity.
   final String address;
   final String name;
+
+  /// Controller family for display only (see [ControllerKind]).
+  final ControllerKind kind;
 
   /// Bonded with the robot (BlueZ "Paired").
   final bool paired;
@@ -31,6 +39,7 @@ class ControllerInfo {
   const ControllerInfo({
     required this.address,
     required this.name,
+    this.kind = ControllerKind.generic,
     this.paired = false,
     this.trusted = false,
     this.connected = false,
@@ -43,7 +52,8 @@ class ControllerInfo {
       address: (json['address'] ?? json['mac'] ?? '').toString(),
       name: (json['name'] as String?)?.trim().isNotEmpty == true
           ? json['name'] as String
-          : 'Xbox Controller',
+          : 'Game Controller',
+      kind: controllerKindFromString(json['kind'] as String?),
       paired: json['paired'] == true,
       trusted: json['trusted'] == true,
       connected: json['connected'] == true,
@@ -66,12 +76,68 @@ class ControllerInfo {
     return ControllerInfo(
       address: address,
       name: name,
+      kind: kind,
       paired: paired ?? this.paired,
       trusted: trusted ?? this.trusted,
       connected: connected ?? this.connected,
       battery: battery ?? this.battery,
       rssi: rssi ?? this.rssi,
     );
+  }
+}
+
+/// Map the robot's `kind` string to a [ControllerKind]. Unknown/missing →
+/// [ControllerKind.generic] so a brand we don't know about still works.
+ControllerKind controllerKindFromString(String? raw) {
+  switch (raw?.toLowerCase().replaceAll(RegExp(r'[\s_-]'), '')) {
+    case 'xbox':
+      return ControllerKind.xbox;
+    case 'playstation':
+    case 'ps':
+    case 'ps4':
+    case 'ps5':
+    case 'dualshock':
+    case 'dualsense':
+      return ControllerKind.playstation;
+    case '8bitdo':
+    case 'eightbitdo':
+      return ControllerKind.eightBitDo;
+    default:
+      return ControllerKind.generic;
+  }
+}
+
+/// Human-facing family label, e.g. for the discovered-list subtitle.
+String controllerKindLabel(ControllerKind kind) {
+  switch (kind) {
+    case ControllerKind.xbox:
+      return 'Xbox';
+    case ControllerKind.playstation:
+      return 'PlayStation';
+    case ControllerKind.eightBitDo:
+      return '8BitDo';
+    case ControllerKind.generic:
+      return 'Controller';
+  }
+}
+
+/// Per-family pairing-mode hint shown while scanning. Falls back to a generic
+/// instruction for unknown controllers.
+String controllerPairingHint(ControllerKind kind) {
+  switch (kind) {
+    case ControllerKind.xbox:
+      return 'Hold the Xbox button, then hold the small Pair button on top '
+          'until the light flashes quickly.';
+    case ControllerKind.playstation:
+      return 'Hold the PS button + Share (or Create) button together until the '
+          'light bar flashes.';
+    case ControllerKind.eightBitDo:
+      return 'Set the controller to its Bluetooth mode, then hold Start (or the '
+          'Pair button) until the LEDs flash.';
+    case ControllerKind.generic:
+      return 'Put the controller into Bluetooth pairing mode (usually a '
+          'dedicated Pair button or a button-combo held until the light '
+          'flashes), then wait for it to appear here.';
   }
 }
 

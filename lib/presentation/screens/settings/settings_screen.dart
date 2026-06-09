@@ -111,7 +111,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           ListTile(
             leading: const Icon(Icons.sports_esports),
             title: const Text('Game Controller'),
-            subtitle: const Text('Pair an Xbox controller to the robot'),
+            subtitle: const Text('Pair a game controller to the robot'),
             trailing: const Icon(Icons.chevron_right),
             onTap: () => context.push('/controller-pairing'),
           ),

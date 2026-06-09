@@ -1,4 +1,8 @@
-# Robot Brief — In-App Xbox Controller Pairing (2026-06-08)
+# Robot Brief — In-App Game Controller Pairing (2026-06-08)
+
+> Scope note (updated 2026-06-09): the app is **controller-agnostic** — Xbox is
+> just the first family. Pairing/trust/reconnect are universal; only input
+> *mapping* is per-brand. See "Generic controllers" below.
 
 **For:** the WIM-Z robot (Raspberry Pi 5) Claude instance.
 **From:** the app Claude instance. App side is built and shipped behind a capability gate (Build 127) — it is **inert and harmless** on robots that don't implement this yet, so there's no rush and no risk to current beta units.
@@ -35,6 +39,7 @@ Same WebSocket channel as motor/servo/treat commands. Works identically in cloud
     {
       "address": "DC:26:39:AA:BB:CC",
       "name": "Xbox Wireless Controller",
+      "kind": "xbox",        // optional — see "Generic controllers" below
       "paired": true,
       "trusted": true,
       "connected": true,
@@ -48,9 +53,10 @@ Same WebSocket channel as motor/servo/treat commands. Works identically in cloud
 
 ### `controller_scan_result` — discovery trickle (one per device found while scanning)
 ```json
-{"type":"controller_scan_result","address":"DC:26:...","name":"Xbox Wireless Controller","rssi":-52}
+{"type":"controller_scan_result","address":"DC:26:...","name":"Xbox Wireless Controller","kind":"xbox","rssi":-52}
 ```
-Filter to game controllers if you can (name match / BT class `0x002508` gamepad), so the list isn't noise.
+**Filter by Bluetooth device class, not by the Xbox name** (see below), so any
+gamepad shows up and the list isn't noise.
 
 ### `controller_pair_progress` — optional UX feedback during pair/reconnect
 ```json
@@ -63,6 +69,42 @@ Filter to game controllers if you can (name match / BT class `0x002508` gamepad)
 {"type":"controller_error","code":"PAIR_FAILED","message":"Controller not in pairing mode"}
 ```
 App shows `message` (or `code`) as a snackbar and clears any row spinner.
+
+## Generic controllers (not just Xbox) — pairing is already universal
+The app UI is controller-agnostic: it keys on `address`/`name` and treats any
+unknown type as "generic" with a neutral glyph + generic pairing instructions.
+So you get broad support cheaply if you do two things:
+
+1. **Scan-filter by BT device class, not name.** Match the *gamepad/joystick*
+   minor device class (peripheral major class `0x05`, e.g. CoD `0x002508` for a
+   gamepad, `0x000508`/`0x000540` variants for joysticks/keyboards-with-pad)
+   instead of `name contains "Xbox"`. This makes discovery work for DualShock/
+   DualSense, 8BitDo, and generic HID pads with no per-brand code.
+2. **Send an optional `kind` field** on `controller_status` + `controller_scan_result`
+   so the app can show the right glyph + the right pairing hint. Accepted values
+   (anything else → the app shows "generic"):
+   `xbox` | `playstation` | `8bitdo` | `generic`.
+   Derive it from the name / vendor-product id if convenient; **omit it if you
+   don't know — the app defaults to generic and still works.**
+
+**Pair / trust / forget / reconnect are already brand-agnostic** — BlueZ does
+the same thing for any controller, so those handlers need no per-brand logic.
+
+### The one brand-specific part: *driving* the robot
+Pairing ≠ usable input. Reading `/dev/input/jsX` and mapping buttons/axes to
+robot control differs per family (Xbox vs PlayStation vs 8BitDo vs generic HID),
+and driver quirks differ too:
+- **Xbox:** `xpadneo` / `disable_ertm=1` (covered below).
+- **PlayStation:** `hid-playstation` (DualSense) / `hid-sony` (DualShock 4) —
+  **no ERTM workaround needed**, different reconnect behavior.
+- **8BitDo:** depends on the controller's mode switch (X-input vs D-input vs
+  Switch); X-input mode behaves Xbox-like.
+
+Recommendation: **ship Xbox input mapping now** (done), keep scan/pair universal
+from day one, and add input-mapping profiles for other families incrementally as
+demand appears. Consider the SDL game-controller mapping DB to avoid hand-rolling
+each profile. None of this is gated by the app or the contract — it's purely the
+robot's input layer.
 
 ## The actual fix for "random unpairing" (please implement, not just the API)
 The API above lets a user re-pair from the couch, but the root cause needs robot-side persistence:

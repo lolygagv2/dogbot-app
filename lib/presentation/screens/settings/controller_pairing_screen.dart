@@ -155,12 +155,11 @@ class _ReadyBody extends ConsumerWidget {
         const _SectionHeader('Add a Controller'),
         _ScanTile(scanning: snapshot.scanning, onToggle: notifier.setScan),
         if (snapshot.scanning && snapshot.discovered.isEmpty)
-          const Padding(
-            padding: EdgeInsets.fromLTRB(16, 4, 16, 12),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
             child: Text(
-              'Hold the Xbox button + the small Pair button on top until the '
-              'light flashes fast, then wait for it to appear here.',
-              style: TextStyle(color: AppTheme.textTertiary, fontSize: 13),
+              controllerPairingHint(ControllerKind.generic),
+              style: const TextStyle(color: AppTheme.textTertiary, fontSize: 13),
             ),
           ),
         ...snapshot.discovered.map((c) => _DiscoveredTile(
@@ -365,11 +364,15 @@ class _DiscoveredTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final label = controllerKindLabel(controller.kind);
+    final subtitle = controller.kind == ControllerKind.generic
+        ? controller.address
+        : '$label · ${controller.address}';
     return ListTile(
       leading: const Icon(Icons.bluetooth_searching, color: AppTheme.primary),
       title: Text(controller.name),
       subtitle: Text(
-        controller.address,
+        subtitle,
         style: const TextStyle(color: AppTheme.textTertiary, fontSize: 11),
       ),
       trailing: busy
