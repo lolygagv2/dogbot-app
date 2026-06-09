@@ -14,6 +14,14 @@ final deviceIdProvider =
   return DeviceIdNotifier(ref);
 });
 
+/// Build 132: true once a robot has actually been chosen — a saved id loaded
+/// from prefs, an explicit user selection, or local-AP mode. The placeholder
+/// default is "wimz_robot_01", which is ALSO a real fleet robot's id, so
+/// comparing deviceIdProvider against AppConstants.defaultDeviceId misreads
+/// a user who selected that robot as "no robot paired". UI must use this
+/// flag, never the id value, to decide between "Find your robot" and status.
+final hasSelectedDeviceProvider = StateProvider<bool>((ref) => false);
+
 /// Device ID state notifier - manages paired robot ID
 class DeviceIdNotifier extends StateNotifier<String> {
   final Ref _ref;
@@ -31,19 +39,25 @@ class DeviceIdNotifier extends StateNotifier<String> {
 
   Future<void> _loadDeviceId() async {
     try {
+      // Await first so the writes below (own state + the hasSelectedDevice
+      // flag) never run synchronously inside provider construction — Riverpod
+      // forbids modifying other providers while the widget tree is building.
+      final prefs = await SharedPreferences.getInstance();
+
       // In local mode, device ID is always 'local_robot' — no lookup needed
       final localConn = _ref.read(localConnectionProvider);
       if (localConn.isConnected) {
         state = 'local_robot';
+        _ref.read(hasSelectedDeviceProvider.notifier).state = true;
         print('DeviceId: Local mode — using local_robot');
         return;
       }
 
-      final prefs = await SharedPreferences.getInstance();
       final savedId = prefs.getString(AppConstants.keyDeviceId);
       print('DeviceId: Loading saved device_id: ${savedId ?? 'null (using default: ${AppConstants.defaultDeviceId})'}');
       if (savedId != null && savedId.isNotEmpty) {
         state = savedId;
+        _ref.read(hasSelectedDeviceProvider.notifier).state = true;
         // Update WebSocket client with loaded device ID
         _ref.read(websocketClientProvider).setTargetDevice(savedId);
         print('DeviceId: Set WebSocket target to $savedId');
@@ -61,6 +75,7 @@ class DeviceIdNotifier extends StateNotifier<String> {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(AppConstants.keyDeviceId, deviceId);
     state = deviceId;
+    _ref.read(hasSelectedDeviceProvider.notifier).state = true;
 
     // Update WebSocket client immediately
     _ref.read(websocketClientProvider).setTargetDevice(deviceId);
@@ -78,6 +93,7 @@ class DeviceIdNotifier extends StateNotifier<String> {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(AppConstants.keyDeviceId);
     state = AppConstants.defaultDeviceId;
+    _ref.read(hasSelectedDeviceProvider.notifier).state = false;
     // Reset WebSocket client to default
     _ref.read(websocketClientProvider).setTargetDevice(AppConstants.defaultDeviceId);
   }

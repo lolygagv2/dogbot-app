@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../../core/constants/app_constants.dart';
 import '../../../data/models/dog_profile.dart';
 import '../../../domain/providers/connection_mode_provider.dart';
 import '../../../domain/providers/device_provider.dart';
@@ -38,7 +37,10 @@ class HomeScreen extends ConsumerWidget {
     // one we're physically connected to. Show a neutral local label instead.
     final isLocal = ref.watch(isLocalModeProvider);
     final displayName = isLocal ? 'Local Robot' : deviceId;
-    final hasPairedDevice = isLocal || deviceId != AppConstants.defaultDeviceId;
+    // Build 132: "paired" = a robot was actually selected/saved, NOT
+    // deviceId != defaultDeviceId — the placeholder equals a real robot's id
+    // (wimz_robot_01), so that comparison misread it as "no robot".
+    final hasPairedDevice = isLocal || ref.watch(hasSelectedDeviceProvider);
 
     return Scaffold(
       appBar: AppBar(

@@ -83,6 +83,11 @@ class WebRTCNotifier extends StateNotifier<WebRTCConnectionState> {
   bool _rendererInitialized = false;
   bool _dataChannelOpen = false;
   String? _lastDeviceId;  // Store for auto-reconnect
+  // Build 132: true once video was actually started (user tap). Video must
+  // NEVER auto-start before that — _lastDeviceId alone isn't intent: the
+  // deferred device-switch path (no active connection) also sets it, which
+  // let the device-online listener auto-start a stream nobody asked for.
+  bool _videoRequested = false;
   Timer? _reconnectTimer;
   int _reconnectAttempts = 0;
   bool _isPaused = false;  // True when app is backgrounded
@@ -375,8 +380,9 @@ class WebRTCNotifier extends StateNotifier<WebRTCConnectionState> {
         print('WebRTC: Device status - online=$isOnline, deviceId=$deviceId');
 
         // If device came online and we have a stored device ID, auto-reconnect
-        // But not if app is backgrounded, already connected, or already requesting
-        if (isOnline && _lastDeviceId != null &&
+        // But not if app is backgrounded, already connected, or already
+        // requesting — and (Build 132) only after the user started video once.
+        if (isOnline && _videoRequested && _lastDeviceId != null &&
             state.state != WebRTCState.connected &&
             state.state != WebRTCState.connecting &&
             !_isPaused && !_isRequesting) {
@@ -445,6 +451,7 @@ class WebRTCNotifier extends StateNotifier<WebRTCConnectionState> {
 
       // Update device ID AFTER closing old session
       _lastDeviceId = deviceId;
+      _videoRequested = true;
 
       state = state.copyWith(state: WebRTCState.connecting, errorMessage: null);
 

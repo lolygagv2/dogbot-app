@@ -1,8 +1,10 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/network/websocket_client.dart';
+import '../../core/utils/conn_trace.dart';
 import '../../core/services/local_connection_service.dart';
 import '../../core/services/notification_service.dart';
 import '../../data/datasources/robot_api.dart';
@@ -388,26 +390,52 @@ class NotificationsNotifier extends StateNotifier<List<NotificationEvent>> {
     final isLocal = _ref.read(localConnectionProvider).isConnected;
     final token = _ref.read(authProvider).token;
     if (isLocal || token == null) {
-      print('Notifications: hydrateFromRelay skipped (local=$isLocal, hasToken=${token != null})');
+      connTrace('activity-hydrate-skip',
+          'local=$isLocal hasToken=${token != null}');
       return;
     }
 
     try {
       final api = _ref.read(robotApiProvider);
       final since = DateTime.now().toUtc().subtract(const Duration(days: 7));
+      connTrace('activity-hydrate-begin', 'since=$since limit=200');
       final result = await api.getActivity(
         token: token,
         since: since,
         limit: 200,
       );
+
+      // Build 132 diagnostics: dump the raw relay response (chunked — the
+      // trace viewer/copy works line-wise) so "missing at the server" vs
+      // "dropped during parse" is decidable on-device.
+      final raw = jsonEncode(result);
+      const chunk = 800;
+      const maxChunks = 6;
+      for (var i = 0; i < raw.length && i ~/ chunk < maxChunks; i += chunk) {
+        connTrace('activity-raw[${i ~/ chunk}]',
+            raw.substring(i, i + chunk > raw.length ? raw.length : i + chunk));
+      }
+      if (raw.length > chunk * maxChunks) {
+        connTrace('activity-raw-truncated',
+            '${raw.length} chars total, logged first ${chunk * maxChunks}');
+      }
+
       final eventsJson = (result['events'] as List?) ?? [];
-      print('Notifications: hydrated ${eventsJson.length} events from relay');
 
       final hydrated = <NotificationEvent>[];
+      // Count rows the converter dropped, by raw type, so silent skips
+      // (unknown type / guardian lifecycle) are visible in the trace.
+      final dropped = <String, int>{};
       for (final e in eventsJson) {
         if (e is! Map) continue;
-        final n = _activityEventToNotification(e.cast<String, dynamic>());
-        if (n != null) hydrated.add(n);
+        final row = e.cast<String, dynamic>();
+        final n = _activityEventToNotification(row);
+        if (n != null) {
+          hydrated.add(n);
+        } else {
+          final t = row['type'] as String? ?? '<no-type>';
+          dropped[t] = (dropped[t] ?? 0) + 1;
+        }
       }
 
       // Merge: existing state first (most recent in-memory events win on id
@@ -419,8 +447,15 @@ class NotificationsNotifier extends StateNotifier<List<NotificationEvent>> {
       ]..sort((a, b) => b.timestamp.compareTo(a.timestamp));
 
       state = merged.take(200).toList();
+      connTrace(
+          'activity-hydrate-done',
+          'fetched=${eventsJson.length} kept=${hydrated.length} '
+          'dropped=$dropped cursor=${result['next_cursor']} '
+          'newest=${state.isNotEmpty ? state.first.timestamp.toIso8601String() : '-'} '
+          'oldest=${state.isNotEmpty ? state.last.timestamp.toIso8601String() : '-'} '
+          'feed=${state.length}');
     } catch (e) {
-      print('Notifications: hydrateFromRelay error: $e');
+      connTrace('activity-hydrate-error', '$e');
     }
   }
 

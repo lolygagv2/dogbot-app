@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../../core/constants/app_constants.dart';
 import '../../../core/services/local_connection_service.dart';
 import '../../../domain/providers/auth_provider.dart';
 import '../../../domain/providers/connection_mode_provider.dart';
@@ -326,9 +325,11 @@ class _ManageDevicesTile extends ConsumerWidget {
     final count = pairedDevices.devices.length;
 
     // Resolve the active device's display name (falls back to its id).
+    // Build 132: "active" = a robot was actually selected/saved, NOT
+    // deviceId != defaultDeviceId — the placeholder equals a real robot's id
+    // (wimz_robot_01), so that comparison hid it as the active robot.
     String? activeName;
-    final hasActive = count > 0 &&
-        activeDeviceId != AppConstants.defaultDeviceId;
+    final hasActive = count > 0 && ref.watch(hasSelectedDeviceProvider);
     if (hasActive) {
       final match = pairedDevices.devices
           .where((d) => d.deviceId == activeDeviceId);

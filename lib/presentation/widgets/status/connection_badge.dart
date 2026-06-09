@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../core/constants/app_constants.dart';
+import '../../../domain/providers/connection_mode_provider.dart';
 import '../../../domain/providers/connection_provider.dart';
 import '../../../domain/providers/device_provider.dart';
 import '../../theme/app_theme.dart';
@@ -12,8 +12,12 @@ class ConnectionBadge extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final connection = ref.watch(connectionProvider);
-    final deviceId = ref.watch(deviceIdProvider);
-    final hasPairedDevice = deviceId != AppConstants.defaultDeviceId;
+    // Build 132: "paired" = a robot was actually selected/saved, NOT
+    // deviceId != defaultDeviceId — the placeholder equals a real robot's id
+    // (wimz_robot_01), so that comparison showed "No Robot" for that robot.
+    // Local mode is always "paired" (direct connection, no relay id needed).
+    final isLocal = ref.watch(isLocalModeProvider);
+    final hasPairedDevice = isLocal || ref.watch(hasSelectedDeviceProvider);
 
     // Determine color and text based on 3-tier status
     Color color;

@@ -1,5 +1,39 @@
 # WIM-Z Resume Chat Log
 
+## Session: 2026-06-08/09 — Builds 127–128 (robot-hosted game-controller pairing, app side)
+**Goal:** New feature — an in-app settings flow to pair a game controller (Xbox first, then any BT controller) directly to the robot. The phone NEVER uses its own Bluetooth; it's a remote control panel that drives the robot's BlueZ stack (scan/pair/trust/forget/reconnect) and renders the live state the robot reports. Motivation: Xbox pads unpair randomly, and re-pairing a deployed robot today needs SSH — impractical for non-tech owners. Requirement: additive-only, must not disrupt current beta testers.
+**Status:** ✅ App side fully built, analyzer-clean, all 3 commits pushed to `origin/main` (synced at `8321399`). Backend (robot + relay) confirmed the contract by their Claude instances. Pending: robot reboot to activate (handlers written, service not restarted + ERTM needs a module reload) + on-device verification + first real `controller_status` payload to lock field names.
+
+### Architecture / why it's safe (additive)
+- **Transport = existing WS command/event channel** (same path as motor/servo/treat). Works in BOTH cloud-relay and local-AP mode — `websocketClientProvider` is the singleton `WebSocketClient.instance`; local mode sets `setTargetDevice('local_robot')`, so `sendCommand`/`eventStream` work uniformly. No new REST.
+- **Capability gate:** on screen open the app sends `controller_status`; no reply in 4s → inert "Update needed" state. So un-updated beta robots see a harmless screen — nothing else changes for them.
+- **Robot is authoritative** for all controller state (mirrors the guardian-event pattern).
+
+### Build 127 (commits `a5034ff` + `9a25829`) — app
+New files: `lib/data/models/controller_info.dart` (plain classes `ControllerInfo`/`ControllerSnapshot`, no codegen), `lib/domain/providers/controller_pairing_provider.dart` (`ControllerPairingNotifier`; command/event names are constants in `ControllerCommands`/`ControllerEvents`), `lib/presentation/screens/settings/controller_pairing_screen.dart` (status card + scan + pair + Trust toggle = the persist sign-off + saved list with reconnect/forget). Wired: route `/controller-pairing` in `app.dart`, "Controller → Game Controller" tile in `settings_screen.dart` (shown in BOTH modes — most needed in local-AP during deployment). Bumped `+127`.
+- **Contract (WS):** commands `controller_status|scan|pair|trust|forget|reconnect`; events `controller_status` (authoritative snapshot) + `controller_scan_result|pair_progress|error`.
+- **Watermark fix (`9a25829`):** relay assigns `controller_*` events a seq from its shared monotonic counter but does NOT buffer them for replay. The app's persisted store-and-forward watermark (`_lastSeenSeq` in `websocket_client.dart`) advanced on ANY seq'd event → a transient controller event would push the watermark past a buffered bark/alert at a lower seq, dropping it as a "duplicate" on reconnect. Guarded `controller_*` out of the watermark advance. (Relay called the seq "harmless" — true from its side, but the app's watermark is the trap.)
+
+### Backend confirmations (other Claude instances)
+- **Relay:** ✅ NO code change. Forwarding is generic (no command allowlist); `controller_*` won't be persisted to activity feed (not in `LEGACY_TO_ACTIVITY_TYPE` / `FEED_WORTHY_EVENTS`); staleness threshold 2000ms is fine for user-initiated cmds. Only note → the harmless seq assignment, which we guarded app-side anyway.
+- **Robot:** 🛠️ Adding `controller_*` branches to BOTH command paths (relay `_handle_command` + local-AP `_execute_contract_command`), delegating to one shared brain; reusing existing `xbox_persistent.py` reconnect logic. Will emit BOTH `event` and `type` keys to dodge field-drift (app reads `type ?? event` — covered). Chose "write code + ERTM now, NO service restart" → not live until reboot.
+
+### Build 128 (commit `8321399`) — generalize beyond Xbox
+User asked how hard it'd be to support any BT controller. Answer: app + pairing side was already ~95% generic; the real cost is robot-side INPUT MAPPING (per-family button/axis), not pairing (BlueZ is brand-agnostic). Did the cheap app generalization:
+- `ControllerInfo` gained optional `kind` (`xbox|playstation|8bitdo|generic`), parsed defensively → unknown falls back to `generic`, can't break the screen. Per-family glyph label + pairing-mode hint; discovered rows show family. Neutralized copy (default name "Game Controller", generic scan hint, settings subtitle).
+- Briefs updated: scan-filter by **BT device class, not Xbox name** (universal day one); `kind` optional pass-through (no relay impact); ship Xbox input mapping now, add other families' input profiles incrementally (consider SDL mapping DB).
+
+### Docs written
+`.claude/ROBOT_CONTROLLER_PAIRING_2026-06-08.md` (full WS contract + the real random-unpairing fix: trust+persist allowlist, auto-reconnect daemon, `disable_ertm=1`, non-interactive BT agent + generic-controller section) and `.claude/RELAY_CONTROLLER_PAIRING_2026-06-08.md`. Memory saved: [[controller-pairing-feature]].
+
+### Next session
+1. **Robot reboot** to activate handlers + ERTM. Until then the app screen correctly shows "Update needed" (gate working, not a bug).
+2. **On-device verify** (local-AP easiest): screen loads snapshot → Scan → controller appears → Pair → Trust → reboot/drop pad → auto-reconnect → status card stays live. Confirm `login-connect` canary FIRST ([[codemagic-publish-trap]]) — Builds 127+128 pushed, Codemagic building.
+3. **Capture a real `controller_status` JSON** after pair+trust to confirm `kind`/field names (one-line app fix if drift).
+4. Carry-overs still open: store-and-forward E2E, password-reset E2E, per-robot servo calibration, Codemagic→Play auto-publish.
+
+---
+
 ## Session: 2026-06-06 — Builds 125–126 (real data, unified SG history, local profiles, robot guardian contract)
 **Goal:** User frustrated with beta regressions. Three reported defects, treated as a "fix everything now, no to-be-continued" mandate: (1) Silent Guardian history doesn't load when reopening the app after backgrounding for hours; (2) the events shown are FAKE; (3) local-mode dog profile vanishes on app close.
 **Status:** ✅ All app-side fixes shipped (Builds 125 + 126), pushed to `origin/main` (synced). Backend (robot + relay) confirmed live by their Claude instances. Feature is closed end-to-end pending on-device verification + a runtime-captured escalation payload.

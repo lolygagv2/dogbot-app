@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/constants/api_endpoints.dart';
 import '../../core/network/dio_client.dart';
+import '../../core/utils/conn_trace.dart';
 import '../models/dog_profile.dart';
 import '../models/mission.dart';
 import '../models/schedule.dart';
@@ -194,11 +195,14 @@ class RobotApi {
         queryParameters: qp,
         options: Options(headers: {'Authorization': 'Bearer $token'}),
       );
+      connTrace('activity-get',
+          'status=${response.statusCode} qp=$qp dataIsMap=${response.data is Map}');
       if (response.statusCode == 200 && response.data is Map) {
         return (response.data as Map).cast<String, dynamic>();
       }
       return {};
     } catch (e) {
+      connTrace('activity-get-error', '$e');
       print('RobotApi: Failed to fetch activity: $e');
       return {};
     }

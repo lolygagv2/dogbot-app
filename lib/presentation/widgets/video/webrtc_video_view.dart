@@ -34,14 +34,11 @@ class _WebRTCVideoViewState extends ConsumerState<WebRTCVideoView> {
   RTCVideoRenderer? _currentRenderer;
   bool _hasFirstFrame = false;
 
-  @override
-  void initState() {
-    super.initState();
-    // Request video on next frame to ensure provider is ready
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _requestVideo();
-    });
-  }
+  // Build 132: NO auto-connect at mount. The auto-started WebRTC attempt
+  // raced the WS handshake, lagged, and usually failed before succeeding on
+  // a manual retry — so video now starts only from the user's tap (the
+  // disconnected placeholder below). Once started, the provider's
+  // auto-reconnect machinery keeps it alive as before.
 
   void _requestVideo() {
     if (_requestSent) return;

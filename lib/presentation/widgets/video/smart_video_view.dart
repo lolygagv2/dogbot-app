@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/services/local_connection_service.dart';
+import '../../../domain/providers/device_provider.dart';
 import '../../../domain/providers/settings_provider.dart';
 import '../../../domain/providers/webrtc_provider.dart';
 import 'mjpeg_viewer.dart';
@@ -79,6 +80,15 @@ class _SmartVideoViewState extends ConsumerState<SmartVideoView> {
   Widget build(BuildContext context) {
     final isLocal = ref.watch(settingsProvider).localModeEnabled;
 
+    // Build 132: relay mode with no robot selected — there is nothing to
+    // connect to, so keep the video area blank (no "Tap to connect" that can
+    // never succeed). An explicit deviceId from the parent overrides.
+    if (!isLocal &&
+        widget.deviceId == null &&
+        !ref.watch(hasSelectedDeviceProvider)) {
+      return Container(color: Colors.black);
+    }
+
     // Build 112: if the user opted into WebRTC (local mode) and it drops after
     // connecting, fall straight back to the reliable MJPEG stream instead of
     // freezing on "buffering". Harmless in relay mode (which ignores the flag).
@@ -120,6 +130,14 @@ class _SmartVideoViewState extends ConsumerState<SmartVideoView> {
                 onTap: () {
                   setState(() => _useMjpegFallback = false);
                   _startFallbackTimer();
+                  // Build 132: WebRTCVideoView no longer auto-connects at
+                  // mount, so this opt-in must fire the request itself.
+                  final localConn = ref.read(localConnectionProvider);
+                  ref.read(webrtcProvider.notifier).requestVideoStream(
+                        localConn.isConnected
+                            ? 'local_robot'
+                            : widget.deviceId ?? ref.read(deviceIdProvider),
+                      );
                 },
                 child: const Padding(
                   padding: EdgeInsets.symmetric(horizontal: 10, vertical: 6),
