@@ -83,11 +83,17 @@ class _ControllerPairingScreenState
                   body: 'Asking the robot about its controllers.',
                   showSpinner: true,
                 ),
-              ControllerPhase.unsupported => const _CenteredHint(
-                  icon: Icons.system_update,
-                  title: 'Update needed',
-                  body: 'This robot\'s firmware doesn\'t support in-app '
-                      'controller pairing yet. Update the robot to enable it.',
+              ControllerPhase.unsupported => _CenteredHint(
+                  icon: Icons.help_outline,
+                  title: 'No response from robot',
+                  body: 'The robot didn\'t answer the controller check. It may '
+                      'still be starting up, or its firmware may not support '
+                      'controller pairing yet. Try again in a moment.',
+                  action: FilledButton.icon(
+                    onPressed: notifier.retry,
+                    icon: const Icon(Icons.refresh),
+                    label: const Text('Retry'),
+                  ),
                 ),
               ControllerPhase.ready => _ReadyBody(state: state),
             },
@@ -440,12 +446,14 @@ class _CenteredHint extends StatelessWidget {
   final String title;
   final String body;
   final bool showSpinner;
+  final Widget? action;
 
   const _CenteredHint({
     required this.icon,
     required this.title,
     required this.body,
     this.showSpinner = false,
+    this.action,
   });
 
   @override
@@ -475,6 +483,10 @@ class _CenteredHint extends StatelessWidget {
               textAlign: TextAlign.center,
               style: const TextStyle(color: AppTheme.textSecondary),
             ),
+            if (action != null) ...[
+              const SizedBox(height: 20),
+              action!,
+            ],
           ],
         ),
       ),

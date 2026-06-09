@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/network/websocket_client.dart';
+import '../../core/utils/conn_trace.dart';
 import '../../data/models/controller_info.dart';
 
 /// Robot-hosted Xbox controller pairing.
@@ -123,15 +124,25 @@ class ControllerPairingNotifier extends StateNotifier<ControllerPairingState> {
   /// timeout only while we still haven't heard back at all.
   void refreshStatus() {
     state = state.copyWith(clearError: true);
+    connTrace('ctrl-status-send', 'target=${_ws.targetDeviceId}');
     _ws.sendCommand(ControllerCommands.status);
     if (state.phase == ControllerPhase.unknown) {
       _capabilityTimer?.cancel();
       _capabilityTimer = Timer(_capabilityTimeout, () {
         if (mounted && state.phase == ControllerPhase.unknown) {
+          connTrace('ctrl-status-timeout', 'no controller_status in '
+              '${_capabilityTimeout.inSeconds}s → unsupported');
           state = state.copyWith(phase: ControllerPhase.unsupported);
         }
       });
     }
+  }
+
+  /// Re-probe from a hard "unsupported" state (manual Retry button). Resets the
+  /// phase so the capability timer arms again.
+  void retry() {
+    state = state.copyWith(phase: ControllerPhase.unknown, clearError: true);
+    refreshStatus();
   }
 
   /// Start/stop Bluetooth discovery on the robot (puts it in pairing mode).
@@ -182,6 +193,9 @@ class ControllerPairingNotifier extends StateNotifier<ControllerPairingState> {
       state = state.copyWith(clearError: true, clearProgress: true);
 
   void _onEvent(WsEvent event) {
+    if (event.type.startsWith('controller_')) {
+      connTrace('ctrl-evt-rx', event.type);
+    }
     switch (event.type) {
       case ControllerEvents.status:
         _capabilityTimer?.cancel();

@@ -430,7 +430,14 @@ class WebSocketClient {
       // losing a notification. Exempt them so the watermark only tracks
       // replayable feed events.
       final seq = json['seq'];
-      if (seq is int && !(msgType?.startsWith('controller_') ?? false)) {
+      final isControllerMsg = msgType?.startsWith('controller_') ?? false;
+      if (isControllerMsg) {
+        // Build 129: prove on-device that controller_* reaches the socket and
+        // survives the watermark gate (the pre-129 drop point). Read via
+        // Settings → Connection Diagnostics. [[debug-via-in-app-diagnostics]]
+        connTrace('ws-controller-rx', '$msgType seq=$seq wm=$_lastSeenSeq');
+      }
+      if (seq is int && !isControllerMsg) {
         if (seq <= _lastSeenSeq) return; // already accepted — duplicate
         _lastSeenSeq = seq;
         _scheduleWatermarkPersist();
