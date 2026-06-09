@@ -82,9 +82,17 @@ class WsEvent {
     // Data can be nested in 'data' field OR at top level
     // Robot sends: {"type": "battery", "level": 95, "charging": true}
     // Or relay sends: {"type": "battery", "data": {"level": 95, "charging": true}}
+    //
+    // Build 131: EVERY field is parsed defensively. Previously strict casts
+    // (`as String?`, `as int?`, `as Map<String,dynamic>`) threw a TypeError when
+    // the relay sent a field with an unexpected runtime type (e.g. a numeric
+    // `ts_server`/`seq`), and _onMessage's try/catch swallowed it with print()
+    // — invisible in conn_trace. That silently dropped controller_status (the
+    // "delivered but never rendered" bug) and is a landmine for any event.
     Map<String, dynamic> eventData;
-    if (json.containsKey('data') && json['data'] is Map) {
-      eventData = json['data'] as Map<String, dynamic>;
+    final dataField = json['data'];
+    if (dataField is Map) {
+      eventData = Map<String, dynamic>.from(dataField);
     } else {
       // Use entire message as data (excluding type/event fields)
       eventData = Map<String, dynamic>.from(json)
@@ -97,14 +105,23 @@ class WsEvent {
       data: eventData,
       // Store-and-forward envelope fields live at the TOP level, siblings of
       // type/device_id — they'd be discarded by the nested-data branch above.
-      seq: json['seq'] as int?,
+      seq: _asInt(json['seq']),
       buffered: json['buffered'] == true,
-      tsServer: json['ts_server'] as String?,
+      tsServer: json['ts_server']?.toString(),
       // Relay emits the stable dedup id as top-level `id` on replay frames but
       // as `event_id` on live-forwarded messages — accept either so live and
       // REST-hydrated copies of the same event share an id and dedup.
-      id: json['id'] as String? ?? json['event_id'] as String?,
+      id: json['id']?.toString() ?? json['event_id']?.toString(),
     );
+  }
+
+  /// Lenient int parse: accepts int, num (e.g. 8548.0), or numeric string.
+  /// Never throws — returns null for anything unparseable.
+  static int? _asInt(dynamic v) {
+    if (v is int) return v;
+    if (v is num) return v.toInt();
+    if (v is String) return int.tryParse(v);
+    return null;
   }
 }
 
@@ -450,7 +467,13 @@ class WebSocketClient {
         final cb = onControllerEvent;
         if (cb != null) {
           connTrace('ws-controller-cb', msgType ?? '');
-          cb(WsEvent.fromJson(json));
+          // try/catch + connTrace so a parse/handler failure is VISIBLE in the
+          // diagnostics log instead of being swallowed by the outer print().
+          try {
+            cb(WsEvent.fromJson(json));
+          } catch (e) {
+            connTrace('ws-controller-err', '$e');
+          }
         } else {
           connTrace('ws-controller-nocb', msgType ?? '');
         }

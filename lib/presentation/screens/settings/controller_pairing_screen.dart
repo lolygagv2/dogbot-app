@@ -6,6 +6,10 @@ import '../../../domain/providers/connection_mode_provider.dart';
 import '../../../domain/providers/controller_pairing_provider.dart';
 import '../../theme/app_theme.dart';
 
+/// Bump with each pubspec build so the on-screen debug strip identifies the
+/// running binary (ends the "which build am I on" guesswork).
+const String kControllerBuild = '131';
+
 /// "Game Controller" screen — pair an Xbox controller directly to the robot.
 ///
 /// The phone never uses its own Bluetooth. Every action is a command relayed to
@@ -69,34 +73,72 @@ class _ControllerPairingScreenState
             ),
         ],
       ),
-      body: !connected
-          ? const _CenteredHint(
-              icon: Icons.wifi_off,
-              title: 'Robot not connected',
-              body: 'Connect to your robot first, then come back to pair a '
-                  'controller.',
-            )
-          : switch (state.phase) {
-              ControllerPhase.unknown => const _CenteredHint(
-                  icon: Icons.sync,
-                  title: 'Checking robot…',
-                  body: 'Asking the robot about its controllers.',
-                  showSpinner: true,
-                ),
-              ControllerPhase.unsupported => _CenteredHint(
-                  icon: Icons.help_outline,
-                  title: 'No response from robot',
-                  body: 'The robot didn\'t answer the controller check. It may '
-                      'still be starting up, or its firmware may not support '
-                      'controller pairing yet. Try again in a moment.',
-                  action: FilledButton.icon(
-                    onPressed: notifier.retry,
-                    icon: const Icon(Icons.refresh),
-                    label: const Text('Retry'),
-                  ),
-                ),
-              ControllerPhase.ready => _ReadyBody(state: state),
-            },
+      body: Column(
+        children: [
+          _DebugStrip(state: state, connected: connected),
+          Expanded(
+            child: !connected
+                ? const _CenteredHint(
+                    icon: Icons.wifi_off,
+                    title: 'Robot not connected',
+                    body: 'Connect to your robot first, then come back to pair '
+                        'a controller.',
+                  )
+                : switch (state.phase) {
+                    ControllerPhase.unknown => const _CenteredHint(
+                        icon: Icons.sync,
+                        title: 'Checking robot…',
+                        body: 'Asking the robot about its controllers.',
+                        showSpinner: true,
+                      ),
+                    ControllerPhase.unsupported => _CenteredHint(
+                        icon: Icons.help_outline,
+                        title: 'No response from robot',
+                        body: 'The robot didn\'t answer the controller check. '
+                            'It may still be starting up, or its firmware may '
+                            'not support controller pairing yet. Try again in '
+                            'a moment.',
+                        action: FilledButton.icon(
+                          onPressed: notifier.retry,
+                          icon: const Icon(Icons.refresh),
+                          label: const Text('Retry'),
+                        ),
+                      ),
+                    ControllerPhase.ready => _ReadyBody(state: state),
+                  },
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Build 131: always-visible diagnostic strip so the live state is
+/// screenshot-able without digging through the conn_trace log. Shows the build
+/// number, the gate phase, whether the robot's controller events are actually
+/// reaching the provider, and via which delivery path.
+class _DebugStrip extends StatelessWidget {
+  final ControllerPairingState state;
+  final bool connected;
+  const _DebugStrip({required this.state, required this.connected});
+
+  @override
+  Widget build(BuildContext context) {
+    final s = state;
+    return Container(
+      width: double.infinity,
+      color: AppTheme.surfaceLight,
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      child: Text(
+        'build $kControllerBuild · ${connected ? 'connected' : 'NOT connected'} · '
+        'phase ${s.phase.name} · events ${s.eventsReceived}'
+        '${s.lastEventType != null ? ' · last ${s.lastEventType} (${s.lastEventSource})' : ''}',
+        style: const TextStyle(
+          color: AppTheme.textSecondary,
+          fontSize: 11,
+          fontFamily: 'monospace',
+        ),
+      ),
     );
   }
 }

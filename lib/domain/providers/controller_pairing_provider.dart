@@ -63,12 +63,23 @@ class ControllerPairingState {
   final String? errorMessage;
   final String? progressMessage;
 
+  // ---- Build 131: on-screen diagnostics (visible debug strip) ----
+  /// How many controller_* events the provider has actually processed.
+  final int eventsReceived;
+
+  /// Type + delivery path of the last controller event the provider saw.
+  final String? lastEventType;
+  final String? lastEventSource; // 'cb' | 'stream'
+
   const ControllerPairingState({
     this.phase = ControllerPhase.unknown,
     this.snapshot = const ControllerSnapshot(),
     this.busyAddress,
     this.errorMessage,
     this.progressMessage,
+    this.eventsReceived = 0,
+    this.lastEventType,
+    this.lastEventSource,
   });
 
   bool get scanning => snapshot.scanning;
@@ -79,6 +90,9 @@ class ControllerPairingState {
     String? busyAddress,
     String? errorMessage,
     String? progressMessage,
+    int? eventsReceived,
+    String? lastEventType,
+    String? lastEventSource,
     bool clearBusy = false,
     bool clearError = false,
     bool clearProgress = false,
@@ -90,6 +104,9 @@ class ControllerPairingState {
       errorMessage: clearError ? null : (errorMessage ?? this.errorMessage),
       progressMessage:
           clearProgress ? null : (progressMessage ?? this.progressMessage),
+      eventsReceived: eventsReceived ?? this.eventsReceived,
+      lastEventType: lastEventType ?? this.lastEventType,
+      lastEventSource: lastEventSource ?? this.lastEventSource,
     );
   }
 }
@@ -103,6 +120,7 @@ final controllerPairingProvider =
 class ControllerPairingNotifier extends StateNotifier<ControllerPairingState> {
   final Ref _ref;
   Timer? _capabilityTimer;
+  StreamSubscription<WsEvent>? _eventSub;
 
   /// How long we wait for the first snapshot before declaring the robot's
   /// firmware doesn't support this feature.
@@ -115,10 +133,14 @@ class ControllerPairingNotifier extends StateNotifier<ControllerPairingState> {
   /// Called when the screen opens. Subscribes to robot events and requests the
   /// current snapshot. Safe to call repeatedly.
   void start() {
-    // Build 130: receive controller_* via the direct callback, not the
-    // broadcast eventStream — a late screen-scoped subscriber to that stream was
-    // missing the probe reply (see WebSocketClient.onControllerEvent).
-    _ws.onControllerEvent = _onEvent;
+    // Build 131: belt-and-suspenders delivery — register BOTH the direct
+    // callback AND the broadcast stream. _onEvent is idempotent, so whichever
+    // path delivers, the screen renders. Diagnostics (eventsReceived /
+    // lastEventSource) tell us which one actually fired.
+    _ws.onControllerEvent = (e) => _onEvent(e, 'cb');
+    _eventSub ??= _ws.eventStream.listen((e) {
+      if (e.type.startsWith('controller_')) _onEvent(e, 'stream');
+    });
     refreshStatus();
   }
 
@@ -194,10 +216,15 @@ class ControllerPairingNotifier extends StateNotifier<ControllerPairingState> {
   void clearMessages() =>
       state = state.copyWith(clearError: true, clearProgress: true);
 
-  void _onEvent(WsEvent event) {
-    if (event.type.startsWith('controller_')) {
-      connTrace('ctrl-evt-rx', event.type);
-    }
+  void _onEvent(WsEvent event, [String source = 'cb']) {
+    if (!event.type.startsWith('controller_')) return;
+    connTrace('ctrl-evt-rx', '${event.type} via=$source');
+    // Diagnostic counters — surfaced on the screen's debug strip.
+    state = state.copyWith(
+      eventsReceived: state.eventsReceived + 1,
+      lastEventType: event.type,
+      lastEventSource: source,
+    );
     switch (event.type) {
       case ControllerEvents.status:
         _capabilityTimer?.cancel();
@@ -261,7 +288,8 @@ class ControllerPairingNotifier extends StateNotifier<ControllerPairingState> {
   @override
   void dispose() {
     _capabilityTimer?.cancel();
-    if (_ws.onControllerEvent == _onEvent) _ws.onControllerEvent = null;
+    _eventSub?.cancel();
+    _ws.onControllerEvent = null;
     super.dispose();
   }
 }
