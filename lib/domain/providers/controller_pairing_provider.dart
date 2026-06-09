@@ -102,7 +102,6 @@ final controllerPairingProvider =
 
 class ControllerPairingNotifier extends StateNotifier<ControllerPairingState> {
   final Ref _ref;
-  StreamSubscription<WsEvent>? _eventSub;
   Timer? _capabilityTimer;
 
   /// How long we wait for the first snapshot before declaring the robot's
@@ -116,7 +115,10 @@ class ControllerPairingNotifier extends StateNotifier<ControllerPairingState> {
   /// Called when the screen opens. Subscribes to robot events and requests the
   /// current snapshot. Safe to call repeatedly.
   void start() {
-    _eventSub ??= _ws.eventStream.listen(_onEvent);
+    // Build 130: receive controller_* via the direct callback, not the
+    // broadcast eventStream — a late screen-scoped subscriber to that stream was
+    // missing the probe reply (see WebSocketClient.onControllerEvent).
+    _ws.onControllerEvent = _onEvent;
     refreshStatus();
   }
 
@@ -259,7 +261,7 @@ class ControllerPairingNotifier extends StateNotifier<ControllerPairingState> {
   @override
   void dispose() {
     _capabilityTimer?.cancel();
-    _eventSub?.cancel();
+    if (_ws.onControllerEvent == _onEvent) _ws.onControllerEvent = null;
     super.dispose();
   }
 }

@@ -181,6 +181,14 @@ class WebSocketClient {
   final _eventController = StreamController<WsEvent>.broadcast();
   Stream<WsEvent> get eventStream => _eventController.stream;
 
+  /// Build 130: direct delivery hook for `controller_*` events. The controller
+  /// pairing provider sets this and receives events synchronously at parse time,
+  /// bypassing the broadcast `eventStream` — a screen-scoped late subscriber to
+  /// that broadcast stream was silently missing the probe reply (event added to
+  /// the stream, ws-controller-rx logged, but the listener never fired). A
+  /// direct callback at the proven-firing parse site is timing-independent.
+  void Function(WsEvent event)? onControllerEvent;
+
   // WebRTC signaling streams
   final _webrtcCredentialsController =
       StreamController<Map<String, dynamic>>.broadcast();
@@ -436,6 +444,16 @@ class WebSocketClient {
         // survives the watermark gate (the pre-129 drop point). Read via
         // Settings → Connection Diagnostics. [[debug-via-in-app-diagnostics]]
         connTrace('ws-controller-rx', '$msgType seq=$seq wm=$_lastSeenSeq');
+        // Build 130: deliver directly to the controller provider here, at the
+        // site we've proven fires. The broadcast eventStream below still gets it
+        // for any other listener, but the provider no longer depends on it.
+        final cb = onControllerEvent;
+        if (cb != null) {
+          connTrace('ws-controller-cb', msgType ?? '');
+          cb(WsEvent.fromJson(json));
+        } else {
+          connTrace('ws-controller-nocb', msgType ?? '');
+        }
       }
       if (seq is int && !isControllerMsg) {
         if (seq <= _lastSeenSeq) return; // already accepted — duplicate
