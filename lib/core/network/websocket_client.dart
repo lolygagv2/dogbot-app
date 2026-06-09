@@ -421,8 +421,16 @@ class WebSocketClient {
       // collapses overlapping replays across reconnects — and advance on
       // anything newer. Messages without a seq (acks, signaling, local mode)
       // are untouched and fall through to normal routing below.
+      //
+      // Build 127: `controller_*` events are transient live state. The relay
+      // assigns them a seq (shared monotonic counter) but does NOT add them to
+      // the replay buffer. If we let them advance the persisted watermark, a
+      // buffered feed event (bark/alert) sitting at a lower seq would be dropped
+      // at the `seq <= _lastSeenSeq` guard on the next reconnect — silently
+      // losing a notification. Exempt them so the watermark only tracks
+      // replayable feed events.
       final seq = json['seq'];
-      if (seq is int) {
+      if (seq is int && !(msgType?.startsWith('controller_') ?? false)) {
         if (seq <= _lastSeenSeq) return; // already accepted — duplicate
         _lastSeenSeq = seq;
         _scheduleWatermarkPersist();
