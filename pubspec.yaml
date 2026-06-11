@@ -1,7 +1,7 @@
 name: wimz_app
 description: WIM-Z Robotic Dog Trainer - Mobile Control App
 publish_to: 'none'
-version: 1.0.0+133
+version: 1.0.0+134
  
 environment:
   sdk: '>=3.2.0 <4.0.0'
@@ -27,7 +27,7 @@ dependencies:
 
   # ============ Video Streaming ============
   flutter_mjpeg: ^2.0.4
-  flutter_webrtc: ^1.2.1
+  flutter_webrtc: ^1.4.1
 
   # ============ Controls ============
   flutter_joystick: ^0.2.0

@@ -1103,6 +1103,28 @@ class WebRTCNotifier extends StateNotifier<WebRTCConnectionState> {
     await _closeInternal();
   }
 
+  /// Build 134: full shutdown for app termination (AppLifecycleState.detached).
+  /// hardTeardown() stops tracks but leaves the renderer — and its NATIVE
+  /// texture registration — alive. On iOS, a WebRTC frame still in flight
+  /// during engine destruction then calls textureFrameAvailable: on the
+  /// half-destroyed engine → SIGSEGV (TestFlight crash, build 133:
+  /// FlutterRTCVideoRenderer renderFrame → Shell::GetPlatformView on freed
+  /// Shell). Disposing the renderer unregisters the texture so no late frame
+  /// can reach the dying engine. Renderer is recreated lazily by getRenderer()
+  /// if the app is re-attached instead of killed.
+  Future<void> shutdown() async {
+    // hardTeardown first — _closeInternal needs _renderer to stop the
+    // stream's tracks and clear srcObject before we dispose it.
+    await hardTeardown();
+    final renderer = _renderer;
+    _renderer = null;
+    _rendererInitialized = false;
+    // Fresh state with no renderer reference (copyWith can't null it);
+    // keep the persisted mute preference in case we're re-attached.
+    state = WebRTCConnectionState(isAudioMuted: state.isAudioMuted);
+    await renderer?.dispose();
+  }
+
   @override
   void dispose() {
     _reconnectTimer?.cancel();

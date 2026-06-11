@@ -735,9 +735,12 @@ class _WimzAppState extends ConsumerState<WimzApp> with WidgetsBindingObserver {
         // Build 89: don't send client_closing — that frame is part of the
         // disabled session_hello protocol and the relay logs a warning on
         // unknown frames. Just hard-teardown WebRTC and close the WS.
+        // Build 134: shutdown() (not hardTeardown) — also disposes the
+        // renderer so its native texture callback can't fire into the
+        // dying engine (iOS termination crash, build 133).
         print('App: Lifecycle → detached — disconnecting');
         try {
-          ref.read(webrtcProvider.notifier).hardTeardown();
+          ref.read(webrtcProvider.notifier).shutdown();
         } catch (_) {/* best-effort */}
         try {
           ref.read(websocketClientProvider).disconnect();
