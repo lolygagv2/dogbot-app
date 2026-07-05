@@ -1,540 +1,307 @@
-# WIM-Z (Watchful Intelligent Mobile Zen) Product Roadmap including MObile App 
-*Last Updated: January 2026*
+# WIM-Z (Watchful Intelligent Mobile Zen) Product Roadmap
+*Last Updated: June 2026 · Build 106*
 
-## 🎯 Mission Statement
+## Mission Statement
 Build the world's first autonomous AI-powered pet training robot - the WIM-Z (Watchful Intelligent Mobile Zen) - that combines mobility, edge AI inference, and behavioral learning to create a premium pet care experience.
 
-## 🏆 Strategic Positioning
+---
 
-### Must-Have Features to Lead Field
-- **Robust AI pose + audio fusion** with intelligent reward logic
-- **Return-to-dock charging** with fully autonomous missions
-- **Multi-dog ID and behavior history** with individual profiles
-- **Happy Pet Progress Report** - 1-5 bone scale grading system tracking:
-  - Successful behaviors performed
-  - Treats dispensed vs earned
-  - Bark frequency analysis
-- **Dual-mode camera system:**
-  - Photography Mode: High-quality photos with AI presets
-  - AI Detection Mode: Real-time behavior boxing and recognition
-- **Behavioral Analysis Module** - Combined audio + vision synopsis
+## 📊 Investor Status Summary (June 2026)
 
-### High-Value Differentiators
-- **True autonomous training sequences** - Not just scheduled dispensing
-  - Example: "Sit 5 times today" with 3/5 random reward rate
-  - Teaches 100% obedience with variable reinforcement
-- **AI-curated social content** - Automatic best moments capture
-- **Offline LLM capability** - Local command processing without internet
-- **Open API architecture** - Third-party trainer/IoT integration
+**Where we are:** Functional, multi-unit prototype fleet. **Five robots (treatbot1–5) are built and operational**, all running one shared codebase with per-unit calibration. The platform is past proof-of-concept and into reliability hardening + manufacturing prep.
 
-### The Killer Combo (Our Unique Moat)
-1. ✅ True AI-powered autonomous training (not scheduled treats)
-2. ✅ Individual dog recognition without collars (pose + ArUco)
-3. ✅ Real-time pose detection with adaptive learning
-4. ✅ Social media auto-posting (viral marketing built-in)
-5. ✅ Multi-dog household support (competitors fail here)
-6. ✅ Mobility + Edge AI + Training in ONE device
+**What works today (demonstrable):**
+- **Autonomous behavior modes** — Coach (active trick training), Silent Guardian (anti-nuisance-barking), Manual, and Mission modes, driven by on-robot edge AI.
+- **Edge AI** — dog detection + pose estimation on Hailo-8 (26 TOPS) at 30+ FPS; bark detection via a TFLite classifier with bandpass filtering.
+- **Reward loop** — vision/audio → decision → treat dispense → reward logged to cloud history, closed end-to-end.
+- **Remote + local control** — live WebRTC video, manual driving, and treat dispensing from a mobile app over an AWS relay, *and* a no-internet local-AP mode (phone ↔ robot direct).
+- **Cloud activity history** — barks, guardian events, treats, and battery telemetry forwarded to the relay for the app's history feed.
 
-## 📊 Competitive Analysis
+**Known reliability work in flight (see Known Issues / Roadmap below):**
+- Rare silent hard-freezes under investigation (power-button single-point-of-failure + power-delivery; no software crash trace).
+- Mission Scheduler auto-start and Weekly Summary accuracy still need validation.
+- Data layer to be refactored into ML/analytics-friendly schema (design pending).
 
-| Competitor | What They Do | What They're Missing | Our Advantage |
-|------------|--------------|---------------------|---------------|
-| **Furbo/Petcube** | Camera + treat toss | No mobility, no training AI | Mobile + AI training |
-| **Anki Vector** | Cute robot companion | No dog training, discontinued | Pet-focused AI |
-| **Treat&Train** | Stationary trainer | No mobility, no AI, manual only | Autonomous + mobile |
-| **Robot vacuums** | Mobility + sensors | No pet interaction purpose | Purpose-built for pets |
+**Two hardware generations** (full detail in `hardware_specs.md`): Gen-1 (tb1–2, L298N + encoder motors + IMX500, PID-capable) and Gen-2 (tb3–5, Cytron MDD10A + 9V brushed + IMX708 Wide; tb4 = NoIR night-vision).
 
-**Our Positioning:** "WIM-Z - The first autonomous AI companion that moves, learns, and trains multiple pets independently"
+---
 
-## 🎯 Market Gap Analysis
+## Current Status: Build 106 — Fleet Reliability Hardening
 
-Most AI pet robots (Sony Aibo, Tombot, Joy for All) simulate companionship for humans. WIM-Z's hybrid vision-audio reinforcement loop creates the first true **AI companion for animals**, not just humans.
+### Build Phase: **CORE COMPLETE — HARDENING**
+All core hardware and software systems are operational across the 5-unit fleet. Focus since April 2026 has shifted from feature-build to per-unit calibration, fleet reliability (WiFi, timing, power), and cloud-history correctness.
 
-- **Precision AI Focus:** Vision + sound fusion via Hailo-8 + IMX500
-- **Premium Build Quality:** Dyson-level trust with dog-centric design
-- **Safety Certified:** Professional-grade power electronics
+### Recent Build History (selected)
+| Period | Focus | Status |
+|-------|-------|--------|
+| Jun 2026 | Cloud activity history (guardian/treat/bark events), in-app BT controller pairing, WebRTC ICE grace-period | ✅ Shipped |
+| May 2026 | Silent Guardian overhaul (BPM fast-escalation, offline catch-up), local-AP demo mode, per-dog/house voice, night mode, adaptive-bitrate WebRTC, fleet-wide monotonic-timing fix | ✅ Shipped |
+| May 2026 | Fleet bring-up: per-unit battery/gimbal/dispenser calibration (tb2–tb5), Cytron drivetrain, IMX708 cameras, WiFi onboard-only | ✅ Shipped |
+| Feb 2026 | Build 34–40: mission events, AI overlay, coach events, schedule API | ✅ Shipped |
 
-## 📊 Current Status: Unified Architecture Implementation
+---
 
-### ✅ COMPLETED - Hardware Foundation (Original Phase 1)
-- [x] Devastator chassis with 2x DC motor with Encoders
-- [x] Raspberry Pi 5 + Hailo-8 (26 TOPS HAT)
-- [x] IMX500 camera with pan/tilt servos (2x)
+## ✅ Completed Systems (Reviewed)
+
+### Hardware (100% Complete)
+- [x] Devastator chassis with DFRobot DC motors + encoders (6V 210RPM 10Kg.cm)
+- [x] Raspberry Pi 5 + Hailo-8 HAT (26 TOPS)
+- [x] IMX500 camera with pan/tilt servos
 - [x] Treat dispenser carousel with servo
-- [x] YOLOv8s dog detection/pose inference working
-- [x] 50W amplifier + 2x speakers
-- [x] NeoPixels + Blue LED tube lighting
+- [x] 50W amplifier + 2x 4ohm 5W speakers
+- [x] NeoPixels (165 LEDs) + Blue LED tube lighting
 - [x] 4S2P 21700 battery pack with BMS
 - [x] Power distribution (4x buck converters)
-- [x] Basic motor/servo control tested
+- [x] Ugreen USB Audio Adapter (mic + speaker)
+- [x] Conference microphone for bark detection
+- [x] Xbox Wireless Controller (Bluetooth)
+- [x] Roomba-style charging pads (16.8V/5A max)
 
-### ✅ COMPLETED - Unified Architecture (Oct 21-22, 2025)
+### Core Infrastructure (100% Complete)
+- [x] Event bus (`core/bus.py`) - Thread-safe pub/sub messaging
+- [x] State manager (`core/state.py`) - System mode tracking
+- [x] Safety monitor (`core/safety.py`) - Battery/temp/CPU monitoring
+- [x] Data store (`core/store.py`) - SQLite persistence
+- [x] Behavior interpreter (`core/behavior_interpreter.py`) - Pose detection wrapper
+- [x] Dog tracker (`core/dog_tracker.py`) - Presence-based detection + ArUco ID
 
-#### Phase 1: Core Infrastructure ⚠️ DRAFT
-- [x] Event bus (`/core/bus.py`) - Pub/sub messaging
-- [x] State manager (`/core/state.py`) - System mode tracking
-- [x] Safety monitor (`/core/safety.py`) - Battery/temp monitoring
-- [⚠️] Data store (`/core/store.py`) - SQLite persistence [DRAFT - 550 lines, needs testing]
+### Service Layer (100% Complete)
+- [x] Perception: `detector.py` (YOLOv8), `bark_detector.py` (TFLite + bandpass filter)
+- [x] Motion: `motor.py` (PID control), `pan_tilt.py` (servo tracking with nudge mode)
+- [x] Reward: `dispenser.py` (treat carousel)
+- [x] Media: `led.py` (165 NeoPixels), `usb_audio.py` (pygame playback)
+- [x] Control: `xbox_controller.py`, `bluetooth_esc.py`
+- [x] Power: `battery_monitor.py` (charging detection)
+- [x] Cloud: `relay_client.py` (WebSocket to relay server)
+- [x] Streaming: `webrtc.py`, `video_track.py` (with overlay)
 
-#### Phase 2: Service Layer ✅
-- [x] Perception service (`/services/perception/detector.py`)
-- [x] Pan/tilt service (`/services/motion/pan_tilt.py`)
-- [x] Motor service (`/services/motion/motor.py`)
-- [x] Dispenser service (`/services/reward/dispenser.py`)
-- [x] SFX service (`/services/media/sfx.py`)
-- [x] LED service (`/services/media/led.py`)
-- [x] Gamepad service (`/services/input/gamepad.py`)
-- [x] GUI service (`/services/ui/gui.py`)
+### Orchestration Layer (100% Complete)
+- [x] Mode FSM (`mode_fsm.py`) - IDLE, COACH, SILENT_GUARDIAN, MANUAL, MISSION
+- [x] Coaching Engine (`coaching_engine.py`) - Trick training + coach_progress events
+- [x] Silent Guardian (`silent_guardian.py`) - Bark detection + quiet training
+- [x] Reward Logic (`reward_logic.py`) - Rules-based reward decisions
+- [x] Sequence Engine (`sequence_engine.py`) - Celebration sequences
+- [x] Mission Engine (`mission_engine.py`) - Formal mission execution with proper events
+- [x] Program Engine (`program_engine.py`) - Training programs
 
-#### Phase 3: Orchestration Layer ⚠️ DRAFT
-- [x] Sequence engine (`/orchestrators/sequence_engine.py`)
-- [x] Reward logic (`/orchestrators/reward_logic.py`)
-- [x] Mode FSM (`/orchestrators/mode_fsm.py`)
-- [⚠️] Mission engine (`/orchestrators/mission_engine.py`) [DRAFT - 600 lines, needs testing]
-
-#### Phase 4: Configuration ⚠️ PARTIAL
-- [x] Modes config (`/configs/modes.yaml`)
-- [ ] Sequences config (`/configs/sequences/*.yaml`)
-- [ ] Policies config (`/configs/policies/*.yaml`)
-- [ ] Mission definitions (`/missions/*.json`)
-
-#### Phase 5: Main Orchestrator ✅
-- [x] Main entry point (`/main_treatbot.py`)
-- [x] Startup/shutdown sequences
-- [x] Service coordination
-
-#### Phase 6: API Layer ⚠️ DRAFT
-- [x] REST API (`/api/server.py`)
-- [⚠️] WebSocket server (`/api/ws.py`) [DRAFT - 467 lines, needs testing]
-
-### 🔄 HARDWARE UPDATES [November 25, 2025]
-
-**✅ COMPLETED UPGRADES:**
-- **Motors:** Upgraded to DFRobot Metal DC Motors w/Encoders (6V 210RPM 10Kg.cm)
-  - **Higher torque:** 10 kg·cm (vs 4.5 kg·cm previous)
-  - **Higher speed:** 210 RPM (vs 133 RPM previous)
-  - **Built-in encoders:** Quadrature feedback for precise control
-  - **✅ STATUS:** Working with error-free operation, safety fixes complete
-
-**Audio System:**
-- ✅ **Ugreen USB Audio Adapter** - Unified microphone input and speaker output
-- ✅ **Conference Microphone** - 2.5" disc, omnidirectional pickup for bark detection
-- ✅ **Upgraded Speakers** - 4Ω 5W speakers for improved audio output
-- ✅ **VOICEMP3 folder** - Organized local audio files (/talks/ and /songs/)
-- ✅ **Complete Testing** - Recording/playback verified working
-- ✅ **Simplified architecture** - No DFPlayer, relays, or external amplifier needed
-
-**Charging Pads:** Roomba-style bare metal charging plates
-- **Connection:** Direct to P+/P- 
-- ✅ **Status:** Hardware working without errors, but power is throttled to 16.8V and maximum of 5A power.
-
-**Camera System:**
-- ✅ **Longer camera cable** installed
-- ✅ **STATUS:** Tested and functioning adequately
-
-**🔧 OFFLINE - Postponed for future development:**
-- **IR Sensors:** 3x rear sensors installed (Left, Center, Right)
-  - **Issue:** Caused Pi startup failure when connected
-  - **Status:** Hardware present but disconnected
-
-**Sensor Additions (Still Planned):**
-- [ ] Bumper sensors (collision detection)
-- [ ] Ultrasonic sensors (obstacle avoidance, optional)
-- [ ] Cliff sensors (edge detection)
+### API Layer (100% Complete)
+- [x] REST API (`api/server.py`) - All endpoints including GET /missions
+- [x] WebSocket (`api/ws.py`) - Commands including download_song
+- [x] Schedule API - CRUD with dog_id, schedule_id, type fields
 
 ---
 
-## 🎯 System Completion Gates
+## ✅ Verified Working (April 2026)
 
-### Critical Gates for MVP (Must Pass All):
-1. **Event Bus Working** ⏳ - Services can publish/subscribe events
-2. **AI Detection Active** ⏳ - Dog detection triggers VisionEvent.DogDetected
-3. **Behavior Recognition** ⏳ - Detects sit/down/stand poses reliably
-4. **Reward Logic** ⏳ - Sitting behavior triggers celebration sequence
-5. **Sequence Execution** ⏳ - Coordinated lights + sound + treat
-6. **Database Logging** ❌ - Events saved to SQLite store
-7. **Cooldown Enforcement** ⏳ - Time between rewards enforced
-8. **Daily Limits** ⏳ - Max rewards per day working
-9. **API Monitoring** ⏳ - REST endpoints return telemetry
-10. **Full Autonomous Loop** ⏳ - Complete training cycle works
+### App/Relay Integration
+- [x] Relay forwarding mission_progress events (not all missions tested yet)
+- [x] App displaying video overlay with AI confidence
+- [x] Servo tracking checkbox working in app
+- [x] MP3 upload/download flow working
 
-**Status Legend:** ✅ Verified | ⏳ Implemented, needs testing | ❌ Not implemented
+### Coach Mode Live Testing
+- [x] Bark filter rejecting claps/voice (mostly)
+- [x] Pose thresholds accurate (sitting ≠ down)
+- [x] Full coaching session working end-to-end
 
-## 🚀 Remaining Development Tasks
+### Silent Guardian Live Testing
+- [x] Bark → intervention → reward flow working
+- [x] Escalation and cooldown working
 
-### **IMMEDIATE: Complete Core System (This Week)**
-
-#### Priority 1: Missing Components [CRITICAL]
-- [ ] **SQLite Store** (`/core/store.py`) - Event persistence
-- [ ] **Mission Engine** (`/orchestrators/mission_engine.py`) - Training sequences
-- [ ] **WebSocket Server** (`/api/ws.py`) - Real-time updates
-- [ ] **Config Files** - Sequences, policies, missions
-- [ ] **Integration Tests** - Verify all 10 completion gates
-
-#### Priority 2: System Validation [HIGH]
-- [ ] **Test Autonomous Training Loop**
-  - [ ] Dog detection → pose recognition → reward
-  - [ ] Cooldown and daily limit enforcement
-  - [ ] Mission state persistence
-
-- [ ] **Hardware Integration Testing**
-  - [ ] Motors respond to events
-  - [ ] Servos track detected dogs
-  - [ ] Treat dispenser accurate
-  - [ ] LED patterns synchronized
-
-- [ ] **API Validation**
-  - [ ] All REST endpoints functional
-  - [ ] WebSocket streaming works
-  - [ ] Remote control via API
-  - [ ] Telemetry reporting accurate
-
-### **NEXT PHASE: Enhanced Features (After MVP)**
-#### Advanced AI Features
-- [ ] **Multi-dog Recognition** - ArUco markers or pose-based ID
-- [ ] **Bark Detection** - Audio analysis for "quiet" training
-- [ ] **Behavioral Patterns** - Learning curves and analytics
-
-#### User Interface
-- [ ] **Mobile Dashboard** - iOS-quality PWA
-- [ ] **Remote Control** - Bluetooth gamepad support
-- [ ] **Social Features** - Auto photo capture and sharing
-
-### **FUTURE: Production Features**
-
-#### Navigation & Autonomy - [Optional]
-- [ ] **Return-to-Base** - IR beacon docking system
-- [ ] **Obstacle Avoidance** - Sensor integration
-- [ ] **Path Recording** - Dead reckoning with encoders
-
-#### Navigation Enhancements [Optional]
-- [ ] **Waypoint Mapping System**
-  - [ ] Visual landmark recognition
-  - [ ] GPS integration for outdoor mode
-  - [ ] Patrol route definition
-  - [ ] Auto-exploration mapping
-
-- [ ] **Human Detection Mode** [Security Feature]
-  - [ ] YOLOv8 person detection model
-  - [ ] Stranger vs family member recognition
-  - [ ] Alert notifications
-  - [ ] Security patrol mode
-
-### **Additional WIM-Z Features**
-
-#### 3.1 Reward Logic System [Priority: HIGH]
-**Goal:** Rules-based training system with configurable parameters
-
-```yaml
-# Example: Sit Training Mission
-mission_type: "sit_training"
-rules:
-  - condition: "dog_pose == 'sit' AND duration >= 3.0"
-    action: "dispense_treat"
-    cooldown: 15  # seconds before next treat
-    daily_limit: 5
-  
-  - condition: "consecutive_success >= 3"
-    action: ["dispense_treat", "play_audio", "led_celebration"]
-    
-schedule:
-  frequency: "5x per day"
-  active_hours: [8, 20]  # 8 AM - 8 PM
-  dog_detection_timeout: 10  # minutes before mission abort
-```
-
-**Implementation:**
-- [ ] YAML-based rule engine
-- [ ] Condition parser (pose, duration, count)
-- [ ] Action executor (treat, audio, lights, movement)
-- [ ] Mission logger (success/fail tracking)
-- [ ] Daily schedule manager
-
-#### 3.2 Event Logging & Pattern Recognition [Priority: MEDIUM]
-- [ ] **Event Database**
-  - [ ] SQLite for local storage
-  - [ ] Tables: sessions, detections, rewards, errors
-  - [ ] Export to CSV/JSON
-  
-- [ ] **Pattern Analysis**
-  - [ ] Success rate by time of day
-  - [ ] Dog learning curves
-  - [ ] Optimal training times
-  - [ ] Behavior trends over weeks
-
-#### 3.3 Advanced Features [Priority: LOW]
-- [ ] **ArUco Marker Dog ID** (Optional)
-  - [ ] Individual dog profiles
-  - [ ] Per-dog training progress
-  - [ ] Collar-mounted marker detection
-  - [ ] Fallback: pose + location for ID
-
-### **PHASE 4: Navigation & Autonomy**  [Optional]
-
-#### 4.1 Obstacle Avoidance [Priority: HIGH]  [Optional]
-**Sensor Strategy:**
-- **IR Sensors:** Primary (short-range, 0-30cm)
-- **Cliff Sensors:** Edge detection (prevent falls)
-- **Bumper Sensors:** Last-resort collision detection
-- **Ultrasonic:** Optional (medium-range, 30-200cm)
-
-**Implementation:**
-- [ ] Sensor fusion algorithm
-- [ ] Collision avoidance behavior
-- [ ] Emergency stop on bumper hit
-- [ ] Safe zone boundaries
-
-#### 4.2 Return-to-Base Navigation [Priority: MEDIUM]  [Optional]
-**Approach:** Dead Reckoning + IR Beacon
-
-**Dead Reckoning:**
-- [ ] Odometry from motor encoders
-- [ ] Path recording (position + timestamp)
-- [ ] Reverse path calculation
-- [ ] Cumulative error compensation
-
-**IR Beacon Docking (Roomba-style approach):**
-- [ ] IR transmitter on charging dock (360° pulses, 38 kHz modulation)
-- [ ] 3-4 IR receivers on robot perimeter
-- [ ] Two rear-facing receivers angled ±15° for alignment
-- [ ] Signal strength differential for centering while reversing
-- [ ] Triangulation algorithm (3+ meter range)
-- [ ] Final approach alignment with contact bumpers
-- [ ] Virtual wall capability (keep-out zones)
-- [ ] Combine with wheel encoder timing for precision
-
-**Failure Recovery:**
-- [ ] Progress tracking (0-100%)
-- [ ] Stuck detection (no movement for 30s)
-- [ ] SMS/app notification: "Help needed at 73%"
-- [ ] Manual remote control override
-
-### **PHASE 5: User Interface (Now)**
-
-#### 5.1 Web Dashboard [Priority: HIGH]
-**Tech Stack:** Flask/FastAPI + React/Vue
-- [ ] **Real-time Monitoring**
-  - [ ] Live camera feed
-  - [ ] Battery status
-  - [ ] Current mission status
-  - [ ] System health indicators
-
-- [ ] **Mission Control**
-  - [ ] Start/stop missions
-  - [ ] Schedule editor
-  - [ ] Training history graphs
-  - [ ] Dog behavior analytics
-
-- [ ] **Settings**
-  - [ ] Treat dispenser calibration
-  - [ ] Audio volume controls
-  - [ ] Detection sensitivity sliders
-  - [ ] Safe zone boundaries
-
-#### 5.2 Remote Control [Priority: MEDIUM] ✅ XBOX COMPLETE
-**Connectivity:** WiFi API + Bluetooth Xbox Controller
-
-**✅ COMPLETED - Xbox Wireless Controller (Dec 2025)**
-- [x] **Manual Control Mode**
-  - [x] Left stick for direction (forward/back/turn)
-  - [x] Right stick for camera pan/tilt
-  - [x] Emergency stop (A/B buttons)
-  - [x] Manual treat dispense (LB)
-
-- [x] **Xbox Controller Features**
-  - [x] Auto-detect on Bluetooth pairing
-  - [x] Spawned as subprocess by treatbot.service
-  - [x] Priority over autonomous mode (AUTO → MANUAL transition)
-  - [x] 2-second watchdog timeout + stale command detection
-
-- [x] **Button Mapping**
-  | Button | Function |
-  |--------|----------|
-  | Left Stick | Direction (forward/back/turn) |
-  | Right Stick | Camera pan/tilt |
-  | RT | Play "good dog" audio |
-  | LT | Cycle LED modes |
-  | A | Emergency stop |
-  | B | Stop motors |
-  | X | Toggle blue LED |
-  | Y | Play treat sound |
-  | LB | Dispense treat |
-  | RB | Take photo |
-  | Start (☰) | Record audio (2 sec) |
-  | D-pad Left | Cycle songs |
-  | D-pad Right | Cycle talks |
-  | D-pad Down | Play queued audio |
-  | D-pad Up | Stop audio |
-
-- [x] **Audio Recording (Start Button)**
-  - [x] Press Start → Beep + Fire LED + 2 sec recording
-  - [x] Automatic playback of recording
-  - [x] Press Start again within 10s → Save to VOICEMP3/talks/
-  - [x] Dynamic audio folder rescan after save
-
-**Implementation Files:**
-- `xbox_hybrid_controller.py` - Main controller logic
-- `core/hardware/proper_pid_motor_controller.py` - PID motor control
-- `core/motor_command_bus.py` - Motor command routing
-
-#### 5.3 Mobile App [Priority: HIGH - NEXT]
-**Platform:** React Native or Flutter
-- [ ] Responsive web app as MVP
-- [ ] Native app if needed (iOS/Android)
-- [ ] Push notifications
-- [ ] Photo gallery sync
-- [ ] Remote control via web interface
-
-### **PHASE 6: Social & AI Integration (Mar 2026)**
-
-#### 6.1 Photography System [Priority: MEDIUM]
-**Goal:** Auto-capture and select best photos for social media
-
-**Implementation:**
-- [ ] Burst mode (10 photos in 2 seconds)
-- [ ] Quality scoring algorithm:
-  - Dog in center frame (YOLOv8 bbox)
-  - Focus score (Laplacian variance)
-  - Good lighting (histogram analysis)
-  - No motion blur
-- [ ] Top 3 photo selection
-- [ ] Optional: LLM captioning (GPT-4 Vision)
-
-**Packages:**
-- `pillow` - Image processing
-- `opencv-python` - Quality metrics
-- `requests` - API calls
-
-#### 6.2 Social Media Auto-Posting [Priority: LOW]
-- [ ] Instagram API integration
-- [ ] SMS reporting (Twilio)
-- [ ] WeChat/KakaoTalk support (region-specific)
-- [ ] Daily digest: "Your dog trained 5x today! 🐕"
-
-#### 6.3 LLM Integration [Priority: LOW]
-- [ ] Voice command parsing
-- [ ] Natural language mission creation
-  - Example: "Train Benny to be quiet" → JSON mission
-- [ ] Training tips via ChatGPT
-- [ ] Behavior analysis summaries
-- [ ] Offline LLM mode with preset library
-- [ ] Text summaries via SMS/Telegram
+### Hardware Status
+- [x] Servo calibration accurate (needs tweaking per unit during manufacturing)
+- [x] Treat dispenser reliable
+- [x] Audio playback consistent
 
 ---
 
-## 🔧 Technical Architecture
+## ✅ Build 40 Code Changes (Reviewed)
 
-### API Server Design
-```
-api/
-├── server.py           # FastAPI main (monolithic - all routes inline)
-├── ws.py               # WebSocket server (real-time updates)
-└── static/             # Static assets for web interface
-```
+### Mission Events (P0-R1)
+- [x] Changed `mission_name` → `mission_id` in all events
+- [x] Changed `stage` → `stage_number` in all events
+- [x] Added `action` field to all mission_progress events
 
-**Current Endpoints in server.py:**
-- `/telemetry` - System health and status
-- `/mode/set`, `/mode/get` - Mode FSM control
-- `/motor/*` - Motor control (speed, stop, emergency)
-- `/servo/*` - Pan/tilt/carousel control
-- `/led/*` - LED patterns and modes
-- `/audio/*` - Playback, recording, file management
-- `/camera/*` - Snapshot, stream control
-- `/treat/dispense` - Treat dispenser trigger
+### AI Display (P0-R2)
+- [x] Added `update_dog_behavior()` call in detector.py:778
+- [x] Bridges behavior data to dog_tracker for video overlay
 
-### Mission Module System
-**Unified API for all scripts:**
-```python
-from missions import MissionController
+### Servo Tracking (P0-R3)
+- [x] Auto-enable tracking when entering COACH mode
+- [x] Debug logging for tracking state changes
 
-mission = MissionController("sit_training")
-mission.start()
-mission.wait_for_condition("sit", duration=3.0)
-mission.reward(treat=True, audio="good.mp3", lights="celebration")
-mission.log_event("success")
-mission.end()
-```
+### MP3 Download (P1-R4)
+- [x] Constructs full URL from relay's relative path
+- [x] Saves to dog-specific folder (VOICEMP3/songs/{dog_id}/)
+
+### Coach Events (P1-R5)
+- [x] coach_progress events: greeting, command, watching
+- [x] coach_reward event on success
+
+### Missions Endpoint (P2-R6)
+- [x] GET /missions returns mission catalog
 
 ---
 
-## 📦 Deliverables Checklist
+## 🚀 Shipped Since Build 40 (April → June 2026)
 
-### Hardware Finalization
-- [x] Conference mic connected and tested
-- [x] IR sensors installed
-- [ ] Final enclosure assembly
-- [x] Charging dock with IR beacon
+### Fleet Bring-Up & Calibration
+- [x] **5-unit fleet operational** (treatbot1–5), one codebase + per-unit `robot_profiles/*.yaml`
+- [x] Gen-2 drivetrain: **Cytron MDD10A** + 9V brushed motors (tb3–5)
+- [x] **IMX708 Wide** cameras on Gen-2; **NoIR** night-vision variant on tb4
+- [x] **Per-unit ADS1115 battery calibration** (factors 3.6–54×) — fixes false SoC readings
+- [x] Per-unit gimbal center/limits + dispenser steps-per-slot tuning across the fleet
+- [x] TMC2209 UART brought up on Gen-2 dispensers (tb4/tb5 wiring fixes)
 
-### Software MVP
-- [ ] API server running on boot
-- [ ] Camera tracking functional
-- [ ] 3+ training missions working
-- [ ] Web dashboard accessible
-- [ ] Return-to-base tested
-- [ ] Battery monitoring live
+### Reliability & Safety
+- [x] **Fleet-wide monotonic-timing fix** — no RTC battery → clock jumps at boot; all safety/timeout checks moved to `time.monotonic()` (motor dead-man watchdogs, charge gate)
+- [x] Motor **dead-man's watchdog** + stop-motors on WebRTC teardown
+- [x] **WiFi onboard-only** — removed flaky USB dongles, MAC-locked NM profiles, closed dual-AP-manager conflict
+- [x] Blue-LED GPIO25 self-heal (survives boot race)
 
-### Production Ready
-- [ ] All sensors calibrated
-- [ ] Mission library (10+ sequences)
-- [ ] User manual written
-- [ ] Setup wizard implemented
-- [ ] OTA update system
-- [ ] 48-hour stress test passed
+### Connectivity
+- [x] **Local-AP demo mode** — 5 GHz `WIMZ-*` AP, phone ↔ robot direct (WebRTC data-channel + MJPEG fallback), no internet
+- [x] **Adaptive-bitrate/resolution WebRTC** + memory monitoring
+- [x] **In-app Bluetooth game-controller pairing** over relay and local-AP
+- [x] Relay commands: `mood_led`, `audio_volume`, `motor`, volume telemetry
 
----
+### Behavior & Training
+- [x] **Silent Guardian overhaul** — BPM-based fast-escalation, offline catch-up, sustained-bark segmentation, anti-farming treat cooldown
+- [x] **Per-dog voice + house voice** — owner's first dog acts as house voice before shipped defaults; command audio routed per-dog
+- [x] **Night mode** — kills blue tube light; pairs with tb4 NoIR camera
+- [x] Coach robustness: 2-consecutive-frame commit for `spin`, bark-duration rejection, per-dog `force_trick`
 
-## 🎯 Success Metrics
-
-**Technical KPIs:**
-- Pose detection accuracy: >90%
-- False positive rate: <5%
-- Battery life: >4 hours continuous
-- Docking success rate: >95%
-- Mission completion rate: >85%
-
-**Business KPIs:**
-- User satisfaction: 4.5+ stars
-- Viral coefficient: >1.2 (social sharing)
-- Customer support tickets: <10/month
-- Hardware failure rate: <2%
+### Cloud Activity History
+- [x] Robot forwards **guardian / bark / treat_dispensed / battery** events to relay → app history feed
+- [x] Silent Guardian session-summary column-shift + zero-fill bug fixed (correct kwargs + 3 new counters)
 
 ---
 
-## 🚨 Risk Mitigation
+## 🩺 Known Issues / Risk Register (June 2026)
 
-| Risk | Impact | Mitigation |
-|------|--------|------------|
-| ArUco fails on fluffy dogs | Medium | Use pose + location for ID |
-| WiFi range limits control | High | Add Bluetooth fallback |
-| Docking accuracy issues | Medium | Multi-sensor approach (IR + encoders) |
-| AI inference too slow | Critical | Already using Hailo-8 (26 TOPS) |
-| Battery degrades quickly | Medium | Smart BMS + cycle monitoring |
-
----
-
-## 📅 Timeline
-
-- **Phase 2 (Software):**  1 week
-- **Phase 3 (Behavioral):** 1 week
-- **Phase 4 (Navigation):** 1 week
-- **Phase 5 (UI):** 1 week
-- **Phase 6 (Social/AI):** 1 week
-- **Beta Testing:** 1 week
-- **Production Launch:** December 1 2025 week
-
-**Total Development:** ~2 months from now
+| Issue | Impact | Status |
+|-------|--------|--------|
+| **Rare silent hard-freeze** (no kernel/software trace; corrupt journal) | Requires physical power-pull to recover | Under investigation — power-delivery/brownout + power-button SPOF suspected |
+| **Power-button single-point-of-failure** | GPIO21 relay routes all power-off authority through a software watcher; if the system hangs, the button can't power it off | Redesign needed (button must keep a hardware-direct OFF path) |
+| **Mission Scheduler** auto-start / time windows | Scheduled missions may not fire | Implemented, **not yet validated** |
+| **Weekly Summary** accuracy | Investor/owner-facing stats may be wrong | Tested, not 100% accurate |
+| **SG post-cap behavior** | After the 11-treat session cap, SG keeps intervening but never rewards → possible behavior extinction | Design decision pending |
+| **Data schema** not ML/analytics-friendly | Limits continual-learning + reporting | Refactor design doc pending (do not backfill old rows) |
 
 ---
 
-## 🔮 Future Enhancements (Post-Launch)
+## 🛰️ Fleet Status (All 5 Built & Operational)
 
-- Multi-robot coordination (2+ TreatBots)
-- Outdoor GPS navigation
-- Veterinary behavior alerts
-- Subscription training content
-- Third-party integrations (Alexa, Google Home)
-- Custom trick designer (drag-and-drop)
+| Unit | Role | Drivetrain | Camera | Notes |
+|------|------|-----------|--------|-------|
+| treatbot1 | Primary demo | L298N + 6V encoder (PID) | IMX500 | Best-calibrated; matched motors |
+| treatbot2 | Backup | L298N + 6V encoder (PID) | IMX500 | Motor compensation; rebuilt battery divider |
+| treatbot3 | Production #3 | Cytron + 9V brushed | IMX708 Wide | High-ratio battery divider |
+| treatbot4 | Production #4 | Cytron + 9V brushed | IMX708 Wide **NoIR** | Night-vision; cam on CSI0 (cam1 port damaged) |
+| treatbot5 | Production #5 | Cytron + 9V brushed | IMX708 Wide | UART/motor wiring resolved May 2026 |
 
 ---
 
-*This roadmap is a living document. Update as priorities shift.*
+## 🔄 Needs Testing/Rework
+
+### Weekly Summary (`core/weekly_summary.py`)
+- [x] Tested with real data (not 100% accurate)
+- [x] Mission stats added in Build 38 (works mostly)
+- [ ] Verify report accuracy before it becomes an owner/investor-facing metric
+
+### Mission Scheduler (`core/mission_scheduler.py`)
+- [ ] Auto-scheduling not yet tested
+- [ ] Type logic (once/daily/weekly) not yet tested
+
+---
+
+## Xbox Controller (Complete)
+| Button | Function |
+|--------|----------|
+| Left Stick | Drive (forward/back/turn) |
+| Right Stick | Camera pan/tilt |
+| A | Emergency stop |
+| B | Stop motors |
+| X | Toggle blue LED |
+| Y | Play treat sound |
+| LB | Dispense treat |
+| RB | Take photo (4K in MANUAL, 640x640 otherwise) |
+| LT | Cycle LED modes |
+| RT | Play "good dog" audio |
+| Start | Record audio (press again to save) |
+| Select | Cycle modes |
+| Guide | Cycle tricks (Coach mode only) |
+| D-pad | Audio control (Left/Right: cycle, Down: play, Up: stop) |
+| Right Stick Push | Center camera |
+| Left Stick Push | Anti-jam action for treat dispenser |
+
+---
+
+## Future Enhancements
+
+### Analytics System
+- [ ] Daily summary endpoints
+- [ ] Bark frequency trends
+- [ ] Treat usage statistics
+- [ ] 1-5 bone rating system
+
+### Session Management
+- [ ] 8-hour session tracking
+- [ ] Session reset at midnight
+- [x] Max 11 treats enforcement
+
+### Photography Mode
+- [ ] Burst mode with quality scoring
+- [ ] Auto-select best photos
+
+### Push Notifications (BUILD 41)
+- [x] AWS SNS notification service created
+- [x] API endpoints: `/notifications/*`
+- [ ] AWS credentials configuration
+- [ ] Event integrations (mission complete, bark alerts, low battery)
+
+---
+
+## Dropped Features
+
+### IR Navigation/Docking
+**Status:** DROPPED - Hardware caused Pi startup failures
+
+### Direct LAN Connection
+**Status:** IMPLEMENTED (April 2026)
+
+Phone can connect directly to robot WiFi hotspot (WIMZ-*) without internet:
+- Local API on `192.168.4.1:8000`
+- WebSocket at `/ws`
+- WebRTC at `/ws/webrtc/{session_id}`
+
+**Production connections:**
+- Robot ↔ AWS Lightsail Relay (WebSocket) — for remote access
+- App ↔ AWS Lightsail Relay (WebSocket) — for remote access
+- App ↔ Robot direct (local WiFi) — no internet required
+
+---
+
+## Technical Specifications
+
+### AI Pipeline
+- **Detection:** YOLOv8s on Hailo-8 (26 TOPS)
+- **Pose Estimation:** Custom dog pose model
+- **Bark Detection:** TFLite classifier with 400-4000Hz bandpass filter
+- **Dog ID:** ArUco markers (DICT_4X4_1000)
+
+### Performance Targets
+- Detection: 2s + 55% presence
+- Pose thresholds: 0.75 for lie/cross
+- Servo nudge: 2°/sec max, 500ms stability delay
+
+### Audio Organization (Updated Build 40)
+- `VOICEMP3/talks/default/` - Default voice commands
+- `VOICEMP3/talks/dog_{id}/` - Per-dog custom voices
+- `VOICEMP3/songs/default/` - Default songs
+- `VOICEMP3/songs/dog_{id}/` - Per-dog uploaded songs
+- `VOICEMP3/wimz/` - System sounds
+
+---
+
+*Updated: June 2026 — Build 106. Fleet status, April→June shipped features, known-issues risk register, investor status summary.*
