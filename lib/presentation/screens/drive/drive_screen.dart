@@ -283,15 +283,10 @@ class _DriveScreenState extends ConsumerState<DriveScreen> {
               child: AnimatedOpacity(
                 opacity: isReady ? 1.0 : 0.5,
                 duration: const Duration(milliseconds: 200),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    // Drive virtual analog joystick (left)
-                    const _MotorJoystick(),
-
+                child: LayoutBuilder(
+                  builder: (context, constraints) {
                     // Center controls - treat, center, PTT mic
-                    Column(
+                    final centerControls = Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         // PTT mic button only (listen replaced by streaming)
@@ -321,11 +316,45 @@ class _DriveScreenState extends ConsumerState<DriveScreen> {
                           ],
                         ),
                       ],
-                    ),
+                    );
 
-                    // Camera joystick (right)
-                    const _OverlayCameraControl(),
-                  ],
+                    // A-PORTRAIT: the single row needs ~536px (148px joystick
+                    // + ~192px center cluster + 148px camera D-pad + gaps);
+                    // portrait phones are 360–430px, which used to clip the
+                    // camera D-pad off the right edge. Phones are mounted
+                    // fixed-portrait, so reflow to two tiers instead of
+                    // demanding rotation: center cluster on top, joystick and
+                    // camera D-pad side by side below (296px — fits any phone).
+                    if (constraints.maxWidth < 536) {
+                      return Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          centerControls,
+                          const SizedBox(height: 16),
+                          const Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            crossAxisAlignment: CrossAxisAlignment.end,
+                            children: [
+                              _MotorJoystick(),
+                              _OverlayCameraControl(),
+                            ],
+                          ),
+                        ],
+                      );
+                    }
+
+                    return Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        // Drive virtual analog joystick (left)
+                        const _MotorJoystick(),
+                        centerControls,
+                        // Camera joystick (right)
+                        const _OverlayCameraControl(),
+                      ],
+                    );
+                  },
                 ),
               ),
             ),
