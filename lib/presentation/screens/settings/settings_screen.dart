@@ -201,6 +201,13 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             trailing: const Icon(Icons.chevron_right),
             onTap: () => context.push('/settings/connection-diagnostics'),
           ),
+          ListTile(
+            leading: const Icon(Icons.preview),
+            title: const Text('UI Previews'),
+            subtitle: const Text('Spec-shaped views on sample data (dev)'),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => context.push('/settings/ui-previews'),
+          ),
           const Divider(),
 
           _SectionHeader('About'),
