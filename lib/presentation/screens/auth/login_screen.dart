@@ -117,25 +117,29 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       _localError = null;
     });
 
-    ref.read(settingsProvider.notifier).setLocalModeEnabled(true);
+    await ref.read(settingsProvider.notifier).setLocalModeEnabled(true);
 
     try {
+      // A-DISCOVER: race the AP address and the last IP that worked instead
+      // of only trying 192.168.4.1 — finds a robot that joined home WiFi too.
       final success = await ref
           .read(localConnectionProvider.notifier)
-          .connectViaHotspot()
-          .timeout(const Duration(seconds: 8), onTimeout: () => false);
+          .connectAuto()
+          .timeout(const Duration(seconds: 10), onTimeout: () => false);
 
       if (mounted) {
         if (success) {
-          ref.read(connectionProvider.notifier).setLocalConnected();
+          final local = ref.read(localConnectionProvider);
+          ref.read(connectionProvider.notifier).setLocalConnected(
+              local.robotIp ?? '192.168.4.1', local.port);
           context.go('/home');
         } else {
           setState(() {
             _isConnectingLocal = false;
             _localError =
                 'Could not connect to robot.\n'
-                'Make sure you\'re connected to the WIMZ WiFi network.\n'
-                'For other networks, use Settings after connecting.';
+                'Make sure you\'re on the same WiFi as your robot\n'
+                'or connected to the WIMZ hotspot.';
           });
         }
       }

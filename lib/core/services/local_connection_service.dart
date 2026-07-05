@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../network/dio_client.dart';
 import '../network/websocket_client.dart';
@@ -163,6 +164,67 @@ class LocalConnectionNotifier extends StateNotifier<LocalConnectionData> {
   /// Connect to robot via WIMZ hotspot (default 192.168.4.1)
   Future<bool> connectViaHotspot() async {
     return connectDirect(defaultHotspotIp);
+  }
+
+  /// Last IP a local connect actually succeeded against. Fed back into
+  /// [connectAuto] so a robot on home WiFi is found again without the user
+  /// ever typing an address.
+  static const String _keyLastRobotIp = 'local_robot_last_ip';
+
+  /// A-DISCOVER (Work Order §3B): the robot keeps an AP fallback at
+  /// 192.168.4.1 and, when on home WiFi, answers at its WiFi IP. The user
+  /// never picks a mode — probe every candidate in parallel and connect to
+  /// whichever answers first. Candidates today: the last IP that worked plus
+  /// the AP address. When robot-side mDNS (WIMZ-XXXX) lands, its resolved
+  /// address joins this race; nothing else changes.
+  Future<bool> connectAuto([int port = 8000]) async {
+    final prefs = await SharedPreferences.getInstance();
+    final lastIp = prefs.getString(_keyLastRobotIp);
+    final candidates = <String>{
+      if (lastIp != null && lastIp.isNotEmpty) lastIp,
+      defaultHotspotIp,
+    }.toList();
+
+    rprint('LocalConnection: auto-connect racing ${candidates.join(", ")}');
+    state = state.copyWith(
+      state: LocalConnectionState.connecting,
+      clearError: true,
+    );
+
+    // Pin to WiFi before probing — on the no-internet AP, Android would
+    // otherwise route the probes out over cellular and every one would hang.
+    await WifiBinder.bindToWifi();
+
+    final winner = await _raceProbes(candidates, port);
+    if (winner == null) {
+      state = state.copyWith(
+        state: LocalConnectionState.error,
+        errorMessage: 'No robot found — join your home WiFi or the WIMZ hotspot',
+      );
+      return false;
+    }
+
+    final ok = await connectDirect(winner, port);
+    if (ok) await prefs.setString(_keyLastRobotIp, winner);
+    return ok;
+  }
+
+  /// Probe all [ips] concurrently; resolve with the first that passes the
+  /// robot health check, or null once every probe has failed.
+  Future<String?> _raceProbes(List<String> ips, int port) {
+    final completer = Completer<String?>();
+    var pending = ips.length;
+    for (final ip in ips) {
+      _checkRobotAt(ip, port).then((found) {
+        if (completer.isCompleted) return;
+        if (found != null) {
+          completer.complete(found);
+        } else if (--pending == 0) {
+          completer.complete(null);
+        }
+      });
+    }
+    return completer.future;
   }
 
   /// Scan local network for robots

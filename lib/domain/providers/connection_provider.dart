@@ -597,15 +597,17 @@ class ConnectionNotifier extends StateNotifier<ConnectionState> {
 
   /// Mark as connected in local mode — no relay, no auth, direct to Pi.
   /// This makes connectionProvider.isConnected return true so all controls work.
-  void setLocalConnected() {
+  /// A-DISCOVER: takes the IP that actually won the connect race — the robot
+  /// may be on home WiFi, not just the 192.168.4.1 AP.
+  void setLocalConnected([String host = '192.168.4.1', int port = 8000]) {
     state = state.copyWith(
       status: ConnectionStatus.robotOnline,
       pairingStatus: PairingStatus.paired,
-      host: '192.168.4.1',
-      port: 8000,
+      host: host,
+      port: port,
       errorMessage: null,
     );
-    print('Connection: Set to local connected (robot online)');
+    print('Connection: Set to local connected (robot online at $host:$port)');
   }
 
   /// Enable demo mode - simulate fully connected state

@@ -112,9 +112,13 @@ class _SmartVideoViewState extends ConsumerState<SmartVideoView> {
     // Local mode with MJPEG fallback active
     if (_useMjpegFallback) {
       // Use the endpoint resolved (probed) at connect time so we don't 404 on
-      // an endpoint rename; fall back to the default const if unresolved.
-      final streamUrl =
-          ref.watch(localConnectionProvider).mjpegUrl ?? _mjpegUrl;
+      // an endpoint rename. A-DISCOVER: the robot may be at its home-WiFi IP,
+      // not the AP — derive the fallback URL from the connected IP too.
+      final local = ref.watch(localConnectionProvider);
+      final streamUrl = local.mjpegUrl ??
+          (local.robotIp != null
+              ? 'http://${local.robotIp}:${local.port}/video/feed'
+              : _mjpegUrl);
       return Stack(
         fit: StackFit.expand,
         children: [
