@@ -7,36 +7,38 @@ import '../../core/network/websocket_client.dart';
 
 /// Persisted prefs keys for Silent Guardian config.
 class _SgKeys {
-  static const punishmentLevel = 'sg_punishment_level';
+  // A-WORDING: user-facing copy is "intervention" now, but the prefs key
+  // keeps its historical name so existing users' saved level survives.
+  static const interventionLevel = 'sg_punishment_level';
 }
 
 /// Silent Guardian runtime config (app is source of truth; robot mutates in
 /// memory only and reverts to YAML default on restart).
 ///
-/// `punishmentLevel` is the sustained barks-per-minute threshold for the
+/// `interventionLevel` is the sustained barks-per-minute threshold for the
 /// fast-escalation jump (robot bypasses the L1→L4 ladder and goes straight
 /// to calming music). 0 = disabled; 10–90 = active. Lower = more aggressive.
 class SilentGuardianState {
   /// 0 means Off (no fast escalation). Otherwise 10–90 BPM.
-  final int punishmentLevel;
+  final int interventionLevel;
 
   /// Last error from a sg_config command_ack, cleared on next successful ack
   /// or next user-initiated send. Surfaced as a toast by the slider widget.
   final String? lastError;
 
   const SilentGuardianState({
-    this.punishmentLevel = 0,
+    this.interventionLevel = 0,
     this.lastError,
   });
 
-  bool get isEnabled => punishmentLevel > 0;
+  bool get isEnabled => interventionLevel > 0;
 
   SilentGuardianState copyWith({
-    int? punishmentLevel,
+    int? interventionLevel,
     Object? lastError = _sentinel,
   }) {
     return SilentGuardianState(
-      punishmentLevel: punishmentLevel ?? this.punishmentLevel,
+      interventionLevel: interventionLevel ?? this.interventionLevel,
       lastError: identical(lastError, _sentinel)
           ? this.lastError
           : lastError as String?,
@@ -64,8 +66,8 @@ class SilentGuardianNotifier extends StateNotifier<SilentGuardianState> {
 
   Future<void> _init() async {
     _prefs = await SharedPreferences.getInstance();
-    final stored = _prefs?.getInt(_SgKeys.punishmentLevel) ?? 0;
-    state = state.copyWith(punishmentLevel: _normalize(stored));
+    final stored = _prefs?.getInt(_SgKeys.interventionLevel) ?? 0;
+    state = state.copyWith(interventionLevel: _normalize(stored));
 
     final ws = _ref.read(websocketClientProvider);
 
@@ -111,18 +113,18 @@ class SilentGuardianNotifier extends StateNotifier<SilentGuardianState> {
     return raw;
   }
 
-  /// Update the punishment level. 0 disables; otherwise clamped to 10–90.
-  Future<void> setPunishmentLevel(int value) async {
+  /// Update the intervention level. 0 disables; otherwise clamped to 10–90.
+  Future<void> setInterventionLevel(int value) async {
     final next = _normalize(value);
-    if (next == state.punishmentLevel) return;
-    state = state.copyWith(punishmentLevel: next, lastError: null);
-    await _prefs?.setInt(_SgKeys.punishmentLevel, next);
+    if (next == state.interventionLevel) return;
+    state = state.copyWith(interventionLevel: next, lastError: null);
+    await _prefs?.setInt(_SgKeys.interventionLevel, next);
     _pushToRobot();
   }
 
   void _pushToRobot() {
     final ws = _ref.read(websocketClientProvider);
-    ws.sendSgConfig(fastEscalationBpm: state.punishmentLevel);
+    ws.sendSgConfig(fastEscalationBpm: state.interventionLevel);
   }
 
   @override

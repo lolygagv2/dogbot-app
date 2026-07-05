@@ -4,22 +4,22 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../domain/providers/silent_guardian_provider.dart';
 import '../../theme/app_theme.dart';
 
-/// "Punishment level" slider for Silent Guardian fast-escalation.
+/// "Intervention level" slider for Silent Guardian fast-escalation.
 ///
 /// One labeled slider with `Off` at the far left and the active range
 /// 10–90 BPM on the rest (lower BPM = more aggressive intervention).
 /// The robot accepts any integer; we quantise to 0/10/20…/90 anchors via
 /// `divisions: 9` so the slider feels notched without limiting expressivity.
-class PunishmentLevelSection extends ConsumerStatefulWidget {
-  const PunishmentLevelSection({super.key});
+class InterventionLevelSection extends ConsumerStatefulWidget {
+  const InterventionLevelSection({super.key});
 
   @override
-  ConsumerState<PunishmentLevelSection> createState() =>
-      _PunishmentLevelSectionState();
+  ConsumerState<InterventionLevelSection> createState() =>
+      _InterventionLevelSectionState();
 }
 
-class _PunishmentLevelSectionState
-    extends ConsumerState<PunishmentLevelSection> {
+class _InterventionLevelSectionState
+    extends ConsumerState<InterventionLevelSection> {
   double? _dragValue;
   String? _lastShownError;
 
@@ -46,7 +46,7 @@ class _PunishmentLevelSectionState
       _lastShownError = null;
     }
 
-    final current = (_dragValue ?? state.punishmentLevel.toDouble()).round();
+    final current = (_dragValue ?? state.interventionLevel.toDouble()).round();
     final isOff = current == 0;
     final accent = isOff ? AppTheme.textTertiary : AppTheme.secondary;
 
@@ -68,7 +68,7 @@ class _PunishmentLevelSectionState
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Punishment level',
+                      'Intervention level',
                       style: TextStyle(
                         color: AppTheme.textPrimary,
                         fontSize: 17,
@@ -121,7 +121,7 @@ class _PunishmentLevelSectionState
               ),
             ),
             child: Slider(
-              value: (_dragValue ?? state.punishmentLevel.toDouble())
+              value: (_dragValue ?? state.interventionLevel.toDouble())
                   .clamp(0.0, 90.0),
               min: 0,
               max: 90,
@@ -133,7 +133,7 @@ class _PunishmentLevelSectionState
                 setState(() => _dragValue = null);
                 ref
                     .read(silentGuardianProvider.notifier)
-                    .setPunishmentLevel(next);
+                    .setInterventionLevel(next);
               },
             ),
           ),

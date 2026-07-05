@@ -16,7 +16,7 @@ import '../../../domain/providers/webrtc_provider.dart';
 import '../../../domain/providers/wifi_config_provider.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/night_mode/night_vision_settings_section.dart';
-import '../../widgets/silent_guardian/punishment_level_section.dart';
+import '../../widgets/silent_guardian/intervention_level_section.dart';
 
 class SettingsScreen extends ConsumerStatefulWidget {
   const SettingsScreen({super.key});
@@ -165,7 +165,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           const Divider(),
 
           _SectionHeader('Silent Guardian'),
-          const PunishmentLevelSection(),
+          const InterventionLevelSection(),
           const Divider(),
 
           _SectionHeader('Training'),
