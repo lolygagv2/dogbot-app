@@ -279,15 +279,21 @@ class _QuickActionsState extends ConsumerState<QuickActions> {
               onPressed: () {
                 final patterns = LedPatterns.lightingCycle;
                 final newIndex = (lightingIndex + 1) % patterns.length;
-                ref.read(_lightingIndexProvider.notifier).state = newIndex;
-                ledControl.setPattern(patterns[newIndex]);
+                // A-LED: the snackbar used to announce the new pattern even
+                // when the send was silently dropped. Report what happened.
+                final sent = ledControl.setPattern(patterns[newIndex]);
+                if (sent) {
+                  ref.read(_lightingIndexProvider.notifier).state = newIndex;
+                }
                 ScaffoldMessenger.of(context).hideCurrentSnackBar();
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
-                    content: Text('LED: ${_getPatternDisplayName(patterns[newIndex])}'),
+                    content: Text(sent
+                        ? 'LED: ${_getPatternDisplayName(patterns[newIndex])}'
+                        : 'Not connected — LED not sent'),
                     duration: const Duration(seconds: 1),
                     behavior: SnackBarBehavior.floating,
-                    width: 150,
+                    width: sent ? 150 : 220,
                   ),
                 );
               },
@@ -297,8 +303,11 @@ class _QuickActionsState extends ConsumerState<QuickActions> {
               isOn: blueLedOn,
               onPressed: () {
                 final newState = !blueLedOn;
-                ref.read(_blueLedOnProvider.notifier).state = newState;
-                ws.sendMoodLed(newState ? 'on' : 'off');
+                // A-LED: route through LedControl so BluLight gets the same
+                // connection guard + drop trace as the other LED commands.
+                if (ref.read(ledControlProvider).setMood(newState)) {
+                  ref.read(_blueLedOnProvider.notifier).state = newState;
+                }
               },
             ),
 

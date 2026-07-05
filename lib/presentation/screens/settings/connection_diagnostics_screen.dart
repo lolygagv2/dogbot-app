@@ -1,7 +1,10 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:share_plus/share_plus.dart';
 
+import '../../../core/network/websocket_client.dart';
 import '../../../core/utils/conn_trace.dart';
 import '../../theme/app_theme.dart';
 
@@ -69,6 +72,49 @@ class _ConnectionDiagnosticsScreenState
     );
   }
 
+  bool _pinging = false;
+
+  /// A-LED: round-trip LED ping. Separates app-fault from robot-fault in one
+  /// tap: an ack proves the command left the phone and was accepted on the
+  /// far end (if the strip still didn't light, it's robot/electrical — see
+  /// R-LED); a timeout means the command path itself is broken.
+  Future<void> _ledPing() async {
+    final ws = WebSocketClient.instance;
+    if (ws.state != WsConnectionState.connected) {
+      connTrace('led-ping-skip', 'ws state=${ws.state.name}');
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Not connected — connect to the robot first')),
+      );
+      return;
+    }
+    setState(() => _pinging = true);
+    const ackTypes = {'ack', 'command_ack', 'command_response', 'response'};
+    final stopwatch = Stopwatch()..start();
+    final ackFuture = ws.eventStream
+        .where((e) => ackTypes.contains(e.type))
+        .first
+        .timeout(const Duration(seconds: 3));
+    connTrace('led-ping-sent', 'pattern=rainbow');
+    ws.sendLedCommand('rainbow');
+    String result;
+    try {
+      final ack = await ackFuture;
+      stopwatch.stop();
+      connTrace('led-ping-ack', '${stopwatch.elapsedMilliseconds}ms (${ack.type})');
+      result = 'LED acknowledged in ${stopwatch.elapsedMilliseconds}ms — '
+          'if nothing lit, the fault is on the robot';
+    } on TimeoutException {
+      connTrace('led-ping-timeout', 'no ack within 3000ms');
+      result = 'LED sent but not acknowledged in 3s — command path broken';
+    } catch (e) {
+      connTrace('led-ping-error', '$e');
+      result = 'LED ping failed: $e';
+    }
+    if (!mounted) return;
+    setState(() => _pinging = false);
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(result)));
+  }
+
   @override
   Widget build(BuildContext context) {
     final entries = ConnTraceLog.entries;
@@ -77,6 +123,17 @@ class _ConnectionDiagnosticsScreenState
       appBar: AppBar(
         title: const Text('Connection Diagnostics'),
         actions: [
+          IconButton(
+            icon: _pinging
+                ? const SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Icon(Icons.lightbulb_outline),
+            tooltip: 'LED ping',
+            onPressed: _pinging ? null : _ledPing,
+          ),
           IconButton(
             icon: const Icon(Icons.copy),
             tooltip: 'Copy',

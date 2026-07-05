@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/constants/app_constants.dart';
 import '../../core/network/websocket_client.dart';
+import '../../core/utils/conn_trace.dart';
 import 'connection_mode_provider.dart';
 import 'connection_provider.dart';
 import 'dog_profiles_provider.dart';
@@ -440,27 +441,53 @@ class LedControl {
     return DateTime.now().difference(lastTime).inMilliseconds > _debounceMs;
   }
 
-  /// Set LED pattern (debounced)
-  void setPattern(String pattern) {
-    if (!_ref.read(connectionProvider).isConnected) return;
+  /// A-LED: the old guard checked connectionProvider alone, which stays
+  /// robotOnline through the WS-downgrade debounce — the send then died in
+  /// websocket_client with only a console print, while the UI showed success.
+  /// Check the socket too, and trace every drop so "LED didn't fire" is
+  /// diagnosable from Settings → Connection Diagnostics.
+  bool _canSend(String what) {
+    final connected = _ref.read(connectionProvider).isConnected &&
+        _ref.read(websocketClientProvider).state == WsConnectionState.connected;
+    if (!connected) {
+      connTrace('led-drop', '$what not sent — no live connection');
+    }
+    return connected;
+  }
+
+  /// Set LED pattern (debounced). Returns false when the command could not
+  /// be sent (no live connection) so the UI can stop claiming success.
+  bool setPattern(String pattern) {
+    if (!_canSend('setPattern($pattern)')) return false;
     if (!_canExecute(_lastPattern)) {
       print('LedControl: setPattern() debounced');
-      return;
+      return true; // duplicate tap swallowed, not a delivery failure
     }
     _lastPattern = DateTime.now();
     _ref.read(websocketClientProvider).sendLedCommand(pattern);
+    return true;
+  }
+
+  /// BluLight mood LED on/off. Routed through here (instead of the raw WS
+  /// client) so it gets the same guard + drop trace as every other LED path.
+  bool setMood(bool on) {
+    if (!_canSend('setMood($on)')) return false;
+    _ref.read(websocketClientProvider).sendMoodLed(on ? 'on' : 'off');
+    return true;
   }
 
   /// Set LED color
-  void setColor(int r, int g, int b) {
-    if (!_ref.read(connectionProvider).isConnected) return;
+  bool setColor(int r, int g, int b) {
+    if (!_canSend('setColor($r,$g,$b)')) return false;
     _ref.read(websocketClientProvider).sendLedColor(r, g, b);
+    return true;
   }
 
   /// Turn off LEDs
-  void off() {
-    if (!_ref.read(connectionProvider).isConnected) return;
+  bool off() {
+    if (!_canSend('off()')) return false;
     _ref.read(websocketClientProvider).sendLedOff();
+    return true;
   }
 }
 

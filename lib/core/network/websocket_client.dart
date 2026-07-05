@@ -659,11 +659,16 @@ class WebSocketClient {
 
         // Command acknowledgments and responses
         case 'pong':
+          break;
         case 'ack':
         case 'command_ack':
         case 'command_response':
         case 'response':
-          // Commands acknowledged - good, no need to log
+          // A-LED: acks used to be swallowed here, so the app could never
+          // tell a delivered command from one that died in transit — every
+          // "LED didn't fire" report was undiagnosable. Forward them so
+          // delivery can be verified (diagnostics LED ping times these).
+          _eventController.add(WsEvent.fromJson(json));
           break;
 
         default:
