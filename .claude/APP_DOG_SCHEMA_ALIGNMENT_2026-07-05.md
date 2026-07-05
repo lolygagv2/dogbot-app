@@ -1,31 +1,35 @@
 # App ↔ WIMZ_Data_Architecture_Spec alignment — dog profile layer
 
-Date: 2026-07-05 (Build 135 follow-up). Source of truth: `WIMZ_Data_Architecture_Spec.md` v0.1 (+v0.2 dispense fields). Per its rule 0: fields not in the spec get added to the spec first — nothing below invents schema; divergences are flagged as spec-change proposals for Morgan to rule on.
+Date: 2026-07-05, updated same day for spec **v0.3**. Source of truth: `WIMZ_Data_Architecture_Spec.md`. Per its rule 0: fields not in the spec get added to the spec first — nothing below invents schema.
 
-## Mapping: app `DogProfile` → spec `dog` table (§4)
+**v0.3 resolved both open questions from the first pass:** ArUco markers ride the existing `qr_code_id` / `id_method='qr'` (no new identity fields), and `color` + `treats_per_reward` are now real `dog` columns (app-authoritative, robot-consumed). App payload updated to match.
+
+## Mapping: app `DogProfile` → spec `dog` table (§4, v0.3)
 
 | Spec field | App field | Status |
 |---|---|---|
-| `dog_id` (UUIDv7, never recycled) | `id` | **Fixed Build 135**: new dogs mint UUIDv7 (`Uuid().v7()`). Legacy ids (`dog_<epochms>`) remain valid opaque TEXT. |
+| `dog_id` (UUIDv7, never recycled) | `id` | ✅ New dogs mint UUIDv7 (Build 135). Legacy ids (`dog_<epochms>`) remain valid opaque TEXT. |
 | `user_id` | — (storage scope: email / `'local'`) | Relay owns the mapping on sync; app never fabricates one. |
 | `name` | `name` | ✅ |
-| `qr_code_id` | `arucoMarkerId` (int 0–999) | **Spec question 1** below. |
-| `id_method` (`'qr'\|'direct_trained'\|'manual'`) | — | Not sent; enum has no ArUco value. **Spec question 1.** |
+| `qr_code_id` (TEXT; ArUco ids, called "QR") | `arucoMarkerId` (int 0–999) | ✅ Sent as `qr_code_id` string when a marker is assigned; omitted (nullable) otherwise. |
+| `id_method` (`'qr'` covers ArUco) | derived | ✅ Sent as `'qr'` when a marker is assigned; omitted otherwise ('direct_trained' is robot-side signature territory). |
 | `breed` | `breed` | ✅ |
-| `birthdate` (epoch ms) | `birthDate` (DateTime) | Now sent as `birthdate` epoch ms in `reload_dogs` (additive). |
-| `weight_g` (INTEGER) | `weight` (double, **no UI captures it**) | Not sent — nothing to populate; unit conversion deferred until the UI exists. |
+| `birthdate` (epoch ms) | `birthDate` | ✅ Sent epoch ms. |
+| `weight_g` (INTEGER) | `weight` (double, **no UI captures it**) | Not sent — nothing to populate; add when a weight UI exists. |
+| `color` (TEXT, v0.3) | `color` (`DogColor.value` string) | ✅ Already sent as the string value (`black`/`yellow`/…). |
+| `treats_per_reward` (INTEGER, v0.3; null → robot defaults 1) | `treatsPerReward` (1–5, default 1) | ✅ Now sent. |
 | `signature` | — | Robot-produced; app never writes it. |
-| `created_at` / `updated_at` (epoch ms) | `createdAt` / `updatedAt` | `updated_at` now sent epoch-ms in `reload_dogs`; drives §2 last-write-wins. |
+| `created_at` / `updated_at` (epoch ms) | `createdAt` / `updatedAt` | ✅ `updated_at` sent epoch ms; drives §2 last-write-wins. |
 
-## App-local fields NOT in the spec (stay out of the shared schema until added there)
+## App-local fields NOT in the spec (stay out of the shared schema)
 
-`color`, `photoUrl`/`localPhotoPath`/`photoVersion`, `notes`, `goals`, `lastMissionId`, `treatsPerReward`. Of these, `color` and `treatsPerReward` already ride existing wire contracts (`reload_dogs` color; dispense logic) — **spec question 2**.
+`photoUrl` / `localPhotoPath` / `photoVersion` (device photo cache), `notes`, `goals`, `lastMissionId`. UI-local; none cross a surface today. If any ever needs to sync, it goes into the spec first.
 
 ## Wire contract (unchanged + additive)
 
-`reload_dogs` keeps its existing keys (`name`, `aruco_id`, `color`, `id`, `breed`) so current robot handlers don't break, and now ALSO carries spec-named `dog_id`, `birthdate`, `updated_at`. Robot side can reconcile into its `dog` table reading only the spec-named keys.
+`reload_dogs` keeps its legacy keys (`name`, `aruco_id`, `color`, `id`, `breed`) so current robot handlers don't break, and ALSO carries the spec-named v0.3 set: `dog_id`, `birthdate`, `updated_at`, `qr_code_id`, `id_method`, `treats_per_reward`. Robot side can reconcile into its `dog` table reading only the spec-named keys; once it does, the legacy keys can be retired in a coordinated pass.
 
-## Spec-change proposals (need owner ruling + spec version bump; do not build ahead)
+## Open items
 
-1. **ArUco identity**: spec models visual identity as `qr_code_id` + `id_method ∈ {qr, direct_trained, manual}`; the fleet actually uses ArUco DICT_4X4_1000 markers. Either rename `qr_code_id` → `marker_id` with `id_method` gaining `'aruco'`, or declare ArUco ids ARE `qr_code_id` values. App sends `aruco_id` until ruled.
-2. **`color` and `treats_per_reward`**: both are app-authoritative, human-entered, already used by the robot (LED/tracker hints, dispense count). Propose adding to the `dog` table so they survive edge-side and aggregate.
+- `weight_g`: blocked on the app growing a weight input (spec field exists; app has a never-populated `weight` double).
+- Legacy-key retirement in `reload_dogs` after the robot reads the spec-named keys.

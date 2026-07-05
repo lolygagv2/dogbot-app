@@ -281,7 +281,7 @@ class DogProfilesNotifier extends StateNotifier<List<DogProfile>> {
         'color': p.color.value,
         'id': p.id,
         if (p.breed != null) 'breed': p.breed,
-        // WIMZ_Data_Architecture_Spec §4 `dog` table field names, sent
+        // WIMZ_Data_Architecture_Spec v0.3 `dog` table field names, sent
         // additively so the robot can reconcile these app-authoritative
         // fields (§2) into its dog table without a wire-contract break.
         // Timestamps are epoch ms per the spec; updated_at drives the
@@ -291,6 +291,13 @@ class DogProfilesNotifier extends StateNotifier<List<DogProfile>> {
           'birthdate': p.birthDate!.millisecondsSinceEpoch,
         if (p.updatedAt != null)
           'updated_at': p.updatedAt!.millisecondsSinceEpoch,
+        // v0.3: ArUco markers ride the existing qr_code_id / id_method='qr'
+        // (spec changelog: the fleet's physical markers are ArUco, called
+        // "QR" throughout). Omitted when no marker is assigned — nullable.
+        if (p.arucoMarkerId != null) 'qr_code_id': '${p.arucoMarkerId}',
+        if (p.arucoMarkerId != null) 'id_method': 'qr',
+        // v0.3: app-authoritative reward config; robot defaults to 1 if null.
+        'treats_per_reward': p.treatsPerReward,
       }).toList();
 
       ws.sendCommand('reload_dogs', {'profiles': profiles});
