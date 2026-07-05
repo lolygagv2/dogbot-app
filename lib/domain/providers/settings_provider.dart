@@ -147,10 +147,16 @@ final settingsProvider =
 class SettingsNotifier extends StateNotifier<AppSettings> {
   final Ref _ref;
   SharedPreferences? _prefs;
+  late final Future<void> _initialized;
 
   SettingsNotifier(this._ref) : super(const AppSettings()) {
-    _loadSettings();
+    _initialized = _loadSettings();
   }
+
+  /// Completes once persisted settings have been read from disk. Until then
+  /// every field is the compile-time default (localModeEnabled=false), which
+  /// callers must not treat as the user's real choice.
+  Future<void> get ready => _initialized;
 
   Future<void> _loadSettings() async {
     _prefs = await SharedPreferences.getInstance();
@@ -314,6 +320,11 @@ class SettingsNotifier extends StateNotifier<AppSettings> {
 
   /// Toggle local mode on/off
   Future<void> setLocalModeEnabled(bool enabled) async {
+    // Wait for _loadSettings: called earlier, _prefs could still be null (the
+    // persist would silently no-op) and the late state assignment in
+    // _loadSettings would clobber this flag back to the stale disk value —
+    // flipping the dog-profile storage scope mid-session.
+    await _initialized;
     state = state.copyWith(localModeEnabled: enabled);
     await _prefs?.setBool(SettingsKeys.localModeEnabled, enabled);
     print('Settings: Local mode ${enabled ? "ON" : "OFF"}');

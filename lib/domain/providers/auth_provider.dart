@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../core/constants/app_constants.dart';
+import '../../core/services/local_connection_service.dart';
 import '../../core/utils/conn_trace.dart';
 import '../../core/storage/secure_token_storage.dart';
 import '../../data/datasources/auth_api.dart';
@@ -160,6 +161,42 @@ class AuthNotifier extends StateNotifier<AuthState> {
       // valid OR unreachable → trust the local token.
       if (result == TokenValidation.unreachable) {
         print('Auth: /validate unreachable — restoring session optimistically');
+      }
+
+      // A-PROFILE: the Build 83 flip below used to run unconditionally, and
+      // localModeEnabled read as its pre-load default (false) if settings
+      // hadn't finished loading — so a user who was last in local mode had the
+      // mode ripped out from under them on every cold start with a stored JWT.
+      // Their dogs live under the 'local' storage scope; the email-scope
+      // reload then showed an empty list ("profiles lost"). Wait for the real
+      // persisted flag, and when the relay was unreachable (on the robot AP it
+      // is unreachable by definition) keep local mode instead of flipping.
+      await _ref.read(settingsProvider.notifier).ready;
+      final wasLocalMode = _ref.read(settingsProvider).localModeEnabled;
+      if (result == TokenValidation.unreachable && wasLocalMode) {
+        print('Auth: relay unreachable + local mode active — keeping local mode');
+        state = state.copyWith(
+          bootstrapping: false,
+          isAuthenticated: true,
+          token: token,
+          email: email,
+          userId: userId,
+        );
+        connTrace('silent-reauth-localhold',
+            'validate=unreachable, local mode kept, user=$userId');
+        // Dogs come from the 'local' bucket in this path.
+        await _ref.read(dogProfilesProvider.notifier).reloadForCurrentUser();
+        // No relay connect — nothing reachable. Try the robot instead so the
+        // session comes back up without a trip through the login screen.
+        // Fire-and-forget: failure just leaves the user where they'd be today.
+        // ignore: discarded_futures
+        _ref.read(localConnectionProvider.notifier).connectAuto().then((ok) {
+          if (!ok) return;
+          final local = _ref.read(localConnectionProvider);
+          _ref.read(connectionProvider.notifier).setLocalConnected(
+              local.robotIp ?? '192.168.4.1', local.port);
+        });
+        return;
       }
 
       // Cloud user restoring session — ensure local mode flag is off

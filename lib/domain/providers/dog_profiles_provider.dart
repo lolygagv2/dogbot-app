@@ -6,6 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../core/network/websocket_client.dart';
 import '../../core/services/local_connection_service.dart';
+import '../../core/utils/conn_trace.dart';
 import '../../data/datasources/robot_api.dart';
 import '../../data/models/activity_aggregation.dart';
 import '../../data/models/dog_profile.dart';
@@ -62,6 +63,13 @@ class DogProfilesNotifier extends StateNotifier<List<DogProfile>> {
   final Ref _ref;
   SharedPreferences? _prefs;
 
+  /// A-PROFILE: scope the in-memory list was loaded from. _scope is computed
+  /// lazily at save time, so an auth/local-mode flip between load and save
+  /// used to write the OLD scope's list into the NEW scope's bucket —
+  /// overwriting (destroying) whatever was saved there. _saveProfiles refuses
+  /// the write when the two disagree.
+  String? _loadedScope;
+
   DogProfilesNotifier(this._ref) : super([]) {
     _loadProfiles().then((_) {
       // After profiles are loaded, sync to robot if already connected
@@ -90,6 +98,18 @@ class DogProfilesNotifier extends StateNotifier<List<DogProfile>> {
         });
       }
     });
+    // A-PROFILE: the scope inputs can change long after construction (silent
+    // re-auth flips localModeEnabled, login/logout changes the email). Without
+    // these listeners the list stays loaded from the OLD scope and looks
+    // empty/wrong until a local connect happens — which in cloud mode never
+    // does. Reload whenever the effective scope shifts.
+    _ref.listen<bool>(
+        settingsProvider.select((s) => s.localModeEnabled), (prev, next) {
+      if (prev != next) reloadForCurrentUser();
+    });
+    _ref.listen<String?>(authProvider.select((a) => a.email), (prev, next) {
+      if (prev != next) reloadForCurrentUser();
+    });
   }
 
   /// Get current user's email for scoped storage
@@ -106,6 +126,7 @@ class DogProfilesNotifier extends StateNotifier<List<DogProfile>> {
   Future<void> _loadProfiles() async {
     _prefs = await SharedPreferences.getInstance();
     final scope = _scope;
+    _loadedScope = scope;
     final key = _dogsKeyForScope(scope);
     var json = _prefs?.getString(key);
 
@@ -140,7 +161,18 @@ class DogProfilesNotifier extends StateNotifier<List<DogProfile>> {
 
   Future<void> _saveProfiles() async {
     _prefs ??= await SharedPreferences.getInstance();
-    final key = _dogsKeyForScope(_scope);
+    final scope = _scope;
+    if (_loadedScope != scope) {
+      // Scope shifted between load and save. Writing now would replace the
+      // new scope's bucket with a list that belongs to the old scope —
+      // permanent, unrecoverable profile loss in local mode. Reload instead;
+      // the scope-change listeners normally make this window unreachable.
+      connTrace('dogprofiles-save-refused',
+          'loaded scope "$_loadedScope" != current "$scope" — reloading');
+      await _loadProfiles();
+      return;
+    }
+    final key = _dogsKeyForScope(scope);
     final json = jsonEncode(state.map((p) => p.toJson()).toList());
     await _prefs?.setString(key, json);
     print('DogProfiles: Saved ${state.length} profiles (key: $key)');
@@ -158,7 +190,11 @@ class DogProfilesNotifier extends StateNotifier<List<DogProfile>> {
   /// uploaded to the relay so future devices get them.
   /// Skipped silently in local mode or when no token is available.
   Future<void> hydrateFromRelay() async {
-    final isLocal = _ref.read(localConnectionProvider).isConnected;
+    // A-PROFILE: gate on the MODE flag too, not just an established local
+    // connection — with local mode enabled but not yet connected, this used
+    // to merge cloud dogs into (and save them under) the 'local' bucket.
+    final isLocal = _ref.read(settingsProvider).localModeEnabled ||
+        _ref.read(localConnectionProvider).isConnected;
     final token = _ref.read(authProvider).token;
     if (isLocal || token == null) {
       print('DogProfiles: hydrateFromRelay skipped (local=$isLocal, hasToken=${token != null})');
