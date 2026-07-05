@@ -45,6 +45,9 @@ Architecture: Mobile App (this repo) → Server (intermediary) → Robot (Pi 5)
             telemetry.dart         Robot status model
             mission.dart           Training mission config
             night_mode_state.dart  🆕 day/night camera state + override enums (Build 99)
+            spec_records.dart      🆕 Build 135 — SpecEvent/SessionReport/MediaAsset, field-for-field mirrors of WIMZ_Data_Architecture_Spec tables
+         📂 stub/
+            spec_stub_data.dart    🆕 Build 135 — SAMPLE rows for UI previews ONLY (never feed live providers)
          📂 datasources/
             robot_api.dart         REST API client for WIM-Z
          📂 services/
@@ -68,15 +71,20 @@ Architecture: Mobile App (this repo) → Server (intermediary) → Robot (Pi 5)
             missions/              Training session management
             notifications/         Activity dashboard + event feed (Build 59)
             settings/              Configuration & info
-                                   └ connection_diagnostics_screen.dart 🆕 on-device WebRTC trace viewer
+                                   └ connection_diagnostics_screen.dart 🆕 on-device WebRTC trace viewer + LED ping (Build 135)
+            dev/                   🆕 Build 135 — developer preview shells
+               ui_previews.dart                    UiPreviewHubScreen + EventListView + SessionReportView (spec-shaped, stub-fed from hub only)
          📂 widgets/
             video/                 MJPEG viewer
+                                   └ video_saved_sheet.dart 🆕 Build 135 — media_asset "video saved" confirmation (Chain REC shell)
             controls/              Joystick, pan/tilt, quick actions
             status/                Battery, connection, detection, treat counter
             common/                Loading, errors, shared UI
             night_mode/            🆕 Build 99 — day/night UI
                mode_badge.dart                     Drive-screen sun/moon badge (display-only)
                night_vision_settings_section.dart  Settings panel: mode + lux + override
+            silent_guardian/
+               intervention_level_section.dart     Renamed from punishment_level_section.dart (Build 135, A-WORDING)
          📂 theme/
             app_theme.dart         Dark theme with neon aesthetics
 

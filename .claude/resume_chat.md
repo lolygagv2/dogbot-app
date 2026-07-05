@@ -1,5 +1,48 @@
 # WIM-Z Resume Chat Log
 
+## Session: 2026-07-05 — Build 135 (July dispatch: 6 app fixes, spec v0.3 alignment, UI shells)
+**Goal:** Execute the APP block of `.claude/WIMZ_Dispatch_Package.md` (A-DISCOVER, A-PROFILE, A-PORTRAIT, A-WORDING, A-BANNER, A-LED), then align the dog layer to `WIMZ_Data_Architecture_Spec.md` (bumped to v0.3 mid-session), then build UI shells on stub data.
+**Status:** ✅ All shipped, analyzer-clean, 11 commits pushed to `origin/main` (`5422d3c..d413801`). Codemagic building 1.0.0+135.
+
+### A-PROFILE (DEALBREAKER) — root cause of "dog profiles lost when Local mode closes"
+Build 125's `'local'` scope was fine; the flag under it wasn't. `auth_provider` force-flipped `localModeEnabled=false` on EVERY cold start with a stored JWT — even when `/validate` was **unreachable** (i.e. on the robot AP) and before settings loaded (flag read as default false). Dogs then loaded from the email scope while orphaned under `dog_profiles_local`; re-adding one **overwrote** the local bucket (scope computed lazily at save). Fixes (`31abb1f`):
+- auth: `await settingsProvider.notifier.ready`; when unreachable + local mode → keep local mode, restore session, fire `connectAuto()` (localhold path); connTrace `silent-reauth-localhold`
+- dog profiles: `_ref.listen` on `localModeEnabled` + `email` → `reloadForCurrentUser()`; `_loadedScope` guard — `_saveProfiles` REFUSES cross-scope writes (connTrace `dogprofiles-save-refused`)
+- `hydrateFromRelay` gated on the mode flag too (cloud dogs no longer pollute the local bucket)
+- settings: `setLocalModeEnabled` awaits prefs init (was silently no-op'ing / getting clobbered by late `_loadSettings`)
+
+### A-DISCOVER (app slice; robot mDNS is the series dependency)
+No mDNS anywhere; local connect only tried 192.168.4.1, only from the login screen. `5422d3c`:
+- `connectAuto()` in `local_connection_service.dart` — races AP IP + persisted last-good IP (`local_robot_last_ip`), connects to first responder. mDNS (WIMZ-XXXX) joins the race when the robot advertises (needs `NSBonjourServices` + multicast perm THEN — not added yet, deliberately)
+- `setLocalConnected([host, port])` takes the real winning IP; MJPEG fallback URL derived from `robotIp`
+- login screen uses `connectAuto()` (10s timeout)
+
+### A-BANNER / A-PORTRAIT / A-LED / A-WORDING
+- `af41c64`: banner tap in local mode retries LOCAL (`connectAuto`), not the relay path against a robot IP; video placeholder passive ("Waiting for connection...") until `connectionProvider.isConnected` — banner is the single recovery affordance
+- `1e738c7`: drive screen bottom row (~536px intrinsic) clipped the camera D-pad on portrait (360–430px). LayoutBuilder reflow: <536px → center cluster above, joystick + D-pad side by side. NO rotate gate (phones mounted fixed-portrait). Latent bug noted, NOT fixed: Settings "Camera Track Dog" toggle only writes a pref; `sendSetTrackingEnabled` has no callers
+- `3a6a615`: WS acks (`ack`/`command_ack`/`command_response`/`response`) now forwarded to eventStream (were swallowed — this also un-broke the sg_config ack listener which could never fire). `LedControl` checks socket state + returns bool + connTrace `led-drop`; BluLight through guarded `setMood()`; honest snackbar; **LED-ping button in Connection Diagnostics** (ack+no light = robot/electrical R-LED; timeout = command path). Robot still owes `mood_led`/`led_off` in local `_execute_contract_command`
+- `9e30005`: Punishment→Intervention. Widget file renamed `intervention_level_section.dart`; prefs key `sg_punishment_level` KEPT (saved values survive); wire field `fastEscalationBpm` unchanged
+
+### Spec alignment (v0.1→v0.3 adopted) — `1d2b4f9`, `d413801`, doc `.claude/APP_DOG_SCHEMA_ALIGNMENT_2026-07-05.md`
+- New dogs mint **UUIDv7** (`Uuid().v7()`); legacy `dog_<epochms>` ids stay valid opaque TEXT
+- `reload_dogs` additively carries spec-named keys alongside legacy ones: `dog_id`, `birthdate` (epoch ms), `updated_at` (epoch ms, drives §2 last-write-wins), and per v0.3: `qr_code_id` = ArUco id string + `id_method:'qr'` when marker assigned, `treats_per_reward` (robot defaults 1 if null). `color` was already the spec TEXT value
+- v0.3 (Morgan bumped it mid-session) resolved both proposals: ArUco rides `qr_code_id`/`id_method='qr'`; `color`+`treats_per_reward` added to `dog`. Only gap left: `weight_g` (app has no weight UI — sending nothing, not fabricating)
+
+### UI shells on stub data — `ccb4730`
+`spec_records.dart` (SpecEvent/SessionReport/MediaAsset — field-for-field spec mirrors, plain classes, lenient casts). Views: `EventListView` (§5 taxonomy icons, payload summaries, confidence + provenance per row), `SessionReportView` (summary_text, stats_json chips, model/hash footer), `VideoSavedSheet` (robot path `/data/rel_path` tap-to-copy, chips, Save/Share honestly stubbed until Chain REC). Stubs in ONE file (`spec_stub_data.dart`, §5/§6 examples verbatim), passed ONLY from Settings → Diagnostics → **UI Previews** hub; every stub-fed view wears an amber SAMPLE DATA banner (Build-125 rule). Wiring later = construct views with real rows; widgets have zero stub dependency.
+
+### Robot-side handoffs (memory: dispatch-135-cross-surface)
+1. mDNS advertising (WIMZ-XXXX) + AP-always-up per Work Order §3B — gates full A-DISCOVER
+2. `mood_led`/`led_off`/`led_color` in local `_execute_contract_command` — gates full A-LED
+3. Read spec-named keys from `reload_dogs` → then retire legacy keys in a coordinated pass
+
+### Next session
+1. Device-verify Build 135 (login-connect canary FIRST): local-mode profile survival across app kill, portrait drive screen, LED ping, banner behavior
+2. Wire event-list / session-report views when Chain SG + Workstream B land backend-side
+3. Carry-overs: controller pairing on-device verify, store-and-forward E2E, password-reset E2E, `weight_g` UI
+
+---
+
 ## Session: 2026-06-08/09 — Builds 127–128 (robot-hosted game-controller pairing, app side)
 **Goal:** New feature — an in-app settings flow to pair a game controller (Xbox first, then any BT controller) directly to the robot. The phone NEVER uses its own Bluetooth; it's a remote control panel that drives the robot's BlueZ stack (scan/pair/trust/forget/reconnect) and renders the live state the robot reports. Motivation: Xbox pads unpair randomly, and re-pairing a deployed robot today needs SSH — impractical for non-tech owners. Requirement: additive-only, must not disrupt current beta testers.
 **Status:** ✅ App side fully built, analyzer-clean, all 3 commits pushed to `origin/main` (synced at `8321399`). Backend (robot + relay) confirmed the contract by their Claude instances. Pending: robot reboot to activate (handlers written, service not restarted + ERTM needs a module reload) + on-device verification + first real `controller_status` payload to lock field names.
