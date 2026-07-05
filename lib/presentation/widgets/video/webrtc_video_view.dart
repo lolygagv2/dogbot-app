@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_webrtc/flutter_webrtc.dart';
 
 import '../../../core/services/local_connection_service.dart';
+import '../../../domain/providers/connection_provider.dart';
 import '../../../domain/providers/device_provider.dart';
 import '../../../domain/providers/photo_provider.dart';
 import '../../../domain/providers/video_provider.dart';
@@ -102,6 +103,15 @@ class _WebRTCVideoViewState extends ConsumerState<WebRTCVideoView> {
 
     switch (webrtcState.state) {
       case WebRTCState.disconnected:
+        // A-BANNER: while the robot isn't reachable, a "Tap to connect" here
+        // silently failed (ws.send bails) AND duplicated the MainShell
+        // reconnect banner — two tappable connection affordances doing
+        // different things. Show a passive state until the transport is up;
+        // the banner owns connection recovery.
+        if (!ref.watch(connectionProvider).isConnected) {
+          return _buildPlaceholder(
+              'Waiting for connection...', Icons.videocam_off, null);
+        }
         return _buildPlaceholder('Tap to connect', Icons.videocam_off, () {
           _requestSent = false;
           _requestVideo();
@@ -115,7 +125,7 @@ class _WebRTCVideoViewState extends ConsumerState<WebRTCVideoView> {
     }
   }
 
-  Widget _buildPlaceholder(String message, IconData icon, VoidCallback onTap) {
+  Widget _buildPlaceholder(String message, IconData icon, VoidCallback? onTap) {
     return Container(
       color: Colors.black,
       child: InkWell(

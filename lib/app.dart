@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 
 import 'core/network/dio_client.dart';
 import 'core/network/websocket_client.dart';
+import 'core/services/local_connection_service.dart';
 import 'core/services/wifi_binder.dart';
 import 'data/models/night_mode_state.dart';
 import 'domain/providers/auth_provider.dart';
@@ -400,7 +401,24 @@ class MainShell extends ConsumerWidget {
               child: Material(
                 color: Colors.orange.shade800,
                 child: InkWell(
-                  onTap: () => ref.read(connectionProvider.notifier).reconnect(),
+                  // A-BANNER: in local mode "retry" must retry the LOCAL
+                  // connection — reconnect() would run the relay connect
+                  // against the robot's IP (a dead end on the AP).
+                  onTap: () {
+                    if (ref.read(settingsProvider).localModeEnabled) {
+                      ref
+                          .read(localConnectionProvider.notifier)
+                          .connectAuto()
+                          .then((ok) {
+                        if (!ok) return;
+                        final local = ref.read(localConnectionProvider);
+                        ref.read(connectionProvider.notifier).setLocalConnected(
+                            local.robotIp ?? '192.168.4.1', local.port);
+                      });
+                    } else {
+                      ref.read(connectionProvider.notifier).reconnect();
+                    }
+                  },
                   child: Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                     child: Row(
