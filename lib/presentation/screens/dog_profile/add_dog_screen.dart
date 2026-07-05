@@ -8,6 +8,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
+import 'package:uuid/uuid.dart';
 
 import '../../../data/models/dog_profile.dart';
 import '../../../domain/providers/dog_profiles_provider.dart';
@@ -603,7 +604,11 @@ class _AddDogScreenState extends ConsumerState<AddDogScreen> {
 
     final breed = _breedController.text.trim();
     final profile = DogProfile(
-      id: 'dog_${DateTime.now().millisecondsSinceEpoch}',
+      // WIMZ_Data_Architecture_Spec §4: dog_id is UUIDv7, never recycled —
+      // time-orderable and collision-free across devices, which matters when
+      // edge rows merge into the cloud corpus. (Legacy dogs keep their old
+      // 'dog_<epochms>' ids; the id is opaque TEXT everywhere.)
+      id: const Uuid().v7(),
       name: name,
       breed: breed.isNotEmpty ? breed : null,
       color: _selectedColor,

@@ -281,6 +281,16 @@ class DogProfilesNotifier extends StateNotifier<List<DogProfile>> {
         'color': p.color.value,
         'id': p.id,
         if (p.breed != null) 'breed': p.breed,
+        // WIMZ_Data_Architecture_Spec §4 `dog` table field names, sent
+        // additively so the robot can reconcile these app-authoritative
+        // fields (§2) into its dog table without a wire-contract break.
+        // Timestamps are epoch ms per the spec; updated_at drives the
+        // last-write-wins conflict rule.
+        'dog_id': p.id,
+        if (p.birthDate != null)
+          'birthdate': p.birthDate!.millisecondsSinceEpoch,
+        if (p.updatedAt != null)
+          'updated_at': p.updatedAt!.millisecondsSinceEpoch,
       }).toList();
 
       ws.sendCommand('reload_dogs', {'profiles': profiles});
