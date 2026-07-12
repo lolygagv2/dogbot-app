@@ -149,6 +149,13 @@ class WebSocketClient {
   String? _sessionId;
   String? _sessionUserId;
   String? _sessionDeviceId;
+
+  /// Device id the current relay session was BOUND to via session_hello.
+  /// The relay routes robot events by this binding, not by later commands'
+  /// device_id — callers use this to detect a stale binding after the real
+  /// device selection loads (cold start binds the default before prefs/
+  /// device-list resolve).
+  String? get sessionDeviceId => _sessionDeviceId;
   // Fix #1: relay handshake gate. The relay 4000-closes the socket unless
   // session_hello is the FIRST frame, and only confirms the connection by
   // replying with a session_ack frame. Until that ack arrives, every

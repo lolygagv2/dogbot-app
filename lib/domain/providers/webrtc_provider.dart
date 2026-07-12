@@ -236,10 +236,30 @@ class WebRTCNotifier extends StateNotifier<WebRTCConnectionState> {
       return;
     }
 
-    // No active connection — just record the new id and exit.
+    // No active connection — record the new id, but check the relay binding.
     if (oldDeviceId == null && state.state == WebRTCState.disconnected) {
       print('WebRTC: No active connection, just updating device ID');
       _lastDeviceId = newDeviceId;
+      // Cold start with no persisted device selection sends session_hello
+      // with the DEFAULT id (wimz_robot_01 — a real fleet robot); the real
+      // selection arrives seconds later from the device list. The relay
+      // routes robot events by the hello binding, so without a rebind the
+      // app never hears device_status/WebRTC answers from its actual robot
+      // — permanent "waiting for robot" + video connect timeouts. Deferring
+      // is only safe when the binding already matches.
+      final boundDeviceId =
+          _ref.read(websocketClientProvider).sessionDeviceId;
+      if (newDeviceId != 'local_robot' &&
+          boundDeviceId != null &&
+          boundDeviceId != newDeviceId &&
+          _ref.read(connectionProvider).isRelayConnected) {
+        connTrace('device-switch-rebind',
+            'hello bound=$boundDeviceId want=$newDeviceId — reconnecting WS');
+        final ok = await _ref.read(connectionProvider.notifier).reconnect();
+        connTrace('device-switch-rebind-done',
+            'new=$newDeviceId reconnect=${ok ? "ok" : "failed"}');
+        return;
+      }
       connTrace('device-switch-noop',
           'old=null new=$newDeviceId — no active WebRTC, deferred');
       return;
