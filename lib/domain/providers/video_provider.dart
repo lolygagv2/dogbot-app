@@ -71,7 +71,10 @@ class VideoNotifier extends StateNotifier<VideoState> {
   StreamSubscription? _videoSubscription;
   Timer? _maxDurationTimer;
 
-  static const _maxRecordingSeconds = 60;
+  // Robot clamps record_video to 30s (confirmed 2026-07-12) — the ack even
+  // reports the clamped value. Cap app-side too so the red recording timer
+  // and the processing handoff track what the robot is actually doing.
+  static const _maxRecordingSeconds = 30;
   static const _videoResponseTimeoutSeconds = 45;
 
   VideoNotifier(this._ref) : super(const VideoState()) {
@@ -92,12 +95,37 @@ class VideoNotifier extends StateNotifier<VideoState> {
   Future<void> _handleVideoMessage(Map<String, dynamic> message) async {
     _maxDurationTimer?.cancel();
 
-    final downloadUrl = message['download_url'] as String? ?? message['url'] as String?;
-    final filename = message['filename'] as String? ?? 'wimz_video';
-    final timestamp = message['timestamp'] as String?;
+    // Two wire shapes (robot-confirmed 2026-07-12): the local-AP contract
+    // event nests fields in `data` with a RELATIVE download_url (resolved
+    // against the robot IP via DioClient base); relay-path events stay flat
+    // with an absolute URL. Read nested first, fall back to flat.
+    final rawData = message['data'];
+    final data = rawData is Map<String, dynamic>
+        ? rawData
+        : const <String, dynamic>{};
+    final downloadUrl = data['download_url'] as String? ??
+        message['download_url'] as String? ??
+        message['url'] as String?;
+    final filename = data['filename'] as String? ??
+        message['filename'] as String? ??
+        'wimz_video';
+    final timestamp =
+        message['timestamp'] as String? ?? data['timestamp'] as String?;
 
     print('VIDEO: Received video_ready, keys=${message.keys}');
     print('VIDEO: download_url=$downloadUrl, filename=$filename');
+
+    if (data['success'] == false) {
+      print('VIDEO: robot reported recording failure: ${data['error']}');
+      state = state.copyWith(
+        isRecording: false,
+        isProcessing: false,
+        downloadProgress: 0,
+        clearRecordingStart: true,
+        error: 'Robot could not record the video',
+      );
+      return;
+    }
 
     if (downloadUrl == null || downloadUrl.isEmpty) {
       print('VIDEO: ERROR — no download_url in video_ready response');
@@ -166,6 +194,7 @@ class VideoNotifier extends StateNotifier<VideoState> {
   /// User can tap again to stop early via stop_recording command.
   void startRecording({int durationSeconds = 15}) {
     if (state.isRecording || state.isProcessing) return;
+    durationSeconds = durationSeconds.clamp(1, _maxRecordingSeconds);
 
     if (!_ref.read(connectionProvider).isConnected) {
       state = state.copyWith(error: 'Not connected to robot');
