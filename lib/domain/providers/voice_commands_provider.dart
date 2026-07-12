@@ -12,6 +12,7 @@ import '../../data/models/voice_command.dart';
 import '../../core/network/websocket_client.dart';
 import '../../core/services/local_connection_service.dart';
 import '../../core/utils/remote_logger.dart';
+import '../../core/utils/time_utils.dart';
 import 'auth_provider.dart';
 import 'dog_profiles_provider.dart';
 
@@ -365,9 +366,8 @@ class VoiceCommandsNotifier extends StateNotifier<DogVoiceCommands> {
           rlog('VOICE', 'Relay upload failed for $commandId, trying WS fallback');
         } else {
           final relayUrl = result['audio_url'] as String?;
-          final relayUpdatedAt = result['updated_at'] != null
-              ? DateTime.tryParse(result['updated_at'] as String)
-              : null;
+          final relayUpdatedAt =
+              tryParseServerTimestamp(result['updated_at'] as String?);
           final updatedCommand = command.copyWith(
             isSynced: true,
             syncedAt: DateTime.now(),
@@ -437,9 +437,7 @@ class VoiceCommandsNotifier extends StateNotifier<DogVoiceCommands> {
         final audioUrl = entry['audio_url'] as String?;
         final updatedAtStr = entry['updated_at'] as String?;
         if (commandId == null || audioUrl == null) continue;
-        final updatedAt = updatedAtStr != null
-            ? DateTime.tryParse(updatedAtStr)
-            : null;
+        final updatedAt = tryParseServerTimestamp(updatedAtStr);
 
         final existing = newCommands[commandId];
         final existingFile = existing?.localPath != null

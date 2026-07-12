@@ -1,5 +1,7 @@
 import 'package:freezed_annotation/freezed_annotation.dart';
 
+import '../../core/utils/time_utils.dart';
+
 part 'video_clip.freezed.dart';
 part 'video_clip.g.dart';
 
@@ -30,9 +32,7 @@ class VideoClip with _$VideoClip {
     return VideoClip(
       id: data['id'] as String? ?? '',
       url: data['url'] as String? ?? '',
-      timestamp: data['timestamp'] != null
-          ? DateTime.parse(data['timestamp'] as String)
-          : DateTime.now(),
+      timestamp: parseServerTimestamp(data['timestamp'] as String?),
       duration: Duration(
         seconds: data['duration_seconds'] as int? ??
             data['durationSeconds'] as int? ?? 0,

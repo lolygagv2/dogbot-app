@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../core/utils/time_utils.dart';
+
 /// Types of guardian events from the robot
 enum GuardianEventType {
   dogDetected('dog_detected', 'Dog detected', Icons.pets, Colors.blue),
@@ -47,9 +49,7 @@ class GuardianEvent {
     return GuardianEvent(
       id: json['id']?.toString() ?? DateTime.now().millisecondsSinceEpoch.toString(),
       type: GuardianEventType.fromString(json['event_type'] ?? json['type'] ?? 'unknown'),
-      timestamp: json['timestamp'] != null
-          ? (DateTime.tryParse(json['timestamp'].toString()) ?? DateTime.now()).toLocal()
-          : DateTime.now(),
+      timestamp: parseServerTimestamp(json['timestamp']?.toString()),
       details: json['details']?.toString() ?? json['message']?.toString(),
       metadata: json['metadata'] as Map<String, dynamic>?,
     );

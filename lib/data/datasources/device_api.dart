@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/constants/api_endpoints.dart';
 import '../../core/network/dio_client.dart';
+import '../../core/utils/time_utils.dart';
 import '../../domain/providers/auth_provider.dart';
 
 /// Paired device model
@@ -26,12 +27,8 @@ class PairedDevice {
       deviceId: json['device_id'] as String,
       name: json['name'] as String?,
       isOnline: json['is_online'] as bool? ?? false,
-      lastSeen: json['last_seen'] != null
-          ? DateTime.tryParse(json['last_seen'] as String)
-          : null,
-      pairedAt: json['paired_at'] != null
-          ? DateTime.parse(json['paired_at'] as String)
-          : DateTime.now(),
+      lastSeen: tryParseServerTimestamp(json['last_seen'] as String?),
+      pairedAt: parseServerTimestamp(json['paired_at'] as String?),
     );
   }
 }

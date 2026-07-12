@@ -5,6 +5,7 @@ import 'package:gal/gal.dart';
 import 'package:path_provider/path_provider.dart';
 
 import '../../core/network/dio_client.dart';
+import '../../core/utils/time_utils.dart';
 
 /// Model for a captured video
 class CapturedVideo {
@@ -113,7 +114,7 @@ class VideoService {
       id: id,
       filename: finalFilename,
       localPath: localPath,
-      timestamp: timestamp != null ? DateTime.tryParse(timestamp) ?? now : now,
+      timestamp: parseServerTimestamp(timestamp, fallback: now),
       savedToGallery: savedToGallery,
     );
   }

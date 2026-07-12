@@ -1,3 +1,5 @@
+import '../../core/utils/time_utils.dart';
+
 /// Robot day/night camera mode. The robot decides this from its ambient light
 /// sensor (NoIR camera + lux reading) when override is [NightModeOverride.auto];
 /// otherwise it follows the user's pinned choice.
@@ -97,7 +99,7 @@ class NightModeState {
       lastChanged =
           DateTime.fromMillisecondsSinceEpoch((ts.toDouble() * 1000).round());
     } else if (ts is String) {
-      lastChanged = DateTime.tryParse(ts);
+      lastChanged = tryParseServerTimestamp(ts);
     }
     return NightModeState(
       currentMode: mode,

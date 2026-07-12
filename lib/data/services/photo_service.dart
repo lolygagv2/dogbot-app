@@ -6,6 +6,8 @@ import 'package:flutter/foundation.dart';
 import 'package:gal/gal.dart';
 import 'package:path_provider/path_provider.dart';
 
+import '../../core/utils/time_utils.dart';
+
 /// Model for a captured photo
 class CapturedPhoto {
   final String id;
@@ -111,7 +113,7 @@ class PhotoService {
       id: id,
       filename: finalFilename,
       localPath: localPath,
-      timestamp: timestamp != null ? DateTime.tryParse(timestamp) ?? now : now,
+      timestamp: parseServerTimestamp(timestamp, fallback: now),
       savedToGallery: savedToGallery,
     );
   }

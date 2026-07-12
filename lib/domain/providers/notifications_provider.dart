@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/network/websocket_client.dart';
 import '../../core/utils/conn_trace.dart';
+import '../../core/utils/time_utils.dart';
 import '../../core/services/local_connection_service.dart';
 import '../../core/services/notification_service.dart';
 import '../../data/datasources/robot_api.dart';
@@ -209,7 +210,7 @@ class NotificationsNotifier extends StateNotifier<List<NotificationEvent>> {
   DateTime _resolveTimestamp(WsEvent event) {
     final raw = event.tsServer ?? event.data['timestamp'];
     if (raw is String) {
-      return DateTime.tryParse(raw)?.toLocal() ?? DateTime.now();
+      return parseServerTimestamp(raw);
     }
     if (raw is int) return DateTime.fromMillisecondsSinceEpoch(raw);
     return DateTime.now();
@@ -466,9 +467,7 @@ class NotificationsNotifier extends StateNotifier<List<NotificationEvent>> {
         DateTime.now().millisecondsSinceEpoch.toString();
     final typeStr = event['type'] as String? ?? '';
     final timestampStr = event['timestamp'] as String?;
-    final timestamp = timestampStr != null
-        ? (DateTime.tryParse(timestampStr) ?? DateTime.now())
-        : DateTime.now();
+    final timestamp = parseServerTimestamp(timestampStr);
     final dogId = event['dog_id'] as String?;
     final payload = (event['payload'] as Map?)?.cast<String, dynamic>() ?? {};
 

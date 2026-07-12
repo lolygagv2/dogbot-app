@@ -1,5 +1,7 @@
 import 'package:freezed_annotation/freezed_annotation.dart';
 
+import '../../core/utils/time_utils.dart';
+
 part 'notification_event.freezed.dart';
 part 'notification_event.g.dart';
 
@@ -52,9 +54,7 @@ class NotificationEvent with _$NotificationEvent {
     return NotificationEvent(
       id: data['id'] as String? ?? DateTime.now().millisecondsSinceEpoch.toString(),
       type: type,
-      timestamp: data['timestamp'] != null
-          ? DateTime.parse(data['timestamp'] as String)
-          : DateTime.now(),
+      timestamp: parseServerTimestamp(data['timestamp'] as String?),
       title: data['title'] as String? ?? _getDefaultTitle(type),
       subtitle: data['subtitle'] as String? ?? data['message'] as String?,
       dogId: data['dog_id'] as String?,
