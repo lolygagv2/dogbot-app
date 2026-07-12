@@ -399,8 +399,10 @@ class MainShell extends ConsumerWidget {
         children: [
           navigationShell,
           if (showReconnecting)
+            // Anchored to the bottom of the body (just above the nav bar) —
+            // at the top it covered the video/status area users need to see.
             Positioned(
-              top: MediaQuery.of(context).padding.top,
+              bottom: 0,
               left: 0,
               right: 0,
               child: Material(
