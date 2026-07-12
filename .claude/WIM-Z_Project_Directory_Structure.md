@@ -39,6 +39,7 @@ Architecture: Mobile App (this repo) → Server (intermediary) → Robot (Pi 5)
             websocket_client.dart  WebSocket: handshake gate, close-code retry, heartbeat
          📂 utils/
             conn_trace.dart        🆕 connTrace() + ConnTraceLog ring buffer (WebRTC signaling trace)
+            time_utils.dart        🆕 Build 139 — parseServerTimestamp: naive relay/robot ISO strings are UTC → device-local (Dart parses naive as local!)
 
       📂 data/                     # Data layer
          📂 models/                # Freezed data classes (and plain immutables)
@@ -92,6 +93,8 @@ Architecture: Mobile App (this repo) → Server (intermediary) → Robot (Pi 5)
       unit/                        Unit tests
       widget/                      Widget tests
       integration/                 Integration tests
+      core/utils/time_utils_test.dart              🆕 Build 139 — UTC/naive/offset timestamp parsing (7 tests)
+      domain/providers/dog_profiles_merge_test.dart 🆕 Build 139 — mergeRelayDogs + dedupeByName anti-replication (10 tests)
 
    📂 assets/                      # Static assets
       images/                      App images

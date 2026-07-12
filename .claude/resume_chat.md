@@ -1,5 +1,37 @@
 # WIM-Z Resume Chat Log
 
+## Session: 2026-07-12 — Build 139 (UTC timestamps, dog profile replication, voice bleed)
+**Goal:** Fix activity-log timestamps showing server (UTC) time; fix dog profiles duplicating on every logout/login; fix new dogs inheriting the previous dog's custom voice commands.
+**Status:** ✅ All shipped — 3 commits pushed (`22abe38`, `486188b`, `299ea43`), version 1.0.0+139. Relay + robot fixes handled on their sides same day.
+
+### Fix 1 — UTC timestamps displayed as local time (`22abe38`)
+**Root cause:** relay emits ISO-8601 UTC *without* the `Z` suffix (Python `isoformat()`); Dart's `DateTime.parse()` treats naive strings as LOCAL time, so `.toLocal()` calls were no-ops and the feed showed UTC wall-clock (4h off on US Eastern).
+**Fix:** new `lib/core/utils/time_utils.dart` — `parseServerTimestamp`/`tryParseServerTimestamp` treat naive strings as UTC per relay contract, convert to device-local. Applied to all displayed server instants: notifications provider (`_resolveTimestamp` + activity hydration), notification_event, guardian_event, video_clip, photo/video services, device_api (last_seen/paired_at), night_mode_state, voice updated_at. **Deliberately NOT applied** to date-only fields (birth_date, analytics date, goal deadline) — UTC shift would move them a day back west of UTC. Tests: `test/core/utils/time_utils_test.dart` (7 passing).
+
+### Fix 2 — Dog profile replication on logout/login (`486188b`)
+**Root cause (relay-side, app hardened):** relay `POST /dogs` mints its own ids instead of honoring the app's UUIDv7; id-only merge in `hydrateFromRelay` adopted the relay copy as a new dog AND re-backfilled the "missing" local one → +1 replica per login cycle + POST spam growing the relay table.
+**App fixes** in `dog_profiles_provider.dart`:
+- `mergeRelayDogs()` (extracted static, `@visibleForTesting`) — unknown relay ids matched **by name** (unique per user via addProfile guard); local id stays canonical (voice files/robot caches/selection key on it); newer `updatedAt` wins fields; `relayKnownIds` gates backfill (no re-POST for dogs relay has under ANY id)
+- `dedupeByName()` — heals already-persisted duplicate lists on load (keeps earliest-created id, adopts newest edits, prefers non-null photo)
+- Tests: `test/domain/providers/dog_profiles_merge_test.dart` (10 passing, incl. 3-cycle login stability sim)
+**Voice bleed guard** in `voice_commands_provider.dart` hydrate: drop manifest entries whose `dog_id` ≠ requested dog (relay was returning another dog's manifest for unknown ids — how a new dog "inherited" recordings). Guard needs relay to stamp `dog_id` per entry.
+**Contract note:** `.claude/RELAY_DOG_SYNC_CONTRACT_2026-07-12.md` — relay owes upsert-by-client-id, id echo on GET, DELETE by same id, strict voice filtering + one-time row dedupe. **User confirmed relay instance is on it.**
+
+### Robot-side (user handled directly)
+New dog played OLD dog's sounds — robot's `play_voice` should fall back to `VOICEMP3/talks/default/` on `dog_{id}` folder miss, was using last-loaded set. Morgan fixed robot-side same day. App verified clean (sends correct dog_id on play_voice/select_dog; add-dog auto-selects).
+
+### Known residuals (until relay contract lands)
+- Deleting a dog can RESURRECT on next login (app deletes by its id; relay row lives under minted id)
+- Renaming a dog on a second device can still fork a profile (name-match is the only fallback)
+- Memory note: `relay-dog-id-drift.md` in auto-memory
+
+### Next Session:
+1. Verify Build 139 on device (login-connect canary first — Codemagic publish trap)
+2. E2E after relay fix: logout/login ×2 → no dupes; add throwaway dog → defaults play, Voice screen unrecorded; activity log shows local wall-clock
+3. `.claude/TestFlight – WIM-Z 1.0.0 (133).crash` still unexamined in repo root
+
+---
+
 ## Session: 2026-07-05 — Build 135 (July dispatch: 6 app fixes, spec v0.3 alignment, UI shells)
 **Goal:** Execute the APP block of `.claude/WIMZ_Dispatch_Package.md` (A-DISCOVER, A-PROFILE, A-PORTRAIT, A-WORDING, A-BANNER, A-LED), then align the dog layer to `WIMZ_Data_Architecture_Spec.md` (bumped to v0.3 mid-session), then build UI shells on stub data.
 **Status:** ✅ All shipped, analyzer-clean, 11 commits pushed to `origin/main` (`5422d3c..d413801`). Codemagic building 1.0.0+135.
