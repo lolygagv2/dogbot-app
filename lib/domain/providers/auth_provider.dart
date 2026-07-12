@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../../core/config/environment.dart';
 import '../../core/constants/app_constants.dart';
 import '../../core/services/local_connection_service.dart';
 import '../../core/utils/conn_trace.dart';
@@ -348,9 +349,19 @@ class AuthNotifier extends StateNotifier<AuthState> {
     final prefs = await SharedPreferences.getInstance();
     final savedHost = prefs.getString(AppConstants.keyServerHost);
     final savedPort = prefs.getInt(AppConstants.keyServerPort);
-    final host = (savedHost != null && savedHost.isNotEmpty)
-        ? savedHost
-        : AppConstants.defaultHost;
+    // The relay is always a domain. A bare IP in server_host is a robot
+    // address that leaked in via a local-mode connect (pre-135 banner retry
+    // ran the relay path against 192.168.4.1); trusting it sends the health
+    // check to a robot that isn't there, so the relay WS is never attempted
+    // — login succeeds, app stays disconnected, no UI can clear the pref.
+    final savedIsUsable = savedHost != null &&
+        savedHost.isNotEmpty &&
+        !AppConfig.isIpAddress(savedHost);
+    if (savedHost != null && savedHost.isNotEmpty && !savedIsUsable) {
+      connTrace('$scenario-connect-badhost',
+          'ignoring saved IP host=$savedHost — using ${AppConstants.defaultHost}');
+    }
+    final host = savedIsUsable ? savedHost : AppConstants.defaultHost;
     final port = savedPort ?? AppConstants.defaultPort;
     connTrace('$scenario-connect',
         'host=$host port=$port saved=${savedHost != null && savedHost.isNotEmpty}');

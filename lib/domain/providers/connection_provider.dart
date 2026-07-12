@@ -264,6 +264,22 @@ class ConnectionNotifier extends StateNotifier<ConnectionState> {
       _closeReasonSubscription =
           ws.closeReasonStream.listen(_onWsCloseReason);
 
+      // ws.connect() returns normally even when the handshake failed (its
+      // _doConnect catches the error and schedules its own retries), so
+      // falling through here used to persist the host and claim
+      // relayConnected on a socket that never opened — which is how a robot
+      // IP got written to server_host and hijacked every later cloud
+      // connect. Listeners above stay attached: if a background retry
+      // succeeds, _onWsStateChange upgrades the state from error.
+      if (ws.state != WsConnectionState.connected) {
+        connTrace('conn-ws-failed', 'wsState=${ws.state} — host not saved');
+        state = state.copyWith(
+          status: ConnectionStatus.error,
+          errorMessage: 'Could not open live connection to server',
+        );
+        return false;
+      }
+
       // Save connection settings
       await _saveConnection(host, port);
 
