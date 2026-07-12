@@ -437,6 +437,15 @@ class VoiceCommandsNotifier extends StateNotifier<DogVoiceCommands> {
         final audioUrl = entry['audio_url'] as String?;
         final updatedAtStr = entry['updated_at'] as String?;
         if (commandId == null || audioUrl == null) continue;
+        // Guard against relay filter drift: a manifest entry stamped with a
+        // different dog's id must never be adopted for this dog — that's how
+        // a freshly-added dog "inherited" another dog's recordings.
+        final entryDogId = entry['dog_id'] as String?;
+        if (entryDogId != null && entryDogId != dogId) {
+          rlog('VOICE',
+              'hydrate[$dogId]: dropped $commandId stamped for dog $entryDogId');
+          continue;
+        }
         final updatedAt = tryParseServerTimestamp(updatedAtStr);
 
         final existing = newCommands[commandId];

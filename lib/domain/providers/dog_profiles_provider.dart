@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:ui' show Color;
 
+import 'package:flutter/foundation.dart' show visibleForTesting;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -147,7 +148,15 @@ class DogProfilesNotifier extends StateNotifier<List<DogProfile>> {
     if (json != null && json.isNotEmpty) {
       try {
         final List<dynamic> list = jsonDecode(json);
-        state = list.map((e) => DogProfile.fromJson(e as Map<String, dynamic>)).toList();
+        final loaded =
+            list.map((e) => DogProfile.fromJson(e as Map<String, dynamic>)).toList();
+        // Heal duplicates persisted by earlier builds (relay id-mint bug).
+        final healed = dedupeByName(loaded);
+        if (healed.length != loaded.length) {
+          connTrace('dogprofiles-load-dedupe',
+              'collapsed ${loaded.length}→${healed.length} same-name profiles');
+        }
+        state = healed;
         print('DogProfiles: Loaded ${state.length} profiles from storage');
       } catch (e) {
         print('DogProfiles: Failed to load profiles: $e');
@@ -206,43 +215,18 @@ class DogProfilesNotifier extends StateNotifier<List<DogProfile>> {
       final remote = await api.getDogs(token);
       print('DogProfiles: hydrateFromRelay fetched ${remote.length} from relay (local=${state.length})');
 
-      // Make sure we have the latest local copy from disk for this user.
+      // Make sure we have the latest local copy from disk for this user
+      // (_loadProfiles also heals persisted same-name duplicates).
       await _loadProfiles();
 
-      final byId = <String, DogProfile>{
-        for (final p in state) p.id: p,
-      };
-      for (final r in remote) {
-        final local = byId[r.id];
-        if (local == null) {
-          // Relay knows about a dog we don't have locally — adopt it.
-          byId[r.id] = r;
-        } else {
-          // Conflict: take whichever has the newer updatedAt. Null updatedAt
-          // is treated as oldest, so a record with a real timestamp wins.
-          final lu = local.updatedAt?.millisecondsSinceEpoch ?? 0;
-          final ru = r.updatedAt?.millisecondsSinceEpoch ?? 0;
-          if (ru > lu) {
-            // Preserve local-only fields (photo cache) when remote is authoritative.
-            byId[r.id] = r.copyWith(
-              localPhotoPath: local.localPhotoPath,
-              photoVersion: local.photoVersion,
-            );
-          }
-        }
-      }
-
-      final merged = byId.values.toList()
-        ..sort((a, b) => (a.createdAt ?? DateTime(0))
-            .compareTo(b.createdAt ?? DateTime(0)));
-      state = merged;
+      final result = mergeRelayDogs(state, remote);
+      state = result.merged;
       await _saveProfiles();
 
       // Push any local-only profiles up to the relay so future installs
       // (and the other device that didn't have them) can see them.
-      final remoteIds = remote.map((r) => r.id).toSet();
       for (final p in state) {
-        if (!remoteIds.contains(p.id)) {
+        if (!result.relayKnownIds.contains(p.id)) {
           try {
             final api = _ref.read(robotApiProvider);
             await api.createDog(p.toJson(), token);
@@ -262,6 +246,90 @@ class DogProfilesNotifier extends StateNotifier<List<DogProfile>> {
     } catch (e) {
       print('DogProfiles: hydrateFromRelay error: $e');
     }
+  }
+
+  /// Merge relay dogs into the local list. Remote records whose id we don't
+  /// recognize are matched by name instead of adopted blindly: when the
+  /// relay mints its own ids on POST /dogs (instead of honoring ours),
+  /// id-only merging re-adopted the same dog on every login — one new
+  /// replica per logout/login cycle. Matched dogs keep the LOCAL id (voice
+  /// recordings, the robot's per-dog caches, and selection persistence all
+  /// key on it); per-record the newer updatedAt wins, with null treated as
+  /// oldest. `relayKnownIds` holds local ids the relay has a copy of under
+  /// ANY id — those must not be backfilled, since re-POSTing them is what
+  /// made the relay mint yet another duplicate row each cycle.
+  @visibleForTesting
+  static ({List<DogProfile> merged, Set<String> relayKnownIds}) mergeRelayDogs(
+      List<DogProfile> local, List<DogProfile> remote) {
+    final byId = <String, DogProfile>{for (final p in local) p.id: p};
+    final idByName = <String, String>{
+      for (final p in local) p.name.toLowerCase(): p.id,
+    };
+    final relayKnownIds = <String>{};
+
+    for (final r in remote) {
+      final localId =
+          byId.containsKey(r.id) ? r.id : idByName[r.name.toLowerCase()];
+      if (localId == null) {
+        // Genuinely new dog from another device — adopt it.
+        byId[r.id] = r;
+        idByName[r.name.toLowerCase()] = r.id;
+        relayKnownIds.add(r.id);
+        continue;
+      }
+      relayKnownIds.add(localId);
+      final existing = byId[localId]!;
+      final lu = existing.updatedAt?.millisecondsSinceEpoch ?? 0;
+      final ru = r.updatedAt?.millisecondsSinceEpoch ?? 0;
+      if (ru > lu) {
+        // Preserve local-only fields (photo cache) when remote is authoritative.
+        byId[localId] = r.copyWith(
+          id: localId,
+          createdAt: existing.createdAt ?? r.createdAt,
+          localPhotoPath: existing.localPhotoPath,
+          photoVersion: existing.photoVersion,
+        );
+      }
+    }
+
+    final merged = byId.values.toList()
+      ..sort((a, b) =>
+          (a.createdAt ?? DateTime(0)).compareTo(b.createdAt ?? DateTime(0)));
+    return (merged: merged, relayKnownIds: relayKnownIds);
+  }
+
+  /// Collapse same-name profiles into one. Names are unique per user
+  /// (addProfile rejects duplicates case-insensitively), so same-name rows
+  /// are replication artifacts from the relay minting its own dog ids.
+  /// Keeps the earliest-created record's id (voice recordings and the
+  /// robot's per-dog caches key on it) but adopts the newest record's
+  /// editable fields.
+  @visibleForTesting
+  static List<DogProfile> dedupeByName(List<DogProfile> profiles) {
+    final byName = <String, DogProfile>{};
+    for (final p in profiles) {
+      final key = p.name.toLowerCase();
+      final kept = byName[key];
+      if (kept == null) {
+        byName[key] = p;
+        continue;
+      }
+      // Null createdAt = legacy record = oldest.
+      final keptCreated = kept.createdAt ?? DateTime(0);
+      final pCreated = p.createdAt ?? DateTime(0);
+      final keeper = keptCreated.isAfter(pCreated) ? p : kept;
+      final keptUpdated = kept.updatedAt ?? DateTime(0);
+      final pUpdated = p.updatedAt ?? DateTime(0);
+      final newest = pUpdated.isAfter(keptUpdated) ? p : kept;
+      byName[key] = newest.copyWith(
+        id: keeper.id,
+        createdAt: keeper.createdAt,
+        localPhotoPath: kept.localPhotoPath ?? p.localPhotoPath,
+        photoVersion:
+            kept.photoVersion > p.photoVersion ? kept.photoVersion : p.photoVersion,
+      );
+    }
+    return byName.values.toList();
   }
 
   /// Clear all profiles (used on logout)
