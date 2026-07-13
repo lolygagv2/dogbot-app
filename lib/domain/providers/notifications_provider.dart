@@ -13,6 +13,7 @@ import '../../data/models/notification_event.dart';
 import 'auth_provider.dart';
 import 'connection_provider.dart';
 import 'dog_profiles_provider.dart';
+import 'missions_provider.dart';
 import 'settings_provider.dart';
 
 /// Provider for notification events list
@@ -111,13 +112,19 @@ class NotificationsNotifier extends StateNotifier<List<NotificationEvent>> {
         notification = _guardianNotification(event.data, eventTime, eventId);
         break;
 
+      // Build 140: treat events carry dog_id/dog_name when the robot resolved
+      // the dog OR when the app named it on the dispense_treat command (the
+      // robot echoes it back — attribution contract 2026-07-13). Untagged
+      // treats stay untagged; per-dog stats only count what's honestly known.
       case 'treat':
+        final treatDogName = event.data['dog_name'] as String?;
         notification = NotificationEvent(
           id: DateTime.now().millisecondsSinceEpoch.toString(),
           type: NotificationEventType.treatDispensed,
           timestamp: eventTime,
           title: 'Treat Dispensed',
-          subtitle: 'Good job!',
+          subtitle: treatDogName != null ? 'For $treatDogName' : 'Good job!',
+          dogId: event.data['dog_id'] as String?,
         );
         break;
 
@@ -130,6 +137,7 @@ class NotificationsNotifier extends StateNotifier<List<NotificationEvent>> {
             timestamp: eventTime,
             title: 'Treat Dispensed',
             subtitle: remaining != null ? '$remaining treats remaining' : 'Good job!',
+            dogId: event.data['dog_id'] as String?,
           );
         }
         break;
@@ -157,6 +165,7 @@ class NotificationsNotifier extends StateNotifier<List<NotificationEvent>> {
           title: 'Mission Started',
           subtitle: event.data['name'] as String?,
           missionId: event.data['id'] as String?,
+          dogId: _missionDogId(event.data),
         );
         break;
 
@@ -168,6 +177,7 @@ class NotificationsNotifier extends StateNotifier<List<NotificationEvent>> {
           title: 'Mission Completed',
           subtitle: event.data['name'] as String?,
           missionId: event.data['id'] as String?,
+          dogId: _missionDogId(event.data),
         );
         break;
 
@@ -215,6 +225,15 @@ class NotificationsNotifier extends StateNotifier<List<NotificationEvent>> {
     if (raw is int) return DateTime.fromMillisecondsSinceEpoch(raw);
     return DateTime.now();
   }
+
+  /// Build 140: dog for a live mission event. Robot payload dog_id wins
+  /// (covers scheduler/robot-started missions once the attribution contract
+  /// lands); otherwise fall back to the dog the APP started the mission for
+  /// (C2 effectiveDogId, tracked in MissionsState.activeDogId). This is a
+  /// join on real knowledge, not a display-time guess — the app either named
+  /// the dog on start_mission or it stays untagged.
+  String? _missionDogId(Map<String, dynamic> data) =>
+      data['dog_id'] as String? ?? _ref.read(missionsProvider).activeDogId;
 
   /// Check if detection is from a known dog (has dog_id, or aruco_id matches a profile,
   /// or no aruco at all — generic detection without ArUco is allowed through)

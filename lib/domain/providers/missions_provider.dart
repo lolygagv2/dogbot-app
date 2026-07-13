@@ -249,6 +249,11 @@ class MissionsState {
   final String? error;
   // Build 31: Full progress state
   final MissionProgress? currentProgress;
+  // Build 140: dog the active mission was started for (C2 effectiveDogId).
+  // Lets mission notifications attribute to a dog even when the robot's
+  // event payload doesn't echo dog_id yet. Null for robot/scheduler-started
+  // missions the app didn't initiate.
+  final String? activeDogId;
 
   const MissionsState({
     this.missions = const [],
@@ -257,6 +262,7 @@ class MissionsState {
     this.activeRewards = 0,
     this.error,
     this.currentProgress,
+    this.activeDogId,
   });
 
   MissionsState copyWith({
@@ -266,6 +272,7 @@ class MissionsState {
     int? activeRewards,
     String? error,
     MissionProgress? currentProgress,
+    String? activeDogId,
     bool clearActiveMission = false,
     bool clearError = false,
     bool clearProgress = false,
@@ -277,6 +284,7 @@ class MissionsState {
       activeRewards: clearActiveMission ? 0 : (activeRewards ?? this.activeRewards),
       error: clearError ? null : (error ?? this.error),
       currentProgress: clearProgress || clearActiveMission ? null : (currentProgress ?? this.currentProgress),
+      activeDogId: clearActiveMission ? null : (activeDogId ?? this.activeDogId),
     );
   }
 
@@ -738,6 +746,9 @@ class MissionsNotifier extends StateNotifier<MissionsState> {
       activeProgress: 0.0,
       activeRewards: 0,
       clearError: true,
+      // Build 140: remember who this mission is for — mission notifications
+      // attribute to this dog when the robot payload has no dog_id.
+      activeDogId: effectiveDogId,
       currentProgress: MissionProgress(
         missionId: missionId,
         status: 'starting',

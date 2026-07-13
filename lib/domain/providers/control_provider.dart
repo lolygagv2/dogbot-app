@@ -361,7 +361,9 @@ class TreatControl {
             return;
           }
         }
-        ws.sendTreatCommand();
+        // Build 140: attribute the manual treat to the selected dog so it
+        // counts in that dog's per-dog stats (C4 rule excludes untagged).
+        ws.sendTreatCommand(dogId: selectedDog?.id, dogName: selectedDog?.name);
         print('TreatControl: dispensed ${i + 1}/$resolved');
       }
     } finally {

@@ -1003,9 +1003,17 @@ class WebSocketClient {
   }
 
   /// Send treat command
-  /// Format: {"type":"command","command":"dispense_treat"}
-  void sendTreatCommand() {
-    sendCommand('dispense_treat');
+  /// Format: {"type":"command","command":"dispense_treat","data":{"dog_id":...}}
+  /// Build 140 attribution: [dogId]/[dogName] name the dog the owner is
+  /// treating (the app's selected dog — the human tapping Give Treat knows
+  /// who it's for, no vision needed). The robot echoes them onto the emitted
+  /// treat/reward event and relay row so per-dog stats count manual treats.
+  /// Contract: .claude/EVENT_DOG_ATTRIBUTION_CONTRACT_2026-07-13.md
+  void sendTreatCommand({String? dogId, String? dogName}) {
+    sendCommand('dispense_treat', {
+      if (dogId != null) 'dog_id': dogId,
+      if (dogName != null) 'dog_name': dogName,
+    });
   }
 
   /// Rotate treat carousel
