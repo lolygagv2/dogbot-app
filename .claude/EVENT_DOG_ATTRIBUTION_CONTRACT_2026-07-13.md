@@ -24,7 +24,14 @@
 1. **Echo owner attribution on manual dispense.** When `dispense_treat` arrives with `dog_id`/`dog_name`, stamp BOTH onto the emitted `treat` / `reward` event payload and the persisted event row. Set provenance `id_method: "owner_selected"` (new enum value alongside `"qr"` — the human tapping the button is an identification method; spec §5 `dog_identified` taxonomy extends). Absent fields → emit untagged exactly as today.
 2. **Stamp `dog_id` whenever vision/ArUco identity resolves, in ANY mode** — Silent Guardian escalations, SG-triggered treat rewards, detections in manual/idle. Attribution must not be a coach/mission-mode privilege; if `dog_identified` fired for the dog in frame, subsequent events in that engagement carry its id (`id_method: "qr"` or `"vision"`).
 3. **Mission lifecycle events echo the locked dog.** `mission_start` / `mission_progress` / `mission_complete` payloads include the `dog_id` the mission was started with (from the `start_mission` command, or `schedule.dog_id` for scheduler-started missions — the schedule row already has it). This is the reliable path for scheduler-started missions the app never sees start.
-4. **DESIGN DECISION — Morgan approves or rejects, do not just ship:** sole-dog default. If exactly ONE dog profile is loaded on the robot, attribute otherwise-unresolved behavioral events to that dog with `id_method: "sole_dog"`. Honest for one-dog households, provenance-marked so it can be filtered or reversed later; NEVER applies when ≥2 profiles exist (a visiting dog would be misattributed).
+4. **DECIDED by Morgan 2026-07-13 — always-assign fallback.** Every event gets a dog:
+   - Exactly one profile loaded → that dog, `id_method: "sole_dog"`.
+   - Multiple profiles → the LAST dog, `id_method: "last_dog"`, where "last dog" = most recent of (vision/ArUco identification, explicit `dog_id` in a command — dispense_treat / start_mission / play_voice / select_dog). Recommend resetting last-dog on profile reload/reboot to the sole or app-selected dog rather than carrying a stale one.
+
+   **Guardrails that make always-assign safe:**
+   - **Precedence is strict:** explicit attribution (command `dog_id`, mission's locked dog, live vision/ArUco resolution) ALWAYS beats the fallback. Never let "last dog" override a dog the owner just named — e.g. app-selected dog B gets the treat even if the camera last saw dog A.
+   - **Provenance is mandatory:** every fallback-stamped event carries its `id_method`. The app persists it (notification metadata) so a guess stays distinguishable from an identification — that's what makes multi-dog misattribution auditable and correctable later.
+   - **Ids must be app-canonical:** stamp the `dog_id` values delivered via `reload_dogs` (the app's UUIDv7 / legacy ids), never robot-local indices or relay-minted ids — per-dog stats match on exact id (see relay dog-id drift, RELAY_DOG_SYNC_CONTRACT_2026-07-12).
 
 ## Relay owes
 
@@ -33,12 +40,13 @@
 
 ## What nobody does
 
-- No display-time assignment of untagged events to the selected dog (the Build 125 fake-data rule). Untagged means untagged.
+- No display-time assignment in the APP (the Build 125 fake-data rule) — assignment happens robot-side at the source, with `id_method` provenance, or via the app's own explicit knowledge (command dog_id, app-started mission). Events that still arrive untagged (old robot firmware) stay untagged.
 - No backfill of historical rows in this pass.
 
 ## Verification (once robot side lands)
 
-1. Select dog A in app → Give Treat → event arrives with `dog_id`=A → feed shows "For A", A's per-dog stats count it. Select no dog → untagged, still dispenses.
+1. Select dog A in app → Give Treat → event arrives with `dog_id`=A, `id_method`=`owner_selected` → feed shows "For A", A's per-dog stats count it. Even if the camera last identified dog B (`last_dog` must NOT win over the command's dog_id).
 2. Start mission for dog A → mission_start/complete both attributed (check via History filtered to A).
-3. SG session where ArUco resolves → escalation + reward events carry the id.
-4. Two profiles loaded → unresolved events stay NULL (sole-dog rule must NOT fire).
+3. SG session where ArUco resolves → escalation + reward events carry the id with `id_method` `qr`/`vision`.
+4. Two profiles loaded, nothing resolved, no command context → events carry the LAST identified/commanded dog with `id_method`=`last_dog` (never a bare id with no provenance).
+5. Single profile → everything attributed to it with `id_method`=`sole_dog`.

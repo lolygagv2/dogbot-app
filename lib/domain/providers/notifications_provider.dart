@@ -100,6 +100,7 @@ class NotificationsNotifier extends StateNotifier<List<NotificationEvent>> {
             title: 'Barking Detected',
             subtitle: event.data['details'] as String?,
             dogId: event.data['dog_id'] as String?,
+            metadata: _attributionMeta(event.data),
           );
         }
         break;
@@ -125,6 +126,7 @@ class NotificationsNotifier extends StateNotifier<List<NotificationEvent>> {
           title: 'Treat Dispensed',
           subtitle: treatDogName != null ? 'For $treatDogName' : 'Good job!',
           dogId: event.data['dog_id'] as String?,
+          metadata: _attributionMeta(event.data),
         );
         break;
 
@@ -138,6 +140,7 @@ class NotificationsNotifier extends StateNotifier<List<NotificationEvent>> {
             title: 'Treat Dispensed',
             subtitle: remaining != null ? '$remaining treats remaining' : 'Good job!',
             dogId: event.data['dog_id'] as String?,
+            metadata: _attributionMeta(event.data),
           );
         }
         break;
@@ -166,6 +169,7 @@ class NotificationsNotifier extends StateNotifier<List<NotificationEvent>> {
           subtitle: event.data['name'] as String?,
           missionId: event.data['id'] as String?,
           dogId: _missionDogId(event.data),
+          metadata: _attributionMeta(event.data),
         );
         break;
 
@@ -178,6 +182,7 @@ class NotificationsNotifier extends StateNotifier<List<NotificationEvent>> {
           subtitle: event.data['name'] as String?,
           missionId: event.data['id'] as String?,
           dogId: _missionDogId(event.data),
+          metadata: _attributionMeta(event.data),
         );
         break;
 
@@ -192,6 +197,7 @@ class NotificationsNotifier extends StateNotifier<List<NotificationEvent>> {
           title: dogName != null ? '$dogName: $behaviorLabel rewarded' : '$behaviorLabel rewarded',
           subtitle: 'Coach mode',
           dogId: event.data['dog_id'] as String?,
+          metadata: _attributionMeta(event.data),
         );
         break;
 
@@ -234,6 +240,22 @@ class NotificationsNotifier extends StateNotifier<List<NotificationEvent>> {
   /// the dog on start_mission or it stays untagged.
   String? _missionDogId(Map<String, dynamic> data) =>
       data['dog_id'] as String? ?? _ref.read(missionsProvider).activeDogId;
+
+  /// Build 140: attribution provenance. The robot ALWAYS assigns a dog now
+  /// (sole profile → that dog; multi-dog → last identified/commanded dog) and
+  /// marks HOW via id_method ('qr'/'vision'/'owner_selected'/'sole_dog'/
+  /// 'last_dog'). Keep it on the notification so a fallback guess stays
+  /// distinguishable from a real identification — per-dog stats count both
+  /// today, but a future UI badge / correction pass needs the difference.
+  Map<String, dynamic>? _attributionMeta(Map<String, dynamic> data) {
+    final idMethod = data['id_method'] as String?;
+    final dogName = data['dog_name'] as String?;
+    if (idMethod == null && dogName == null) return null;
+    return {
+      if (idMethod != null) 'id_method': idMethod,
+      if (dogName != null) 'dog_name': dogName,
+    };
+  }
 
   /// Check if detection is from a known dog (has dog_id, or aruco_id matches a profile,
   /// or no aruco at all — generic detection without ArUco is allowed through)
@@ -278,6 +300,7 @@ class NotificationsNotifier extends StateNotifier<List<NotificationEvent>> {
       title: _getDefaultTitle(type),
       subtitle: confidenceStr,
       dogId: data['dog_id'] as String?,
+      metadata: _attributionMeta(data),
     );
   }
 
@@ -318,6 +341,7 @@ class NotificationsNotifier extends StateNotifier<List<NotificationEvent>> {
       title: 'Guardian Alert',
       subtitle: reason ?? 'Intervention',
       dogId: data['dog_id'] as String?,
+      metadata: _attributionMeta(data),
     );
   }
 
