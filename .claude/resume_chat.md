@@ -1,5 +1,29 @@
 # WIM-Z Resume Chat Log
 
+## Session: 2026-07-12/13 — Build 140 (now-playing text only rendered for wimz_robot_05)
+**Goal:** Song title showed in the music player when connected to wimz_robot_05 but never for wimz_robot_01 (and likely other units), even though the relay verifiably delivered identical `audio_state` events to the app.
+**Status:** ✅ Fixed, tested, pushed (`f6880d7` fix, `bc9a826` bump to 1.0.0+140). Awaiting manual Codemagic trigger + on-device verification.
+
+### Root cause — seq watermark gate ate audio_state (websocket_client.dart `_onMessage`)
+The relay stamps a `seq` on every live-forwarded event, but `audio_state` is NOT in FEED_WORTHY_EVENTS (never replayed). Routing it through the store-and-forward watermark gate meant any robot whose persisted per-device watermark sat ahead of its live counter had EVERY audio_state silently dropped at `seq <= _lastSeenSeq` — device-dependent by nature, zero logging. Same class of bug Build 127 fixed for `controller_status` ("delivered but never rendered"); audio_state never got the carve-out. The widget path (QuickActions `_handleAudioState` → `_currentTrackProvider` → `_MusicControlsWithVolume`) was clean.
+
+### Fix (`f6880d7`)
+- `isTransientMsg` carve-out: `audio_state` (like `controller_*`) skips the watermark drop AND no longer advances the watermark — advancing was a second latent bug (would skip buffered barks/alerts on next reconnect, the documented Build 127 lesson).
+- Filtered events now visible in Connection Diagnostics: `ws-wm-drop-live` (live frame eaten by watermark — always a bug signal, logs seq+wm+device) and `ws-target-drop` (device-id filter), deduped per (type, source) per socket via `_tracedFilterDrops` so the 500-line ring buffer can't flood.
+- `@visibleForTesting` seams on WebSocketClient (`debugHandleMessage`, `debugSetWatermark`, `debugWatermark`, `debugResetForTest`) + 8 regression tests in `test/core/network/websocket_client_events_test.dart` (watermark bypass, no-advance, feed dedup intact, cross-robot filtering, local-mode no-device_id, flat relay frame parsing). All pass; suite 25 green — the one `widget_test.dart` failure is PRE-EXISTING scaffold rot (references removed `MyApp`), fails on untouched tree too.
+
+### Cross-surface notes
+- Robot-side instance proposed adding a `title` field to audio_state — NOT needed, told them: app derives display name from `track` (strips folder + .mp3 in `_getTrackDisplayName`). Documenting audio_state in API_DOCUMENTATION_IPHONE_APP.md still worthwhile.
+- Relay one-liner recommended: add `audio_state` to FEED_WORTHY_EVENTS so now-playing survives app reconnect mid-song. Composes safely with the app fix (replayed state frames are idempotent).
+- Memory saved: `transient-event-watermark-gate.md` — any relay event type not in FEED_WORTHY_EVENTS must be exempted from the watermark; symptom is "renders on one robot only".
+
+### Next Session:
+1. Trigger Codemagic for 1.0.0+140, login-connect canary, then play/stop on a NON-05 unit → title should appear; if not, Connection Diagnostics now names the gate (`ws-wm-drop-live` / `ws-target-drop`)
+2. Build 139 verification still outstanding (dupe-free logout/login ×2, throwaway-dog voice defaults, local timestamps)
+3. `.claude/TestFlight – WIM-Z 1.0.0 (133).crash` still unexamined in repo root
+
+---
+
 ## Session: 2026-07-12 — Build 139 (UTC timestamps, dog profile replication, voice bleed)
 **Goal:** Fix activity-log timestamps showing server (UTC) time; fix dog profiles duplicating on every logout/login; fix new dogs inheriting the previous dog's custom voice commands.
 **Status:** ✅ All shipped — 3 commits pushed (`22abe38`, `486188b`, `299ea43`), version 1.0.0+139. Relay + robot fixes handled on their sides same day.
