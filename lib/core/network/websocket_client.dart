@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 
-import 'package:flutter/foundation.dart' show kDebugMode;
+import 'package:flutter/foundation.dart' show kDebugMode, visibleForTesting;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
@@ -192,6 +192,12 @@ class WebSocketClient {
   Timer? _watermarkPersistTimer;
   static const String _watermarkPrefix = 'ws_seq_watermark_';
 
+  // Build 140: dedup keys for filtered-event traces (target-device drops and
+  // live watermark drops) — first occurrence per key per socket is traced,
+  // the rest stay quiet so a stuck filter can't flood the 500-line ring
+  // buffer. Cleared on each fresh socket in _doConnect.
+  final Set<String> _tracedFilterDrops = <String>{};
+
   /// The current session id sent with the session_hello frame and tagged on
   /// every signaling frame. Null until [connect] is called.
   String? get sessionId => _sessionId;
@@ -345,6 +351,7 @@ class WebSocketClient {
     _handshakeComplete = false;
     _pendingFrames.clear();
     _handshakeTimeoutTimer?.cancel();
+    _tracedFilterDrops.clear();
 
     try {
       _channel = WebSocketChannel.connect(Uri.parse(_currentUrl!));
@@ -421,7 +428,18 @@ class WebSocketClient {
         ((nestedData is Map) ? (nestedData['device_id'] as String? ?? nestedData['robot_id'] as String?) : null);
 
     if (sourceId == null || _targetDeviceId == null) return true;
-    return sourceId == _targetDeviceId;
+    if (sourceId == _targetDeviceId) return true;
+    // Build 140: received-but-filtered events were fully invisible (the relay
+    // forwards ALL owned robots' events; dropping other robots' is by design,
+    // but a target-id mismatch for the CONNECTED robot looks identical from
+    // the outside — "delivered but never rendered"). Trace the first drop per
+    // (type, source) per socket so diagnostics show what got filtered and why.
+    final msgType = json['type'] as String? ?? json['event'] as String?;
+    if (_tracedFilterDrops.add('target:$msgType:$sourceId')) {
+      connTrace('ws-target-drop',
+          'type=$msgType from=$sourceId target=$_targetDeviceId');
+    }
+    return false;
   }
 
   void _onMessage(dynamic message) {
@@ -463,6 +481,17 @@ class WebSocketClient {
       // replayable feed events.
       final seq = json['seq'];
       final isControllerMsg = msgType?.startsWith('controller_') ?? false;
+      // Build 140: audio_state joins the controller_* carve-out. Verified
+      // relay-side 2026-07-12: audio_state is NOT in FEED_WORTHY_EVENTS, so
+      // it is never replayed — the relay stamps a seq on the live forward but
+      // keeps no buffer row. For a never-replayed type the watermark gate can
+      // only do harm: (a) a watermark sitting ahead of the robot's live
+      // counter silently swallows EVERY frame — the "now-playing text renders
+      // for one robot only" bug — and (b) letting it advance the persisted
+      // watermark skips buffered feed events (barks/alerts) on the next
+      // reconnect, exactly the Build 127 controller_* lesson. Any other type
+      // confirmed absent from FEED_WORTHY_EVENTS belongs in this set too.
+      final isTransientMsg = isControllerMsg || msgType == 'audio_state';
       if (isControllerMsg) {
         // Build 129: prove on-device that controller_* reaches the socket and
         // survives the watermark gate (the pre-129 drop point). Read via
@@ -485,8 +514,20 @@ class WebSocketClient {
           connTrace('ws-controller-nocb', msgType ?? '');
         }
       }
-      if (seq is int && !isControllerMsg) {
-        if (seq <= _lastSeenSeq) return; // already accepted — duplicate
+      if (seq is int && !isTransientMsg) {
+        if (seq <= _lastSeenSeq) {
+          // Duplicate per the watermark. Expected for buffered replays
+          // (overlapping replay windows across reconnects); a LIVE frame
+          // landing here means the watermark is ahead of the relay's counter
+          // and we are silently eating real events — trace it (once per type
+          // per socket) so this class of bug shows in Connection Diagnostics.
+          if (json['buffered'] != true &&
+              _tracedFilterDrops.add('wm:$msgType')) {
+            connTrace('ws-wm-drop-live',
+                'type=$msgType seq=$seq wm=$_lastSeenSeq device=$_watermarkDeviceId');
+          }
+          return;
+        }
         _lastSeenSeq = seq;
         _scheduleWatermarkPersist();
       }
@@ -1324,6 +1365,35 @@ class WebSocketClient {
     } catch (_) {
       // Best-effort: the relay buffer still holds the events for next time.
     }
+  }
+
+  // ===== Test hooks (Build 140) =====
+  // The routing/gating logic lives in private _onMessage on a singleton, so
+  // the watermark + target-device regression tests need these narrow seams.
+
+  /// Feed a raw inbound frame through the normal message-routing path.
+  @visibleForTesting
+  void debugHandleMessage(String raw) => _onMessage(raw);
+
+  /// Force the in-memory replay watermark, bypassing the prefs load.
+  @visibleForTesting
+  void debugSetWatermark(int seq, {String? deviceId}) {
+    _lastSeenSeq = seq;
+    _watermarkDeviceId = deviceId;
+  }
+
+  @visibleForTesting
+  int get debugWatermark => _lastSeenSeq;
+
+  /// Reset the singleton's routing state between tests.
+  @visibleForTesting
+  void debugResetForTest() {
+    _watermarkPersistTimer?.cancel();
+    _watermarkPersistTimer = null;
+    _lastSeenSeq = 0;
+    _watermarkDeviceId = null;
+    _targetDeviceId = null;
+    _tracedFilterDrops.clear();
   }
 
   /// Disconnect from WebSocket server
