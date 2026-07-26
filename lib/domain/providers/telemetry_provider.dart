@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart' show visibleForTesting;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/network/websocket_client.dart';
@@ -18,6 +19,14 @@ class TelemetryNotifier extends StateNotifier<Telemetry> {
   final Ref _ref;
   StreamSubscription? _wsSubscription;
 
+  /// Behavior labels are point-in-time readings, not persistent state. The
+  /// robot classifies at ~2-3 Hz while it can see the dog; when no fresh
+  /// behavior event has arrived within this window, the displayed behavior +
+  /// confidence are cleared (matches allDetectionsProvider's box pruning).
+  static const Duration _behaviorStaleAfter = Duration(seconds: 2);
+  Timer? _behaviorStaleTimer;
+  DateTime? _behaviorFreshAt;
+
   TelemetryNotifier(this._ref) : super(const Telemetry()) {
     print('TelemetryNotifier: Created, subscribing to events immediately');
 
@@ -25,11 +34,44 @@ class TelemetryNotifier extends StateNotifier<Telemetry> {
     final wsClient = _ref.read(websocketClientProvider);
     _wsSubscription = wsClient.eventStream.listen(_handleWsEvent);
     print('TelemetryNotifier: Subscribed to eventStream');
+
+    _behaviorStaleTimer = Timer.periodic(
+        const Duration(milliseconds: 500), (_) => _expireStaleBehavior());
   }
 
   void _stopListening() {
     _wsSubscription?.cancel();
+    _behaviorStaleTimer?.cancel();
   }
+
+  /// Clear behavior/confidence/dog-detected once the last reading is stale.
+  /// Also resets lastDetectionProvider so derived providers (detectionProvider,
+  /// unknownDogProvider) stop reporting a dog that left the frame.
+  void _expireStaleBehavior() {
+    final fresh = _behaviorFreshAt;
+    if (fresh == null) return;
+    if (DateTime.now().difference(fresh) < _behaviorStaleAfter) return;
+    _behaviorFreshAt = null;
+    if (state.currentBehavior != null ||
+        state.confidence != null ||
+        state.dogDetected) {
+      state = state.copyWith(
+        currentBehavior: null,
+        confidence: null,
+        dogDetected: false,
+      );
+    }
+    _ref.read(lastDetectionProvider.notifier).state = const Detection();
+  }
+
+  @visibleForTesting
+  void debugHandleEvent(WsEvent event) => _handleWsEvent(event);
+
+  @visibleForTesting
+  void debugSetBehaviorFreshAt(DateTime t) => _behaviorFreshAt = t;
+
+  @visibleForTesting
+  void debugExpireStaleBehavior() => _expireStaleBehavior();
 
   void _handleWsEvent(WsEvent event) {
     // Debug: log event type
@@ -74,6 +116,10 @@ class TelemetryNotifier extends StateNotifier<Telemetry> {
           volume: parsed.volume ?? state.volume,
           rawData: parsed.rawData,
         );
+        // A status frame carrying a behavior is a fresh point-in-time reading.
+        if (parsed.currentBehavior != null || parsed.dogDetected) {
+          _behaviorFreshAt = DateTime.now();
+        }
         print('Telemetry updated (${event.type}): battery=${state.battery}, mode=${state.mode}');
         break;
 
@@ -94,6 +140,7 @@ class TelemetryNotifier extends StateNotifier<Telemetry> {
           currentBehavior: detection.behavior,
           confidence: detection.confidence,
         );
+        if (detection.detected) _behaviorFreshAt = DateTime.now();
         break;
 
       case 'unknown_dog_detected':
