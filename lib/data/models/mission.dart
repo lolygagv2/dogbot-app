@@ -1,7 +1,14 @@
 import 'package:freezed_annotation/freezed_annotation.dart';
 
+import '../../core/utils/time_utils.dart';
+
 part 'mission.freezed.dart';
 part 'mission.g.dart';
+
+/// Relay timestamps are UTC (with or without 'Z'); parse to device-local so
+/// display and day-grouping never show server wall-clock.
+DateTime _localTimeFromJson(String raw) => parseServerTimestamp(raw);
+DateTime? _localTimeFromJsonNullable(String? raw) => tryParseServerTimestamp(raw);
 
 /// Training mission configuration
 @freezed
@@ -143,8 +150,8 @@ class MissionHistoryEntry with _$MissionHistoryEntry {
     required String missionId,
     required String missionName,
     required String dogId,
-    required DateTime startedAt,
-    DateTime? completedAt,
+    @JsonKey(fromJson: _localTimeFromJson) required DateTime startedAt,
+    @JsonKey(fromJson: _localTimeFromJsonNullable) DateTime? completedAt,
     @Default(0) int treatsGiven,
     @Default(0) int stagesCompleted,
     @Default(0) int totalStages,

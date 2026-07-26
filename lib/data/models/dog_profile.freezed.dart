@@ -535,6 +535,7 @@ mixin _$DogDailySummary {
   int get treatCount => throw _privateConstructorUsedError;
   int get sitCount => throw _privateConstructorUsedError;
   int get barkCount => throw _privateConstructorUsedError;
+  int get alertCount => throw _privateConstructorUsedError;
   double get goalProgress => throw _privateConstructorUsedError;
   int get missionCount => throw _privateConstructorUsedError;
   int get missionSuccessCount => throw _privateConstructorUsedError;
@@ -561,6 +562,7 @@ abstract class $DogDailySummaryCopyWith<$Res> {
       int treatCount,
       int sitCount,
       int barkCount,
+      int alertCount,
       double goalProgress,
       int missionCount,
       int missionSuccessCount});
@@ -586,6 +588,7 @@ class _$DogDailySummaryCopyWithImpl<$Res, $Val extends DogDailySummary>
     Object? treatCount = null,
     Object? sitCount = null,
     Object? barkCount = null,
+    Object? alertCount = null,
     Object? goalProgress = null,
     Object? missionCount = null,
     Object? missionSuccessCount = null,
@@ -610,6 +613,10 @@ class _$DogDailySummaryCopyWithImpl<$Res, $Val extends DogDailySummary>
       barkCount: null == barkCount
           ? _value.barkCount
           : barkCount // ignore: cast_nullable_to_non_nullable
+              as int,
+      alertCount: null == alertCount
+          ? _value.alertCount
+          : alertCount // ignore: cast_nullable_to_non_nullable
               as int,
       goalProgress: null == goalProgress
           ? _value.goalProgress
@@ -641,6 +648,7 @@ abstract class _$$DogDailySummaryImplCopyWith<$Res>
       int treatCount,
       int sitCount,
       int barkCount,
+      int alertCount,
       double goalProgress,
       int missionCount,
       int missionSuccessCount});
@@ -664,6 +672,7 @@ class __$$DogDailySummaryImplCopyWithImpl<$Res>
     Object? treatCount = null,
     Object? sitCount = null,
     Object? barkCount = null,
+    Object? alertCount = null,
     Object? goalProgress = null,
     Object? missionCount = null,
     Object? missionSuccessCount = null,
@@ -688,6 +697,10 @@ class __$$DogDailySummaryImplCopyWithImpl<$Res>
       barkCount: null == barkCount
           ? _value.barkCount
           : barkCount // ignore: cast_nullable_to_non_nullable
+              as int,
+      alertCount: null == alertCount
+          ? _value.alertCount
+          : alertCount // ignore: cast_nullable_to_non_nullable
               as int,
       goalProgress: null == goalProgress
           ? _value.goalProgress
@@ -714,6 +727,7 @@ class _$DogDailySummaryImpl implements _DogDailySummary {
       this.treatCount = 0,
       this.sitCount = 0,
       this.barkCount = 0,
+      this.alertCount = 0,
       this.goalProgress = 0.0,
       this.missionCount = 0,
       this.missionSuccessCount = 0});
@@ -736,6 +750,9 @@ class _$DogDailySummaryImpl implements _DogDailySummary {
   final int barkCount;
   @override
   @JsonKey()
+  final int alertCount;
+  @override
+  @JsonKey()
   final double goalProgress;
   @override
   @JsonKey()
@@ -746,7 +763,7 @@ class _$DogDailySummaryImpl implements _DogDailySummary {
 
   @override
   String toString() {
-    return 'DogDailySummary(dogId: $dogId, date: $date, treatCount: $treatCount, sitCount: $sitCount, barkCount: $barkCount, goalProgress: $goalProgress, missionCount: $missionCount, missionSuccessCount: $missionSuccessCount)';
+    return 'DogDailySummary(dogId: $dogId, date: $date, treatCount: $treatCount, sitCount: $sitCount, barkCount: $barkCount, alertCount: $alertCount, goalProgress: $goalProgress, missionCount: $missionCount, missionSuccessCount: $missionSuccessCount)';
   }
 
   @override
@@ -762,6 +779,8 @@ class _$DogDailySummaryImpl implements _DogDailySummary {
                 other.sitCount == sitCount) &&
             (identical(other.barkCount, barkCount) ||
                 other.barkCount == barkCount) &&
+            (identical(other.alertCount, alertCount) ||
+                other.alertCount == alertCount) &&
             (identical(other.goalProgress, goalProgress) ||
                 other.goalProgress == goalProgress) &&
             (identical(other.missionCount, missionCount) ||
@@ -772,8 +791,17 @@ class _$DogDailySummaryImpl implements _DogDailySummary {
 
   @JsonKey(includeFromJson: false, includeToJson: false)
   @override
-  int get hashCode => Object.hash(runtimeType, dogId, date, treatCount,
-      sitCount, barkCount, goalProgress, missionCount, missionSuccessCount);
+  int get hashCode => Object.hash(
+      runtimeType,
+      dogId,
+      date,
+      treatCount,
+      sitCount,
+      barkCount,
+      alertCount,
+      goalProgress,
+      missionCount,
+      missionSuccessCount);
 
   /// Create a copy of DogDailySummary
   /// with the given fields replaced by the non-null parameter values.
@@ -799,6 +827,7 @@ abstract class _DogDailySummary implements DogDailySummary {
       final int treatCount,
       final int sitCount,
       final int barkCount,
+      final int alertCount,
       final double goalProgress,
       final int missionCount,
       final int missionSuccessCount}) = _$DogDailySummaryImpl;
@@ -816,6 +845,8 @@ abstract class _DogDailySummary implements DogDailySummary {
   int get sitCount;
   @override
   int get barkCount;
+  @override
+  int get alertCount;
   @override
   double get goalProgress;
   @override

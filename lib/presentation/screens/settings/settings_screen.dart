@@ -380,12 +380,29 @@ class _TreatsRemainingTile extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final count = ref.watch(treatsRemainingProvider);
-    final display = count == null ? '\u2014' : (count <= 0 ? '0 (refill needed)' : '$count');
+    // Negative = refilled without reset \u2192 prompt reset.
+    final needsReset = count != null && count < 0;
+    final display = count == null
+        ? '\u2014'
+        : count < 0
+            ? '$count'
+            : count == 0
+                ? '0 (refill needed)'
+                : '$count';
 
     return ListTile(
-      leading: const Icon(Icons.cookie),
+      leading: Icon(Icons.cookie, color: needsReset ? AppTheme.error : null),
       title: const Text('Treats Remaining'),
-      trailing: Text(display),
+      subtitle: needsReset
+          ? const Text(
+              'Please reset treat count',
+              style: TextStyle(color: AppTheme.error, fontSize: 12),
+            )
+          : null,
+      trailing: Text(
+        display,
+        style: needsReset ? const TextStyle(color: AppTheme.error) : null,
+      ),
     );
   }
 }

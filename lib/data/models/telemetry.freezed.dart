@@ -28,7 +28,7 @@ mixin _$Telemetry {
   double? get confidence => throw _privateConstructorUsedError;
   bool get isCharging => throw _privateConstructorUsedError;
   int get treatsRemaining =>
-      throw _privateConstructorUsedError; // -1 = not yet received from robot
+      throw _privateConstructorUsedError; // kTreatCountUnknown = not yet received
   DateTime? get lastTreatTime => throw _privateConstructorUsedError;
   String? get activeMissionId => throw _privateConstructorUsedError;
   String? get connectionType =>
@@ -273,7 +273,7 @@ class _$TelemetryImpl implements _Telemetry {
       this.currentBehavior,
       this.confidence,
       this.isCharging = false,
-      this.treatsRemaining = -1,
+      this.treatsRemaining = kTreatCountUnknown,
       this.lastTreatTime,
       this.activeMissionId,
       this.connectionType,
@@ -306,7 +306,7 @@ class _$TelemetryImpl implements _Telemetry {
   @override
   @JsonKey()
   final int treatsRemaining;
-// -1 = not yet received from robot
+// kTreatCountUnknown = not yet received
   @override
   final DateTime? lastTreatTime;
   @override
@@ -429,7 +429,7 @@ abstract class _Telemetry implements Telemetry {
   @override
   bool get isCharging;
   @override
-  int get treatsRemaining; // -1 = not yet received from robot
+  int get treatsRemaining; // kTreatCountUnknown = not yet received
   @override
   DateTime? get lastTreatTime;
   @override

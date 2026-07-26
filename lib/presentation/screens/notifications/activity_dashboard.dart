@@ -1,5 +1,3 @@
-import 'dart:math';
-
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -147,30 +145,66 @@ class _CompactStatCard extends StatelessWidget {
   }
 }
 
-/// 7-day activity score line chart
+/// Event-type series available on the activity chart. Fixed order and fixed
+/// color per type (same colors these events wear elsewhere in the app).
+enum _ActivitySeries { treats, barks, behaviors, missions, alerts }
+
+extension _ActivitySeriesSpec on _ActivitySeries {
+  String get label => switch (this) {
+        _ActivitySeries.treats => 'Treats',
+        _ActivitySeries.barks => 'Barks',
+        _ActivitySeries.behaviors => 'Behaviors',
+        _ActivitySeries.missions => 'Missions',
+        _ActivitySeries.alerts => 'Alerts',
+      };
+
+  Color get color => switch (this) {
+        _ActivitySeries.treats => AppTheme.accent,
+        _ActivitySeries.barks => AppTheme.error,
+        _ActivitySeries.behaviors => AppTheme.primary,
+        _ActivitySeries.missions => AppTheme.secondary,
+        _ActivitySeries.alerts => AppTheme.warning,
+      };
+
+  int countOf(DogDailySummary s) => switch (this) {
+        _ActivitySeries.treats => s.treatCount,
+        _ActivitySeries.barks => s.barkCount,
+        _ActivitySeries.behaviors => s.sitCount,
+        _ActivitySeries.missions => s.missionCount,
+        _ActivitySeries.alerts => s.alertCount,
+      };
+}
+
+/// Visible series on the activity chart — provider scope so the toggles
+/// survive tab switches. All on by default.
+final activityChartSeriesProvider = StateProvider<Set<_ActivitySeries>>(
+    (ref) => _ActivitySeries.values.toSet());
+
+/// 7-day per-event-type activity chart with series toggles.
 class _ActivityLineChart extends ConsumerWidget {
   final String dogId;
 
   const _ActivityLineChart({required this.dogId});
 
-  double _activityScore(DogDailySummary s) {
-    return min(
-      100,
-      (s.sitCount * 15) +
-          (s.treatCount * 5) +
-          (s.missionSuccessCount * 20) -
-          (s.barkCount * 3).toDouble(),
-    ).clamp(0, 100).toDouble();
-  }
-
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final weekStats = ref.watch(dogWeeklyStatsProvider(dogId));
-    final spots = weekStats
-        .asMap()
-        .entries
-        .map((e) => FlSpot(e.key.toDouble(), _activityScore(e.value)))
-        .toList();
+    final visible = ref.watch(activityChartSeriesProvider);
+
+    // Fixed series order; a toggled-off series never repaints the survivors.
+    final activeSeries =
+        _ActivitySeries.values.where(visible.contains).toList();
+
+    var maxCount = 0;
+    for (final s in activeSeries) {
+      for (final day in weekStats) {
+        if (s.countOf(day) > maxCount) maxCount = s.countOf(day);
+      }
+    }
+    // Integer-friendly headroom; keep a sane floor so an empty week still
+    // draws a scaled axis.
+    final maxY = (maxCount < 4 ? 4 : maxCount + 1).toDouble();
+    final yInterval = (maxY / 4).ceilToDouble();
 
     final dayLabels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
     // Align labels to the actual days of the week
@@ -184,14 +218,60 @@ class _ActivityLineChart extends ConsumerWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const Text(
-          'Activity Score (7 days)',
+          'Activity (7 days)',
           style: TextStyle(
             fontSize: 14,
             fontWeight: FontWeight.w600,
             color: AppTheme.textPrimary,
           ),
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: 8),
+        // Series toggles — double as the chart legend.
+        Wrap(
+          spacing: 6,
+          runSpacing: 4,
+          children: [
+            for (final s in _ActivitySeries.values)
+              FilterChip(
+                selected: visible.contains(s),
+                showCheckmark: false,
+                avatar: Container(
+                  width: 10,
+                  height: 10,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: visible.contains(s)
+                        ? s.color
+                        : AppTheme.textDisabled,
+                  ),
+                ),
+                label: Text(
+                  s.label,
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: visible.contains(s)
+                        ? AppTheme.textPrimary
+                        : AppTheme.textTertiary,
+                  ),
+                ),
+                backgroundColor: AppTheme.surfaceLight,
+                selectedColor: AppTheme.surfaceLighter,
+                side: BorderSide(
+                  color: visible.contains(s)
+                      ? s.color.withOpacity(0.5)
+                      : AppTheme.glassBorder,
+                ),
+                visualDensity: VisualDensity.compact,
+                materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                onSelected: (on) {
+                  final next = {...visible};
+                  on ? next.add(s) : next.remove(s);
+                  ref.read(activityChartSeriesProvider.notifier).state = next;
+                },
+              ),
+          ],
+        ),
+        const SizedBox(height: 8),
         Container(
           height: 180,
           padding: const EdgeInsets.fromLTRB(8, 16, 16, 8),
@@ -200,98 +280,110 @@ class _ActivityLineChart extends ConsumerWidget {
             borderRadius: BorderRadius.circular(12),
             border: Border.all(color: AppTheme.glassBorder),
           ),
-          child: LineChart(
-            LineChartData(
-              minY: 0,
-              maxY: 100,
-              gridData: FlGridData(
-                show: true,
-                drawVerticalLine: false,
-                horizontalInterval: 25,
-                getDrawingHorizontalLine: (value) => FlLine(
-                  color: AppTheme.glassBorder,
-                  strokeWidth: 0.5,
-                ),
-              ),
-              titlesData: FlTitlesData(
-                topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                leftTitles: AxisTitles(
-                  sideTitles: SideTitles(
-                    showTitles: true,
-                    reservedSize: 30,
-                    interval: 25,
-                    getTitlesWidget: (value, meta) => Text(
-                      value.toInt().toString(),
-                      style: const TextStyle(
-                        color: AppTheme.textTertiary,
-                        fontSize: 10,
+          child: activeSeries.isEmpty
+              ? const Center(
+                  child: Text(
+                    'No series selected',
+                    style: TextStyle(color: AppTheme.textTertiary, fontSize: 12),
+                  ),
+                )
+              : LineChart(
+                  LineChartData(
+                    minY: 0,
+                    maxY: maxY,
+                    gridData: FlGridData(
+                      show: true,
+                      drawVerticalLine: false,
+                      horizontalInterval: yInterval,
+                      getDrawingHorizontalLine: (value) => FlLine(
+                        color: AppTheme.glassBorder,
+                        strokeWidth: 0.5,
+                      ),
+                    ),
+                    titlesData: FlTitlesData(
+                      topTitles: const AxisTitles(
+                          sideTitles: SideTitles(showTitles: false)),
+                      rightTitles: const AxisTitles(
+                          sideTitles: SideTitles(showTitles: false)),
+                      leftTitles: AxisTitles(
+                        sideTitles: SideTitles(
+                          showTitles: true,
+                          reservedSize: 30,
+                          interval: yInterval,
+                          getTitlesWidget: (value, meta) => Text(
+                            value.toInt().toString(),
+                            style: const TextStyle(
+                              color: AppTheme.textTertiary,
+                              fontSize: 10,
+                            ),
+                          ),
+                        ),
+                      ),
+                      bottomTitles: AxisTitles(
+                        sideTitles: SideTitles(
+                          showTitles: true,
+                          interval: 1,
+                          getTitlesWidget: (value, meta) {
+                            final idx = value.toInt();
+                            if (idx < 0 || idx >= labels.length) {
+                              return const SizedBox.shrink();
+                            }
+                            return Padding(
+                              padding: const EdgeInsets.only(top: 6),
+                              child: Text(
+                                labels[idx],
+                                style: const TextStyle(
+                                  color: AppTheme.textTertiary,
+                                  fontSize: 10,
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+                    ),
+                    borderData: FlBorderData(show: false),
+                    lineBarsData: [
+                      for (final s in activeSeries)
+                        LineChartBarData(
+                          spots: [
+                            for (var i = 0; i < weekStats.length; i++)
+                              FlSpot(
+                                  i.toDouble(),
+                                  s.countOf(weekStats[i]).toDouble()),
+                          ],
+                          isCurved: false,
+                          color: s.color,
+                          barWidth: 2,
+                          dotData: FlDotData(
+                            show: true,
+                            getDotPainter: (spot, percent, bar, index) =>
+                                FlDotCirclePainter(
+                              radius: 2.5,
+                              color: s.color,
+                              strokeWidth: 1,
+                              strokeColor: AppTheme.background,
+                            ),
+                          ),
+                        ),
+                    ],
+                    lineTouchData: LineTouchData(
+                      touchTooltipData: LineTouchTooltipData(
+                        getTooltipItems: (spots) => [
+                          for (final spot in spots)
+                            LineTooltipItem(
+                              '${activeSeries[spot.barIndex].label}: ${spot.y.toInt()}',
+                              TextStyle(
+                                color: activeSeries[spot.barIndex].color,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 12,
+                              ),
+                            ),
+                        ],
                       ),
                     ),
                   ),
                 ),
-                bottomTitles: AxisTitles(
-                  sideTitles: SideTitles(
-                    showTitles: true,
-                    interval: 1,
-                    getTitlesWidget: (value, meta) {
-                      final idx = value.toInt();
-                      if (idx < 0 || idx >= labels.length) {
-                        return const SizedBox.shrink();
-                      }
-                      return Padding(
-                        padding: const EdgeInsets.only(top: 6),
-                        child: Text(
-                          labels[idx],
-                          style: const TextStyle(
-                            color: AppTheme.textTertiary,
-                            fontSize: 10,
-                          ),
-                        ),
-                      );
-                    },
-                  ),
-                ),
-              ),
-              borderData: FlBorderData(show: false),
-              lineBarsData: [
-                LineChartBarData(
-                  spots: spots,
-                  isCurved: true,
-                  curveSmoothness: 0.3,
-                  color: AppTheme.primary,
-                  barWidth: 3,
-                  dotData: FlDotData(
-                    show: true,
-                    getDotPainter: (spot, percent, bar, index) =>
-                        FlDotCirclePainter(
-                      radius: 3,
-                      color: AppTheme.primary,
-                      strokeWidth: 1,
-                      strokeColor: AppTheme.background,
-                    ),
-                  ),
-                  belowBarData: BarAreaData(
-                    show: true,
-                    color: AppTheme.primary.withOpacity(0.1),
-                  ),
-                ),
-              ],
-              lineTouchData: LineTouchData(
-                touchTooltipData: LineTouchTooltipData(
-                  getTooltipItems: (spots) => spots
-                      .map((s) => LineTooltipItem(
-                            '${s.y.toInt()}',
-                            const TextStyle(
-                              color: Colors.white,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ))
-                      .toList(),
-                ),
-              ),
-            ),
-          ),
         ),
       ],
     );
@@ -436,6 +528,8 @@ class _EventRow extends StatelessWidget {
   }
 
   String _formatTime(DateTime timestamp) {
+    // Defensive: any UTC-parsed instant renders in device-local time.
+    timestamp = timestamp.toLocal();
     final hour = timestamp.hour;
     final minute = timestamp.minute.toString().padLeft(2, '0');
     final period = hour >= 12 ? 'PM' : 'AM';

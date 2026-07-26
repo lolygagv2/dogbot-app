@@ -83,10 +83,8 @@ _$MissionHistoryEntryImpl _$$MissionHistoryEntryImplFromJson(
       missionId: json['missionId'] as String,
       missionName: json['missionName'] as String,
       dogId: json['dogId'] as String,
-      startedAt: DateTime.parse(json['startedAt'] as String),
-      completedAt: json['completedAt'] == null
-          ? null
-          : DateTime.parse(json['completedAt'] as String),
+      startedAt: _localTimeFromJson(json['startedAt'] as String),
+      completedAt: _localTimeFromJsonNullable(json['completedAt'] as String?),
       treatsGiven: (json['treatsGiven'] as num?)?.toInt() ?? 0,
       stagesCompleted: (json['stagesCompleted'] as num?)?.toInt() ?? 0,
       totalStages: (json['totalStages'] as num?)?.toInt() ?? 0,

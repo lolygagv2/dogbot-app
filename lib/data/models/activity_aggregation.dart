@@ -13,19 +13,27 @@ bool _sameDay(DateTime a, DateTime b) =>
 
 /// Summarize one calendar day for a dog.
 /// [dogId] empty → aggregate across all dogs (and untagged events).
-/// Per-dog (non-empty [dogId]) counts ONLY events tagged with that exact
-/// dog_id — untagged events are excluded (matches the C4 per-dog rule).
+/// Per-dog (non-empty [dogId]) counts events tagged with that exact dog_id.
+/// [includeUntagged] additionally counts events with NO dog_id — relay
+/// history rows don't carry dog_id yet (relay contract 2026-07-13 pending),
+/// so charts that would otherwise render empty opt in; strict per-dog stats
+/// keep the C4 default (untagged excluded).
 DogDailySummary summarizeDay(
   List<NotificationEvent> events, {
   required String dogId,
   required DateTime day,
+  bool includeUntagged = false,
 }) {
   final allDogs = dogId.isEmpty;
-  var treats = 0, sits = 0, barks = 0, missions = 0, missionSuccess = 0;
+  var treats = 0, sits = 0, barks = 0, alerts = 0, missions = 0, missionSuccess = 0;
 
   for (final e in events) {
     if (!_sameDay(e.timestamp, day)) continue;
-    if (!allDogs && e.dogId != dogId) continue;
+    if (!allDogs &&
+        e.dogId != dogId &&
+        !(includeUntagged && e.dogId == null)) {
+      continue;
+    }
 
     switch (e.type) {
       case NotificationEventType.treatDispensed:
@@ -38,6 +46,11 @@ DogDailySummary summarizeDay(
         break;
       case NotificationEventType.bark:
         barks++;
+        break;
+      case NotificationEventType.alert:
+        // Guardian interventions/escalations land here (both live 'guardian'
+        // events and hydrated guardian/guardian_alert rows).
+        alerts++;
         break;
       case NotificationEventType.coachReward:
         // Coach rewards are a positive behavior detection too.
@@ -65,6 +78,7 @@ DogDailySummary summarizeDay(
     treatCount: treats,
     sitCount: sits,
     barkCount: barks,
+    alertCount: alerts,
     missionCount: missions,
     missionSuccessCount: missionSuccess,
     goalProgress: goal,
@@ -77,11 +91,13 @@ List<DogDailySummary> summarizeWeek(
   List<NotificationEvent> events, {
   required String dogId,
   DateTime? now,
+  bool includeUntagged = false,
 }) {
   final today = now ?? DateTime.now();
   return List.generate(7, (i) {
     final day = today.subtract(Duration(days: 6 - i));
-    return summarizeDay(events, dogId: dogId, day: day);
+    return summarizeDay(events,
+        dogId: dogId, day: day, includeUntagged: includeUntagged);
   });
 }
 
@@ -90,12 +106,17 @@ List<DogDailySummary> summarizeWeek(
 DogDailySummary summarizeAll(
   List<NotificationEvent> events, {
   required String dogId,
+  bool includeUntagged = false,
 }) {
   final allDogs = dogId.isEmpty;
-  var treats = 0, sits = 0, barks = 0, missions = 0, missionSuccess = 0;
+  var treats = 0, sits = 0, barks = 0, alerts = 0, missions = 0, missionSuccess = 0;
 
   for (final e in events) {
-    if (!allDogs && e.dogId != dogId) continue;
+    if (!allDogs &&
+        e.dogId != dogId &&
+        !(includeUntagged && e.dogId == null)) {
+      continue;
+    }
     switch (e.type) {
       case NotificationEventType.treatDispensed:
         treats++;
@@ -108,6 +129,9 @@ DogDailySummary summarizeAll(
         break;
       case NotificationEventType.bark:
         barks++;
+        break;
+      case NotificationEventType.alert:
+        alerts++;
         break;
       case NotificationEventType.missionCompleted:
         missions++;
@@ -127,6 +151,7 @@ DogDailySummary summarizeAll(
     treatCount: treats,
     sitCount: sits,
     barkCount: barks,
+    alertCount: alerts,
     missionCount: missions,
     missionSuccessCount: missionSuccess,
     goalProgress: ((treats + sits) / 10).clamp(0.0, 1.0).toDouble(),

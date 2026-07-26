@@ -15,7 +15,8 @@ _$TelemetryImpl _$$TelemetryImplFromJson(Map<String, dynamic> json) =>
       currentBehavior: json['currentBehavior'] as String?,
       confidence: (json['confidence'] as num?)?.toDouble(),
       isCharging: json['isCharging'] as bool? ?? false,
-      treatsRemaining: (json['treatsRemaining'] as num?)?.toInt() ?? -1,
+      treatsRemaining:
+          (json['treatsRemaining'] as num?)?.toInt() ?? kTreatCountUnknown,
       lastTreatTime: json['lastTreatTime'] == null
           ? null
           : DateTime.parse(json['lastTreatTime'] as String),

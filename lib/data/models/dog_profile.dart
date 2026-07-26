@@ -103,6 +103,7 @@ class DogDailySummary with _$DogDailySummary {
     @Default(0) int treatCount,
     @Default(0) int sitCount,
     @Default(0) int barkCount,
+    @Default(0) int alertCount,
     @Default(0.0) double goalProgress,
     @Default(0) int missionCount,
     @Default(0) int missionSuccessCount,

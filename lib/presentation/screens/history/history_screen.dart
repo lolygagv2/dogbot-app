@@ -355,7 +355,7 @@ class _HistoryEntryCard extends StatelessWidget {
                       Icon(Icons.access_time, size: 12, color: AppTheme.textTertiary),
                       const SizedBox(width: 4),
                       Text(
-                        timeFormat.format(entry.startedAt),
+                        timeFormat.format(entry.startedAt.toLocal()),
                         style: TextStyle(
                           fontSize: 11,
                           color: AppTheme.textTertiary,

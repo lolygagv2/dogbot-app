@@ -425,6 +425,8 @@ class _NotificationTile extends StatelessWidget {
   }
 
   String _formatTime(DateTime timestamp) {
+    // Defensive: any UTC-parsed instant renders in device-local time.
+    timestamp = timestamp.toLocal();
     final hour = timestamp.hour;
     final minute = timestamp.minute.toString().padLeft(2, '0');
     final period = hour >= 12 ? 'PM' : 'AM';

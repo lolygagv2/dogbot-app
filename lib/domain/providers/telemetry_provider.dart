@@ -63,8 +63,11 @@ class TelemetryNotifier extends StateNotifier<Telemetry> {
           confidence: parsed.confidence,
           // Only update isCharging if we got battery data
           isCharging: parsed.battery > 0 ? parsed.isCharging : state.isCharging,
-          // Only update treatsRemaining if this event actually had the field (-1 = missing)
-          treatsRemaining: parsed.treatsRemaining >= 0 ? parsed.treatsRemaining : state.treatsRemaining,
+          // Only update treatsRemaining if this event actually had the field.
+          // Genuine negatives pass through — the UI prompts a counter reset.
+          treatsRemaining: parsed.treatsRemaining != kTreatCountUnknown
+              ? parsed.treatsRemaining
+              : state.treatsRemaining,
           activeMissionId: parsed.activeMissionId,
           connectionType: parsed.connectionType ?? state.connectionType,
           // Robot's VolumeManager value — preserve if absent from this event.
@@ -342,9 +345,10 @@ final modeProvider = Provider<String>((ref) {
 
 /// Provider for treats remaining count.
 /// Returns null if robot has never sent the field (show "—" in UI).
-/// Clamps negative values to 0.
+/// Genuine negatives (refill without reset) are passed through so the UI
+/// can prompt "Please reset treat count".
 final treatsRemainingProvider = Provider<int?>((ref) {
   final raw = ref.watch(telemetryProvider).treatsRemaining;
-  if (raw < 0) return null; // -1 sentinel = never received
+  if (raw == kTreatCountUnknown) return null; // never received
   return raw;
 });

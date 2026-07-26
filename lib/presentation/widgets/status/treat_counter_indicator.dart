@@ -21,7 +21,12 @@ class TreatCounterIndicator extends ConsumerWidget {
     if (count == null) {
       color = AppTheme.textTertiary;
       label = '\u2014'; // em-dash
-    } else if (count <= 0) {
+    } else if (count < 0) {
+      // Negative = treats were dispensed past zero, i.e. the hopper was
+      // refilled without pressing reset. Prompt a counter reset.
+      color = AppTheme.error;
+      label = 'Reset count';
+    } else if (count == 0) {
       color = AppTheme.textTertiary;
       label = '0 (refill)';
     } else if (count <= 5) {
@@ -102,11 +107,14 @@ class _TreatManagementSheetState extends ConsumerState<_TreatManagementSheet> {
   @override
   Widget build(BuildContext context) {
     final count = ref.watch(treatsRemainingProvider);
+    final needsReset = count != null && count < 0;
     final displayCount = count == null
         ? '\u2014'
-        : count <= 0
-            ? '0 (refill needed)'
-            : '$count';
+        : count < 0
+            ? '$count'
+            : count == 0
+                ? '0 (refill needed)'
+                : '$count';
 
     return SafeArea(
       child: Padding(
@@ -137,6 +145,27 @@ class _TreatManagementSheetState extends ConsumerState<_TreatManagementSheet> {
                 color: AppTheme.textPrimary,
               ),
             ),
+            if (needsReset) ...[
+              const SizedBox(height: 8),
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: const [
+                  Icon(Icons.warning_amber_rounded,
+                      color: AppTheme.error, size: 18),
+                  SizedBox(width: 6),
+                  Flexible(
+                    child: Text(
+                      'Please reset treat count',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        color: AppTheme.error,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
             const SizedBox(height: 24),
             // Reset to Full (44 treats)
             SizedBox(

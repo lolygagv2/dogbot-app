@@ -857,7 +857,9 @@ mixin _$MissionHistoryEntry {
   String get missionId => throw _privateConstructorUsedError;
   String get missionName => throw _privateConstructorUsedError;
   String get dogId => throw _privateConstructorUsedError;
+  @JsonKey(fromJson: _localTimeFromJson)
   DateTime get startedAt => throw _privateConstructorUsedError;
+  @JsonKey(fromJson: _localTimeFromJsonNullable)
   DateTime? get completedAt => throw _privateConstructorUsedError;
   int get treatsGiven => throw _privateConstructorUsedError;
   int get stagesCompleted => throw _privateConstructorUsedError;
@@ -885,8 +887,8 @@ abstract class $MissionHistoryEntryCopyWith<$Res> {
       String missionId,
       String missionName,
       String dogId,
-      DateTime startedAt,
-      DateTime? completedAt,
+      @JsonKey(fromJson: _localTimeFromJson) DateTime startedAt,
+      @JsonKey(fromJson: _localTimeFromJsonNullable) DateTime? completedAt,
       int treatsGiven,
       int stagesCompleted,
       int totalStages,
@@ -977,8 +979,8 @@ abstract class _$$MissionHistoryEntryImplCopyWith<$Res>
       String missionId,
       String missionName,
       String dogId,
-      DateTime startedAt,
-      DateTime? completedAt,
+      @JsonKey(fromJson: _localTimeFromJson) DateTime startedAt,
+      @JsonKey(fromJson: _localTimeFromJsonNullable) DateTime? completedAt,
       int treatsGiven,
       int stagesCompleted,
       int totalStages,
@@ -1062,8 +1064,8 @@ class _$MissionHistoryEntryImpl implements _MissionHistoryEntry {
       required this.missionId,
       required this.missionName,
       required this.dogId,
-      required this.startedAt,
-      this.completedAt,
+      @JsonKey(fromJson: _localTimeFromJson) required this.startedAt,
+      @JsonKey(fromJson: _localTimeFromJsonNullable) this.completedAt,
       this.treatsGiven = 0,
       this.stagesCompleted = 0,
       this.totalStages = 0,
@@ -1081,8 +1083,10 @@ class _$MissionHistoryEntryImpl implements _MissionHistoryEntry {
   @override
   final String dogId;
   @override
+  @JsonKey(fromJson: _localTimeFromJson)
   final DateTime startedAt;
   @override
+  @JsonKey(fromJson: _localTimeFromJsonNullable)
   final DateTime? completedAt;
   @override
   @JsonKey()
@@ -1165,7 +1169,8 @@ abstract class _MissionHistoryEntry implements MissionHistoryEntry {
       required final String missionId,
       required final String missionName,
       required final String dogId,
-      required final DateTime startedAt,
+      @JsonKey(fromJson: _localTimeFromJson) required final DateTime startedAt,
+      @JsonKey(fromJson: _localTimeFromJsonNullable)
       final DateTime? completedAt,
       final int treatsGiven,
       final int stagesCompleted,
@@ -1184,8 +1189,10 @@ abstract class _MissionHistoryEntry implements MissionHistoryEntry {
   @override
   String get dogId;
   @override
+  @JsonKey(fromJson: _localTimeFromJson)
   DateTime get startedAt;
   @override
+  @JsonKey(fromJson: _localTimeFromJsonNullable)
   DateTime? get completedAt;
   @override
   int get treatsGiven;
