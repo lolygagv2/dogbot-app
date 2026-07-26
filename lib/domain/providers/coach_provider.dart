@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart' show visibleForTesting;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/network/websocket_client.dart';
@@ -17,6 +18,14 @@ class CoachState {
   final int rewardsGiven;
   final String? lastRewardBehavior;
   final DateTime? lastRewardTime;
+
+  /// The trick the user last forced via a trick button — the "active" trick
+  /// session. Local knowledge only (the robot has no trick-session events
+  /// beyond coach_reward): set on force_trick, cleared when a matching reward
+  /// lands, when a different trick is forced, on coach exit, or by the
+  /// failsafe timer in [CoachNotifier]. Null = robot is free-watching all
+  /// tricks.
+  final String? activeTrick;
   final String? dogId;
   final String? dogName;
   final String? error;
@@ -27,6 +36,7 @@ class CoachState {
     this.rewardsGiven = 0,
     this.lastRewardBehavior,
     this.lastRewardTime,
+    this.activeTrick,
     this.dogId,
     this.dogName,
     this.error,
@@ -38,11 +48,13 @@ class CoachState {
     int? rewardsGiven,
     String? lastRewardBehavior,
     DateTime? lastRewardTime,
+    String? activeTrick,
     String? dogId,
     String? dogName,
     String? error,
     bool clearError = false,
     bool clearLastReward = false,
+    bool clearActiveTrick = false,
   }) {
     return CoachState(
       isActive: isActive ?? this.isActive,
@@ -50,11 +62,17 @@ class CoachState {
       rewardsGiven: rewardsGiven ?? this.rewardsGiven,
       lastRewardBehavior: clearLastReward ? null : (lastRewardBehavior ?? this.lastRewardBehavior),
       lastRewardTime: clearLastReward ? null : (lastRewardTime ?? this.lastRewardTime),
+      activeTrick: clearActiveTrick ? null : (activeTrick ?? this.activeTrick),
       dogId: dogId ?? this.dogId,
       dogName: dogName ?? this.dogName,
       error: clearError ? null : (error ?? this.error),
     );
   }
+
+  /// Whether [behavior] is the currently forced trick (case-insensitive).
+  bool isActiveTrick(String behavior) =>
+      activeTrick != null &&
+      activeTrick!.toLowerCase() == behavior.toLowerCase();
 
   /// Time since last reward in seconds (null if never rewarded)
   int? get secondsSinceLastReward {
@@ -79,6 +97,12 @@ class CoachNotifier extends StateNotifier<CoachState> {
   final Ref _ref;
   StreamSubscription? _wsSubscription;
   Timer? _rewardClearTimer;
+  Timer? _activeTrickTimer;
+
+  /// Failsafe: the robot has no trick-failed/timed-out event, so a forced
+  /// trick the dog never performs would stay highlighted forever. Clear the
+  /// highlight after this window (robot trick sessions are much shorter).
+  static const Duration _activeTrickTimeout = Duration(seconds: 60);
 
   CoachNotifier(this._ref) : super(const CoachState()) {
     _listenToWebSocket();
@@ -97,12 +121,19 @@ class CoachNotifier extends StateNotifier<CoachState> {
         final dogId = event.data['dog_id'] as String?;
         print('Coach: reward event - behavior=$behavior, dog=$dogName ($dogId)');
 
+        // A reward for the forced trick completes that session — drop the
+        // active highlight. A reward for some other behavior leaves the
+        // forced session (and its highlight) in place.
+        final completesForced =
+            behavior != null && state.isActiveTrick(behavior);
+        if (completesForced) _activeTrickTimer?.cancel();
         state = state.copyWith(
           rewardsGiven: state.rewardsGiven + 1,
           lastRewardBehavior: behavior,
           lastRewardTime: DateTime.now(),
           dogId: dogId,
           dogName: dogName,
+          clearActiveTrick: completesForced,
         );
 
         // Clear last reward after 3 seconds
@@ -124,6 +155,7 @@ class CoachNotifier extends StateNotifier<CoachState> {
         final dogName = event.data['dog_name'] as String?;
         final dogId = event.data['dog_id'] as String?;
         final tricks = (event.data['tricks_available'] as List?)?.cast<String>();
+        _activeTrickTimer?.cancel();
         state = state.copyWith(
           isActive: true,
           dogId: dogId,
@@ -131,6 +163,7 @@ class CoachNotifier extends StateNotifier<CoachState> {
           watchingFor: tricks ?? state.watchingFor,
           rewardsGiven: 0,
           clearError: true,
+          clearActiveTrick: true,
         );
         break;
 
@@ -142,7 +175,8 @@ class CoachNotifier extends StateNotifier<CoachState> {
         final newMode = event.data['mode'] as String?;
         if (newMode != null && newMode != 'coach' && state.isActive) {
           print('Coach: mode changed to $newMode — deactivating');
-          state = state.copyWith(isActive: false);
+          _activeTrickTimer?.cancel();
+          state = state.copyWith(isActive: false, clearActiveTrick: true);
         }
         break;
 
@@ -194,7 +228,8 @@ class CoachNotifier extends StateNotifier<CoachState> {
   void stopCoaching() {
     _ref.read(modeStateProvider.notifier).setMode(RobotMode.idle, source: 'coach_exit');
     _rewardClearTimer?.cancel();
-    state = state.copyWith(isActive: false);
+    _activeTrickTimer?.cancel();
+    state = state.copyWith(isActive: false, clearActiveTrick: true);
   }
 
   // Build 93: setBehaviors() removed. The `coach_set_behaviors` WS command
@@ -232,19 +267,36 @@ class CoachNotifier extends StateNotifier<CoachState> {
     final ws = _ref.read(websocketClientProvider);
     ws.sendForceTrick(trick, dogId: dogId, dogName: dogName);
     print('Coach: Forcing trick: $trick for $dogName ($dogId)');
+
+    // Track the forced trick as the active session. Forcing a different
+    // trick while one is active is the switch path: the robot's coaching
+    // engine takes the newest force_trick as current, so the highlight just
+    // moves with it.
+    _activeTrickTimer?.cancel();
+    _activeTrickTimer = Timer(_activeTrickTimeout, () {
+      if (mounted && state.activeTrick == trick) {
+        state = state.copyWith(clearActiveTrick: true);
+      }
+    });
+    state = state.copyWith(activeTrick: trick);
     return true;
   }
 
   /// Clear state
   void clearState() {
     _rewardClearTimer?.cancel();
+    _activeTrickTimer?.cancel();
     state = const CoachState();
   }
+
+  @visibleForTesting
+  void debugHandleEvent(WsEvent event) => _onWsEvent(event);
 
   @override
   void dispose() {
     _wsSubscription?.cancel();
     _rewardClearTimer?.cancel();
+    _activeTrickTimer?.cancel();
     super.dispose();
   }
 }

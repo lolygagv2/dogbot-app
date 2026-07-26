@@ -259,6 +259,7 @@ class _CoachScreenState extends ConsumerState<CoachScreen> {
                               return _TrickChip(
                                 behavior: behavior,
                                 isHighlighted: isHighlighted,
+                                isActiveTrick: coachState.isActiveTrick(behavior),
                                 isActive: coachState.isActive,
                                 onTap: coachState.isActive && isConnected
                                     ? () {
@@ -405,16 +406,20 @@ class _DogChip extends StatelessWidget {
   }
 }
 
-/// Tappable trick chip - Build 38: sends force_trick command
+/// Tappable trick chip - Build 38: sends force_trick command.
+/// Reward flash (green, 3s) wins over the active-trick highlight (blue);
+/// tapping a different chip force-switches the session and moves the blue.
 class _TrickChip extends StatelessWidget {
   final String behavior;
   final bool isHighlighted;
+  final bool isActiveTrick;
   final bool isActive;
   final VoidCallback? onTap;
 
   const _TrickChip({
     required this.behavior,
     required this.isHighlighted,
+    required this.isActiveTrick,
     required this.isActive,
     this.onTap,
   });
@@ -432,15 +437,19 @@ class _TrickChip extends StatelessWidget {
         decoration: BoxDecoration(
           color: isHighlighted
               ? Colors.green.withOpacity(0.3)
-              : Colors.white.withOpacity(0.1),
+              : isActiveTrick
+                  ? AppTheme.primary.withOpacity(0.35)
+                  : Colors.white.withOpacity(0.1),
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
             color: isHighlighted
                 ? Colors.green
-                : onTap != null
-                    ? AppTheme.primary.withOpacity(0.5)
-                    : Colors.white.withOpacity(0.3),
-            width: onTap != null ? 2 : 1,
+                : isActiveTrick
+                    ? AppTheme.primary
+                    : onTap != null
+                        ? AppTheme.primary.withOpacity(0.5)
+                        : Colors.white.withOpacity(0.3),
+            width: isActiveTrick || onTap != null ? 2 : 1,
           ),
         ),
         child: Row(
@@ -457,7 +466,11 @@ class _TrickChip extends StatelessWidget {
             Text(
               AppTheme.getBehaviorDisplayName(behavior).toUpperCase(),
               style: TextStyle(
-                color: isHighlighted ? Colors.green : Colors.white,
+                color: isHighlighted
+                    ? Colors.green
+                    : isActiveTrick
+                        ? AppTheme.primary
+                        : Colors.white,
                 fontSize: 12,
                 fontWeight: FontWeight.w600,
               ),

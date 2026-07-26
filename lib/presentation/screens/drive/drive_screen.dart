@@ -113,7 +113,6 @@ class _DriveScreenState extends ConsumerState<DriveScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final telemetry = ref.watch(telemetryProvider);
     final motorControl = ref.watch(motorControlProvider.notifier);
     final motorState = ref.watch(motorControlProvider);
     final modeState = ref.watch(modeStateProvider);
@@ -231,36 +230,17 @@ class _DriveScreenState extends ConsumerState<DriveScreen> {
                   leftSpeed: motorState.left,
                   rightSpeed: motorState.right,
                 ),
-                // v1.3: Landscape mode selector (manual/coach/mission)
+                // v1.3: Landscape mode selector (manual/coach/mission).
+                // The old conditional detection chip that lived to the right
+                // of this selector is gone — it made the whole status row
+                // (and the coach trick buttons below) jump on every
+                // detection. Dog presence is now the tiny paw next to the
+                // LAN/WAN badge (_DogDetectedPaw).
                 _LandscapeModeSelector(
                   currentMode: modeState.currentMode,
                   isChanging: modeState.isSwitching,
                   isMissionActive: isMissionActive,
                 ),
-                // Detection indicator
-                if (telemetry.dogDetected)
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                    decoration: BoxDecoration(
-                      color: AppTheme.getBehaviorColor(telemetry.currentBehavior),
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Icon(Icons.pets, color: Colors.white, size: 16),
-                        const SizedBox(width: 4),
-                        Text(
-                          AppTheme.getBehaviorDisplayName(telemetry.currentBehavior).toUpperCase(),
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 12,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
               ],
             ),
           ),
@@ -373,10 +353,19 @@ class _DriveScreenState extends ConsumerState<DriveScreen> {
 
           // WebRTC ICE path diagnostic badge — moved out of the joystick zone
           // (Build 104). Sits below the audio mute toggle on the top-left.
+          // The tiny dog-detected paw sits at the END of this row so its
+          // appearance never shifts anything else on screen.
           Positioned(
             top: MediaQuery.of(context).padding.top + 96,
             left: 16,
-            child: const _IcePathBadge(),
+            child: const Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _IcePathBadge(),
+                SizedBox(width: 6),
+                _DogDetectedPaw(),
+              ],
+            ),
           ),
 
           // Camera + video-record buttons — placed at top-right beneath the
@@ -841,46 +830,15 @@ class _DriveCoachOverlay extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final coachState = ref.watch(coachProvider);
     final isConnected = ref.watch(isRobotOnlineProvider);
-    final telemetry = ref.watch(telemetryProvider);
 
+    // No detection chip here anymore — it pushed the trick buttons down on
+    // every detection. Dog presence lives in _DogDetectedPaw (top-left).
     return Positioned(
       top: MediaQuery.of(context).padding.top + 88,
       right: 16,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
-          // Detection chip
-          if (telemetry.dogDetected)
-            Container(
-              margin: const EdgeInsets.only(bottom: 8),
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-              decoration: BoxDecoration(
-                color: AppTheme.getBehaviorColor(telemetry.currentBehavior).withOpacity(0.9),
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Icon(Icons.pets, color: Colors.white, size: 14),
-                  const SizedBox(width: 4),
-                  Text(
-                    AppTheme.getBehaviorDisplayName(telemetry.currentBehavior).toUpperCase(),
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 11,
-                    ),
-                  ),
-                  if (telemetry.confidence != null) ...[
-                    const SizedBox(width: 4),
-                    Text(
-                      '${(telemetry.confidence! * 100).toInt()}%',
-                      style: const TextStyle(color: Colors.white70, fontSize: 11),
-                    ),
-                  ],
-                ],
-              ),
-            ),
           // Trick buttons
           Container(
             padding: const EdgeInsets.all(8),
@@ -907,7 +865,11 @@ class _DriveCoachOverlay extends ConsumerWidget {
                   spacing: 6,
                   runSpacing: 4,
                   children: coachState.watchingFor.map((behavior) {
-                    final isHighlighted = coachState.lastRewardBehavior?.toLowerCase() == behavior.toLowerCase();
+                    // Reward flash (green, 3s) wins over the active-trick
+                    // highlight (blue) — tapping any trick force-switches the
+                    // session to it and moves the blue highlight.
+                    final isRewarded = coachState.lastRewardBehavior?.toLowerCase() == behavior.toLowerCase();
+                    final isActiveTrick = coachState.isActiveTrick(behavior);
                     return GestureDetector(
                       onTap: coachState.isActive && isConnected
                           ? () {
@@ -929,23 +891,31 @@ class _DriveCoachOverlay extends ConsumerWidget {
                       child: Container(
                         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                         decoration: BoxDecoration(
-                          color: isHighlighted
+                          color: isRewarded
                               ? Colors.green.withOpacity(0.3)
-                              : Colors.white.withOpacity(0.1),
+                              : isActiveTrick
+                                  ? AppTheme.primary.withOpacity(0.35)
+                                  : Colors.white.withOpacity(0.1),
                           borderRadius: BorderRadius.circular(12),
                           border: Border.all(
-                            color: isHighlighted
+                            color: isRewarded
                                 ? Colors.green
-                                : coachState.isActive && isConnected
-                                    ? AppTheme.primary.withOpacity(0.5)
-                                    : Colors.white.withOpacity(0.3),
-                            width: coachState.isActive && isConnected ? 2 : 1,
+                                : isActiveTrick
+                                    ? AppTheme.primary
+                                    : coachState.isActive && isConnected
+                                        ? AppTheme.primary.withOpacity(0.5)
+                                        : Colors.white.withOpacity(0.3),
+                            width: isActiveTrick || (coachState.isActive && isConnected) ? 2 : 1,
                           ),
                         ),
                         child: Text(
                           AppTheme.getBehaviorDisplayName(behavior).toUpperCase(),
                           style: TextStyle(
-                            color: isHighlighted ? Colors.green : Colors.white,
+                            color: isRewarded
+                                ? Colors.green
+                                : isActiveTrick
+                                    ? AppTheme.primary
+                                    : Colors.white,
                             fontSize: 11,
                             fontWeight: FontWeight.w600,
                           ),
@@ -1126,6 +1096,27 @@ class _LandscapeModeSelector extends ConsumerWidget {
       case RobotMode.coach: return Icons.school;
       case RobotMode.mission: return Icons.flag;
     }
+  }
+}
+
+/// Minimal dog-detected indicator: a single small paw print next to the
+/// LAN/WAN badge, tinted by the current behavior. Replaces the two old
+/// detection chips (status row + coach overlay) that reflowed the layout —
+/// and made the trick buttons jump — every time a dog was detected.
+class _DogDetectedPaw extends ConsumerWidget {
+  const _DogDetectedPaw();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final telemetry = ref.watch(telemetryProvider);
+    if (!telemetry.dogDetected) return const SizedBox.shrink();
+
+    return Icon(
+      Icons.pets,
+      size: 14,
+      color: AppTheme.getBehaviorColor(telemetry.currentBehavior),
+      shadows: const [Shadow(color: Colors.black, blurRadius: 4)],
+    );
   }
 }
 
