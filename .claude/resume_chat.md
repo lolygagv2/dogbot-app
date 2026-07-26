@@ -1,5 +1,69 @@
 # WIM-Z Resume Chat Log
 
+## Session: 2026-07-25/26 — Build 142→143 (B141 test feedback, stale overlay, coach UX, new icon)
+**Goal:** Fix Build 141 field-test findings (UTC timestamps, hidden negative treat count, empty Activity graph), stale behavior overlay, coach-screen layout jumping + active-trick UX; ship the new app icon.
+**Status:** ✅ All shipped + pushed through `a8c4b1d` (1.0.0+**143** — 142 was bumped past before triggering). Codemagic 143 trigger + on-device verification pending.
+
+### Fix 1 — Event timestamps showed server time (`37efc79`)
+Live feed + hydration were already correct (Build 139 `parseServerTimestamp`); the leak was **MissionHistoryEntry.startedAt/completedAt** using generated raw `DateTime.parse` — Z-suffixed strings stayed UTC `DateTime`s and `DateFormat` rendered UTC wall-clock on the History screen. Fixed via `@JsonKey(fromJson:)` → `parseServerTimestamp` (top-level `_localTimeFromJson` helpers in mission.dart; freezed emits `invalid_annotation_target` warnings — same accepted idiom as schedule.dart). Also defensive `.toLocal()` in every `_formatTime`/DateFormat render site (notifications_screen, activity_dashboard, history_screen).
+
+### Fix 2 — Negative treats_remaining invisible (`37efc79`)
+Robot reports negatives when the hopper is refilled without reset. Two gates ate them: telemetry_provider's `>= 0` check (treated negative as "missing", kept old value) and `treatsRemainingProvider` nulling all negatives ("—"). New distinct sentinel **`kTreatCountUnknown` (-9999)** in telemetry.dart replaces the overloaded `-1`; genuine negatives flow through. UI: cookie chip shows red "Reset count", treat sheet + Settings tile show "Please reset treat count".
+
+### Fix 3 — Activity graph empty (`37efc79`)
+Three binding defects: (a) per-dog filter excluded untagged events and **relay history rows carry no dog_id** (relay still owes the column per 2026-07-13 contract) → ~everything excluded; (b) guardian events map to `alert`, counted nowhere in summarizeDay; (c) barks only subtracted from the opaque score. Rebuilt: `DogDailySummary.alertCount`, `includeUntagged` param (graph uses true via dogWeeklyStatsProvider; **strict per-dog stat providers keep C4 rule**), chart now plots per-type daily counts — Treats/Barks/Behaviors/Missions/Alerts — with FilterChip toggles (double as legend; colors match feed event colors; CVD-validated). `activityChartSeriesProvider` holds toggle state. NOTE: "Treats Running Low" notices also count as Alerts.
+
+### Fix 4 — Stuck "Sit/Lay down" overlay (`e80fa97`)
+Detection BOXES pruned at 2s (allDetectionsProvider) but the chips read telemetryProvider whose currentBehavior/confidence/dogDetected (+ lastDetectionProvider) never cleared. TelemetryNotifier now stamps freshness on detection/status readings; 500ms sweep clears all of it after **2s** stale (robot classifies ~2-3 Hz only while dog visible — robot team spec). Chips are dogDetected-gated so they vanish cleanly. Debug seams: `debugHandleEvent`/`debugSetBehaviorFreshAt`/`debugExpireStaleBehavior`.
+
+### Fix 5 — Coach UX (`219017f`)
+- **Jumping:** drive screen rendered the dog-detected chip TWICE (status row beside manual/coach selector + above trick buttons) → both removed; dog presence is now one 14px paw (`_DogDetectedPaw`) at the END of the LAN/WAN badge row (end-of-row = appearance shifts nothing). Drive screen no longer watches telemetryProvider wholesale (perf win).
+- **Active trick:** `CoachState.activeTrick` — set on forceTrick, moves when a different trick is tapped (newest force_trick wins), cleared on matching coach_reward / coach exit / **60s failsafe** (robot has no trick-failed event). Chips on BOTH coach surfaces highlight active trick in primary blue; reward flash (green 3s) wins.
+- ⚠️ **Robot-side assumption to verify:** a second force_trick mid-session must cancel-and-replace (no cancel_trick command exists). Ask robot instance.
+
+### Icons (`4dea0f4`)
+Morgan's new icon set (robot + pomeranian beach art) was sitting UNCOMMITTED — no build had it. Committed; caught that the regenerated 1024px App Store icon was RGBA — **App Store Connect rejects alpha (ITMS-90717)**; previously shipped was RGB. Added `remove_alpha_ios: true` to flutter_launcher_icons config, regenerated, iOS set now RGB. New-icon-on-homescreen doubles as a build canary.
+
+### Tests
+Suite 41 green (11 aggregation/timestamp/treat-sentinel + 3 behavior-staleness + 2 coach active-trick, all new). Only failure remains pre-existing widget_test.dart MyApp scaffold rot.
+
+### Next Session:
+1. Trigger Codemagic **143** → new-icon canary + login-connect canary → verify: local timestamps (History), negative-treat reset prompt, Activity graph populated + bark toggle, behavior chip clears ~2s after dog leaves, coach banner/selector stable, blue active-trick highlight follows taps
+2. Build 141 attribution cases STILL unverified: owner_selected treat / scheduler mission / last_dog / sole_dog
+3. Robot: confirm force_trick mid-session cancels-and-replaces current forced trick
+4. Relay still owes: row-level dog_id on activity rows (tightens graph attribution automatically) + audio_state → FEED_WORTHY_EVENTS
+5. Build 133 crash file (.claude/) still unexamined; untracked working files in repo (archive/*, assets/icons/app_icon1/3/5/_4*.png incl. a `:mshield` NTFS-stream artifact) — cleanup candidates, ASK first
+
+---
+
+## Session: 2026-07-13 — Build 141 (event→dog attribution beyond coach mode)
+**Goal:** Events were only dog-attributed in coach mode (plus Build-125 barks); the C4 per-dog rule excludes untagged events, so manual treats / SG activity / mission events vanished from per-dog stats. Fix the app slice, write the cross-surface contract, coordinate the robot side.
+**Status:** ✅ Shipped + pushed: `537a3e8` (app attribution slice), `c4c66ab` (id_method provenance), `ed0194e` (bump 1.0.0+141). **Robot side IMPLEMENTED same day** (their Claude confirmed all 4 contract items + guardrails, live tests pass, restarting treatbot). Codemagic 141 not yet triggered.
+
+### App slice (`537a3e8`)
+- `dispense_treat` now carries `dog_id`/`dog_name` of the selected dog (both optional — no-dog still dispenses untagged). `sendTreatCommand({dogId, dogName})` + TreatControl passes selectedDog.
+- Live `treat`/`reward` handlers read `dog_id`; feed shows "For <dog>" when named.
+- `mission_start`/`mission_complete` notifications attributed: payload `dog_id` wins (covers scheduler-started once robot echo lands), local fallback to new `MissionsState.activeDogId` (captured from C2 effectiveDogId in startMission, cleared with clearActiveMission).
+- No display-time guessing (Build 125 rule): app only tags from real knowledge.
+
+### Provenance (`c4c66ab`) — after Morgan decided ALWAYS-assign robot-side
+Robot fallback: sole profile → `sole_dog`; multi-dog → `last_dog` (last identified/commanded). App now preserves `id_method` + `dog_name` into `NotificationEvent.metadata` via `_attributionMeta()` on ALL attributing handlers (bark/treat/reward/coach_reward/detection/guardian/mission) so a fallback guess stays distinguishable from a real identification. Per-dog stats count both (Morgan's intent); future UI badge/correction pass has the data.
+
+### Contract: `.claude/EVENT_DOG_ATTRIBUTION_CONTRACT_2026-07-13.md`
+Robot items 1–4 CONFIRMED IMPLEMENTED by robot Claude (owner_selected echo in dispenser.py, detector.py id_method any-mode, scheduler passes schedule.dog_id → start_mission, boundary precedence explicit → sole_dog → last_dog, app-canonical ids, last-dog pointer reset on reboot/reload_dogs). Robot deliberately skipped id_method on in-mode mission_progress/coach_progress ticks — agreed OK (present dog_id without id_method = plain identification app-side).
+**Relay still owes:** row-level `dog_id` on treat_dispensed/mission/guardian/bark/behavior_flag activity rows (+ dog_name/id_method in payload) AND audio_state → FEED_WORTHY_EVENTS (carried).
+
+### ⚠️ Build sequencing
+Morgan triggered Codemagic 140 BEFORE the attribution commits — Build 140 on devices does NOT include dispense_treat dog_id. All attribution work rides in **141**. Do not test the owner_selected case on a 140 device and conclude it's broken.
+
+### Next Session:
+1. Trigger Codemagic 141 → login-connect canary → attribution verification: (a) select dog A, Give Treat while camera last saw dog B → "For A" + `owner_selected`; (b) scheduler mission attributed; (c) multi-dog idle → `last_dog` tags; (d) single profile → `sole_dog`
+2. Build 140 verification also outstanding: now-playing on a non-05 robot (audio_state watermark fix) — works on 140
+3. Relay handoff (two items above) — ping relay instance
+4. Build 139 checks + Build 133 crash file, still carried
+
+---
+
 ## Session: 2026-07-12/13 — Build 140 (now-playing text only rendered for wimz_robot_05)
 **Goal:** Song title showed in the music player when connected to wimz_robot_05 but never for wimz_robot_01 (and likely other units), even though the relay verifiably delivered identical `audio_state` events to the app.
 **Status:** ✅ Fixed, tested, pushed (`f6880d7` fix, `bc9a826` bump to 1.0.0+140). Awaiting manual Codemagic trigger + on-device verification.
