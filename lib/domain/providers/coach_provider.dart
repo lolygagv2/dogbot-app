@@ -225,6 +225,17 @@ class CoachNotifier extends StateNotifier<CoachState> {
         }
         break;
 
+      case 'trick_forced':
+        // Robot's force_trick confirmation (fbc5d10: only emitted on real
+        // success, never after a rejected trick). `replaced` reports whether
+        // a running session was actually cancelled by our replace:true.
+        // State already moved optimistically in forceTrick(); this is the
+        // diagnostics breadcrumb that proves the command landed.
+        connTrace('coach-evt',
+            'trick_forced trick=${event.data['trick']} '
+            'replaced=${event.data['replaced']}');
+        break;
+
       case 'detection':
         // Detection events while coaching - update dog identity if present
         if (state.isActive) {
@@ -312,14 +323,18 @@ class CoachNotifier extends StateNotifier<CoachState> {
       return false;
     }
 
+    // Switch path (robot contract fbc5d10): a tap while a session is already
+    // running sends replace:true so the robot hard-cancels the current trick
+    // and starts this one immediately — without the flag the tap would only
+    // stage the trick for the NEXT session and the highlight would lie.
+    // activeTrick is the app's proxy for "session running" (covers both
+    // app-forced taps and robot-initiated sessions mirrored via
+    // coach_progress).
+    final replace = state.activeTrick != null;
     final ws = _ref.read(websocketClientProvider);
-    ws.sendForceTrick(trick, dogId: dogId, dogName: dogName);
-    connTrace('coach-force-trick', '$trick dog=$dogName ($dogId)');
+    ws.sendForceTrick(trick, dogId: dogId, dogName: dogName, replace: replace);
+    connTrace('coach-force-trick', '$trick dog=$dogName ($dogId) replace=$replace');
 
-    // Track the forced trick as the active session. Forcing a different
-    // trick while one is active is the switch path: the robot's coaching
-    // engine takes the newest force_trick as current, so the highlight just
-    // moves with it.
     _armActiveTrickFailsafe(trick);
     state = state.copyWith(activeTrick: trick);
     return true;

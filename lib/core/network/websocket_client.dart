@@ -1281,11 +1281,19 @@ class WebSocketClient {
   /// should treat both as optional — the app refuses to send a force_trick
   /// without at least one of them — but if a future caller does send neither,
   /// robot can still fall back to its previous behaviour.
-  void sendForceTrick(String trick, {String? dogId, String? dogName}) {
-    print('WebSocket: sendForceTrick trick=$trick dog=$dogName ($dogId)');
+  /// `replace: true` hard-cancels any running trick session robot-side (FSM
+  /// reset, cooldowns cleared, visible dogs fast-tracked) and starts [trick]
+  /// within a beat; without it the trick is staged for the next session
+  /// (robot contract fbc5d10, 2026-07-26). Robot answers with
+  /// `replaced: true/false` reporting whether anything was actually cancelled.
+  void sendForceTrick(String trick,
+      {String? dogId, String? dogName, bool replace = false}) {
+    print('WebSocket: sendForceTrick trick=$trick dog=$dogName ($dogId) '
+        'replace=$replace');
     final data = <String, dynamic>{'trick': trick};
     if (dogId != null) data['dog_id'] = dogId;
     if (dogName != null) data['dog_name'] = dogName;
+    if (replace) data['replace'] = true;
     sendCommand('force_trick', data);
   }
 
