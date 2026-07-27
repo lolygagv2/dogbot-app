@@ -12,6 +12,7 @@ import 'data/models/night_mode_state.dart';
 import 'domain/providers/auth_provider.dart';
 import 'domain/providers/connection_provider.dart';
 import 'domain/providers/control_provider.dart';
+import 'domain/providers/network_state_provider.dart';
 import 'domain/providers/night_mode_provider.dart';
 import 'domain/providers/notifications_provider.dart';
 import 'domain/providers/settings_provider.dart';
@@ -688,6 +689,12 @@ class _WimzAppState extends ConsumerState<WimzApp> with WidgetsBindingObserver {
     // subscribes to the WS state stream and re-pushes any unsynced
     // recordings the moment we go connected.
     ref.read(voiceCommandsAutoSyncProvider);
+
+    // Build 146: instantiate the network-state cache eagerly — the relay
+    // sends network_state ON connect, so a lazily-created listener would miss
+    // the very breadcrumb (robot hotspot credentials) the offline prompt
+    // depends on.
+    ref.read(networkStateProvider);
 
     // Wire Dio's 401 callback so REST auth failures route through the same
     // logout(notice:) path as WS 4001. See dio_client.dart.

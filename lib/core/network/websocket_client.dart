@@ -444,8 +444,8 @@ class WebSocketClient {
 
   void _onMessage(dynamic message) {
     try {
-      final json = jsonDecode(message as String) as Map<String, dynamic>;
-      final msgType = json['type'] as String? ?? json['event'] as String?;
+      var json = jsonDecode(message as String) as Map<String, dynamic>;
+      var msgType = json['type'] as String? ?? json['event'] as String?;
 
       // Per-message firehose — debug builds only. Gated so release logs don't
       // carry device/robot state (and to cut log spam). Build 110.
@@ -530,6 +530,43 @@ class WebSocketClient {
         }
         _lastSeenSeq = seq;
         _scheduleWatermarkPersist();
+      }
+
+      // Build 146: unwrap the robot's LOCAL event envelope. Over /ws/local the
+      // robot wraps bus events as
+      //   {"type":"event","category":"system|vision|audio|…",
+      //    "data":{"subtype":"coaching_started", …} }   — or double-nested:
+      //   "data":{"subtype":"audio_state","data":{…payload…}}
+      // Before this, such frames fell through to the default branch as type
+      // 'event', which NO handler matches — every local bus event
+      // (coaching_started, coach_progress, detections, audio_state) was
+      // delivered and then dropped on the floor. Rewrite to the flat shape the
+      // relay uses (type = subtype) so the normal routing below applies.
+      // Relay frames are untouched: they never carry `category`.
+      final envCategory = json['category'];
+      final envData = json['data'];
+      if (msgType == 'event' && envCategory != null && envData is Map) {
+        final subtype = envData['subtype']?.toString();
+        if (subtype != null && subtype.isNotEmpty) {
+          final inner = envData['data'];
+          final flat = <String, dynamic>{
+            ...Map<String, dynamic>.from(envData)
+              ..remove('subtype')
+              ..remove('data'),
+            if (inner is Map) ...Map<String, dynamic>.from(inner),
+            'subtype': subtype,
+            'category': envCategory.toString(),
+            if (json['timestamp'] != null) 'timestamp': json['timestamp'],
+          };
+          // Local reward events keep the relay's type name so the existing
+          // `case 'reward'` + data.subtype consumers match.
+          msgType = subtype == 'treat_dispensed' ? 'reward' : subtype;
+          flat['type'] = msgType;
+          json = flat;
+          if (_tracedFilterDrops.add('unwrap:$subtype')) {
+            connTrace('ws-local-unwrap', 'category=$envCategory subtype=$subtype');
+          }
+        }
       }
 
       // Check if message contains battery data regardless of type
@@ -649,6 +686,30 @@ class WebSocketClient {
           print('WS: Received mode_changed: $json');
           final modeChangedEvent = WsEvent.fromJson(json);
           _eventController.add(modeChangedEvent);
+          break;
+
+        // Build 146: robot-authoritative state on (re)connect. /ws/local sends
+        // `connected` (with current_mode) and `initial_status` (with
+        // data.system_state + data.audio_status) automatically on every
+        // connect — the app must sync FROM these instead of re-asserting its
+        // own cached mode (the set_mode-stomping bug, robot journal
+        // 2026-07-26). Forwarded for mode_provider + audio UI seeding.
+        case 'connected':
+        case 'initial_status':
+          connTrace('ws-robot-state', '$msgType received');
+          _eventController.add(WsEvent.fromJson(json));
+          break;
+
+        // Build 146: network_state — robot's WiFi/AP breadcrumb, sent on every
+        // relay connect and after every WiFi rejoin. Carries local_ap
+        // credentials for the offline "join the robot's hotspot" prompt.
+        // Deliberately NOT filtered by _isFromTargetDevice: the latest
+        // breadcrumb per robot is worth caching even for a robot the app isn't
+        // currently targeting.
+        case 'network_state':
+        case 'local_mode_starting':
+          connTrace('ws-network-state', '$msgType device=${json['device_id']}');
+          _eventController.add(WsEvent.fromJson(json));
           break;
 
         // Audio state event (Build 31) - sync music player UI

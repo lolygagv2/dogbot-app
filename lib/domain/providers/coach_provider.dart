@@ -205,18 +205,24 @@ class CoachNotifier extends StateNotifier<CoachState> {
         // engine is ACTUALLY running — robot-initiated sessions included —
         // instead of only app-forced taps. Trick key read defensively until
         // the robot instance confirms the payload contract.
+        // Robot contract confirmed 2026-07-26: key is `trick`, stage key is
+        // `stage` (greeting|command|watching — watching ticks at ~2Hz).
         final progressTrick = (event.data['trick'] ??
                 event.data['behavior'] ??
                 event.data['current_trick'])
             ?.toString();
-        final phase = event.data['phase']?.toString();
-        connTrace('coach-evt', 'coach_progress phase=$phase trick=$progressTrick');
+        final stage = (event.data['stage'] ?? event.data['phase'])?.toString();
+        connTrace('coach-evt', 'coach_progress stage=$stage trick=$progressTrick');
         if (progressTrick != null && progressTrick.isNotEmpty) {
           // A progress tick proves the engine is live — activate if a
           // coaching_started / mode_changed was missed (belt and braces for
-          // the local-AP event gaps).
+          // the local-AP event gaps). Watching-stage ticks repeat at ~2Hz:
+          // re-arm the failsafe every tick, but only emit a new state when
+          // something actually changed so listeners don't rebuild at 2Hz.
           _armActiveTrickFailsafe(progressTrick);
-          state = state.copyWith(isActive: true, activeTrick: progressTrick);
+          if (!state.isActive || state.activeTrick != progressTrick) {
+            state = state.copyWith(isActive: true, activeTrick: progressTrick);
+          }
         }
         final progressDogName = event.data['dog_name']?.toString();
         final progressDogId = event.data['dog_id']?.toString();

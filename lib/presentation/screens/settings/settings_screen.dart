@@ -16,6 +16,7 @@ import '../../../domain/providers/webrtc_provider.dart';
 import '../../../domain/providers/wifi_config_provider.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/night_mode/night_vision_settings_section.dart';
+import '../../widgets/status/local_ap_banner.dart';
 import '../../widgets/silent_guardian/intervention_level_section.dart';
 
 class SettingsScreen extends ConsumerStatefulWidget {
@@ -86,6 +87,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           // Connection Status
           _SectionHeader('Connection'),
           _ConnectionInfoTile(isLocalMode: isLocalMode),
+          // Build 146: in-session switch onto the robot's hotspot (cloud only)
+          if (!isLocalMode) const LocalModeSwitchTile(),
           const Divider(),
 
           // My Robots (cloud mode only). Build 110: collapsed the old inline

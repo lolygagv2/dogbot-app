@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/network/websocket_client.dart';
+import '../../core/utils/conn_trace.dart';
 import 'connection_provider.dart';
 import 'telemetry_provider.dart';
 
@@ -228,11 +229,50 @@ class ModeStateNotifier extends StateNotifier<ModeState> {
           _handleModeConfirmation(mode);
         }
       } else if (event.type == 'mission_progress') {
-        _handleMissionProgress(event.data);
+        // Build 146: replayed (buffered) mission events are history, not live
+        // state — a stale mission_progress from the store-and-forward buffer
+        // must not flip the live mode UI (or worse, trigger sends).
+        if (!event.buffered) _handleMissionProgress(event.data);
       } else if (event.type == 'mission_complete' || event.type == 'mission_stopped') {
-        _handleMissionEnded();
+        if (!event.buffered) _handleMissionEnded();
+      } else if (event.type == 'connected' || event.type == 'initial_status') {
+        _handleAuthoritativeSync(event);
       }
     });
+  }
+
+  /// Build 146: robot-authoritative mode sync on (re)connect. /ws/local sends
+  /// `connected` (current_mode) and `initial_status` (data.system_state) on
+  /// every connect. The app adopts the robot's mode — clearing any stale
+  /// sovereign selection — and sends NOTHING. This is the fix for the
+  /// set_mode-stomping bug (robot journal 2026-07-26): the app used to keep
+  /// its cached UI mode and re-assert it via navigation-triggered sends,
+  /// killing coach mode out from under the user in local mode.
+  void _handleAuthoritativeSync(WsEvent event) {
+    final rawState = event.type == 'connected'
+        ? event.data['current_mode']
+        : event.data['system_state'];
+    // system_state may be a bare mode string or an object carrying one.
+    final modeValue = rawState is Map
+        ? (rawState['mode'] ?? rawState['current_mode'])?.toString()
+        : rawState?.toString();
+    if (modeValue == null || modeValue.isEmpty) return;
+    final mode = RobotMode.tryFromString(modeValue);
+    if (mode == null) return;
+
+    connTrace('mode-robot-sync', '${event.type} mode=$modeValue '
+        '(was=${state.currentMode.value} userSel=${_userSelectedMode?.value})');
+    _cancelTimeout();
+    _userSelectedMode = null;
+    if (mode != state.currentMode || state.isChanging) {
+      _logModeChange(state.currentMode, mode, 'robot_sync_${event.type}');
+      state = state.copyWith(
+        currentMode: mode,
+        isChanging: false,
+        clearPending: true,
+        clearError: true,
+      );
+    }
   }
 
   /// Handle mode_changed events (explicit mode change broadcasts from robot)
@@ -354,6 +394,11 @@ class ModeStateNotifier extends StateNotifier<ModeState> {
 
   /// Handle mission ended (completed or stopped)
   /// Mission ALWAYS exits to idle. Only Drive exit restores previous portrait mode.
+  ///
+  /// Build 146: UI-only. This used to also SEND set_mode:idle — an
+  /// event-triggered, app-originated send (robot brief 2026-07-26 forbids
+  /// implicit set_mode; a buffered replay could even fire it with zero user
+  /// action). The robot exits its own missions; the app just mirrors.
   void _handleMissionEnded() {
     _logModeChange(state.currentMode, RobotMode.idle, 'mission_ended');
     _userSelectedMode = RobotMode.idle;
@@ -364,8 +409,6 @@ class ModeStateNotifier extends StateNotifier<ModeState> {
       isChanging: false,
       clearPending: true,
     );
-    // Send idle mode to robot
-    _ref.read(websocketClientProvider).sendModeCommand(RobotMode.idle.value, source: 'mission_end');
   }
 
   // ─────────────────────────────────────────────────────────────────────────

@@ -47,20 +47,25 @@ class _DriveScreenState extends ConsumerState<DriveScreen> {
     // can legitimately continue into the background. No-op on iOS.
     ForegroundSessionService.start();
 
-    // v1.3: Store portrait mode before switching to manual
+    // Build 146: entering the drive screen auto-switches to manual ONLY from
+    // idle. Any other robot mode (coach, SG, mission) is left untouched — the
+    // robot brief 2026-07-26 captured navigation-triggered set_mode sends
+    // killing coach mode in local sessions (SG was stomped by the old
+    // else-branch too). The drive screen is a viewer for non-manual modes;
+    // the user switches explicitly via the mode selector.
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final modeState = ref.read(modeStateProvider);
       final hasMission = ref.read(missionsProvider).hasActiveMission;
       if (modeState.isMissionActive || modeState.isModeLocked || hasMission) {
         print('DriveScreen: Mission active (${modeState.activeMissionName ?? 'starting'}), keeping mission mode');
-      } else if (modeState.currentMode == RobotMode.mission) {
-        print('DriveScreen: In mission mode, keeping it');
-      } else if (modeState.currentMode == RobotMode.coach) {
-        print('DriveScreen: In coach mode, keeping it');
-      } else {
+      } else if (modeState.currentMode == RobotMode.idle &&
+          modeState.pendingMode == null) {
         // Store current portrait mode before entering landscape
         ref.read(modeStateProvider.notifier).storePortraitMode();
         _ensureManualMode();
+      } else {
+        print('DriveScreen: Robot in ${modeState.currentMode.value} '
+            '(pending=${modeState.pendingMode?.value}) — not touching mode');
       }
     });
   }
@@ -98,17 +103,20 @@ class _DriveScreenState extends ConsumerState<DriveScreen> {
   void _handleExitCleanup() {
     final modeState = ref.read(modeStateProvider);
     if (modeState.isMissionActive || modeState.isModeLocked) {
-      // Mission active — stop it and exit to idle
+      // Mission active — user is explicitly abandoning it via back:
+      // stop it and exit to idle
       ref.read(missionsProvider.notifier).stopMission();
       ref.read(modeStateProvider.notifier).setMode(
             RobotMode.idle,
             source: 'mission_end',
           );
-    } else if (modeState.currentMode != RobotMode.coach) {
-      // Not in coach or mission — restore previous portrait mode
+    } else if (modeState.currentMode == RobotMode.manual) {
+      // Build 146: restore ONLY from manual — the mode this screen itself
+      // auto-entered (or the user picked here). Any other mode (coach, SG,
+      // idle) is the robot's business; sending a restore for it was the
+      // navigation-triggered set_mode class the robot brief forbids.
       ref.read(modeStateProvider.notifier).restorePortraitMode();
     }
-    // Coach stays active when leaving drive screen
   }
 
   @override

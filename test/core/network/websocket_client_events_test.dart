@@ -164,4 +164,161 @@ void main() {
     expect(event.data['playlist_index'], 6);
     expect(event.seq, 7);
   });
+
+  // ── Build 146: local /ws/local event-envelope unwrapping ────────────────
+  // The robot wraps bus events as {"type":"event","category":…,
+  // "data":{"subtype":…, …}} (sometimes double-nested "data"). Pre-146 these
+  // fell to the default branch as type 'event' — delivered but unroutable, so
+  // every local bus event (coaching_started, coach_progress, detections,
+  // audio_state) was dropped on the floor despite robot 60e526f emitting them.
+
+  test('local system envelope (coaching_started) unwraps to its subtype',
+      () async {
+    client.setTargetDevice('local_robot');
+
+    client.debugHandleMessage(jsonEncode({
+      'type': 'event',
+      'category': 'system',
+      'data': {
+        'subtype': 'coaching_started',
+        'dog_name': 'Elsa',
+        'tricks_available': ['sit', 'spin'],
+      },
+      'timestamp': 1690000000.0,
+    }));
+    await pump();
+
+    expect(received, hasLength(1));
+    expect(received.single.type, 'coaching_started');
+    expect(received.single.data['dog_name'], 'Elsa');
+    expect(received.single.data['tricks_available'], ['sit', 'spin']);
+  });
+
+  test('local coach_progress envelope carries trick through unwrap', () async {
+    client.setTargetDevice('local_robot');
+
+    client.debugHandleMessage(jsonEncode({
+      'type': 'event',
+      'category': 'system',
+      'data': {
+        'subtype': 'coach_progress',
+        'stage': 'command',
+        'trick': 'laydown',
+        'dog_name': 'Elsa',
+      },
+    }));
+    await pump();
+
+    expect(received.single.type, 'coach_progress');
+    expect(received.single.data['trick'], 'laydown');
+    expect(received.single.data['stage'], 'command');
+  });
+
+  test('local double-nested audio envelope unwraps to flat audio_state',
+      () async {
+    client.setTargetDevice('local_robot');
+
+    client.debugHandleMessage(jsonEncode({
+      'type': 'event',
+      'category': 'audio',
+      'data': {
+        'subtype': 'audio_state',
+        'data': {
+          'state': 'playing',
+          'track': 'default/Wimz_theme.mp3',
+          'playing': true,
+          'playlist_index': 0,
+          'playlist_length': 23,
+        },
+      },
+      'timestamp': 1690000000.0,
+    }));
+    await pump();
+
+    expect(received.single.type, 'audio_state');
+    expect(received.single.data['playing'], true);
+    expect(received.single.data['track'], 'default/Wimz_theme.mp3');
+    expect(received.single.data['playlist_length'], 23);
+  });
+
+  test('local treat_dispensed envelope keeps the relay reward type', () async {
+    client.setTargetDevice('local_robot');
+
+    client.debugHandleMessage(jsonEncode({
+      'type': 'event',
+      'category': 'reward',
+      'data': {
+        'subtype': 'treat_dispensed',
+        'treats_remaining': 7,
+      },
+    }));
+    await pump();
+
+    // Existing consumers match `case 'reward'` + data.subtype — the unwrap
+    // must not strand local treats under a type nobody listens for.
+    expect(received.single.type, 'reward');
+    expect(received.single.data['subtype'], 'treat_dispensed');
+    expect(received.single.data['treats_remaining'], 7);
+  });
+
+  test('relay frames with a data map but no category stay untouched', () async {
+    client.setTargetDevice('wimz_robot_01');
+
+    client.debugHandleMessage(jsonEncode({
+      'type': 'event',
+      'device_id': 'wimz_robot_01',
+      'data': {'subtype': 'something_relay_shaped', 'value': 1},
+    }));
+    await pump();
+
+    // No category → not the local envelope → forwarded as-is (type 'event').
+    expect(received.single.type, 'event');
+    expect(received.single.data['subtype'], 'something_relay_shaped');
+  });
+
+  test('connected and initial_status frames are forwarded to eventStream',
+      () async {
+    client.setTargetDevice('local_robot');
+
+    client.debugHandleMessage(jsonEncode({
+      'type': 'connected',
+      'current_mode': 'coach',
+    }));
+    client.debugHandleMessage(jsonEncode({
+      'type': 'initial_status',
+      'data': {
+        'system_state': 'coach',
+        'audio_status': {'playing': true, 'track': 'default/Wimz_theme.mp3'},
+      },
+    }));
+    await pump();
+
+    expect(received.map((e) => e.type), ['connected', 'initial_status']);
+    expect(received.first.data['current_mode'], 'coach');
+    expect(received.last.data['system_state'], 'coach');
+    expect(
+        (received.last.data['audio_status'] as Map)['playing'], true);
+  });
+
+  test('network_state is forwarded and NOT filtered by target device',
+      () async {
+    // Breadcrumbs for non-target robots still matter — the cache is per-robot.
+    client.setTargetDevice('wimz_robot_01');
+
+    client.debugHandleMessage(jsonEncode({
+      'event': 'network_state',
+      'device_id': 'wimz_robot_05',
+      'mode': 'wifi',
+      'ssid': '524Pomeranian',
+      'local_ap': {
+        'ssid': 'WIMZ-5220',
+        'password': 'wimzsetup',
+        'ip': '192.168.4.1',
+      },
+    }));
+    await pump();
+
+    expect(received.single.type, 'network_state');
+    expect((received.single.data['local_ap'] as Map)['ssid'], 'WIMZ-5220');
+  });
 }

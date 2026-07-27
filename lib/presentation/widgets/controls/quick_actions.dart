@@ -68,11 +68,14 @@ class _QuickActionsState extends ConsumerState<QuickActions> {
   @override
   void initState() {
     super.initState();
-    // Listen for audio_state events from robot to sync UI
+    // Listen for audio_state events from robot to sync UI. Build 146: also
+    // initial_status — its audio_status dict seeds playback state on every
+    // (re)connect so the UI starts in sync instead of assuming stopped.
     _audioStateSubscription = ref
         .read(websocketClientProvider)
         .eventStream
-        .where((event) => event.type == 'audio_state')
+        .where((event) =>
+            event.type == 'audio_state' || event.type == 'initial_status')
         .listen(_handleAudioState);
 
     // Build 34: Listen for upload result events
@@ -157,8 +160,14 @@ class _QuickActionsState extends ConsumerState<QuickActions> {
   }
 
   void _handleAudioState(dynamic event) {
-    // event is WsEvent with type 'audio_state'
-    final data = event.data as Map<String, dynamic>;
+    // event is WsEvent with type 'audio_state' — or 'initial_status', whose
+    // audio_status field carries the same shape (usb_audio.get_status()).
+    var data = event.data as Map<String, dynamic>;
+    if (event.type == 'initial_status') {
+      final audioStatus = data['audio_status'];
+      if (audioStatus is! Map) return;
+      data = Map<String, dynamic>.from(audioStatus);
+    }
 
     // Update playing state
     final playing = data['playing'] as bool? ?? false;
@@ -320,8 +329,12 @@ class _QuickActionsState extends ConsumerState<QuickActions> {
                 trackName: ref.watch(_currentTrackProvider),
                 onPrev: () => audioControl.prev(),
                 onToggle: () {
-                  // Optimistic toggle — update UI immediately, Pi confirms via audio_state
-                  ref.read(_isPlayingProvider.notifier).state = !isPlaying;
+                  // Build 146: NO optimistic flip. Robot contract 60e526f:
+                  // playback state renders only from audio_state events
+                  // (seeded by initial_status.audio_status) — a command that
+                  // failed robot-side ("Audio is loading") did nothing, and
+                  // the old local flip is exactly the play/pause inversion
+                  // bug. audio_state now arrives over /ws/local too.
                   audioControl.toggle();
                 },
                 onNext: () => audioControl.next(),
