@@ -167,6 +167,14 @@ class _QuickActionsState extends ConsumerState<QuickActions> {
       final audioStatus = data['audio_status'];
       if (audioStatus is! Map) return;
       data = Map<String, dynamic>.from(audioStatus);
+    } else if (event.buffered == true) {
+      // Build 146: the relay latches the LATEST audio_state and replays that
+      // ONE frame at connect time (buffered:true, 24h window, relay commits
+      // 2026-07-26) so a session joining mid-playback starts in sync. It is
+      // by construction the freshest state the relay knows and always arrives
+      // before any live frame on the socket — accept it as the seed. (No
+      // stale-flood risk: latest-only latch, never feed history.)
+      print('[AUDIO_STATE] seeding from relay-latched replay');
     }
 
     // Update playing state

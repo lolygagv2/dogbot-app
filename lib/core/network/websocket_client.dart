@@ -481,17 +481,27 @@ class WebSocketClient {
       // replayable feed events.
       final seq = json['seq'];
       final isControllerMsg = msgType?.startsWith('controller_') ?? false;
-      // Build 140: audio_state joins the controller_* carve-out. Verified
-      // relay-side 2026-07-12: audio_state is NOT in FEED_WORTHY_EVENTS, so
-      // it is never replayed — the relay stamps a seq on the live forward but
-      // keeps no buffer row. For a never-replayed type the watermark gate can
-      // only do harm: (a) a watermark sitting ahead of the robot's live
-      // counter silently swallows EVERY frame — the "now-playing text renders
-      // for one robot only" bug — and (b) letting it advance the persisted
-      // watermark skips buffered feed events (barks/alerts) on the next
-      // reconnect, exactly the Build 127 controller_* lesson. Any other type
-      // confirmed absent from FEED_WORTHY_EVENTS belongs in this set too.
-      final isTransientMsg = isControllerMsg || msgType == 'audio_state';
+      // Build 140: audio_state joins the controller_* carve-out. For a type
+      // outside FEED_WORTHY_EVENTS the watermark gate can only do harm:
+      // (a) a watermark sitting ahead of the robot's live counter silently
+      // swallows EVERY frame — the "now-playing text renders for one robot
+      // only" bug — and (b) letting it advance the persisted watermark skips
+      // buffered feed events (barks/alerts) on the next reconnect, exactly
+      // the Build 127 controller_* lesson. Any other type confirmed absent
+      // from FEED_WORTHY_EVENTS belongs in this set too.
+      //
+      // Build 146 (relay confirmed 2026-07-27): coaching_started,
+      // coach_progress, and local_mode_starting get a seq but never replay —
+      // same carve-out. audio_state stays here even though the relay now
+      // latches and replays its LATEST frame (buffered:true, one frame max,
+      // 24h window, 2026-07-26): the replay is a deliberate reconnect seed,
+      // not feed history, so it must not be watermark-dropped nor advance
+      // the watermark.
+      final isTransientMsg = isControllerMsg ||
+          msgType == 'audio_state' ||
+          msgType == 'coaching_started' ||
+          msgType == 'coach_progress' ||
+          msgType == 'local_mode_starting';
       if (isControllerMsg) {
         // Build 129: prove on-device that controller_* reaches the socket and
         // survives the watermark gate (the pre-129 drop point). Read via

@@ -300,6 +300,55 @@ void main() {
         (received.last.data['audio_status'] as Map)['playing'], true);
   });
 
+  test(
+      'coach + local_mode_starting events bypass the watermark '
+      '(relay confirmed 2026-07-27: seq-stamped, never replayed)', () async {
+    client.setTargetDevice('wimz_robot_01');
+    client.debugSetWatermark(99999, deviceId: 'wimz_robot_01');
+
+    for (final type in [
+      'coaching_started',
+      'coach_progress',
+      'local_mode_starting',
+    ]) {
+      client.debugHandleMessage(jsonEncode({
+        'event': type,
+        'device_id': 'wimz_robot_01',
+        'seq': 5,
+      }));
+    }
+    await pump();
+
+    expect(received.map((e) => e.type),
+        ['coaching_started', 'coach_progress', 'local_mode_starting']);
+    // And none of them advanced the watermark (would skip buffered
+    // barks/alerts on the next reconnect — the Build 127 lesson).
+    expect(client.debugWatermark, 99999);
+  });
+
+  test('relay-latched buffered audio_state replay is delivered', () async {
+    // Relay 2026-07-26: latest-only audio_state latch replayed at connect
+    // with buffered:true — the reconnect seed for the music UI.
+    client.setTargetDevice('wimz_robot_01');
+    client.debugSetWatermark(99999, deviceId: 'wimz_robot_01');
+
+    client.debugHandleMessage(jsonEncode({
+      'event': 'audio_state',
+      'device_id': 'wimz_robot_01',
+      'seq': 12,
+      'buffered': true,
+      'state': 'playing',
+      'track': 'default/Trancewimz.mp3',
+      'playing': true,
+    }));
+    await pump();
+
+    expect(received.single.type, 'audio_state');
+    expect(received.single.buffered, isTrue);
+    expect(received.single.data['playing'], true);
+    expect(client.debugWatermark, 99999);
+  });
+
   test('network_state is forwarded and NOT filtered by target device',
       () async {
     // Breadcrumbs for non-target robots still matter — the cache is per-robot.
