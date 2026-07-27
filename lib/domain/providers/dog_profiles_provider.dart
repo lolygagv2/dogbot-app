@@ -249,15 +249,23 @@ class DogProfilesNotifier extends StateNotifier<List<DogProfile>> {
   }
 
   /// Merge relay dogs into the local list. Remote records whose id we don't
-  /// recognize are matched by name instead of adopted blindly: when the
-  /// relay mints its own ids on POST /dogs (instead of honoring ours),
-  /// id-only merging re-adopted the same dog on every login — one new
-  /// replica per logout/login cycle. Matched dogs keep the LOCAL id (voice
-  /// recordings, the robot's per-dog caches, and selection persistence all
-  /// key on it); per-record the newer updatedAt wins, with null treated as
-  /// oldest. `relayKnownIds` holds local ids the relay has a copy of under
-  /// ANY id — those must not be backfilled, since re-POSTing them is what
-  /// made the relay mint yet another duplicate row each cycle.
+  /// recognize are matched by name instead of adopted blindly.
+  ///
+  /// History: POST /dogs used to mint its own ids instead of honoring ours,
+  /// so id-only merging re-adopted the same dog on every login — one new
+  /// replica per logout/login cycle. The relay upserts by client id since
+  /// 2026-07-27 (deployed), so no NEW minted-id rows appear — but rows minted
+  /// before the fix may still live in the relay DB, and this name-match is
+  /// what keeps collapsing them on every hydrate. Do not remove it until the
+  /// relay's legacy rows are confirmed purged (relay has POST /api/dogs/merge
+  /// for that). For healthy data it's a no-op: remote ids match ours.
+  ///
+  /// Matched dogs keep the LOCAL id (voice recordings, the robot's per-dog
+  /// caches, and selection persistence all key on it); per-record the newer
+  /// updatedAt wins, with null treated as oldest. `relayKnownIds` holds local
+  /// ids the relay has a copy of under ANY id — those must not be backfilled,
+  /// since re-POSTing them is what made the old relay mint yet another
+  /// duplicate row each cycle (harmless now, but still redundant traffic).
   @visibleForTesting
   static ({List<DogProfile> merged, Set<String> relayKnownIds}) mergeRelayDogs(
       List<DogProfile> local, List<DogProfile> remote) {

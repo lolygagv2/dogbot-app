@@ -14,9 +14,10 @@ bool _sameDay(DateTime a, DateTime b) =>
 /// Summarize one calendar day for a dog.
 /// [dogId] empty → aggregate across all dogs (and untagged events).
 /// Per-dog (non-empty [dogId]) counts events tagged with that exact dog_id.
-/// [includeUntagged] additionally counts events with NO dog_id — relay
-/// history rows don't carry dog_id yet (relay contract 2026-07-13 pending),
-/// so charts that would otherwise render empty opt in; strict per-dog stats
+/// [includeUntagged] additionally counts events with NO dog_id — pre-2026-07
+/// relay rows lack it entirely, and newer events stay untagged whenever the
+/// robot couldn't identify the dog (any-mode stamping still owed robot-side).
+/// Charts that would otherwise render empty opt in; strict per-dog stats
 /// keep the C4 default (untagged excluded).
 DogDailySummary summarizeDay(
   List<NotificationEvent> events, {

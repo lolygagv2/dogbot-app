@@ -326,10 +326,13 @@ class AllDogsAnalyticsNotifier extends StateNotifier<AnalyticsData> {
 /// 7-day stats for the dashboard chart, keyed by dogId.
 /// Build 125: REAL data, aggregated from the activity history — no more
 /// `Random()` upward-trending fake chart.
-/// Build 142: includeUntagged — relay history rows don't carry dog_id yet,
-/// so a strict per-dog filter rendered the chart empty despite delivered
-/// bark/guardian/treat events. Untagged events count here; strict per-dog
-/// stat providers keep the C4 rule.
+/// Build 142: includeUntagged — a strict per-dog filter rendered the chart
+/// empty despite delivered bark/guardian/treat events. Untagged events count
+/// here; strict per-dog stat providers keep the C4 rule.
+/// Build 147: row-level dog_id is live relay-side (2026-07-26), but events
+/// stay untagged whenever the robot can't identify the dog (no ArUco in
+/// frame) — any-mode dog_id stamping is still owed robot-side per the
+/// 2026-07-13 attribution contract. Revisit dropping this once that ships.
 final dogWeeklyStatsProvider =
     Provider.family<List<DogDailySummary>, String>((ref, dogId) {
   final events = ref.watch(notificationsProvider);

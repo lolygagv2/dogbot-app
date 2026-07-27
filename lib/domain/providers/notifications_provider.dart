@@ -511,8 +511,19 @@ class NotificationsNotifier extends StateNotifier<List<NotificationEvent>> {
     final typeStr = event['type'] as String? ?? '';
     final timestampStr = event['timestamp'] as String?;
     final timestamp = parseServerTimestamp(timestampStr);
-    final dogId = event['dog_id'] as String?;
     final payload = (event['payload'] as Map?)?.cast<String, dynamic>() ?? {};
+    // Row-level dog_id shipped relay-side 2026-07-26 (commit 0592da7), but
+    // only rows ingested since then have the column populated. Older rows
+    // keep NULL there while the original event payload — which may carry the
+    // robot's dog_id at its top level or nested under data — is still stored,
+    // so dig it out as a fallback to recover attribution for old history.
+    // '' normalizes to null (relay does the same for new rows).
+    final nested = payload['data'] is Map
+        ? (payload['data'] as Map)['dog_id']
+        : null;
+    final rawDogId =
+        (event['dog_id'] ?? payload['dog_id'] ?? nested)?.toString();
+    final dogId = (rawDogId == null || rawDogId.isEmpty) ? null : rawDogId;
 
     NotificationEventType? mapped;
     String title;

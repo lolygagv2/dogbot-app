@@ -24,10 +24,12 @@ Map<String, dynamic>? decodeJwtPayload(String token) {
   }
 }
 
-/// Returns the JWT `sub` claim — the relay's canonical user_id (e.g.
-/// `user_000042`) used for the session_hello handshake validation.
-String? jwtSub(String? token) {
+/// Returns the relay's canonical user_id (e.g. `user_000042`) used for the
+/// session_hello handshake validation. Relay tokens carry an explicit
+/// `user_id` claim since 2026-07-27 (equal to `sub`); older tokens still in
+/// secure storage only have `sub`, so both are read.
+String? jwtUserId(String? token) {
   if (token == null) return null;
   final payload = decodeJwtPayload(token);
-  return payload?['sub'] as String?;
+  return (payload?['user_id'] ?? payload?['sub']) as String?;
 }

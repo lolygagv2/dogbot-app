@@ -220,12 +220,13 @@ class ConnectionNotifier extends StateNotifier<ConnectionState> {
       // user's actual saved device.
       await _ref.read(deviceIdProvider.notifier).loadReady;
       final deviceId = _ref.read(deviceIdProvider);
-      // Build 90: extract user_id from the JWT `sub` claim. The relay
-      // validates session_hello.user_id against this (e.g. `user_000042`,
-      // not email). Falls back to authState.userId / email if the token
-      // is malformed for some reason.
+      // Build 90: extract user_id from the JWT (explicit `user_id` claim
+      // since relay 2026-07-27, `sub` on older tokens). The relay validates
+      // session_hello.user_id against this (e.g. `user_000042`, not email).
+      // Falls back to authState.userId / email if the token is malformed
+      // for some reason.
       final sessionUserId =
-          jwtSub(token) ?? authState.userId ?? authState.email;
+          jwtUserId(token) ?? authState.userId ?? authState.email;
       print('Connecting WebSocket to: $wsUrl (session=$newSessionId, user=$sessionUserId)');
       connTrace('ws-connect-attempt',
           'user=$sessionUserId device=$deviceId hasToken=${token != null}');
