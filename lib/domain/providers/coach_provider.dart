@@ -26,6 +26,13 @@ class CoachState {
   /// live. Cleared when a matching reward lands, when a different trick
   /// starts, on coach exit, or by the failsafe timer in [CoachNotifier].
   /// Null = robot is free-watching all tricks.
+  ///
+  /// Robot contract 2026-07-27 (§5a): force_trick is ONE-SHOT — a forced
+  /// trick runs exactly one session, then the sequential rotation resumes,
+  /// and exiting coach discards a staged-but-unrun force. So this is a
+  /// transient mirror of the live session, never a pinned "forced" state:
+  /// after the forced session ends, the next coach_progress tick moves the
+  /// highlight to whatever the rotation runs next.
   final String? activeTrick;
   final String? dogId;
   final String? dogName;
@@ -235,11 +242,18 @@ class CoachNotifier extends StateNotifier<CoachState> {
         // Robot's force_trick confirmation (fbc5d10: only emitted on real
         // success, never after a rejected trick). `replaced` reports whether
         // a running session was actually cancelled by our replace:true.
-        // State already moved optimistically in forceTrick(); this is the
-        // diagnostics breadcrumb that proves the command landed.
+        // State already moved optimistically in forceTrick(); one-shot
+        // semantics (§5a) mean no pinning here either — coach_progress moves
+        // the highlight on from the forced session when rotation resumes.
+        // Re-arm the failsafe so a force confirmed long after the tap (e.g.
+        // staged behind a running session) still gets a full clear window.
+        final forcedTrick = event.data['trick']?.toString();
         connTrace('coach-evt',
-            'trick_forced trick=${event.data['trick']} '
+            'trick_forced trick=$forcedTrick '
             'replaced=${event.data['replaced']}');
+        if (forcedTrick != null && forcedTrick.isNotEmpty) {
+          _armActiveTrickFailsafe(forcedTrick);
+        }
         break;
 
       case 'detection':

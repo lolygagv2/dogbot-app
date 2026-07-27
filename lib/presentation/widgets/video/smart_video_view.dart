@@ -1,18 +1,27 @@
-import 'dart:async';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/services/local_connection_service.dart';
 import '../../../domain/providers/device_provider.dart';
 import '../../../domain/providers/settings_provider.dart';
+import '../../../domain/providers/video_transport_provider.dart';
 import '../../../domain/providers/webrtc_provider.dart';
 import 'mjpeg_viewer.dart';
 import 'webrtc_video_view.dart';
 
-/// Smart video view: tries WebRTC first, falls back to MJPEG after timeout.
-/// In relay mode, always uses WebRTC.
-/// In local mode, tries WebRTC for 10s then falls back to MJPEG.
+/// Smart video view — a thin renderer over the app-global video session.
+///
+/// Relay mode: always WebRTC (user-initiated per Build 132).
+/// Local mode (robot brief 2026-07-27 §5b): WebRTC by default, auto-started
+/// via [localVideoTransportProvider]; MJPEG renders only while WebRTC isn't
+/// connected and the transport arbiter has flipped to fallback. A connected
+/// WebRTC session ALWAYS wins — that both shows the burned-in bounding boxes
+/// and unmounts the MJPEG player so the two streams never run concurrently
+/// (dual streams saturate the robot's AP link — the drive-screen lag).
+///
+/// Deliberately holds NO transport state of its own: per-screen fallback
+/// state resetting on navigation was why the drive screen ran MJPEG next to
+/// a healthy WebRTC session.
 class SmartVideoView extends ConsumerStatefulWidget {
   final String? deviceId;
 
@@ -32,48 +41,20 @@ class SmartVideoView extends ConsumerStatefulWidget {
 }
 
 class _SmartVideoViewState extends ConsumerState<SmartVideoView> {
-  bool _useMjpegFallback = false;
-  Timer? _fallbackTimer;
-
   // Legacy fallback only — the live URL is resolved (probed) at connect time
   // and read from localConnectionProvider.mjpegUrl. Robot now serves
   // /video/feed; /camera/stream was the old path.
   static const _mjpegUrl = 'http://192.168.4.1:8000/video/feed';
-  // On the robot AP there is no STUN/TURN, so ICE can never reach `connected`.
-  // Keep this short so a WebRTC attempt that will never succeed flips to MJPEG
-  // fast instead of spinning on "connecting" (robot-Claude check #2).
-  static const _webrtcTimeout = Duration(seconds: 6);
 
   @override
   void initState() {
     super.initState();
-    // Build 112: local AP mode DEFAULTS to the reliable MJPEG stream. WebRTC in
-    // local mode dies ~100s in (robot-side ICE consent-freshness / Pi load) and
-    // can't be fixed app-side, so we don't bet the live view on it. Users can
-    // tap "Try WebRTC" for the crisp low-latency stream when the link is happy;
-    // if it then drops we return to MJPEG automatically (see build()).
-    final isLocal = ref.read(settingsProvider).localModeEnabled;
-    if (isLocal) {
-      _useMjpegFallback = true;
+    // Local mode: kick the app-global WebRTC session (idempotent — a no-op
+    // when a session is already connected or mid-handshake, so navigating
+    // between home/drive/coach never restarts video).
+    if (ref.read(settingsProvider).localModeEnabled) {
+      ref.read(localVideoTransportProvider.notifier).ensureLocalVideo();
     }
-  }
-
-  void _startFallbackTimer() {
-    _fallbackTimer?.cancel();
-    _fallbackTimer = Timer(_webrtcTimeout, () {
-      if (!mounted) return;
-      final webrtcState = ref.read(webrtcProvider);
-      if (webrtcState.state != WebRTCState.connected) {
-        print('SmartVideo: WebRTC timeout (10s) — falling back to MJPEG');
-        setState(() => _useMjpegFallback = true);
-      }
-    });
-  }
-
-  @override
-  void dispose() {
-    _fallbackTimer?.cancel();
-    super.dispose();
   }
 
   @override
@@ -89,28 +70,22 @@ class _SmartVideoViewState extends ConsumerState<SmartVideoView> {
       return Container(color: Colors.black);
     }
 
-    // Build 112: if the user opted into WebRTC (local mode) and it drops after
-    // connecting, fall straight back to the reliable MJPEG stream instead of
-    // freezing on "buffering". Harmless in relay mode (which ignores the flag).
-    ref.listen<WebRTCConnectionState>(webrtcProvider, (prev, next) {
-      final dropped = prev?.state == WebRTCState.connected &&
-          next.state != WebRTCState.connected;
-      if (dropped && !_useMjpegFallback && mounted) {
-        print('SmartVideo: WebRTC dropped after connecting — back to MJPEG');
-        setState(() => _useMjpegFallback = true);
-      }
-    });
-
     // Relay mode: always WebRTC
     if (!isLocal) {
       return WebRTCVideoView(
-      deviceId: widget.deviceId,
-      showOverlayButtons: widget.showOverlayButtons,
-    );
+        deviceId: widget.deviceId,
+        showOverlayButtons: widget.showOverlayButtons,
+      );
     }
 
-    // Local mode with MJPEG fallback active
-    if (_useMjpegFallback) {
+    // Local mode. WebRTC-connected always wins; otherwise the transport
+    // arbiter decides whether the MJPEG fallback should show while WebRTC
+    // keeps (re)trying in the background.
+    final webrtcConnected =
+        ref.watch(webrtcProvider.select((s) => s.isConnected));
+    final useMjpeg = ref.watch(localVideoTransportProvider);
+
+    if (!webrtcConnected && useMjpeg) {
       // Use the endpoint resolved (probed) at connect time so we don't 404 on
       // an endpoint rename. A-DISCOVER: the robot may be at its home-WiFi IP,
       // not the AP — derive the fallback URL from the connected IP too.
@@ -119,55 +94,7 @@ class _SmartVideoViewState extends ConsumerState<SmartVideoView> {
           (local.robotIp != null
               ? 'http://${local.robotIp}:${local.port}/video/feed'
               : _mjpegUrl);
-      return Stack(
-        fit: StackFit.expand,
-        children: [
-          MjpegViewer(streamUrl: streamUrl),
-          Positioned(
-            top: 8,
-            right: 8,
-            child: Material(
-              color: Colors.black54,
-              borderRadius: BorderRadius.circular(16),
-              child: InkWell(
-                borderRadius: BorderRadius.circular(16),
-                onTap: () {
-                  setState(() => _useMjpegFallback = false);
-                  _startFallbackTimer();
-                  // Build 132: WebRTCVideoView no longer auto-connects at
-                  // mount, so this opt-in must fire the request itself.
-                  final localConn = ref.read(localConnectionProvider);
-                  ref.read(webrtcProvider.notifier).requestVideoStream(
-                        localConn.isConnected
-                            ? 'local_robot'
-                            : widget.deviceId ?? ref.read(deviceIdProvider),
-                      );
-                },
-                child: const Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(Icons.hd, color: Colors.white70, size: 16),
-                      SizedBox(width: 4),
-                      Text(
-                        'Try WebRTC',
-                        style: TextStyle(color: Colors.white70, fontSize: 11),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ],
-      );
-    }
-
-    // Local mode: try WebRTC, cancel fallback timer if it connects
-    final webrtcState = ref.watch(webrtcProvider);
-    if (webrtcState.state == WebRTCState.connected) {
-      _fallbackTimer?.cancel();
+      return MjpegViewer(streamUrl: streamUrl);
     }
 
     return WebRTCVideoView(

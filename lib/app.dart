@@ -16,6 +16,7 @@ import 'domain/providers/network_state_provider.dart';
 import 'domain/providers/night_mode_provider.dart';
 import 'domain/providers/notifications_provider.dart';
 import 'domain/providers/settings_provider.dart';
+import 'domain/providers/video_transport_provider.dart';
 import 'domain/providers/voice_commands_provider.dart';
 import 'domain/providers/webrtc_provider.dart';
 import 'presentation/screens/auth/forgot_password_screen.dart';
@@ -695,6 +696,12 @@ class _WimzAppState extends ConsumerState<WimzApp> with WidgetsBindingObserver {
     // the very breadcrumb (robot hotspot credentials) the offline prompt
     // depends on.
     ref.read(networkStateProvider);
+
+    // Build 147 (robot brief 2026-07-27 §5b): instantiate the local video
+    // transport arbiter eagerly so its local-connect listener is live before
+    // the first video surface mounts — it auto-starts WebRTC in local mode
+    // and owns the app-global MJPEG-fallback decision.
+    ref.read(localVideoTransportProvider);
 
     // Wire Dio's 401 callback so REST auth failures route through the same
     // logout(notice:) path as WS 4001. See dio_client.dart.
