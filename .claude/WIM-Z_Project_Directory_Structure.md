@@ -157,6 +157,15 @@ When answering questions about Flutter mobile app functionality:
 8. **For "data models"** → Check `lib/data/models/` (Freezed classes)
 9. **For "networking config"** → Check `lib/core/network/` and `lib/core/constants/`
 
+## ✨ Session Additions (2026-07-27 — Build 147)
+
+### Local-mode video transport (robot brief 2026-07-27 §5b):
+- **New provider:** `lib/domain/providers/video_transport_provider.dart` — `localVideoTransportProvider`, app-global arbiter for local-mode video. Auto-starts WebRTC on local WS connect (eagerly instantiated in app.dart), 8s fallback timer → MJPEG, 30s background WebRTC retry while on MJPEG, WebRTC-connected always wins. conn_trace tag `video-transport`.
+- **`lib/presentation/widgets/video/smart_video_view.dart`** — rewritten as a stateless transport renderer; per-screen `_useMjpegFallback` state and the "Try WebRTC" badge removed (per-screen state caused dual MJPEG+WebRTC streams on the drive screen).
+- **Coach one-shot force_trick (§5a):** `coach_provider.dart` — `trick_forced` re-arms the highlight failsafe; comments updated to the one-shot contract.
+- **Relay-deploy follow-ups:** `jwt_decode.dart` `jwtSub()` → `jwtUserId()` (prefers explicit user_id claim); `notifications_provider._activityEventToNotification` digs dog_id from stored payload for pre-deploy rows. Name-match dog merge + includeUntagged chart opt-in deliberately RETAINED (legacy relay rows / robot any-mode stamping pending).
+- **Cross-repo doc:** `.claude/APP_REPLY_TO_ROBOT_2026-07-27.md` (untracked, for Robot Claude)
+
 ## ✨ Session Additions (2026-05-25 cont. — Build 100)
 
 ### Routing refactor (no new files, but architecturally significant):

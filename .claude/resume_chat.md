@@ -1,5 +1,54 @@
 # WIM-Z Resume Chat Log
 
+## Session: 2026-07-27 — Build 147 (robot brief §5a/§5b + relay-deploy follow-ups)
+**Goal:** Implement Robot Claude's 2026-07-27 brief updates (app-global WebRTC session for local mode, one-shot force_trick), then the relay-deploy follow-ups (user_id claim, dog_id history fallback).
+**Status:** ✅ All shipped + pushed through `e8995ad` (1.0.0+**147**). Codemagic 147 trigger + AP regression test (§6 checklist) pending.
+
+### Problems Solved This Session:
+
+#### §5b — Drive screen ran MJPEG next to a healthy WebRTC session
+**Root cause:** `webrtcProvider` was already app-global and stayed connected across navigation (robot journal proved it), but `SmartVideoView` kept a PER-SCREEN `_useMjpegFallback` flag defaulting to MJPEG-first in local mode (obsolete Build 112 decision from the old ~100s WebRTC die-off, since fixed robot-side). Every navigation mounted a fresh MJPEG player beside the live WebRTC session → dual streams saturated the robot AP (~4-7 Mbps MJPEG vs 0.4-1.5 Mbps WebRTC), doubled Pi encode load (the drive lag), and hid the burned-in bounding boxes (WebRTC-only).
+**Fix:**
+- NEW `lib/domain/providers/video_transport_provider.dart` — `localVideoTransportProvider`, app-global arbiter, eagerly instantiated in app.dart. Auto-starts WebRTC when the local WS connects / local mode entered / first video surface mounts (all idempotent — no restart when connected or mid-handshake). 8s fallback timer → MJPEG; 30s background WebRTC retry while on MJPEG (uses `retryConnection` semantics, respects `isPaused`); flips back to WebRTC automatically on connect.
+- `SmartVideoView` → stateless transport renderer: WebRTC-connected ALWAYS wins (unmounts MJPEG same frame — never concurrent); "Try WebRTC" badge deleted; relay mode untouched (Build 132 tap-to-connect preserved).
+- conn_trace tag `video-transport` for on-device diagnostics.
+
+#### §5a — force_trick is now one-shot robot-side
+App was already mostly aligned (chip re-sends every tap w/ replace:true when session running; highlight mirrors coach_progress). Added: `trick_forced` re-arms the 60s highlight failsafe; comments rewritten to one-shot contract (no pinned state; rotation's next coach_progress moves the highlight).
+
+#### Relay-deploy follow-ups (relay deployed to Lightsail mid-session)
+- `jwtSub()` → `jwtUserId()`: session_hello user id prefers the new explicit `user_id` JWT claim, `sub` fallback for older stored tokens (connection_provider.dart:228 area).
+- Activity hydrate (`_activityEventToNotification`): dog_id falls back to stored payload (top-level or nested `data`) for pre-deploy rows whose column is NULL; `''` → null.
+- **KEPT deliberately:** dog name-match merge (`mergeRelayDogs`/`dedupeByName`) — relay upserts by client id now, but legacy minted-id rows may remain in relay DB; name-match collapses them and is a no-op for healthy data. Remove only after relay legacy-row purge (relay has POST /api/dogs/merge).
+- **KEPT deliberately:** `includeUntagged: true` chart opt-in (analytics_provider) — robot still owes any-mode dog_id stamping; dropping it would blank per-dog charts for unidentified-dog events.
+- Verified: app never calls `POST /api/auth/refresh` (endpoint doesn't exist — fine).
+
+### Commits This Session (all pushed):
+```
+e8995ad fix: relay-deploy follow-ups — user_id claim, payload dog_id fallback for old history rows
+30d7982 chore: bump version to 1.0.0+147
+c7d4513 fix: app-global local WebRTC session, MJPEG fallback-only (robot brief 5b) + one-shot force_trick (5a)
+```
+
+### Tests/Analysis:
+- `flutter analyze lib` — no errors (pre-existing warnings only)
+- `flutter test` — 55/55 pass; only failure is pre-existing stale `test/widget_test.dart` scaffold (references nonexistent `MyApp`; fails on unmodified HEAD too)
+
+### Cross-repo docs:
+- Read: `.claude/RELAY_REPLY_TO_APP_2026-07-27.md` (all app questions answered; relay deployed)
+- Wrote: `.claude/APP_REPLY_TO_ROBOT_2026-07-27.md` (acceptance mapping for §5a/§5b; asks robot to confirm single video consumer + zero /video/feed after WebRTC connect)
+- Memories updated: local-ap-safety (WebRTC stable on AP now, B147 defaults to it), relay-auth-contract-drift (HEALED), relay-dog-id-drift (relay fixed; app keeps stopgap for legacy rows), event-attribution index line.
+
+### Next Session:
+1. Trigger Codemagic 147; run robot §6 AP regression checklist (drive boxes immediate, no "Try WebRTC" badge, music toggle ×2, LED patterns, AP→WiFi ≤3min, relay recovery)
+2. Robot Claude owes: journal confirm (single video consumer), any-mode dog_id stamping, mDNS, local mood_led/led_off
+3. Optional: ask Relay Claude for one-time legacy dog-row purge → then delete name-match merge for real
+4. Verify buffered:true audio_state guard behavior on a reconnect while music paused
+
+### Important Notes/Warnings:
+- `test/widget_test.dart` is broken scaffold (pre-existing) — replace or delete someday
+- Untracked junk in repo root/archive: TestFlight 133 crash log (fixed by B134 shutdown()), icon PNGs, treatbot2.log — left untouched per cleanup protocol
+
 ## Session: 2026-07-25/26 — Build 142→143 (B141 test feedback, stale overlay, coach UX, new icon)
 **Goal:** Fix Build 141 field-test findings (UTC timestamps, hidden negative treat count, empty Activity graph), stale behavior overlay, coach-screen layout jumping + active-trick UX; ship the new app icon.
 **Status:** ✅ All shipped + pushed through `a8c4b1d` (1.0.0+**143** — 142 was bumped past before triggering). Codemagic 143 trigger + on-device verification pending.
