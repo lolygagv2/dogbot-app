@@ -68,4 +68,76 @@ void main() {
     expect(notifier.forceTrick('sit'), isFalse);
     expect(container.read(coachProvider).activeTrick, isNull);
   });
+
+  test('mode_changed into coach activates without coaching_started', () {
+    // Build 145: entering coach via the drive-screen mode selector never
+    // called startCoaching(), and on the local-AP socket coaching_started
+    // may never arrive — isActive stayed false and every trick tap was
+    // inert. mode_changed:coach must activate on its own.
+    final container = ProviderContainer();
+    addTearDown(container.dispose);
+    final notifier = container.read(coachProvider.notifier);
+
+    notifier.debugHandleEvent(WsEvent(
+      type: 'mode_changed',
+      data: {'mode': 'coach'},
+    ));
+    final s = container.read(coachProvider);
+    expect(s.isActive, isTrue);
+
+    // With a dog identified, taps now work end-to-end.
+    notifier.debugHandleEvent(WsEvent(
+      type: 'detection',
+      data: {'dog_id': 'dog-a', 'dog_name': 'Elsa'},
+    ));
+    expect(notifier.forceTrick('sit'), isTrue);
+    expect(container.read(coachProvider).activeTrick, 'sit');
+
+    // Re-hearing mode_changed:coach while already active must NOT wipe the
+    // running session (mode events can repeat).
+    notifier.debugHandleEvent(WsEvent(
+      type: 'mode_changed',
+      data: {'mode': 'coach'},
+    ));
+    expect(container.read(coachProvider).activeTrick, 'sit');
+  });
+
+  test('coach_progress mirrors the robot-initiated trick as active', () {
+    final container = ProviderContainer();
+    addTearDown(container.dispose);
+    final notifier = container.read(coachProvider.notifier);
+
+    // A progress tick alone proves the engine is live: activates AND
+    // highlights the trick the robot chose (no app tap involved).
+    notifier.debugHandleEvent(WsEvent(
+      type: 'coach_progress',
+      data: {'phase': 'command', 'trick': 'laydown', 'dog_name': 'Elsa'},
+    ));
+    final s = container.read(coachProvider);
+    expect(s.isActive, isTrue);
+    expect(s.activeTrick, 'laydown');
+    expect(s.dogName, 'Elsa');
+
+    // Robot moves on to a different trick → highlight follows.
+    notifier.debugHandleEvent(WsEvent(
+      type: 'coach_progress',
+      data: {'phase': 'command', 'behavior': 'spin'},
+    ));
+    expect(container.read(coachProvider).activeTrick, 'spin',
+        reason: 'behavior key accepted until robot confirms payload contract');
+
+    // A trickless tick (e.g. greeting phase) leaves the session untouched.
+    notifier.debugHandleEvent(WsEvent(
+      type: 'coach_progress',
+      data: {'phase': 'greeting'},
+    ));
+    expect(container.read(coachProvider).activeTrick, 'spin');
+
+    // Matching reward completes the robot-initiated session too.
+    notifier.debugHandleEvent(WsEvent(
+      type: 'coach_reward',
+      data: {'behavior': 'spin'},
+    ));
+    expect(container.read(coachProvider).activeTrick, isNull);
+  });
 }

@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart' show visibleForTesting;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/network/websocket_client.dart';
+import '../../core/utils/conn_trace.dart';
 import 'dog_profiles_provider.dart';
 import 'mode_provider.dart';
 
@@ -19,12 +20,12 @@ class CoachState {
   final String? lastRewardBehavior;
   final DateTime? lastRewardTime;
 
-  /// The trick the user last forced via a trick button — the "active" trick
-  /// session. Local knowledge only (the robot has no trick-session events
-  /// beyond coach_reward): set on force_trick, cleared when a matching reward
-  /// lands, when a different trick is forced, on coach exit, or by the
-  /// failsafe timer in [CoachNotifier]. Null = robot is free-watching all
-  /// tricks.
+  /// The trick the coach session is currently running — set on force_trick
+  /// (app-initiated) and mirrored from the robot's `coach_progress` ticks
+  /// (robot-initiated), so the highlight tracks whatever trick is actually
+  /// live. Cleared when a matching reward lands, when a different trick
+  /// starts, on coach exit, or by the failsafe timer in [CoachNotifier].
+  /// Null = robot is free-watching all tricks.
   final String? activeTrick;
   final String? dogId;
   final String? dogName;
@@ -151,7 +152,7 @@ class CoachNotifier extends StateNotifier<CoachState> {
         // TRICKS list as `tricks_available` — app's watchingFor is now a
         // read-only mirror of robot defaults rather than something the app
         // can mutate.
-        print('Coach: coaching_started event');
+        connTrace('coach-evt', 'coaching_started');
         final dogName = event.data['dog_name'] as String?;
         final dogId = event.data['dog_id'] as String?;
         final tricks = (event.data['tricks_available'] as List?)?.cast<String>();
@@ -172,11 +173,55 @@ class CoachNotifier extends StateNotifier<CoachState> {
         // mode_changed (away from 'coach') rather than the deprecated
         // coach_stopped event. Robot's mode-change handler is the single
         // source of truth for coach teardown.
-        final newMode = event.data['mode'] as String?;
-        if (newMode != null && newMode != 'coach' && state.isActive) {
-          print('Coach: mode changed to $newMode — deactivating');
+        //
+        // Build 145: mode_changed INTO coach also activates. Entering coach
+        // from the drive screen's mode selector only sends set_mode — nothing
+        // called startCoaching(), so isActive stayed false until a
+        // coaching_started event arrived. On surfaces where that event never
+        // lands (local-AP socket) the trick chips were permanently inert:
+        // onTap gated on isActive, so taps produced no highlight, no
+        // snackbar, nothing.
+        final newMode = event.data['mode']?.toString();
+        if (newMode == 'coach' && !state.isActive) {
+          connTrace('coach-evt', 'mode_changed:coach — activating');
+          _activeTrickTimer?.cancel();
+          state = state.copyWith(
+            isActive: true,
+            rewardsGiven: 0,
+            clearError: true,
+            clearActiveTrick: true,
+          );
+        } else if (newMode != null && newMode != 'coach' && state.isActive) {
+          connTrace('coach-evt', 'mode_changed:$newMode — deactivating');
           _activeTrickTimer?.cancel();
           state = state.copyWith(isActive: false, clearActiveTrick: true);
+        }
+        break;
+
+      case 'coach_progress':
+        // Build 145: the robot's coaching engine emits progress ticks
+        // (greeting / command / watching phases). When a tick names a trick,
+        // mirror it as the active trick so the highlight tracks whatever the
+        // engine is ACTUALLY running — robot-initiated sessions included —
+        // instead of only app-forced taps. Trick key read defensively until
+        // the robot instance confirms the payload contract.
+        final progressTrick = (event.data['trick'] ??
+                event.data['behavior'] ??
+                event.data['current_trick'])
+            ?.toString();
+        final phase = event.data['phase']?.toString();
+        connTrace('coach-evt', 'coach_progress phase=$phase trick=$progressTrick');
+        if (progressTrick != null && progressTrick.isNotEmpty) {
+          // A progress tick proves the engine is live — activate if a
+          // coaching_started / mode_changed was missed (belt and braces for
+          // the local-AP event gaps).
+          _armActiveTrickFailsafe(progressTrick);
+          state = state.copyWith(isActive: true, activeTrick: progressTrick);
+        }
+        final progressDogName = event.data['dog_name']?.toString();
+        final progressDogId = event.data['dog_id']?.toString();
+        if (progressDogName != null || progressDogId != null) {
+          state = state.copyWith(dogName: progressDogName, dogId: progressDogId);
         }
         break;
 
@@ -249,7 +294,10 @@ class CoachNotifier extends StateNotifier<CoachState> {
   ///      force_trick would have the robot fall back to a generic "Dog" TTS,
   ///      which was the original complaint.
   bool forceTrick(String trick) {
-    if (!state.isActive) return false;
+    if (!state.isActive) {
+      connTrace('coach-force-trick', 'refused — coach not active');
+      return false;
+    }
 
     String? dogId = state.dogId;
     String? dogName = state.dogName;
@@ -260,26 +308,32 @@ class CoachNotifier extends StateNotifier<CoachState> {
     }
 
     if (dogId == null && dogName == null) {
-      print('Coach: forceTrick refused — no dog identified');
+      connTrace('coach-force-trick', 'refused — no dog identified/selected');
       return false;
     }
 
     final ws = _ref.read(websocketClientProvider);
     ws.sendForceTrick(trick, dogId: dogId, dogName: dogName);
-    print('Coach: Forcing trick: $trick for $dogName ($dogId)');
+    connTrace('coach-force-trick', '$trick dog=$dogName ($dogId)');
 
     // Track the forced trick as the active session. Forcing a different
     // trick while one is active is the switch path: the robot's coaching
     // engine takes the newest force_trick as current, so the highlight just
     // moves with it.
+    _armActiveTrickFailsafe(trick);
+    state = state.copyWith(activeTrick: trick);
+    return true;
+  }
+
+  /// (Re)arm the failsafe that clears [CoachState.activeTrick] if no reward
+  /// or newer trick arrives within [_activeTrickTimeout].
+  void _armActiveTrickFailsafe(String trick) {
     _activeTrickTimer?.cancel();
     _activeTrickTimer = Timer(_activeTrickTimeout, () {
       if (mounted && state.activeTrick == trick) {
         state = state.copyWith(clearActiveTrick: true);
       }
     });
-    state = state.copyWith(activeTrick: trick);
-    return true;
   }
 
   /// Clear state
