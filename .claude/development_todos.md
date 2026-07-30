@@ -11,6 +11,12 @@
 
 ## 🔥 CURRENT OPEN ITEMS (June 2026)
 
+### Real push notifications (FCM/APNs) — app + relay, NO robot changes (added 2026-07-30, IN FLIGHT)
+- [x] **App slice SHIPPED 2026-07-30:** firebase_core/messaging deps, PushService (soft-disabled on placeholder firebase_options.dart), pushSyncProvider (register on login, re-sync on prefs/token change, unregister on logout), /api/push endpoints in RobotApi, iOS aps-environment entitlement wired into pbxproj
+- [ ] **Relay slice:** see `.claude/PUSH_NOTIFICATIONS_CONTRACT_2026-07-30.md` — register/unregister endpoints + FCM v1 sender with event-type mapping
+- [ ] **Morgan setup:** Firebase project (iOS `com.wimzai.app` + Android), APNs .p8 key → Firebase console, service-account JSON → relay, `flutterfire configure` in app repo, enable Push Notifications capability on the App ID (watch Codemagic provisioning/stale-build trap)
+- [ ] End-to-end acceptance test per contract doc (lock-screen bark banner with app force-quit)
+
 ### Reliability / Safety (highest priority)
 - [ ] **Silent hard-freeze RCA** — recurring lockups with no kernel/software trace (corrupt journal). Confirm power-delivery/brownout vs hang. Next step: capture `vcgencmd get_throttled` / PMIC after an event.
 - [ ] **Power-button SPOF redesign** — GPIO21 relay gates the only power-off path behind a software watcher; a hang makes the button useless (must pull wire). Restore a hardware-direct OFF path.

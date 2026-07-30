@@ -76,6 +76,10 @@ class ApiEndpoints {
   // A3: Activity event log
   static const String activity = '/api/activity';
 
+  // Push notifications (relay → FCM/APNs; see PUSH_NOTIFICATIONS_CONTRACT)
+  static const String pushRegister = '/api/push/register';
+  static const String pushUnregister = '/api/push/unregister';
+
   // System / WiFi (Build 66: WiFi configuration from app)
   static const String wifiScan = '/system/wifi/scan';
   static const String wifiConnect = '/system/wifi/connect';

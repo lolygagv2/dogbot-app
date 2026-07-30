@@ -132,6 +132,50 @@ class RobotApi {
     }
   }
 
+  /// Push: upsert this device's FCM token + per-type push preferences at the
+  /// relay. Same endpoint for first registration, token rotation, and
+  /// preference changes — the relay upserts by device_token.
+  Future<bool> registerPushDevice({
+    required String token,
+    required String deviceToken,
+    required String platform,
+    required List<String> enabledTypes,
+  }) async {
+    try {
+      final response = await _dio.post(
+        ApiEndpoints.pushRegister,
+        data: {
+          'device_token': deviceToken,
+          'platform': platform,
+          'enabled_types': enabledTypes,
+        },
+        options: Options(headers: {'Authorization': 'Bearer $token'}),
+      );
+      return response.statusCode == 200 || response.statusCode == 201;
+    } catch (e) {
+      print('RobotApi: push register failed: $e');
+      return false;
+    }
+  }
+
+  /// Push: remove this device's token on logout (best-effort).
+  Future<bool> unregisterPushDevice({
+    required String token,
+    required String deviceToken,
+  }) async {
+    try {
+      final response = await _dio.post(
+        ApiEndpoints.pushUnregister,
+        data: {'device_token': deviceToken},
+        options: Options(headers: {'Authorization': 'Bearer $token'}),
+      );
+      return response.statusCode == 200 || response.statusCode == 204;
+    } catch (e) {
+      print('RobotApi: push unregister failed: $e');
+      return false;
+    }
+  }
+
   /// A2: Delete a voice command from the relay. Relay pushes
   /// `voice_command_deleted` to the user's robot via WS.
   Future<bool> deleteVoiceCommand({

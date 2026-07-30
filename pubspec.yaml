@@ -54,6 +54,11 @@ dependencies:
 
   # ============ Notifications ============
   flutter_local_notifications: ^18.0.1
+  # Push notifications (APNs/FCM via Firebase). firebase_options.dart is a
+  # placeholder until `flutterfire configure` is run — push soft-disables
+  # when Firebase isn't configured.
+  firebase_core: ^3.6.0
+  firebase_messaging: ^15.1.3
 
   # ============ Audio Recording ============
   record: ^5.2.1

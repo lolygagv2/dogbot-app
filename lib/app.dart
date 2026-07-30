@@ -17,6 +17,7 @@ import 'domain/providers/night_mode_provider.dart';
 import 'domain/providers/notifications_provider.dart';
 import 'domain/providers/settings_provider.dart';
 import 'domain/providers/video_transport_provider.dart';
+import 'domain/providers/push_provider.dart';
 import 'domain/providers/voice_commands_provider.dart';
 import 'domain/providers/webrtc_provider.dart';
 import 'presentation/screens/auth/forgot_password_screen.dart';
@@ -702,6 +703,11 @@ class _WimzAppState extends ConsumerState<WimzApp> with WidgetsBindingObserver {
     // the first video surface mounts — it auto-starts WebRTC in local mode
     // and owns the app-global MJPEG-fallback decision.
     ref.read(localVideoTransportProvider);
+
+    // Push registration coordinator: registers the FCM device token with the
+    // relay after login, re-syncs on preference/token changes, unregisters on
+    // logout. Soft-disabled until firebase_options.dart holds real config.
+    ref.read(pushSyncProvider);
 
     // Wire Dio's 401 callback so REST auth failures route through the same
     // logout(notice:) path as WS 4001. See dio_client.dart.
