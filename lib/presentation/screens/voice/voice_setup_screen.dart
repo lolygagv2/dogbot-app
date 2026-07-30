@@ -52,10 +52,19 @@ class _VoiceSetupScreenState extends ConsumerState<VoiceSetupScreen> {
     final voiceCommands = ref.watch(voiceCommandsProvider(dog.id));
     final notifier = ref.read(voiceCommandsProvider(dog.id).notifier);
 
+    final hasRecordings =
+        voiceCommands.commands.values.any((c) => c.localPath != null);
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Voice Commands'),
         actions: [
+          if (hasRecordings)
+            IconButton(
+              icon: const Icon(Icons.settings_backup_restore),
+              tooltip: 'Reset to default voice',
+              onPressed: () => _resetToDefault(dog.name, notifier),
+            ),
           TextButton.icon(
             onPressed: _isSyncing ? null : () => _syncAll(notifier),
             icon: _isSyncing
@@ -268,9 +277,49 @@ class _VoiceSetupScreenState extends ConsumerState<VoiceSetupScreen> {
     }
   }
 
+  Future<void> _resetToDefault(
+    String dogName,
+    VoiceCommandsNotifier notifier,
+  ) async {
+    final count = notifier.recordedCount;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Reset to Default Voice?'),
+        content: Text(
+          'This deletes all $count recording${count == 1 ? '' : 's'} for '
+          '$dogName. WIM-Z will use its built-in voice instead.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Reset', style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      await notifier.resetAllToDefault();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Reset — WIM-Z will use its default voice'),
+          ),
+        );
+      }
+    }
+  }
+
   Future<void> _syncAll(VoiceCommandsNotifier notifier) async {
     setState(() => _isSyncing = true);
-    final count = await notifier.syncAll();
+    // force: the manual button re-uploads everything recorded, healing
+    // relay-side file loss even when the app believed it was synced.
+    final count = await notifier.syncAll(force: true);
     setState(() => _isSyncing = false);
 
     if (mounted) {

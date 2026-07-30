@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io' show Directory, File, Platform;
 
+import 'package:flutter/foundation.dart' show visibleForTesting;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:record/record.dart';
@@ -94,6 +95,14 @@ class VoiceCommandsNotifier extends StateNotifier<DogVoiceCommands> {
 
     await _prefs?.setString('${_voiceCommandsKey}_$dogId', jsonEncode(data));
     print('VoiceCommands: Saved ${state.commands.length} commands');
+  }
+
+  /// Test seam: seed a command without going through the recorder.
+  @visibleForTesting
+  void debugSetCommand(VoiceCommand command) {
+    final newCommands = Map<String, VoiceCommand>.from(state.commands);
+    newCommands[command.commandId] = command;
+    state = state.copyWith(commands: newCommands);
   }
 
   /// Check if recording is available
@@ -268,6 +277,12 @@ class VoiceCommandsNotifier extends StateNotifier<DogVoiceCommands> {
       await _saveCommands();
 
       rlog('VOICE', 'Saved $commandId ($fileSize bytes)');
+
+      // Recording alone never reaches the robot — push it now instead of
+      // relying on a manual sync tap. On failure the command stays unsynced
+      // and the reconnect auto-sync retries it.
+      unawaited(syncCommand(commandId));
+
       return command;
     } catch (e) {
       rlog('VOICE', 'ERROR stopping recording: $e');
@@ -340,8 +355,12 @@ class VoiceCommandsNotifier extends StateNotifier<DogVoiceCommands> {
   ///
   /// A2: Cloud-mode path — upload WAV to the relay; relay pushes
   /// `voice_command_updated` to the robot which downloads from relay.
-  /// Local-mode fallback — directly send the WAV via WS `upload_voice` so
-  /// local-only sessions still work.
+  /// Local-mode path — send the WAV directly via WS `upload_voice` (the
+  /// robot's native local-AP contract).
+  ///
+  /// A cloud upload failure leaves the command UNSYNCED — no WS fallback, no
+  /// blind isSynced=true. The unsynced flag is the retry signal: the tile
+  /// keeps its "tap to sync" state and the reconnect auto-sync re-pushes it.
   Future<bool> syncCommand(String commandId) async {
     final command = state.commands[commandId];
     if (command?.localPath == null) return false;
@@ -351,61 +370,77 @@ class VoiceCommandsNotifier extends StateNotifier<DogVoiceCommands> {
       if (!await file.exists()) return false;
 
       final isLocal = _ref.read(localConnectionProvider).isConnected;
-      final token = _ref.read(authProvider).token;
 
-      if (!isLocal && token != null) {
-        // Cloud path — relay-mediated.
-        final api = _ref.read(robotApiProvider);
-        final result = await api.uploadVoiceCommand(
-          token: token,
-          dogId: dogId,
-          commandId: commandId,
-          filePath: command.localPath!,
-        );
-        if (result == null) {
-          rlog('VOICE', 'Relay upload failed for $commandId, trying WS fallback');
-        } else {
-          final relayUrl = result['audio_url'] as String?;
-          final relayUpdatedAt =
-              tryParseServerTimestamp(result['updated_at'] as String?);
-          final updatedCommand = command.copyWith(
-            isSynced: true,
-            syncedAt: DateTime.now(),
-            relayUrl: relayUrl,
-            relayUpdatedAt: relayUpdatedAt,
-          );
-          final newCommands = Map<String, VoiceCommand>.from(state.commands);
-          newCommands[commandId] = updatedCommand;
-          state = state.copyWith(commands: newCommands);
-          await _saveCommands();
-          rlog('VOICE', 'Synced $commandId via relay (url=$relayUrl)');
-          return true;
-        }
+      if (isLocal) {
+        // Local-mode — send WAV bytes via WS. Fire-and-forget by contract:
+        // the robot has no upload ack, so synced is marked optimistically
+        // (unchanged pre-Build-87 behavior).
+        final bytes = await file.readAsBytes();
+        final base64Data = base64Encode(bytes);
+        rlog('VOICE',
+            'Syncing $commandId via WS for dog $dogId: ${bytes.length} bytes');
+        WebSocketClient.instance
+            .sendVoiceCommand(commandId, base64Data, dogId: dogId);
+        await _storeSynced(commandId, command.copyWith(
+          isSynced: true,
+          syncedAt: DateTime.now(),
+        ));
+        return true;
       }
 
-      // Local-mode (or relay failure) fallback — send WAV bytes via WS.
-      final bytes = await file.readAsBytes();
-      final base64Data = base64Encode(bytes);
+      final token = _ref.read(authProvider).token;
+      if (token == null) {
+        rlog('VOICE', 'Sync $commandId skipped: cloud mode without auth token');
+        return false;
+      }
 
-      rlog('VOICE', 'Syncing $commandId via WS for dog $dogId: ${bytes.length} bytes');
-      WebSocketClient.instance.sendVoiceCommand(commandId, base64Data, dogId: dogId);
+      // Cloud path — relay-mediated.
+      final api = _ref.read(robotApiProvider);
+      final result = await api.uploadVoiceCommand(
+        token: token,
+        dogId: dogId,
+        commandId: commandId,
+        filePath: command.localPath!,
+      );
+      if (result == null) {
+        rlog('VOICE', 'Relay upload failed for $commandId — left unsynced for retry');
+        return false;
+      }
 
-      final updatedCommand = command.copyWith(
+      final relayUrl = result['audio_url'] as String?;
+      final relayUpdatedAt =
+          tryParseServerTimestamp(result['updated_at'] as String?);
+      await _storeSynced(commandId, command.copyWith(
         isSynced: true,
         syncedAt: DateTime.now(),
-      );
-
-      final newCommands = Map<String, VoiceCommand>.from(state.commands);
-      newCommands[commandId] = updatedCommand;
-      state = state.copyWith(commands: newCommands);
-
-      await _saveCommands();
-      print('VoiceCommands: Synced $commandId via WS fallback');
+        relayUrl: relayUrl,
+        relayUpdatedAt: relayUpdatedAt,
+      ));
+      rlog('VOICE', 'Synced $commandId via relay (url=$relayUrl)');
       return true;
     } catch (e) {
-      print('VoiceCommands: Failed to sync $commandId: $e');
+      rlog('VOICE', 'Failed to sync $commandId: $e');
       return false;
     }
+  }
+
+  Future<void> _storeSynced(String commandId, VoiceCommand updated) async {
+    final newCommands = Map<String, VoiceCommand>.from(state.commands);
+    newCommands[commandId] = updated;
+    state = state.copyWith(commands: newCommands);
+    await _saveCommands();
+  }
+
+  /// Delete every recording for this dog so the robot falls back to its
+  /// default voice. deleteCommand already propagates each removal to the
+  /// relay, which pushes voice_command_deleted to the robot.
+  Future<int> resetAllToDefault() async {
+    final ids = state.commands.keys.toList();
+    for (final id in ids) {
+      await deleteCommand(id);
+    }
+    rlog('VOICE', 'Reset to default: deleted ${ids.length} commands for dog $dogId');
+    return ids.length;
   }
 
   /// A2: Hydrate voice command audio for this dog from the relay.
@@ -469,7 +504,16 @@ class VoiceCommandsNotifier extends StateNotifier<DogVoiceCommands> {
         // Download the WAV.
         final bytes = await api.downloadVoiceCommand(audioUrl);
         if (bytes == null) {
-          print('VoiceCommands[$dogId]: download failed for $commandId');
+          // Relay row exists but the file is gone (pre-2026-07-30 /tmp
+          // storage was wiped on reboot). If we still hold a local copy,
+          // flip it unsynced so auto-sync re-uploads and heals the relay.
+          if (localExists) {
+            newCommands[commandId] = existing!.copyWith(isSynced: false);
+            rlog('VOICE',
+                'hydrate[$dogId]: $commandId gone on relay — marked for re-sync');
+          } else {
+            rlog('VOICE', 'hydrate[$dogId]: download failed for $commandId');
+          }
           continue;
         }
         final permanentPath = '$permanentDir/${dogId}_$commandId.wav';
@@ -498,16 +542,20 @@ class VoiceCommandsNotifier extends StateNotifier<DogVoiceCommands> {
     }
   }
 
-  /// Sync all recorded commands
-  Future<int> syncAll() async {
+  /// Sync all recorded commands.
+  ///
+  /// [force] re-uploads even commands already marked synced — the manual
+  /// "Sync All" heal for relay-side file loss (pre-2026-07-30 /tmp storage).
+  /// The reconnect auto-sync keeps force=false so it only pushes pending ones.
+  Future<int> syncAll({bool force = false}) async {
     int syncedCount = 0;
 
-    for (final commandId in state.commands.keys) {
+    for (final commandId in state.commands.keys.toList()) {
       final command = state.commands[commandId];
-      if (command?.localPath != null && !(command?.isSynced ?? true)) {
-        if (await syncCommand(commandId)) {
-          syncedCount++;
-        }
+      if (command?.localPath == null) continue;
+      if (!force && (command?.isSynced ?? true)) continue;
+      if (await syncCommand(commandId)) {
+        syncedCount++;
       }
     }
 
