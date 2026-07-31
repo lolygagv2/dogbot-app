@@ -28,6 +28,66 @@ class LocalApOfflineBanner extends ConsumerStatefulWidget {
 class _LocalApOfflineBannerState extends ConsumerState<LocalApOfflineBanner> {
   bool _connecting = false;
 
+  // Anti-spam state machine (2026-07-30, Morgan's field feedback):
+  // - the robot must be CONTINUOUSLY unreachable for [_showAfter] before the
+  //   banner appears — connection-status flaps during login/reconnect used to
+  //   flash it on every cloud sign-in;
+  // - once visible it auto-hides after [_visibleFor];
+  // - any hide (auto or the ✕ button) snoozes it for [_snoozeFor] so a robot
+  //   that is simply powered off doesn't nag all day. A robot coming back
+  //   online resets the episode; the snooze survives it.
+  static const _showAfter = Duration(seconds: 8);
+  static const _visibleFor = Duration(seconds: 45);
+  static const _snoozeFor = Duration(minutes: 30);
+
+  bool _visible = false;
+  bool _eligibleNow = false;
+  Timer? _showDelay;
+  Timer? _autoHide;
+  DateTime? _snoozeUntil;
+
+  bool get _snoozed =>
+      _snoozeUntil != null && DateTime.now().isBefore(_snoozeUntil!);
+
+  void _onEligibleChanged(bool eligible) {
+    if (eligible == _eligibleNow) return;
+    _eligibleNow = eligible;
+    if (eligible) {
+      if (_snoozed) return;
+      _showDelay?.cancel();
+      _showDelay = Timer(_showAfter, () {
+        if (!mounted || !_eligibleNow || _snoozed) return;
+        setState(() => _visible = true);
+        _autoHide?.cancel();
+        _autoHide = Timer(_visibleFor, () {
+          if (mounted) _dismiss(auto: true);
+        });
+      });
+    } else {
+      // Robot reachable again (or mode changed) — reset the episode. No
+      // setState: the current build already renders nothing for !eligible.
+      _showDelay?.cancel();
+      _autoHide?.cancel();
+      _visible = false;
+    }
+  }
+
+  void _dismiss({bool auto = false}) {
+    _showDelay?.cancel();
+    _autoHide?.cancel();
+    _snoozeUntil = DateTime.now().add(_snoozeFor);
+    if (_visible && mounted) setState(() => _visible = false);
+    connTrace('local-ap-banner',
+        auto ? 'auto-hidden, snoozed 30m' : 'dismissed, snoozed 30m');
+  }
+
+  @override
+  void dispose() {
+    _showDelay?.cancel();
+    _autoHide?.cancel();
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
     final settings = ref.watch(settingsProvider);
@@ -38,9 +98,10 @@ class _LocalApOfflineBannerState extends ConsumerState<LocalApOfflineBanner> {
     // Cloud session with the robot unreachable, and we know its AP.
     final robotUnreachable = connection.status == ConnectionStatus.relayConnected ||
         connection.status == ConnectionStatus.error;
-    final show =
+    final eligible =
         !settings.localModeEnabled && robotUnreachable && localAp != null;
-    if (!show) return const SizedBox.shrink();
+    _onEligibleChanged(eligible);
+    if (!eligible || !_visible) return const SizedBox.shrink();
 
     return Material(
       color: AppTheme.primary.withOpacity(0.12),
@@ -82,6 +143,14 @@ class _LocalApOfflineBannerState extends ConsumerState<LocalApOfflineBanner> {
                         style: TextStyle(
                             fontSize: 12, fontWeight: FontWeight.bold)),
                   ),
+            IconButton(
+              icon: const Icon(Icons.close, size: 18),
+              color: AppTheme.textSecondary,
+              padding: EdgeInsets.zero,
+              constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+              tooltip: 'Dismiss',
+              onPressed: () => _dismiss(),
+            ),
           ],
         ),
       ),
