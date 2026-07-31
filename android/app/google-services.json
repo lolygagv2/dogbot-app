@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "7574615146",
+    "project_id": "wimzpushy",
+    "storage_bucket": "wimzpushy.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:7574615146:android:2e2606a2f23a723bb1c613",
+        "android_client_info": {
+          "package_name": "com.wimzai.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBh2UDW7t6iUdDLxCiIpx5olWFULpTywl4"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
