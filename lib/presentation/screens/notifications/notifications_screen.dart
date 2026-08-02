@@ -424,6 +424,11 @@ class _NotificationTile extends StatelessWidget {
     };
   }
 
+  static const _months = [
+    'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+    'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+  ];
+
   String _formatTime(DateTime timestamp) {
     // Defensive: any UTC-parsed instant renders in device-local time.
     timestamp = timestamp.toLocal();
@@ -431,6 +436,6 @@ class _NotificationTile extends StatelessWidget {
     final minute = timestamp.minute.toString().padLeft(2, '0');
     final period = hour >= 12 ? 'PM' : 'AM';
     final hour12 = hour > 12 ? hour - 12 : (hour == 0 ? 12 : hour);
-    return '$hour12:$minute $period';
+    return '${_months[timestamp.month - 1]} ${timestamp.day}, $hour12:$minute $period';
   }
 }
