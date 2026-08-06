@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io' show Platform;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_webrtc/flutter_webrtc.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -141,6 +142,10 @@ class WebRTCNotifier extends StateNotifier<WebRTCConnectionState> {
 
     // Apply to audio track immediately
     _applyAudioMuteState(newMuted);
+    if (!newMuted) {
+      // ignore: discarded_futures
+      _routeAudioToSpeaker();
+    }
 
     // Persist preference
     final prefs = await SharedPreferences.getInstance();
@@ -155,6 +160,10 @@ class WebRTCNotifier extends StateNotifier<WebRTCConnectionState> {
 
     // Force-unmute audio tracks
     _applyAudioMuteState(false);
+    // The PTT recorder just released the iOS audio session — re-assert the
+    // loudspeaker route or the 5s listen window plays into the earpiece.
+    // ignore: discarded_futures
+    _routeAudioToSpeaker();
     state = state.copyWith(isAutoListening: true);
     print('WebRTC: Auto-listen started for ${duration.inSeconds}s');
 
@@ -182,6 +191,23 @@ class WebRTCNotifier extends StateNotifier<WebRTCConnectionState> {
   /// Used by PTT to avoid iOS audio session conflict during recording.
   void setAudioTrackEnabled(bool enabled) {
     _applyAudioMuteState(!enabled);
+  }
+
+  /// Force robot-mic playback to the loudspeaker (2026-08-06 mic brief).
+  /// iOS routes WebRTC audio to the EARPIECE by default — nothing in the app
+  /// ever overrode that, so the robot's (already very quiet, −38 dBFS) mic
+  /// stream was inaudible no matter what the mute toggle showed. Re-asserted
+  /// after unmute and auto-listen because the PTT/voice recorders reconfigure
+  /// the iOS audio session and can revert the route.
+  Future<void> _routeAudioToSpeaker() async {
+    if (!(Platform.isIOS || Platform.isAndroid)) return;
+    try {
+      await Helper.ensureAudioSession();
+      await Helper.setSpeakerphoneOn(true);
+      connTrace('audio-route', 'loudspeaker forced on');
+    } catch (e) {
+      connTrace('audio-route', 'FAILED to force loudspeaker: $e');
+    }
   }
 
   /// Apply mute state to the remote audio track
@@ -573,6 +599,8 @@ class WebRTCNotifier extends StateNotifier<WebRTCConnectionState> {
 
           // Apply current mute state to the audio track
           _applyAudioMuteState(state.isAudioMuted);
+          // ignore: discarded_futures
+          _routeAudioToSpeaker();
         }
       };
 

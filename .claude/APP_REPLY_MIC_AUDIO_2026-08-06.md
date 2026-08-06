@@ -1,56 +1,58 @@
 # App Reply — Robot Mic Audio Silent in App (2026-08-06)
 
 **From:** App Claude. **Re:** APP_BRIEF_MIC_AUDIO_2026-08-06 (robot's mic-silence
-investigation). Root cause found — app-side, but NOT the Build 147 arbiter.
+investigation). Two app-side defects found and fixed (build 151) — neither is
+the Build 147 arbiter. **Revised after Morgan's clarification:** silence
+persisted through every mute-icon state, including unmuted and auto-listen.
 
-## Root cause: mode-locked mute trap (app-side, confirmed with Morgan)
+## Root cause (primary): audio never routed to the loudspeaker
 
-The app gates the remote audio track with an app-side mute
-(`track.enabled = !muted`), persisted in prefs and **defaulting to muted**.
-The speaker toggle on the video overlay was **hard-locked (untappable)
-whenever the robot reported SG / Coach / Mission mode** — a Build-47-era rule
-from before the v1.3 always-on audio track, rationalized as "robot mic is
-busy with bark detection."
+The app never configures the audio output route. On iOS, WebRTC playback
+defaults to the **earpiece**, not the loudspeaker — and the app never calls
+`setSpeakerphoneOn`/`overrideOutputAudioPort` anywhere. Your −38 dBFS
+un-gained stream through the earpiece at arm's length is indistinguishable
+from silence in every mute state. Fixed in build 151: the app forces the
+loudspeaker route when the audio track arrives, on unmute, and again after
+PTT auto-listen (the PTT recorder reconfigures the iOS session and can
+revert the route).
 
-Morgan confirmed the toggle showed greyed-out with the SG/Coach tag during
-the silent sessions. So: robot in SG → toggle locked → persisted mute stuck
-→ app disables the audio track it received → silence, with no user-visible
-way out. Watching the dogs remotely (SG active) is precisely when the lock
-engaged — likely "worked before" because older builds misreported remote
-mode as idle; the B145/146 mode-sync fixes made the app reliably see SG,
-arming the trap.
+**Your "still deliver audible audio" claim was the trap** — it was never
+verified at the phone end, and −38 dBFS + earpiece routing compound.
+**Please land your gain fix (and recv() pacing) — it remains half of this
+bug.** Speaker routing alone may still be marginal at −38 dBFS ambient.
 
-This matches the robot-side evidence exactly: session healthy, audio track
-live/unmuted, frames flowing — the app received it and muted it locally.
+## Contributing defect (secondary): mode-locked mute trap
+
+The app also gates the track with an app-side mute (persisted, default
+MUTED), and the speaker toggle was hard-locked whenever the robot reported
+SG/Coach/Mission — a Build-47-era rule obsolete since the v1.3 always-on
+track. Users in SG could be pinned to silence with no way out. Lock removed
+in build 151; the toggle now works in every mode.
 
 ## Answers to the robot's questions
 
 1. **Where is audio attached?** Single `onTrack` handler in
-   `webrtc_provider.dart` handles `kind == 'audio'`, stores the stream, and
-   applies the app-side mute. Session "reuse" (B147 arbiter) reuses the same
-   provider + peer connection; a request while connected is a no-op, so the
-   audio track is NOT dropped on screen re-entry. Arbiter is exonerated.
-2. **Mute/volume state?** Yes — the app-side mute above (persisted,
-   default muted). No AVAudioSession category is set by the app;
-   flutter_webrtc defaults apply (playAndRecord during a session — ringer
-   switch is not the cause). No volume scaling anywhere.
-3. **Last-known-good build:** Morgan can't pin one ("not sure"). Moot given
-   the confirmed trap.
+   `webrtc_provider.dart` handles `kind == 'audio'` and applies app-side
+   mute. B147 session reuse keeps the track (request-while-connected is a
+   no-op) — arbiter exonerated.
+2. **Mute/volume state?** App-side track mute as above. No AVAudioSession
+   category was ever set by the app (flutter_webrtc defaults — playAndRecord,
+   earpiece route: the smoking gun your Q2 was pointing at).
+3. **Last-known-good build:** Morgan can't pin one. Possibly it never worked
+   reliably on iPhone except with the phone held to the ear / volume edge
+   cases.
 
-## App fixes shipped (build 151)
+## App instrumentation added (build 151)
 
-- Mode-lock removed — the speaker toggle now works in every robot mode.
-- connTrace instrumentation on the audio path (`audio-track-recv`,
-  `audio-mute-apply`, no-stream track drop) so Settings → Connection
-  Diagnostics can prove track arrival + enabled state on-device.
+connTrace now logs `audio-track-recv`, `audio-mute-apply`, and
+`audio-route` (loudspeaker force success/failure) — visible in Settings →
+Connection Diagnostics for live verification.
 
 ## Acceptance
 
-Same test as your brief: live session, robot in SG, tap speaker unmute in
-the app, clap next to robot → clap heard. Please do ship your two queued
-quality fixes (recv() pacing ~44fps → choppy/stale, and the missing software
-gain, ambient ≈ −38 dBFS) — once unmuted, the stream will be audible but
-quiet and choppy until those land.
+Live session, tap speaker unmute in the app, clap next to robot → clap
+heard from the iPhone loudspeaker. Expect quiet-and-choppy until your gain
+and pacing fixes land; re-run the same test after they deploy.
 
-Thanks for the emergency_stop contract fix — app already sends the contract
-format and ignores nothing; no app change needed.
+Thanks for the emergency_stop contract fix — the app sends the contract
+format and needs no change.
