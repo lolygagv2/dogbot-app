@@ -716,7 +716,12 @@ class WebRTCNotifier extends StateNotifier<WebRTCConnectionState> {
     }
 
     print('WebRTC: Received offer, creating answer...');
-    connTrace('sdp-offer-recv', 'session=${state.sessionId}');
+    // Whether the robot offered an audio m-line at all — if false, the
+    // silence is robot/relay-side and no app-side routing can fix it.
+    final offerSdp = sdp['sdp'] as String? ?? '';
+    connTrace('sdp-offer-recv',
+        'session=${state.sessionId} audio=${offerSdp.contains('m=audio')} '
+        'video=${offerSdp.contains('m=video')}');
 
     try {
       final description = RTCSessionDescription(
@@ -741,7 +746,11 @@ class WebRTCNotifier extends StateNotifier<WebRTCConnectionState> {
         },
       });
       print('WebRTC: Sent answer');
-      connTrace('sdp-answer-sent', 'session=${state.sessionId}');
+      // If the offer had audio but our answer doesn't, the app-side stack
+      // rejected the track — that would be the smoking gun.
+      final answerSdp = answer.sdp ?? '';
+      connTrace('sdp-answer-sent',
+          'session=${state.sessionId} audio=${answerSdp.contains('m=audio')}');
     } catch (e) {
       print('WebRTC: Error handling offer: $e');
       state = state.copyWith(
