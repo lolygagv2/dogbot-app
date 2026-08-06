@@ -11,10 +11,18 @@ The app never configures the audio output route. On iOS, WebRTC playback
 defaults to the **earpiece**, not the loudspeaker — and the app never calls
 `setSpeakerphoneOn`/`overrideOutputAudioPort` anywhere. Your −38 dBFS
 un-gained stream through the earpiece at arm's length is indistinguishable
-from silence in every mute state. Fixed in build 151: the app forces the
-loudspeaker route when the audio track arrives, on unmute, and again after
-PTT auto-listen (the PTT recorder reconfigures the iOS session and can
-revert the route).
+from silence in every mute state. Fixed in build 151: the app now routes to
+the loudspeaker (Bluetooth headset preferred when connected — Morgan
+listens on BT headphones) when the audio track arrives, on unmute, and
+again after PTT auto-listen (the PTT recorder reconfigures the iOS session
+and can revert the route).
+
+**Likely regression window:** Morgan reports listening worked in past
+builds, including via BT headphones. The app upgraded flutter_webrtc
+1.2.1 → 1.4.1 in Build 134 (2026-06-10, iOS termination-crash fix), which
+bumped the underlying Apple WebRTC engine — audio-session/routing defaults
+shifted underneath an app that had never stated its routing intent. It now
+does, making it immune to future library default changes.
 
 **Your "still deliver audible audio" claim was the trap** — it was never
 verified at the phone end, and −38 dBFS + earpiece routing compound.
