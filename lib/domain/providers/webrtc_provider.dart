@@ -193,20 +193,27 @@ class WebRTCNotifier extends StateNotifier<WebRTCConnectionState> {
     _applyAudioMuteState(!enabled);
   }
 
-  /// Force robot-mic playback to the loudspeaker (2026-08-06 mic brief).
-  /// iOS routes WebRTC audio to the EARPIECE by default — nothing in the app
-  /// ever overrode that, so the robot's (already very quiet, −38 dBFS) mic
-  /// stream was inaudible no matter what the mute toggle showed. Re-asserted
-  /// after unmute and auto-listen because the PTT/voice recorders reconfigure
-  /// the iOS audio session and can revert the route.
+  /// Route robot-mic playback to the loudspeaker — or Bluetooth
+  /// headphones/speaker when one is connected (2026-08-06 mic brief).
+  ///
+  /// The app never stated a route, leaving it to flutter_webrtc defaults,
+  /// which treat a WebRTC session like a phone call: output to the EARPIECE.
+  /// Those defaults shifted across the library upgrade (1.2.1 → 1.4.1,
+  /// Build 134) — listening used to work, then didn't. Stating intent
+  /// explicitly makes us immune to library default changes. Re-asserted
+  /// after unmute and auto-listen because the PTT/voice recorders
+  /// reconfigure the iOS audio session and can revert the route.
   Future<void> _routeAudioToSpeaker() async {
     if (!(Platform.isIOS || Platform.isAndroid)) return;
     try {
       await Helper.ensureAudioSession();
-      await Helper.setSpeakerphoneOn(true);
-      connTrace('audio-route', 'loudspeaker forced on');
+      // Loudspeaker, EXCEPT when Bluetooth headphones are connected — plain
+      // setSpeakerphoneOn(true) would hijack audio away from them (Morgan
+      // listens on BT headphones).
+      await Helper.setSpeakerphoneOnButPreferBluetooth();
+      connTrace('audio-route', 'loudspeaker on (bluetooth preferred)');
     } catch (e) {
-      connTrace('audio-route', 'FAILED to force loudspeaker: $e');
+      connTrace('audio-route', 'FAILED to set route: $e');
     }
   }
 
