@@ -186,12 +186,17 @@ class WebRTCNotifier extends StateNotifier<WebRTCConnectionState> {
 
   /// Apply mute state to the remote audio track
   void _applyAudioMuteState(bool muted) {
-    if (_audioStream != null) {
-      for (final track in _audioStream!.getAudioTracks()) {
-        track.enabled = !muted;
-        print('WebRTC: Audio track enabled=${!muted}');
-      }
+    if (_audioStream == null) {
+      connTrace('audio-mute-apply', 'muted=$muted but NO audio stream yet');
+      return;
     }
+    final tracks = _audioStream!.getAudioTracks();
+    for (final track in tracks) {
+      track.enabled = !muted;
+      print('WebRTC: Audio track enabled=${!muted}');
+    }
+    connTrace('audio-mute-apply',
+        'enabled=${!muted} on ${tracks.length} track(s)');
   }
 
   /// Listen for device ID changes and switch video stream accordingly
@@ -553,14 +558,21 @@ class WebRTCNotifier extends StateNotifier<WebRTCConnectionState> {
             renderer: _renderer,
           );
           print('WebRTC: Video connected, state updated');
-        } else if (event.track.kind == 'audio' && event.streams.isNotEmpty) {
+        } else if (event.track.kind == 'audio') {
+          if (event.streams.isEmpty) {
+            // Track with no stream would previously be dropped silently —
+            // surface it so diagnostics can see the robot's audio arrived.
+            connTrace('audio-track-recv', 'NO STREAM — track dropped');
+            return;
+          }
           // v1.3: Accept always-on audio track from robot
           _audioStream = event.streams[0];
           print('WebRTC: Audio track received, stream id=${_audioStream!.id}');
+          connTrace('audio-track-recv',
+              'stream=${_audioStream!.id} applying muted=${state.isAudioMuted}');
 
           // Apply current mute state to the audio track
           _applyAudioMuteState(state.isAudioMuted);
-          print('WebRTC: Audio track initial mute=${state.isAudioMuted}');
         }
       };
 

@@ -2,14 +2,17 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../domain/providers/mode_provider.dart';
 import '../../../domain/providers/webrtc_provider.dart';
 
 /// Small speaker mute/unmute toggle overlaid on video feed.
 /// Purely app-side — does NOT send any command to the robot.
 ///
-/// When SG/Coach/Mission mode is active, the toggle is locked because
-/// the robot's microphone is used for bark detection / active monitoring.
+/// The toggle works in every robot mode. The robot's audio track is always-on
+/// (v1.3 contract) and its mic feeds bark detection and WebRTC simultaneously,
+/// so app-side playback never interferes with SG/Coach/Mission monitoring.
+/// (The old mode-lock here silently pinned users to their persisted mute
+/// state — usually muted — with no way out, which read as "mic broken"
+/// exactly when they most wanted to listen in. See 2026-08-06 mic brief.)
 ///
 /// During auto-listen (after PTT send), shows a pulsing cyan icon.
 class AudioMuteToggle extends ConsumerWidget {
@@ -19,72 +22,33 @@ class AudioMuteToggle extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final isMuted = ref.watch(webrtcAudioMutedProvider);
     final isConnected = ref.watch(webrtcStateProvider) == WebRTCState.connected;
-    final currentMode = ref.watch(displayModeProvider);
     final isAutoListening = ref.watch(webrtcAutoListeningProvider);
 
     // Only show when WebRTC is connected
     if (!isConnected) return const SizedBox.shrink();
 
-    final isModeLocked = currentMode == RobotMode.silentGuardian ||
-        currentMode == RobotMode.coach ||
-        currentMode == RobotMode.mission;
-
-    final String? modeLabel = switch (currentMode) {
-      RobotMode.silentGuardian => 'SG',
-      RobotMode.coach => 'Coach',
-      RobotMode.mission => 'Mission',
-      _ => null,
-    };
-
-    // Auto-listen indicator (not shown when mode-locked)
-    final showAutoListen = isAutoListening && !isModeLocked;
-
     return Tooltip(
-      message: isModeLocked
-          ? 'Audio controlled by ${currentMode.label} mode'
-          : showAutoListen
-              ? 'Listening to robot...'
-              : (isMuted ? 'Unmute audio' : 'Mute audio'),
+      message: isAutoListening
+          ? 'Listening to robot...'
+          : (isMuted ? 'Unmute audio' : 'Mute audio'),
       child: GestureDetector(
-        onTap: isModeLocked
-            ? null
-            : () {
-                HapticFeedback.lightImpact();
-                ref.read(webrtcProvider.notifier).toggleAudioMute();
-              },
+        onTap: () {
+          HapticFeedback.lightImpact();
+          ref.read(webrtcProvider.notifier).toggleAudioMute();
+        },
         child: Container(
           padding: const EdgeInsets.all(8),
           decoration: BoxDecoration(
             color: Colors.black54,
             borderRadius: BorderRadius.circular(8),
           ),
-          child: isModeLocked
-              ? Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(
-                      isMuted ? Icons.volume_off : Icons.volume_up,
-                      color: Colors.white30,
-                      size: 20,
-                    ),
-                    const SizedBox(width: 4),
-                    Text(
-                      modeLabel!,
-                      style: const TextStyle(
-                        color: Colors.white30,
-                        fontSize: 10,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ],
-                )
-              : showAutoListen
-                  ? const _PulsingAutoListenIcon()
-                  : Icon(
-                      isMuted ? Icons.volume_off : Icons.volume_up,
-                      color: isMuted ? Colors.white54 : Colors.white,
-                      size: 20,
-                    ),
+          child: isAutoListening
+              ? const _PulsingAutoListenIcon()
+              : Icon(
+                  isMuted ? Icons.volume_off : Icons.volume_up,
+                  color: isMuted ? Colors.white54 : Colors.white,
+                  size: 20,
+                ),
         ),
       ),
     );
