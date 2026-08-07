@@ -95,6 +95,7 @@ class WebRTCNotifier extends StateNotifier<WebRTCConnectionState> {
   bool _isVideoOnlyPause = false;  // True when only video is paused (background audio)
   bool _isRequesting = false;  // Guard against concurrent requestVideoStream calls
   Timer? _autoListenTimer;  // Auto-listen after PTT send
+  Timer? _audioStatsTimer;  // Build 152: inbound audio RTP probe
   Timer? _connectTimeoutTimer;  // Build 111: bound the "connecting" window
   Timer? _disconnectGraceTimer;  // Build 111: grace before failing on transient disconnect
   static const int _maxReconnectAttempts = 3;
@@ -206,15 +207,76 @@ class WebRTCNotifier extends StateNotifier<WebRTCConnectionState> {
   Future<void> _routeAudioToSpeaker() async {
     if (!(Platform.isIOS || Platform.isAndroid)) return;
     try {
+      // Build 152: full explicit session config, not just the polite helpers.
+      // The helpers only adjust options if the category already suits them;
+      // this stomps the category/mode outright — playAndRecord ignores the
+      // ringer switch, defaultToSpeaker beats the earpiece default, and the
+      // BT options keep headphones eligible.
+      if (Platform.isIOS) {
+        await Helper.setAppleAudioConfiguration(AppleAudioConfiguration(
+          appleAudioCategory: AppleAudioCategory.playAndRecord,
+          appleAudioCategoryOptions: {
+            AppleAudioCategoryOption.defaultToSpeaker,
+            AppleAudioCategoryOption.allowBluetooth,
+            AppleAudioCategoryOption.allowBluetoothA2DP,
+            AppleAudioCategoryOption.allowAirPlay,
+          },
+          appleAudioMode: AppleAudioMode.videoChat,
+        ));
+      }
       await Helper.ensureAudioSession();
       // Loudspeaker, EXCEPT when Bluetooth headphones are connected — plain
       // setSpeakerphoneOn(true) would hijack audio away from them (Morgan
       // listens on BT headphones).
       await Helper.setSpeakerphoneOnButPreferBluetooth();
-      connTrace('audio-route', 'loudspeaker on (bluetooth preferred)');
+      connTrace('audio-route', 'session forced playAndRecord+speaker (BT ok)');
     } catch (e) {
       connTrace('audio-route', 'FAILED to set route: $e');
     }
+  }
+
+  /// Build 152: probe the RECEIVED audio RTP stream. Every app-side switch is
+  /// provably set (2026-08-06 trace) yet silence persists — the last
+  /// ambiguity is whether the packets from the robot contain actual sound.
+  /// audioLevel/totalAudioEnergy ≈ 0 with packets flowing = robot transmits
+  /// silence (its jammed capture queue) and no app fix can help; healthy
+  /// energy = iOS output problem, keep digging app-side.
+  void _startAudioStatsProbe() {
+    _audioStatsTimer?.cancel();
+    var probes = 0;
+    _audioStatsTimer =
+        Timer.periodic(const Duration(seconds: 5), (timer) async {
+      probes++;
+      if (probes > 4 || _peerConnection == null) {
+        timer.cancel();
+        return;
+      }
+      try {
+        final stats = await _peerConnection!.getStats();
+        Map<String, dynamic>? inboundAudio;
+        for (final report in stats) {
+          final v = report.values;
+          if (v['type'] == 'inbound-rtp' &&
+              (v['kind'] == 'audio' || v['mediaType'] == 'audio')) {
+            inboundAudio = Map<String, dynamic>.from(v);
+            break;
+          }
+        }
+        if (inboundAudio == null) {
+          connTrace('audio-stats', 'NO inbound audio RTP stream in stats');
+          return;
+        }
+        connTrace(
+            'audio-stats',
+            'pkts=${inboundAudio['packetsReceived']} '
+            'bytes=${inboundAudio['bytesReceived']} '
+            'lost=${inboundAudio['packetsLost']} '
+            'level=${inboundAudio['audioLevel']} '
+            'energy=${inboundAudio['totalAudioEnergy']}');
+      } catch (e) {
+        connTrace('audio-stats', 'probe failed: $e');
+      }
+    });
   }
 
   /// Apply mute state to the remote audio track
@@ -646,6 +708,7 @@ class WebRTCNotifier extends StateNotifier<WebRTCConnectionState> {
             _disconnectGraceTimer?.cancel();
             // Log the active ICE candidate pair to diagnose relay vs P2P
             _logSelectedCandidatePair();
+            _startAudioStatsProbe();
             break;
           case RTCPeerConnectionState.RTCPeerConnectionStateFailed:
           case RTCPeerConnectionState.RTCPeerConnectionStateClosed:
@@ -1025,6 +1088,7 @@ class WebRTCNotifier extends StateNotifier<WebRTCConnectionState> {
     // one can't fire an error or reconnect after we've already torn down.
     _connectTimeoutTimer?.cancel();
     _disconnectGraceTimer?.cancel();
+    _audioStatsTimer?.cancel();
 
     // Build 44: Clear renderer FIRST to immediately stop showing old video
     if (_renderer != null && _renderer!.srcObject != null) {
@@ -1207,6 +1271,7 @@ class WebRTCNotifier extends StateNotifier<WebRTCConnectionState> {
     _autoListenTimer?.cancel();
     _connectTimeoutTimer?.cancel();
     _disconnectGraceTimer?.cancel();
+    _audioStatsTimer?.cancel();
     for (final sub in _subscriptions) {
       sub.cancel();
     }
