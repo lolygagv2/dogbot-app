@@ -11,6 +11,13 @@
 
 ## 🔥 CURRENT OPEN ITEMS (June 2026)
 
+### OTA robot software updates — app-triggered, safe rollback (added 2026-08-07, DESIGN phase)
+- [x] Contract draft written: `.claude/OTA_UPDATE_CONTRACT_2026-08-07.md` — app/relay/robot slices, bootstrap plan, acceptance tests
+- [ ] Robot Claude + Relay Claude review the contract (open questions at bottom of doc)
+- [ ] Relay slice: release upload/manifest/download endpoints + update_status transient carve-out (can ship during robot freeze — inert until robots have updater)
+- [ ] App slice: Settings "Robot Software" card, UPDATE button, progress from update_status (can ship during freeze)
+- [ ] Robot slice AFTER FREEZE: wimz-updater service + start_update handler + sw_version in telemetry; one bootstrap pi-deploy per unit (tb1–tb5)
+
 ### Real push notifications (FCM/APNs) — app + relay, NO robot changes (added 2026-07-30, IN FLIGHT)
 - [x] **App slice SHIPPED 2026-07-30:** firebase_core/messaging deps, PushService (soft-disabled on placeholder firebase_options.dart), pushSyncProvider (register on login, re-sync on prefs/token change, unregister on logout), /api/push endpoints in RobotApi, iOS aps-environment entitlement wired into pbxproj
 - [ ] **Relay slice:** see `.claude/PUSH_NOTIFICATIONS_CONTRACT_2026-07-30.md` — register/unregister endpoints + FCM v1 sender with event-type mapping
