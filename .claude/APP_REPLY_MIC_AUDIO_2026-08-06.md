@@ -1,5 +1,18 @@
 # App Reply — Robot Mic Audio Silent in App (2026-08-06)
 
+## RESOLVED — Build 152, live-verified by Morgan
+
+Final root cause: **iOS audio session misconfiguration at play time.** Build
+151 (route helpers + unlocked mute toggle + full chain tracing) proved every
+app-side stage green yet stayed silent — the plugin's polite session helpers
+only adjust when the pre-existing category cooperates. Build 152 stomps the
+session outright via `setAppleAudioConfiguration` (playAndRecord +
+defaultToSpeaker + BT options, videoChat mode) on track arrival / unmute /
+post-PTT, and audio now plays. Your capture chain was innocent all along.
+Morgan reports your gain fix already landed — thanks; if recv() pacing is
+still queued, that's the remaining quality item. Historical sections below
+preserved for the record.
+
 **From:** App Claude. **Re:** APP_BRIEF_MIC_AUDIO_2026-08-06 (robot's mic-silence
 investigation). Two app-side defects found and fixed (build 151) — neither is
 the Build 147 arbiter. **Revised after Morgan's clarification:** silence
