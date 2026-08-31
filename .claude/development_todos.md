@@ -13,10 +13,10 @@
 
 ### OTA robot software updates — app-triggered, safe rollback (added 2026-08-07, DESIGN phase)
 - [x] Contract draft written: `.claude/OTA_UPDATE_CONTRACT_2026-08-07.md` — app/relay/robot slices, bootstrap plan, acceptance tests
-- [ ] Robot Claude + Relay Claude review the contract (open questions at bottom of doc)
-- [ ] Relay slice: release upload/manifest/download endpoints + update_status transient carve-out (can ship during robot freeze — inert until robots have updater)
-- [ ] App slice: Settings "Robot Software" card, UPDATE button, progress from update_status (can ship during freeze)
-- [ ] Robot slice AFTER FREEZE: wimz-updater service + start_update handler + sw_version in telemetry; one bootstrap pi-deploy per unit (tb1–tb5)
+- [x] **App slice SHIPPED Build 154 (2026-08-30):** Settings "Robot Software" card (version vs latest, UPDATE + confirm dialog, update_status progress, terminal states), sw_version telemetry parse, getLatestRelease (404-tolerant), update_status WS routing + transient watermark carve-out, start_update command — inert until relay/robot ship
+- [ ] Morgan carries `.claude/ROBOT_OTA_INSTRUCTIONS_2026-08-30.md` to robot repo; Robot Claude answers §4 (data layout + service name) and confirms event shape
+- [ ] Relay slice: release upload/manifest/download endpoints + update_status transient (non-buffered) forwarding (can ship during robot freeze)
+- [ ] Robot slice AFTER FREEZE: wimz-updater service + start_update handler + sw_version in telemetry (sw_version may ship earlier if freeze allows); one bootstrap pi-deploy per unit (tb1–tb5)
 
 ### Real push notifications (FCM/APNs) — ✅ DONE (confirmed live 2026-08-30)
 - [x] **App slice SHIPPED 2026-07-30:** firebase_core/messaging deps, PushService, pushSyncProvider (register on login, re-sync on prefs/token change, unregister on logout), /api/push endpoints in RobotApi, iOS aps-environment entitlement; activated with real firebase_options.dart (`wimzpushy`)
