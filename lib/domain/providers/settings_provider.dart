@@ -39,6 +39,10 @@ const Map<NotificationEventType, NotificationChannel> _defaultChannels = {
   NotificationEventType.missionCompleted: NotificationChannel.inAppAndPush,
   NotificationEventType.alert: NotificationChannel.inAppAndPush,
   NotificationEventType.lowBattery: NotificationChannel.inAppAndPush,
+  // Panic = the highest-signal event the robot produces; SG level-4 summary
+  // is the "check on your dog" moment (robot 137a5e8)
+  NotificationEventType.panicAlert: NotificationChannel.inAppAndPush,
+  NotificationEventType.sgSummary: NotificationChannel.inAppAndPush,
   // Medium-signal: in-app feed only by default (chatty if pushed)
   NotificationEventType.bark: NotificationChannel.inApp,
   NotificationEventType.missionFailed: NotificationChannel.inApp,

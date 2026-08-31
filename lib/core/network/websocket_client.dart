@@ -505,13 +505,19 @@ class WebSocketClient {
       // mandates this carve-out — progress frames are transient live state,
       // never replayed; letting them touch the watermark reproduces the
       // "renders on one robot only" bug.
+      //
+      // sg_summary (robot 137a5e8): ONLY the status_pull response is
+      // transient (a live reply to our sg_status_pull command); the
+      // level4_escalation variant is a real feed event and takes the normal
+      // watermark path, as does panic_alert.
       final isTransientMsg = isControllerMsg ||
           msgType == 'audio_state' ||
           msgType == 'coaching_started' ||
           msgType == 'coach_progress' ||
           msgType == 'local_mode_starting' ||
           msgType == 'treat_counter_ack' ||
-          msgType == 'update_status';
+          msgType == 'update_status' ||
+          (msgType == 'sg_summary' && json['action'] == 'status_pull');
       if (isControllerMsg) {
         // Build 129: prove on-device that controller_* reaches the socket and
         // survives the watermark gate (the pre-129 drop point). Read via
@@ -683,6 +689,10 @@ class WebSocketClient {
         case 'treat_counter_ack':
         // OTA update progress (contract 2026-08-07) — target-device filtered
         case 'update_status':
+        // Robot 137a5e8 (2026-08-31): SG session summary (level4_escalation
+        // push or status_pull response) + panic alerts
+        case 'sg_summary':
+        case 'panic_alert':
         case 'reward':
           if (!_isFromTargetDevice(json)) break;
           final statusEvent = WsEvent.fromJson(json);
@@ -1104,6 +1114,20 @@ class WebSocketClient {
       if (dogId != null) 'dog_id': dogId,
       if (dogName != null) 'dog_name': dogName,
     });
+  }
+
+  /// Robot 137a5e8: pull a live Silent Guardian session summary — robot
+  /// replies with an sg_summary event (action: status_pull), or
+  /// running:false + error when SG isn't running.
+  void sendSgStatusPull() {
+    sendCommand('sg_status_pull');
+  }
+
+  /// Robot 137a5e8: set music loop mode — 'off' | 'one' | 'all'. State is
+  /// echoed back via audio_state.loop_mode (no optimistic flip, same rule
+  /// as play/pause). Local-mode REST equivalent: POST /audio/loop.
+  void sendAudioLoop(String mode) {
+    sendCommand('audio_loop', {'mode': mode});
   }
 
   /// OTA contract 2026-08-07: ask the robot to update itself to [version].

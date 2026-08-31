@@ -113,6 +113,49 @@ class NotificationsNotifier extends StateNotifier<List<NotificationEvent>> {
         notification = _guardianNotification(event.data, eventTime, eventId);
         break;
 
+      // Robot 137a5e8: panic episode push. `message` is pre-phrased
+      // owner-friendly text — display verbatim, never rewrite.
+      case 'panic_alert':
+        final panicAction = event.data['action'] as String? ?? 'started';
+        final severity = event.data['severity'] as String?;
+        notification = NotificationEvent(
+          id: eventId ?? DateTime.now().millisecondsSinceEpoch.toString(),
+          type: NotificationEventType.panicAlert,
+          timestamp: eventTime,
+          title: panicAction == 'ended' ? 'Panic Episode Ended' : 'Panic Alert',
+          subtitle: event.data['message'] as String?,
+          dogId: event.data['dog_id'] as String?,
+          metadata: {
+            'action': panicAction,
+            if (severity != null) 'severity': severity,
+            if (event.data['trigger'] != null) 'trigger': event.data['trigger'],
+            if (event.data['episode_num'] != null)
+              'episode_num': event.data['episode_num'],
+            if (event.data['duration_sec'] != null)
+              'duration_sec': event.data['duration_sec'],
+          },
+        );
+        break;
+
+      // Robot 137a5e8: SG session summary. Only the automatic Level-4
+      // escalation variant notifies (once per session, robot-side); the
+      // status_pull response renders as a card via sgSummaryProvider, not
+      // as a feed entry.
+      case 'sg_summary':
+        if (event.data['action'] == 'level4_escalation') {
+          notification = NotificationEvent(
+            id: eventId ?? DateTime.now().millisecondsSinceEpoch.toString(),
+            type: NotificationEventType.sgSummary,
+            timestamp: eventTime,
+            title: 'Silent Guardian: Level 4',
+            subtitle: event.data['headline'] as String? ??
+                'Escalation reached the highest level',
+            dogId: event.data['dog_id'] as String?,
+            metadata: {'action': 'level4_escalation'},
+          );
+        }
+        break;
+
       // Build 140: treat events carry dog_id/dog_name when the robot resolved
       // the dog OR when the app named it on the dispense_treat command (the
       // robot echoes it back — attribution contract 2026-07-13). Untagged
@@ -345,6 +388,37 @@ class NotificationsNotifier extends StateNotifier<List<NotificationEvent>> {
   NotificationEvent? _guardianNotification(
       Map<String, dynamic> data, DateTime eventTime, String? eventId) {
     final action = _normalizeGuardianAction(data['action'] as String?);
+
+    // Robot 137a5e8: guardian stopped now carries a session wrap-up
+    // (bark_types, headline, aggressive_tag, panic_episodes). Surface it as
+    // a summary entry when the payload has one; bare stops (older robots)
+    // stay dropped with the other lifecycle actions.
+    if ((action == 'stopped' || action == 'stop') &&
+        (data['headline'] != null || data['bark_types'] != null)) {
+      final aggressive = data['aggressive_tag'] == true;
+      final panicEpisodes = (data['panic_episodes'] as num?)?.toInt() ?? 0;
+      final headline = data['headline'] as String? ?? 'Session ended';
+      final extras = [
+        if (aggressive) 'Your dog was aggressive today',
+        if (panicEpisodes > 0)
+          '$panicEpisodes panic episode${panicEpisodes == 1 ? '' : 's'}',
+      ].join(' · ');
+      return NotificationEvent(
+        id: eventId ?? eventTime.millisecondsSinceEpoch.toString(),
+        type: NotificationEventType.sgSummary,
+        timestamp: eventTime,
+        title: 'Guardian Session Ended',
+        subtitle: extras.isEmpty ? headline : '$headline — $extras',
+        dogId: data['dog_id'] as String?,
+        metadata: {
+          'action': 'stopped',
+          'aggressive_tag': aggressive,
+          'panic_episodes': panicEpisodes,
+          if (data['bark_types'] is Map) 'bark_types': data['bark_types'],
+        },
+      );
+    }
+
     if (_isGuardianLifecycle(action)) return null;
 
     final reason = data['reason'] as String? ??
@@ -377,6 +451,8 @@ class NotificationsNotifier extends StateNotifier<List<NotificationEvent>> {
       NotificationEventType.connected => 'Connected',
       NotificationEventType.disconnected => 'Disconnected',
       NotificationEventType.coachReward => 'Coach Reward',
+      NotificationEventType.panicAlert => 'Panic Alert',
+      NotificationEventType.sgSummary => 'Guardian Summary',
     };
   }
 
@@ -570,6 +646,24 @@ class NotificationsNotifier extends StateNotifier<List<NotificationEvent>> {
         final reason = payload['reason'] as String? ?? 'Alert';
         title = 'Guardian: $reason';
         subtitle = payload['severity'] as String?;
+        break;
+      // Robot 137a5e8: panic + SG summary rows from relay history
+      case 'panic_alert':
+        mapped = NotificationEventType.panicAlert;
+        final panicAction =
+            (payload['action'] ?? event['action']) as String? ?? 'started';
+        title = panicAction == 'ended' ? 'Panic Episode Ended' : 'Panic Alert';
+        subtitle = payload['message'] as String?;
+        break;
+      case 'sg_summary':
+        // Only the level4 escalation is feed history; status_pull responses
+        // are transient and should never be persisted rows anyway.
+        if ((payload['action'] ?? event['action']) != 'level4_escalation') {
+          return null;
+        }
+        mapped = NotificationEventType.sgSummary;
+        title = 'Silent Guardian: Level 4';
+        subtitle = payload['headline'] as String?;
         break;
       // Build 125: robot's unified guardian event ({type:'guardian',
       // action:...}). Lifecycle actions (start/stop/reset) are skipped; an

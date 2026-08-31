@@ -51,4 +51,6 @@ const _$NotificationEventTypeEnumMap = {
   NotificationEventType.connected: 'connected',
   NotificationEventType.disconnected: 'disconnected',
   NotificationEventType.coachReward: 'coach_reward',
+  NotificationEventType.panicAlert: 'panic_alert',
+  NotificationEventType.sgSummary: 'sg_summary',
 };

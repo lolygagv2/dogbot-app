@@ -137,6 +137,10 @@ class _ChannelRow extends StatelessWidget {
         return 'Robot disconnected';
       case NotificationEventType.coachReward:
         return 'Coach reward';
+      case NotificationEventType.panicAlert:
+        return 'Panic alert';
+      case NotificationEventType.sgSummary:
+        return 'Guardian session summary';
     }
   }
 
@@ -166,6 +170,10 @@ class _ChannelRow extends StatelessWidget {
       case NotificationEventType.lieDown:
       case NotificationEventType.stand:
         return Icons.pets;
+      case NotificationEventType.panicAlert:
+        return Icons.crisis_alert;
+      case NotificationEventType.sgSummary:
+        return Icons.shield_outlined;
     }
   }
 

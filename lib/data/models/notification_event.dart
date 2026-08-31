@@ -22,6 +22,10 @@ enum NotificationEventType {
   connected,
   disconnected,
   coachReward,
+  // Robot 137a5e8 (2026-08-31): appended (never reorder — names feed relay
+  // enabled_types and stored channel prefs)
+  panicAlert, // panic_alert started/ended — distress episodes
+  sgSummary, // sg_summary level4_escalation + guardian-stopped session summary
 }
 
 /// A notification event from the robot
@@ -103,5 +107,9 @@ String _getDefaultTitle(NotificationEventType type) {
       return 'Disconnected';
     case NotificationEventType.coachReward:
       return 'Coach Reward';
+    case NotificationEventType.panicAlert:
+      return 'Panic Alert';
+    case NotificationEventType.sgSummary:
+      return 'Guardian Summary';
   }
 }

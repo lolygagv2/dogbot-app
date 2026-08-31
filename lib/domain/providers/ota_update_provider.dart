@@ -24,6 +24,11 @@ final latestReleaseProvider = FutureProvider<Map<String, dynamic>?>((ref) async 
 /// Live state of an update run, driven by robot `update_status` events:
 /// {state: checking|downloading|verifying|installing|restarting|success|
 ///  failed|rolled_back, version, progress_pct?, error?}
+///
+/// Robot slice confirmed (robot commit c28ed1f, 2026-08-31): the terminal
+/// success/rolled_back event is emitted by whichever process survives the
+/// restart, AFTER its relay reconnect — expect up to ~90s of silence past
+/// `restarting`. That's normal; don't add a short timeout here.
 class OtaUpdateState {
   final String? state; // null = no update run seen this session
   final String? version;

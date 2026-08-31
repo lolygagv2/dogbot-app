@@ -35,6 +35,9 @@ final _playlistIndexProvider = StateProvider<int>((ref) => 0);
 /// Provider to track playlist length (synced from robot)
 final _playlistLengthProvider = StateProvider<int>((ref) => 0);
 
+/// Robot 137a5e8: loop mode synced from audio_state — 'off' | 'one' | 'all'
+final _loopModeProvider = StateProvider<String>((ref) => 'off');
+
 class QuickActions extends ConsumerStatefulWidget {
   const QuickActions({super.key});
 
@@ -192,6 +195,13 @@ class _QuickActionsState extends ConsumerState<QuickActions> {
     final playlistLength = data['playlist_length'] as int? ?? 0;
     ref.read(_playlistIndexProvider.notifier).state = playlistIndex;
     ref.read(_playlistLengthProvider.notifier).state = playlistLength;
+
+    // Robot 137a5e8: loop mode rides audio_state — preserve if absent
+    // (older robots don't send it).
+    final loopMode = data['loop_mode'] as String?;
+    if (loopMode != null) {
+      ref.read(_loopModeProvider.notifier).state = loopMode;
+    }
 
     print('[AUDIO_STATE] playing=$playing, track=$track, index=$playlistIndex/$playlistLength');
   }
@@ -391,6 +401,17 @@ class _QuickActionsState extends ConsumerState<QuickActions> {
               child: _MusicControlsWithVolume(
                 isPlaying: isPlaying,
                 trackName: ref.watch(_currentTrackProvider),
+                loopMode: ref.watch(_loopModeProvider),
+                // Cycle off → all → one → off; renders only from the
+                // audio_state echo, no optimistic flip.
+                onLoopToggle: () {
+                  final next = switch (ref.read(_loopModeProvider)) {
+                    'off' => 'all',
+                    'all' => 'one',
+                    _ => 'off',
+                  };
+                  audioControl.setLoopMode(next);
+                },
                 onPrev: () => audioControl.prev(),
                 onToggle: () {
                   // Build 146: NO optimistic flip. Robot contract 60e526f:
@@ -984,6 +1005,9 @@ class _VolumeSlider extends ConsumerWidget {
 class _MusicControlsWithVolume extends StatelessWidget {
   final bool isPlaying;
   final String? trackName;
+  // Robot 137a5e8: 'off' | 'one' | 'all', synced from audio_state
+  final String loopMode;
+  final VoidCallback? onLoopToggle;
   final VoidCallback onPrev;
   final VoidCallback onToggle;
   final VoidCallback onNext;
@@ -994,6 +1018,8 @@ class _MusicControlsWithVolume extends StatelessWidget {
   const _MusicControlsWithVolume({
     required this.isPlaying,
     this.trackName,
+    this.loopMode = 'off',
+    this.onLoopToggle,
     required this.onPrev,
     required this.onToggle,
     required this.onNext,
@@ -1058,6 +1084,16 @@ class _MusicControlsWithVolume extends StatelessWidget {
                 icon: Icons.skip_next,
                 onPressed: onNext,
               ),
+
+              if (onLoopToggle != null) ...[
+                const SizedBox(width: 4),
+                // Loop button — icon + emphasis reflect the robot-echoed mode
+                _MusicButton(
+                  icon: loopMode == 'one' ? Icons.repeat_one : Icons.repeat,
+                  onPressed: onLoopToggle!,
+                  isPrimary: loopMode != 'off',
+                ),
+              ],
 
               if (onUpload != null) ...[
                 const SizedBox(width: 8),

@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../data/models/guardian_event.dart';
 import '../../../domain/providers/guardian_events_provider.dart';
+import '../silent_guardian/sg_summary_card.dart';
 
 /// Widget displaying a scrollable feed of guardian events
 class EventFeed extends ConsumerStatefulWidget {
@@ -35,40 +36,50 @@ class _EventFeedState extends ConsumerState<EventFeed> {
     final events = eventsState.sortedEvents;
 
     if (events.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              Icons.visibility,
-              size: 64,
-              color: Colors.purple.withOpacity(0.5),
-            ),
-            const SizedBox(height: 16),
-            Text(
-              'Silent Guardian Active',
-              style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                    color: Colors.purple,
-                    fontWeight: FontWeight.bold,
+      return Column(
+        children: [
+          // Robot 137a5e8: live session summary (level-4 auto or manual pull)
+          const SgSummaryCard(),
+          Expanded(
+            child: Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    Icons.visibility,
+                    size: 64,
+                    color: Colors.purple.withOpacity(0.5),
                   ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Watching for activity...',
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: Theme.of(context)
-                        .colorScheme
-                        .onSurface
-                        .withOpacity(0.6),
+                  const SizedBox(height: 16),
+                  Text(
+                    'Silent Guardian Active',
+                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                          color: Colors.purple,
+                          fontWeight: FontWeight.bold,
+                        ),
                   ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Watching for activity...',
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          color: Theme.of(context)
+                              .colorScheme
+                              .onSurface
+                              .withOpacity(0.6),
+                        ),
+                  ),
+                ],
+              ),
             ),
-          ],
-        ),
+          ),
+        ],
       );
     }
 
     return Column(
       children: [
+        // Robot 137a5e8: live session summary (level-4 auto or manual pull)
+        const SgSummaryCard(),
         // Header with event count and clear button
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),

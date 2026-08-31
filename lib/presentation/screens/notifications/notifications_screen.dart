@@ -402,6 +402,8 @@ class _NotificationTile extends StatelessWidget {
       NotificationEventType.connected => Icons.wifi,
       NotificationEventType.disconnected => Icons.wifi_off,
       NotificationEventType.coachReward => Icons.school,
+      NotificationEventType.panicAlert => Icons.crisis_alert,
+      NotificationEventType.sgSummary => Icons.shield_outlined,
     };
   }
 
@@ -421,6 +423,8 @@ class _NotificationTile extends StatelessWidget {
       NotificationEventType.connected => AppTheme.accent,
       NotificationEventType.disconnected => AppTheme.error,
       NotificationEventType.coachReward => Colors.orange,
+      NotificationEventType.panicAlert => AppTheme.error,
+      NotificationEventType.sgSummary => Colors.purple,
     };
   }
 

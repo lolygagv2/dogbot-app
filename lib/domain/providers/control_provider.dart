@@ -566,6 +566,15 @@ class AudioControl {
     _ref.read(websocketClientProvider).sendAudioPrev();
   }
 
+  /// Robot 137a5e8: set loop mode — 'off' | 'one' | 'all'. No optimistic
+  /// UI flip: the button renders from audio_state.loop_mode (same contract
+  /// rule as play/pause).
+  void setLoopMode(String mode) {
+    if (!_ref.read(connectionProvider).isConnected) return;
+    print('AudioControl: loop mode → $mode');
+    _ref.read(websocketClientProvider).sendAudioLoop(mode);
+  }
+
   /// Toggle play/pause (debounced)
   void toggle() {
     if (!_ref.read(connectionProvider).isConnected) return;

@@ -78,6 +78,11 @@ class GuardianEventsNotifier extends StateNotifier<GuardianEventsState> {
       NotificationEventType.treatDispensed => GuardianEventType.treatDispensed,
       NotificationEventType.coachReward => GuardianEventType.quietReward,
       NotificationEventType.alert => GuardianEventType.alertTriggered,
+      // Robot 137a5e8: panic episodes + level-4/session summaries belong in
+      // the SG feed (the live summary card shows current state; these are
+      // the historical entries).
+      NotificationEventType.panicAlert => GuardianEventType.alertTriggered,
+      NotificationEventType.sgSummary => GuardianEventType.alertTriggered,
       _ => null,
     };
     if (type == null) return null;
