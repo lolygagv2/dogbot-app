@@ -68,6 +68,10 @@ class ApiEndpoints {
   // Music upload (Build 38: HTTP multipart instead of WebSocket)
   static const String musicUpload = '/api/music/upload';
 
+  // OTA robot software updates (contract 2026-08-07; relay slice may not be
+  // deployed yet — callers must treat 404 as "no releases available")
+  static const String releasesLatest = '/api/releases/latest';
+
   // A2: Voice commands (relay-mediated; replaces direct WS upload_voice)
   static const String voiceCommands = '/api/voice-commands';
   static String voiceCommandDelete(String dogId, String commandId) =>

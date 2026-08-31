@@ -37,6 +37,8 @@ mixin _$Telemetry {
   String? get activeMissionId => throw _privateConstructorUsedError;
   String? get connectionType =>
       throw _privateConstructorUsedError; // "LAN" (P2P), "WAN" (TURN relay), or null
+  String? get swVersion =>
+      throw _privateConstructorUsedError; // OTA contract: robot's running release version; null until robot slice ships
   int? get volume =>
       throw _privateConstructorUsedError; // System audio volume 0-100; null if unavailable this cycle
   Map<String, dynamic> get rawData => throw _privateConstructorUsedError;
@@ -70,6 +72,7 @@ abstract class $TelemetryCopyWith<$Res> {
       DateTime? lastTreatTime,
       String? activeMissionId,
       String? connectionType,
+      String? swVersion,
       int? volume,
       Map<String, dynamic> rawData});
 }
@@ -102,6 +105,7 @@ class _$TelemetryCopyWithImpl<$Res, $Val extends Telemetry>
     Object? lastTreatTime = freezed,
     Object? activeMissionId = freezed,
     Object? connectionType = freezed,
+    Object? swVersion = freezed,
     Object? volume = freezed,
     Object? rawData = null,
   }) {
@@ -158,6 +162,10 @@ class _$TelemetryCopyWithImpl<$Res, $Val extends Telemetry>
           ? _value.connectionType
           : connectionType // ignore: cast_nullable_to_non_nullable
               as String?,
+      swVersion: freezed == swVersion
+          ? _value.swVersion
+          : swVersion // ignore: cast_nullable_to_non_nullable
+              as String?,
       volume: freezed == volume
           ? _value.volume
           : volume // ignore: cast_nullable_to_non_nullable
@@ -192,6 +200,7 @@ abstract class _$$TelemetryImplCopyWith<$Res>
       DateTime? lastTreatTime,
       String? activeMissionId,
       String? connectionType,
+      String? swVersion,
       int? volume,
       Map<String, dynamic> rawData});
 }
@@ -222,6 +231,7 @@ class __$$TelemetryImplCopyWithImpl<$Res>
     Object? lastTreatTime = freezed,
     Object? activeMissionId = freezed,
     Object? connectionType = freezed,
+    Object? swVersion = freezed,
     Object? volume = freezed,
     Object? rawData = null,
   }) {
@@ -278,6 +288,10 @@ class __$$TelemetryImplCopyWithImpl<$Res>
           ? _value.connectionType
           : connectionType // ignore: cast_nullable_to_non_nullable
               as String?,
+      swVersion: freezed == swVersion
+          ? _value.swVersion
+          : swVersion // ignore: cast_nullable_to_non_nullable
+              as String?,
       volume: freezed == volume
           ? _value.volume
           : volume // ignore: cast_nullable_to_non_nullable
@@ -307,6 +321,7 @@ class _$TelemetryImpl implements _Telemetry {
       this.lastTreatTime,
       this.activeMissionId,
       this.connectionType,
+      this.swVersion,
       this.volume,
       final Map<String, dynamic> rawData = const {}})
       : _rawData = rawData;
@@ -353,6 +368,9 @@ class _$TelemetryImpl implements _Telemetry {
   final String? connectionType;
 // "LAN" (P2P), "WAN" (TURN relay), or null
   @override
+  final String? swVersion;
+// OTA contract: robot's running release version; null until robot slice ships
+  @override
   final int? volume;
 // System audio volume 0-100; null if unavailable this cycle
   final Map<String, dynamic> _rawData;
@@ -367,7 +385,7 @@ class _$TelemetryImpl implements _Telemetry {
 
   @override
   String toString() {
-    return 'Telemetry(battery: $battery, temperature: $temperature, mode: $mode, dogDetected: $dogDetected, currentBehavior: $currentBehavior, confidence: $confidence, isCharging: $isCharging, treatsRemaining: $treatsRemaining, treatsGiven: $treatsGiven, treatCapacity: $treatCapacity, lastTreatTime: $lastTreatTime, activeMissionId: $activeMissionId, connectionType: $connectionType, volume: $volume, rawData: $rawData)';
+    return 'Telemetry(battery: $battery, temperature: $temperature, mode: $mode, dogDetected: $dogDetected, currentBehavior: $currentBehavior, confidence: $confidence, isCharging: $isCharging, treatsRemaining: $treatsRemaining, treatsGiven: $treatsGiven, treatCapacity: $treatCapacity, lastTreatTime: $lastTreatTime, activeMissionId: $activeMissionId, connectionType: $connectionType, swVersion: $swVersion, volume: $volume, rawData: $rawData)';
   }
 
   @override
@@ -399,6 +417,8 @@ class _$TelemetryImpl implements _Telemetry {
                 other.activeMissionId == activeMissionId) &&
             (identical(other.connectionType, connectionType) ||
                 other.connectionType == connectionType) &&
+            (identical(other.swVersion, swVersion) ||
+                other.swVersion == swVersion) &&
             (identical(other.volume, volume) || other.volume == volume) &&
             const DeepCollectionEquality().equals(other._rawData, _rawData));
   }
@@ -420,6 +440,7 @@ class _$TelemetryImpl implements _Telemetry {
       lastTreatTime,
       activeMissionId,
       connectionType,
+      swVersion,
       volume,
       const DeepCollectionEquality().hash(_rawData));
 
@@ -454,6 +475,7 @@ abstract class _Telemetry implements Telemetry {
       final DateTime? lastTreatTime,
       final String? activeMissionId,
       final String? connectionType,
+      final String? swVersion,
       final int? volume,
       final Map<String, dynamic> rawData}) = _$TelemetryImpl;
 
@@ -486,6 +508,9 @@ abstract class _Telemetry implements Telemetry {
   String? get activeMissionId;
   @override
   String? get connectionType; // "LAN" (P2P), "WAN" (TURN relay), or null
+  @override
+  String?
+      get swVersion; // OTA contract: robot's running release version; null until robot slice ships
   @override
   int? get volume; // System audio volume 0-100; null if unavailable this cycle
   @override

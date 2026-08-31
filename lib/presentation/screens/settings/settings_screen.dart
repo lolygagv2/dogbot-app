@@ -7,6 +7,7 @@ import '../../../domain/providers/auth_provider.dart';
 import '../../../domain/providers/connection_mode_provider.dart';
 import '../../../domain/providers/connection_provider.dart';
 import '../../../domain/providers/device_provider.dart';
+import '../../../domain/providers/ota_update_provider.dart';
 import '../../../domain/providers/paired_devices_provider.dart';
 import '../../../domain/providers/settings_provider.dart';
 import '../../../domain/providers/push_to_talk_provider.dart';
@@ -141,6 +142,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             title: const Text('Current Mode'),
             trailing: Text(telemetry.mode.toUpperCase()),
           ),
+          const _RobotSoftwareTile(),
           const Divider(),
 
           _SectionHeader('Calibration'),
@@ -374,6 +376,124 @@ class _ManageDevicesTile extends ConsumerWidget {
       ),
       trailing: const Icon(Icons.chevron_right),
       onTap: () => context.push('/device-pairing'),
+    );
+  }
+}
+
+/// OTA contract 2026-08-07, app slice: robot's running software version vs
+/// the relay's latest release, UPDATE button when newer, live progress from
+/// update_status events. Degrades gracefully while the other slices are
+/// unshipped: no sw_version in telemetry → "not reported"; relay 404 → no
+/// update offered.
+class _RobotSoftwareTile extends ConsumerWidget {
+  const _RobotSoftwareTile();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final running = ref.watch(telemetryProvider).swVersion;
+    final latestAsync = ref.watch(latestReleaseProvider);
+    final ota = ref.watch(otaUpdateProvider);
+
+    final latest = latestAsync.valueOrNull;
+    final latestVersion = latest?['version'] as String?;
+    // v1 comparison per contract: any different, non-null relay version
+    // counts as "update available" (versions are date-tags, not semver).
+    final updateAvailable = latestVersion != null &&
+        running != null &&
+        latestVersion != running &&
+        !ota.inProgress;
+
+    final String subtitle;
+    Color? subtitleColor;
+    if (ota.inProgress) {
+      final pct = ota.progressPct != null ? ' ${ota.progressPct}%' : '';
+      subtitle = 'Updating to ${ota.version ?? '?'}: ${ota.state}$pct';
+      subtitleColor = AppTheme.accent;
+    } else if (ota.isTerminal) {
+      switch (ota.state) {
+        case 'success':
+          subtitle = 'Updated to ${ota.version ?? '?'} ✓';
+          subtitleColor = Colors.green;
+          break;
+        case 'rolled_back':
+          subtitle =
+              'Update failed — rolled back safely${ota.error != null ? ' (${ota.error})' : ''}';
+          subtitleColor = AppTheme.warning;
+          break;
+        default: // failed
+          subtitle = 'Update failed${ota.error != null ? ': ${ota.error}' : ''}';
+          subtitleColor = AppTheme.error;
+      }
+    } else if (running == null) {
+      subtitle = 'Version not reported — robot updater not installed yet';
+    } else if (latestVersion == null) {
+      subtitle = 'Up to date — no newer release on server';
+    } else if (updateAvailable) {
+      subtitle = 'Update available: $latestVersion';
+      subtitleColor = AppTheme.accent;
+    } else {
+      subtitle = 'Up to date';
+    }
+
+    return ListTile(
+      leading: Icon(
+        Icons.system_update_alt,
+        color: updateAvailable ? AppTheme.accent : null,
+      ),
+      title: const Text('Robot Software'),
+      subtitle: Text(
+        subtitle,
+        style: TextStyle(color: subtitleColor ?? AppTheme.textTertiary, fontSize: 12),
+      ),
+      trailing: ota.inProgress
+          ? const SizedBox(
+              width: 20,
+              height: 20,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            )
+          : ota.isTerminal
+              ? TextButton(
+                  onPressed: () => ref.read(otaUpdateProvider.notifier).dismiss(),
+                  child: const Text('OK'),
+                )
+              : updateAvailable
+                  ? ElevatedButton(
+                      onPressed: () => _confirmUpdate(context, ref, latestVersion),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppTheme.accent,
+                        foregroundColor: AppTheme.background,
+                      ),
+                      child: const Text('UPDATE'),
+                    )
+                  : Text(running ?? '—'),
+      onTap: () => ref.invalidate(latestReleaseProvider), // tap to re-check
+    );
+  }
+
+  void _confirmUpdate(BuildContext context, WidgetRef ref, String version) {
+    final running = ref.read(telemetryProvider).swVersion ?? 'unknown';
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Update Robot Software'),
+        content: Text(
+            'Update robot from $running to $version?\n\nThe robot must be '
+            'idle with battery above 30%. It will restart during the update '
+            'and roll back automatically if anything goes wrong.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.of(ctx).pop();
+              ref.read(otaUpdateProvider.notifier).startUpdate(version);
+            },
+            child: const Text('Update'),
+          ),
+        ],
+      ),
     );
   }
 }

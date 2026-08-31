@@ -599,4 +599,32 @@ class RobotApi {
       return 'Upload error: $e';
     }
   }
+
+  /// OTA contract 2026-08-07: latest release manifest from the relay —
+  /// {version, sha256, size_bytes, url, notes, created_at,
+  /// min_updater_version}. Returns null when no release exists OR the relay
+  /// slice isn't deployed yet (404) — callers show "no releases available".
+  Future<Map<String, dynamic>?> getLatestRelease(String token) async {
+    try {
+      final response = await _dio.get(
+        ApiEndpoints.releasesLatest,
+        options: Options(headers: {'Authorization': 'Bearer $token'}),
+      );
+      final data = response.data;
+      if (data is Map<String, dynamic> && data['version'] != null) {
+        return data;
+      }
+      return null;
+    } on DioException catch (e) {
+      // 404 = relay slice not deployed / no releases uploaded — expected
+      // while OTA rolls out, not an error worth surfacing.
+      if (e.response?.statusCode != 404) {
+        print('[OTA] getLatestRelease failed: ${e.response?.statusCode} ${e.message}');
+      }
+      return null;
+    } catch (e) {
+      print('[OTA] getLatestRelease error: $e');
+      return null;
+    }
+  }
 }

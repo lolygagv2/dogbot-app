@@ -117,6 +117,8 @@ class TelemetryNotifier extends StateNotifier<Telemetry> {
               : state.treatCapacity,
           activeMissionId: parsed.activeMissionId,
           connectionType: parsed.connectionType ?? state.connectionType,
+          // OTA: robot's running release version — preserve if absent.
+          swVersion: parsed.swVersion ?? state.swVersion,
           // Robot's VolumeManager value — preserve if absent from this event.
           volume: parsed.volume ?? state.volume,
           rawData: parsed.rawData,

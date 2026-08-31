@@ -500,12 +500,18 @@ class WebSocketClient {
       // treat_counter_ack (robot 8e8c91c): direct reply to treat_counter_set/
       // reset. Transient live state, never replayed — same carve-out logic as
       // audio_state. [[transient-event-watermark-gate]]
+      //
+      // update_status (OTA contract 2026-08-07): the contract EXPLICITLY
+      // mandates this carve-out — progress frames are transient live state,
+      // never replayed; letting them touch the watermark reproduces the
+      // "renders on one robot only" bug.
       final isTransientMsg = isControllerMsg ||
           msgType == 'audio_state' ||
           msgType == 'coaching_started' ||
           msgType == 'coach_progress' ||
           msgType == 'local_mode_starting' ||
-          msgType == 'treat_counter_ack';
+          msgType == 'treat_counter_ack' ||
+          msgType == 'update_status';
       if (isControllerMsg) {
         // Build 129: prove on-device that controller_* reaches the socket and
         // survives the watermark gate (the pre-129 drop point). Read via
@@ -675,6 +681,8 @@ class WebSocketClient {
         case 'treats_loaded':
         case 'treats_empty':
         case 'treat_counter_ack':
+        // OTA update progress (contract 2026-08-07) — target-device filtered
+        case 'update_status':
         case 'reward':
           if (!_isFromTargetDevice(json)) break;
           final statusEvent = WsEvent.fromJson(json);
@@ -1096,6 +1104,13 @@ class WebSocketClient {
       if (dogId != null) 'dog_id': dogId,
       if (dogName != null) 'dog_name': dogName,
     });
+  }
+
+  /// OTA contract 2026-08-07: ask the robot to update itself to [version].
+  /// Robot streams `update_status` events back; it refuses (with reason)
+  /// unless idle, battery >= 30%, and no active WebRTC session.
+  void sendStartUpdate(String version) {
+    sendCommand('start_update', {'version': version});
   }
 
   /// Rotate treat carousel

@@ -30,6 +30,7 @@ class Telemetry with _$Telemetry {
     DateTime? lastTreatTime,
     String? activeMissionId,
     String? connectionType, // "LAN" (P2P), "WAN" (TURN relay), or null
+    String? swVersion, // OTA contract: robot's running release version; null until robot slice ships
     int? volume, // System audio volume 0-100; null if unavailable this cycle
     @Default({}) Map<String, dynamic> rawData,
   }) = _Telemetry;
@@ -84,6 +85,7 @@ class Telemetry with _$Telemetry {
       activeMissionId: json['active_mission_id'] as String? ??
           json['activeMission'] as String?,
       connectionType: json['connection_type'] as String?,
+      swVersion: json['sw_version'] as String?,
       volume: (json['volume'] as num?)?.toInt(),
       rawData: json,
     );
