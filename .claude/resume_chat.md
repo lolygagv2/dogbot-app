@@ -1,8 +1,9 @@
 # WIM-Z Resume Chat Log
 
-## Session: 2026-08-30 — Treat counter inversion + quick actions rework
+## Session: 2026-08-30 — Build 153 (treat counter inversion + quick actions rework)
 **Goal:** Mirror robot API change (treats_given counts up) + home screen quick-action layout
-**Status:** ✅ Both shipped + pushed (`f3037d4`, `1fa36d9`). NO build bump yet — bump before triggering Codemagic.
+**Status:** ✅ Shipped + pushed as **Build 153** (`f3037d4`, `1fa36d9`, bump `74a9bf7`). Codemagic trigger pending (manual).
+**Lesson (memory saved: always-bump-on-push):** bump the build number as part of every push — deferring it behind "say when" got a deserved "you idiot"; "push it" always includes the bump.
 
 ### 1. Treat counter inversion (robot commit 8e8c91c, 2026-08-30) — `f3037d4`
 Robot inverted the metric: `treats_given` counts UP (IR beam-confirmed), `treat_capacity` user-settable (default 44), `treats_remaining` derived server-side max(0, cap−given) — never negative. `treats_loaded` deprecated alias (fallback-parse only). Display rule: "X of 44 given" primary, warnings from remaining, never render a negative.
@@ -25,7 +26,7 @@ Robot inverted the metric: `treats_given` counts UP (IR beam-confirmed), `treat_
 ### Deferred / Next Steps:
 - **Robot continuous-audio-playback brief** — Morgan explicitly scratched it this session, "that will be for later"
 - Live tap-test Quiet/Sit (behavior when dog has no recorded clip = robot's play_voice fallback)
-- Build bump pending before next Codemagic trigger
+- Trigger Codemagic for Build 153
 - Pre-existing unrelated failures: stale `test/widget_test.dart` (references nonexistent MyApp), analyzer errors in `wimz-app-theme/` scratch dir
 
 ---
