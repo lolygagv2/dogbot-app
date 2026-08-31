@@ -1,5 +1,35 @@
 # WIM-Z Resume Chat Log
 
+## Session: 2026-08-30 — Treat counter inversion + quick actions rework
+**Goal:** Mirror robot API change (treats_given counts up) + home screen quick-action layout
+**Status:** ✅ Both shipped + pushed (`f3037d4`, `1fa36d9`). NO build bump yet — bump before triggering Codemagic.
+
+### 1. Treat counter inversion (robot commit 8e8c91c, 2026-08-30) — `f3037d4`
+Robot inverted the metric: `treats_given` counts UP (IR beam-confirmed), `treat_capacity` user-settable (default 44), `treats_remaining` derived server-side max(0, cap−given) — never negative. `treats_loaded` deprecated alias (fallback-parse only). Display rule: "X of 44 given" primary, warnings from remaining, never render a negative.
+
+**App changes:**
+- `telemetry.dart`: +`treatsGiven`/`treatCapacity` (kTreatCountUnknown sentinel), +`kDefaultTreatCapacity=44`
+- `telemetry_provider.dart`: `_applyTreatCounterFields()` helper; handles new WS events `treats_low`/`treats_loaded`/`treats_empty`/`treat_counter_ack` (ack applied immediately — carries REAL values, never assume 0 from reset); `treatsRemainingProvider` clamps old-firmware negatives to 0 + derives from given/capacity; new `treatsGivenProvider`, `treatCapacityProvider`
+- `websocket_client.dart`: new treat types in explicit case list (target-device filter); **`treat_counter_ack` added to transient watermark carve-out** (B127/B140 lesson); `sendTreatCounterSet(count, {capacity})`
+- `control_provider.dart`: `resetCount()` now sends `treat_counter_reset` (zeroes given, keeps capacity) — NOT the old "set 44" hack; `setCount(count, {capacity})`
+- UI: chip `X/44 given`, sheet "Refilled — Reset Counter" + loaded/capacity set fields, settings tile "X of 44 given"; negative "Reset count" prompt deleted
+- notifications: `treats_empty` latched alert (robot fires once — no dedup needed/none existed), `treats_low` event type handled
+- Tests updated in `test/data/models/server_time_and_treats_test.dart` (6 pass)
+
+### 2. Quick actions two-row layout + Quiet/Sit — `1fa36d9`
+- Row 1: **Talk · Treat │ Good · Call Dog** — Talk+Treat grouped left of divider as ACTIONS (not canned sounds), per Morgan's request
+- Row 2: **Want? · No · Quiet · Sit**
+- Buttons shrunk: icon 28→22, padding 16→12, labels 10pt
+- Quiet/Sit send `play_voice` with existing `VoiceCommandType` ids `'quiet'`/`'sit'`, same dog-guard + 500ms debounce
+
+### Deferred / Next Steps:
+- **Robot continuous-audio-playback brief** — Morgan explicitly scratched it this session, "that will be for later"
+- Live tap-test Quiet/Sit (behavior when dog has no recorded clip = robot's play_voice fallback)
+- Build bump pending before next Codemagic trigger
+- Pre-existing unrelated failures: stale `test/widget_test.dart` (references nonexistent MyApp), analyzer errors in `wimz-app-theme/` scratch dir
+
+---
+
 ## Session: 2026-07-27 — Build 147 (robot brief §5a/§5b + relay-deploy follow-ups)
 **Goal:** Implement Robot Claude's 2026-07-27 brief updates (app-global WebRTC session for local mode, one-shot force_trick), then the relay-deploy follow-ups (user_id claim, dog_id history fallback).
 **Status:** ✅ All shipped + pushed through `e8995ad` (1.0.0+**147**). Codemagic 147 trigger + AP regression test (§6 checklist) pending.
