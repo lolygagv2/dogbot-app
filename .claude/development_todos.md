@@ -14,9 +14,15 @@
 ### OTA robot software updates — app-triggered, safe rollback (added 2026-08-07, DESIGN phase)
 - [x] Contract draft written: `.claude/OTA_UPDATE_CONTRACT_2026-08-07.md` — app/relay/robot slices, bootstrap plan, acceptance tests
 - [x] **App slice SHIPPED Build 154 (2026-08-30):** Settings "Robot Software" card (version vs latest, UPDATE + confirm dialog, update_status progress, terminal states), sw_version telemetry parse, getLatestRelease (404-tolerant), update_status WS routing + transient watermark carve-out, start_update command — inert until relay/robot ship
-- [ ] Morgan carries `.claude/ROBOT_OTA_INSTRUCTIONS_2026-08-30.md` to robot repo; Robot Claude answers §4 (data layout + service name) and confirms event shape
-- [ ] Relay slice: release upload/manifest/download endpoints + update_status transient (non-buffered) forwarding (can ship during robot freeze)
-- [ ] Robot slice AFTER FREEZE: wimz-updater service + start_update handler + sw_version in telemetry (sw_version may ship earlier if freeze allows); one bootstrap pi-deploy per unit (tb1–tb5)
+- [x] **Robot slice IMPLEMENTED (robot c28ed1f, 2026-08-31):** event shape confirmed as-is; data layout `/home/morgan/wimz/releases/<v>` + `wimz/shared/`; service treatbot.service; sw_version ships pre-freeze (tb5 = 2026.08.1); terminal events up to ~90s after restarting (encoded app-side B155). Bootstrapping tb5 now, then tb1–tb4
+- [ ] Relay slice: release upload/manifest/download endpoints + update_status transient (non-buffered) forwarding — LAST missing piece for end-to-end
+- [ ] Morgan: pull+restart fleet units so they report sw_version; upload first release artifact once relay slice lands
+
+### SG bark analytics + Panic + Loop (robot 137a5e8, 2026-08-31) — app slice SHIPPED B155
+- [x] App slice B155: sg_summary card + level4 notification, panic_alert notifications, guardian-stopped wrap-up entry, Loop button, sg_status_pull/audio_loop commands, watermark carve-out for status_pull replies (brief: `.claude/ROBOT_BRIEF_SG_PANIC_LOOP_2026-08-31.md`)
+- [ ] **Relay owes:** panic_alert + sg_summary in FCM push event-type mapping (else no lock-screen panic pushes); confirm sg_summary status_pull replies aren't feed-buffered
+- [ ] Live test: SG summary pull, panic push end-to-end, Loop button echo; verify sg_status_pull/audio_loop work over /ws/local (REST fallback GET /sg/summary + POST /audio/loop not wired app-side)
+- [ ] Future: chart bark_timeline + trend_detail (received, stored, not rendered)
 
 ### Real push notifications (FCM/APNs) — ✅ DONE (confirmed live 2026-08-30)
 - [x] **App slice SHIPPED 2026-07-30:** firebase_core/messaging deps, PushService, pushSyncProvider (register on login, re-sync on prefs/token change, unregister on logout), /api/push endpoints in RobotApi, iOS aps-environment entitlement; activated with real firebase_options.dart (`wimzpushy`)
