@@ -51,6 +51,8 @@ class _QuickActionsState extends ConsumerState<QuickActions> {
   DateTime? _lastCallDog;
   DateTime? _lastWantTreat;
   DateTime? _lastNo;
+  DateTime? _lastQuiet;
+  DateTime? _lastSit;
 
   bool _canExecuteVoice(DateTime? lastTime) {
     if (lastTime == null) return true;
@@ -220,67 +222,121 @@ class _QuickActionsState extends ConsumerState<QuickActions> {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        // Main action row: PTT / Good / Call Dog / Give Treat / Want Treat / No
+        // Quick actions, two rows. Row 1 groups the ACTIONS (Talk = live
+        // audio, Treat = dispense) left of a divider — they're not canned
+        // sounds. Everything right of the divider + all of row 2 are the
+        // pre-recorded voice commands.
         Row(
-          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
           children: [
             // PTT mic button (hold to talk)
-            _PttActionButton(state: pttState),
+            Expanded(child: _PttActionButton(state: pttState)),
 
-            _ActionButton(
-              icon: Icons.thumb_up,
-              label: 'Good',
-              color: Colors.green,
-              onPressed: () {
-                if (selectedDog == null) { _showNoDogError(context); return; }
-                if (!_canExecuteVoice(_lastGood)) return;
-                _lastGood = DateTime.now();
-                ws.sendPlayVoice('good', dogId: selectedDog.id);
-              },
+            Expanded(
+              child: _ActionButton(
+                icon: Icons.pets,
+                label: 'Treat',
+                color: AppTheme.accent,
+                onPressed: () => treatControl.dispense(),
+              ),
             ),
 
-            _ActionButton(
-              icon: Icons.campaign,
-              label: 'Call Dog',
-              color: Colors.deepOrange,
-              onPressed: () {
-                if (selectedDog == null) { _showNoDogError(context); return; }
-                if (!_canExecuteVoice(_lastCallDog)) return;
-                _lastCallDog = DateTime.now();
-                ws.sendCallDog(dogId: selectedDog.id, dogName: selectedDog.name);
-              },
+            // Divider: actions | voice sounds
+            Container(
+              width: 1,
+              height: 44,
+              color: AppTheme.textTertiary.withOpacity(0.3),
             ),
 
-            _ActionButton(
-              icon: Icons.pets,
-              label: 'Treat',
-              color: AppTheme.accent,
-              onPressed: () => treatControl.dispense(),
+            Expanded(
+              child: _ActionButton(
+                icon: Icons.thumb_up,
+                label: 'Good',
+                color: Colors.green,
+                onPressed: () {
+                  if (selectedDog == null) { _showNoDogError(context); return; }
+                  if (!_canExecuteVoice(_lastGood)) return;
+                  _lastGood = DateTime.now();
+                  ws.sendPlayVoice('good', dogId: selectedDog.id);
+                },
+              ),
             ),
 
-            _ActionButton(
-              icon: Icons.restaurant,
-              label: 'Want?',
-              color: Colors.amber,
-              onPressed: () {
-                if (selectedDog == null) { _showNoDogError(context); return; }
-                if (!_canExecuteVoice(_lastWantTreat)) return;
-                _lastWantTreat = DateTime.now();
-                ws.sendPlayVoice('treat', dogId: selectedDog.id);
-              },
+            Expanded(
+              child: _ActionButton(
+                icon: Icons.campaign,
+                label: 'Call Dog',
+                color: Colors.deepOrange,
+                onPressed: () {
+                  if (selectedDog == null) { _showNoDogError(context); return; }
+                  if (!_canExecuteVoice(_lastCallDog)) return;
+                  _lastCallDog = DateTime.now();
+                  ws.sendCallDog(dogId: selectedDog.id, dogName: selectedDog.name);
+                },
+              ),
+            ),
+          ],
+        ),
+
+        const SizedBox(height: 8),
+
+        // Voice command row 2: Want? / No / Quiet / Sit
+        Row(
+          children: [
+            Expanded(
+              child: _ActionButton(
+                icon: Icons.restaurant,
+                label: 'Want?',
+                color: Colors.amber,
+                onPressed: () {
+                  if (selectedDog == null) { _showNoDogError(context); return; }
+                  if (!_canExecuteVoice(_lastWantTreat)) return;
+                  _lastWantTreat = DateTime.now();
+                  ws.sendPlayVoice('treat', dogId: selectedDog.id);
+                },
+              ),
             ),
 
-            _ActionButton(
-              icon: Icons.block,
-              label: 'No',
-              color: Colors.red,
-              onPressed: () {
-                if (selectedDog == null) { _showNoDogError(context); return; }
-                if (!_canExecuteVoice(_lastNo)) return;
-                _lastNo = DateTime.now();
-                ledControl.setPattern(LedPatterns.warning);
-                ws.sendPlayVoice('no', dogId: selectedDog.id);
-              },
+            Expanded(
+              child: _ActionButton(
+                icon: Icons.block,
+                label: 'No',
+                color: Colors.red,
+                onPressed: () {
+                  if (selectedDog == null) { _showNoDogError(context); return; }
+                  if (!_canExecuteVoice(_lastNo)) return;
+                  _lastNo = DateTime.now();
+                  ledControl.setPattern(LedPatterns.warning);
+                  ws.sendPlayVoice('no', dogId: selectedDog.id);
+                },
+              ),
+            ),
+
+            Expanded(
+              child: _ActionButton(
+                icon: Icons.volume_off,
+                label: 'Quiet',
+                color: Colors.purpleAccent,
+                onPressed: () {
+                  if (selectedDog == null) { _showNoDogError(context); return; }
+                  if (!_canExecuteVoice(_lastQuiet)) return;
+                  _lastQuiet = DateTime.now();
+                  ws.sendPlayVoice('quiet', dogId: selectedDog.id);
+                },
+              ),
+            ),
+
+            Expanded(
+              child: _ActionButton(
+                icon: Icons.airline_seat_recline_normal,
+                label: 'Sit',
+                color: Colors.lightBlue,
+                onPressed: () {
+                  if (selectedDog == null) { _showNoDogError(context); return; }
+                  if (!_canExecuteVoice(_lastSit)) return;
+                  _lastSit = DateTime.now();
+                  ws.sendPlayVoice('sit', dogId: selectedDog.id);
+                },
+              ),
             ),
           ],
         ),
@@ -668,22 +724,22 @@ class _PttActionButton extends ConsumerWidget {
                 : (isBusy ? Colors.grey.withOpacity(0.1) : Colors.cyan.withOpacity(0.1)),
             shape: const CircleBorder(),
             child: Padding(
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.all(12),
               child: isRecording
-                  ? Text('$remainingSec', style: const TextStyle(color: Colors.red, fontSize: 20, fontWeight: FontWeight.bold))
+                  ? Text('$remainingSec', style: const TextStyle(color: Colors.red, fontSize: 16, fontWeight: FontWeight.bold))
                   : Icon(
                       isSending ? Icons.upload : Icons.mic_none,
                       color: isSending ? Colors.grey : Colors.cyan,
-                      size: 28,
+                      size: 22,
                     ),
             ),
           ),
         ),
-        const SizedBox(height: 4),
+        const SizedBox(height: 3),
         Text(
           isRecording ? 'Recording' : 'Talk',
           style: TextStyle(
-            fontSize: 11,
+            fontSize: 10,
             color: isRecording ? Colors.red : Colors.cyan,
             fontWeight: FontWeight.w500,
           ),
@@ -719,15 +775,15 @@ class _ActionButton extends StatelessWidget {
             onTap: onPressed,
             customBorder: const CircleBorder(),
             child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Icon(icon, color: color, size: 28),
+              padding: const EdgeInsets.all(12),
+              child: Icon(icon, color: color, size: 22),
             ),
           ),
         ),
-        const SizedBox(height: 4),
+        const SizedBox(height: 3),
         Text(
           label,
-          style: TextStyle(fontSize: 11, color: color, fontWeight: FontWeight.w500),
+          style: TextStyle(fontSize: 10, color: color, fontWeight: FontWeight.w500),
         ),
       ],
     );
