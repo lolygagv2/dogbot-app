@@ -18,11 +18,11 @@
 - [ ] App slice: Settings "Robot Software" card, UPDATE button, progress from update_status (can ship during freeze)
 - [ ] Robot slice AFTER FREEZE: wimz-updater service + start_update handler + sw_version in telemetry; one bootstrap pi-deploy per unit (tb1–tb5)
 
-### Real push notifications (FCM/APNs) — app + relay, NO robot changes (added 2026-07-30, IN FLIGHT)
-- [x] **App slice SHIPPED 2026-07-30:** firebase_core/messaging deps, PushService (soft-disabled on placeholder firebase_options.dart), pushSyncProvider (register on login, re-sync on prefs/token change, unregister on logout), /api/push endpoints in RobotApi, iOS aps-environment entitlement wired into pbxproj
-- [ ] **Relay slice:** see `.claude/PUSH_NOTIFICATIONS_CONTRACT_2026-07-30.md` — register/unregister endpoints + FCM v1 sender with event-type mapping
-- [ ] **Morgan setup:** Firebase project (iOS `com.wimzai.app` + Android), APNs .p8 key → Firebase console, service-account JSON → relay, `flutterfire configure` in app repo, enable Push Notifications capability on the App ID (watch Codemagic provisioning/stale-build trap)
-- [ ] End-to-end acceptance test per contract doc (lock-screen bark banner with app force-quit)
+### Real push notifications (FCM/APNs) — ✅ DONE (confirmed live 2026-08-30)
+- [x] **App slice SHIPPED 2026-07-30:** firebase_core/messaging deps, PushService, pushSyncProvider (register on login, re-sync on prefs/token change, unregister on logout), /api/push endpoints in RobotApi, iOS aps-environment entitlement; activated with real firebase_options.dart (`wimzpushy`)
+- [x] **Relay slice:** implemented relay commit 409f381 per `.claude/PUSH_NOTIFICATIONS_CONTRACT_2026-07-30.md` + deployed (see `.claude/APP_BRIEF_FROM_RELAY_2026-07-30_push_slice.md`)
+- [x] **Morgan setup:** Firebase project + `flutterfire configure` + APNs/console steps completed
+- [x] End-to-end: Morgan confirmed 2026-08-30 — lock-screen banners arrive with app closed
 
 ### Reliability / Safety (highest priority)
 - [ ] **Silent hard-freeze RCA** — recurring lockups with no kernel/software trace (corrupt journal). Confirm power-delivery/brownout vs hang. Next step: capture `vcgencmd get_throttled` / PMIC after an event.
