@@ -377,18 +377,23 @@ class TreatControl {
     _ref.read(websocketClientProvider).sendCarouselRotate();
   }
 
-  /// Set treat counter to a specific count
-  void setCount(int count) {
+  /// Set treat counter after a load: [count] = treats loaded (zeroes the
+  /// robot's treats_given), optional [capacity] if the carousel size differs.
+  void setCount(int count, {int? capacity}) {
     if (!_ref.read(connectionProvider).isConnected) return;
-    _ref.read(websocketClientProvider).sendTreatCounterSet(count);
+    _ref
+        .read(websocketClientProvider)
+        .sendTreatCounterSet(count, capacity: capacity);
   }
 
-  /// Reset treat counter to full (44 treats = full carousel)
+  /// Robot's default carousel capacity (one treat per slot).
   static const int fullTreatCount = 44;
 
+  /// Zero treats_given after a refill — capacity is kept robot-side.
+  /// (Robot 8e8c91c: counter counts UP; reset ≠ "set remaining to 44".)
   void resetCount() {
     if (!_ref.read(connectionProvider).isConnected) return;
-    _ref.read(websocketClientProvider).sendTreatCounterSet(fullTreatCount);
+    _ref.read(websocketClientProvider).sendTreatCounterReset();
   }
 
   /// Clear treat carousel jam — rotates carousel motor to dislodge stuck treat

@@ -378,33 +378,53 @@ class _ManageDevicesTile extends ConsumerWidget {
   }
 }
 
-/// Treats remaining display — reads from treatsRemainingProvider (handles null/-1)
+/// Treat counter display — robot 8e8c91c counts UP: "X of 44 given" is the
+/// primary figure; low/empty derives from treats_remaining (never negative).
 class _TreatsRemainingTile extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final count = ref.watch(treatsRemainingProvider);
-    // Negative = refilled without reset \u2192 prompt reset.
-    final needsReset = count != null && count < 0;
-    final display = count == null
-        ? '\u2014'
-        : count < 0
-            ? '$count'
-            : count == 0
-                ? '0 (refill needed)'
-                : '$count';
+    final given = ref.watch(treatsGivenProvider);
+    final capacity = ref.watch(treatCapacityProvider);
+    final remaining = ref.watch(treatsRemainingProvider);
+
+    final String display;
+    if (given != null) {
+      display = '$given of $capacity given';
+    } else if (remaining != null) {
+      // Pre-8e8c91c firmware: only remaining is known.
+      display = remaining == 0 ? '0 (refill needed)' : '$remaining';
+    } else {
+      display = '\u2014';
+    }
+    final isEmpty = remaining == 0;
+    final isLow = remaining != null && remaining < 5;
 
     return ListTile(
-      leading: Icon(Icons.cookie, color: needsReset ? AppTheme.error : null),
-      title: const Text('Treats Remaining'),
-      subtitle: needsReset
-          ? const Text(
-              'Please reset treat count',
-              style: TextStyle(color: AppTheme.error, fontSize: 12),
-            )
-          : null,
+      leading: Icon(Icons.cookie,
+          color: isEmpty
+              ? AppTheme.error
+              : isLow
+                  ? AppTheme.warning
+                  : null),
+      title: const Text('Treats'),
+      subtitle: remaining == null
+          ? null
+          : Text(
+              isEmpty
+                  ? 'Empty \u2014 refill needed'
+                  : '$remaining remaining${isLow ? ' \u2014 running low' : ''}',
+              style: TextStyle(
+                color: isEmpty
+                    ? AppTheme.error
+                    : isLow
+                        ? AppTheme.warning
+                        : AppTheme.textTertiary,
+                fontSize: 12,
+              ),
+            ),
       trailing: Text(
         display,
-        style: needsReset ? const TextStyle(color: AppTheme.error) : null,
+        style: isEmpty ? const TextStyle(color: AppTheme.error) : null,
       ),
     );
   }

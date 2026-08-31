@@ -6,35 +6,40 @@ import '../../../domain/providers/control_provider.dart';
 import '../../../domain/providers/telemetry_provider.dart';
 import '../../theme/app_theme.dart';
 
-/// Treat counter indicator for the AppBar — shows remaining treats with color tiers.
+/// Treat counter indicator for the AppBar.
+/// Robot 8e8c91c (2026-08-30): the counter counts UP — treats_given since
+/// last load/reset, beam-confirmed. Primary figure is "X of 44 given";
+/// low/empty tiers derive from treats_remaining (never negative).
 /// Tap to open management sheet (2-tap reset for expo demos).
 class TreatCounterIndicator extends ConsumerWidget {
   const TreatCounterIndicator({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final count = ref.watch(treatsRemainingProvider); // null = no data yet
+    final given = ref.watch(treatsGivenProvider); // null = no data yet
+    final capacity = ref.watch(treatCapacityProvider);
+    final remaining = ref.watch(treatsRemainingProvider); // null = no data yet
 
-    // Color tiers
+    // Color tiers from remaining; label prefers the given/capacity figure.
     final Color color;
     final String label;
-    if (count == null) {
+    if (given == null && remaining == null) {
       color = AppTheme.textTertiary;
-      label = '\u2014'; // em-dash
-    } else if (count < 0) {
-      // Negative = treats were dispensed past zero, i.e. the hopper was
-      // refilled without pressing reset. Prompt a counter reset.
-      color = AppTheme.error;
-      label = 'Reset count';
-    } else if (count == 0) {
-      color = AppTheme.textTertiary;
-      label = '0 (refill)';
-    } else if (count <= 5) {
-      color = AppTheme.warning;
-      label = '$count left';
+      label = '—'; // em-dash
     } else {
-      color = AppTheme.accent;
-      label = '$count left';
+      if (remaining == 0) {
+        color = AppTheme.error;
+      } else if (remaining != null && remaining < 5) {
+        color = AppTheme.warning;
+      } else {
+        color = AppTheme.accent;
+      }
+      if (given != null) {
+        label = '$given/$capacity given';
+      } else {
+        // Pre-8e8c91c firmware: only remaining is known.
+        label = remaining == 0 ? '0 (refill)' : '$remaining left';
+      }
     }
 
     return GestureDetector(
@@ -47,7 +52,7 @@ class TreatCounterIndicator extends ConsumerWidget {
             children: [
               Icon(Icons.cookie, color: color, size: 20),
               // Warning dot when low but not empty
-              if (count != null && count > 0 && count < 5)
+              if (remaining != null && remaining > 0 && remaining < 5)
                 Positioned(
                   top: -2,
                   right: -2,
@@ -84,8 +89,10 @@ class TreatCounterIndicator extends ConsumerWidget {
   }
 }
 
-/// Bottom sheet for managing treat counter — reset or set custom count.
-/// Commands are fire-and-forget; UI updates when next telemetry cycle confirms.
+/// Bottom sheet for managing the treat counter — refill reset, jam clear, or
+/// set loaded count (with optional capacity when the carousel size differs).
+/// Commands are fire-and-forget; the robot's treat_counter_ack (carrying real
+/// values — a reset does NOT imply zero) updates the UI via telemetry state.
 class _TreatManagementSheet extends ConsumerStatefulWidget {
   const _TreatManagementSheet();
 
@@ -95,26 +102,32 @@ class _TreatManagementSheet extends ConsumerStatefulWidget {
 }
 
 class _TreatManagementSheetState extends ConsumerState<_TreatManagementSheet> {
-  final _controller = TextEditingController();
+  final _countController = TextEditingController();
+  final _capacityController = TextEditingController();
   bool _isClearing = false;
 
   @override
   void dispose() {
-    _controller.dispose();
+    _countController.dispose();
+    _capacityController.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    final count = ref.watch(treatsRemainingProvider);
-    final needsReset = count != null && count < 0;
-    final displayCount = count == null
-        ? '\u2014'
-        : count < 0
-            ? '$count'
-            : count == 0
-                ? '0 (refill needed)'
-                : '$count';
+    final given = ref.watch(treatsGivenProvider);
+    final capacity = ref.watch(treatCapacityProvider);
+    final remaining = ref.watch(treatsRemainingProvider);
+
+    final String headline;
+    if (given != null) {
+      headline = '$given of $capacity given';
+    } else if (remaining != null) {
+      headline = '$remaining remaining';
+    } else {
+      headline = '—';
+    }
+    final bool isEmpty = remaining == 0;
 
     return SafeArea(
       child: Padding(
@@ -138,36 +151,26 @@ class _TreatManagementSheetState extends ConsumerState<_TreatManagementSheet> {
             ),
             const SizedBox(height: 16),
             Text(
-              'Treats Remaining: $displayCount',
+              'Treats: $headline',
               style: const TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
                 color: AppTheme.textPrimary,
               ),
             ),
-            if (needsReset) ...[
-              const SizedBox(height: 8),
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                children: const [
-                  Icon(Icons.warning_amber_rounded,
-                      color: AppTheme.error, size: 18),
-                  SizedBox(width: 6),
-                  Flexible(
-                    child: Text(
-                      'Please reset treat count',
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
-                        color: AppTheme.error,
-                      ),
-                    ),
-                  ),
-                ],
+            if (given != null && remaining != null) ...[
+              const SizedBox(height: 4),
+              Text(
+                isEmpty ? 'Empty — refill needed' : '$remaining remaining',
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: isEmpty ? FontWeight.w600 : FontWeight.w400,
+                  color: isEmpty ? AppTheme.error : AppTheme.textTertiary,
+                ),
               ),
             ],
             const SizedBox(height: 24),
-            // Reset to Full (44 treats)
+            // Refilled → zero the given counter (capacity is kept robot-side)
             SizedBox(
               width: double.infinity,
               height: 48,
@@ -177,9 +180,9 @@ class _TreatManagementSheetState extends ConsumerState<_TreatManagementSheet> {
                   Navigator.pop(context);
                 },
                 icon: const Icon(Icons.refresh),
-                label: Text(
-                  'Reset to Full (${TreatControl.fullTreatCount})',
-                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                label: const Text(
+                  'Refilled — Reset Counter',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                 ),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppTheme.accent,
@@ -232,16 +235,34 @@ class _TreatManagementSheetState extends ConsumerState<_TreatManagementSheet> {
               ),
             ),
             const SizedBox(height: 16),
-            // Set custom count
+            // Partial load: set loaded count + optional capacity override
             Row(
               children: [
                 Expanded(
                   child: TextField(
-                    controller: _controller,
+                    controller: _countController,
                     keyboardType: TextInputType.number,
                     inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                     decoration: InputDecoration(
-                      hintText: 'Custom count',
+                      hintText: 'Loaded',
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 12,
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: TextField(
+                    controller: _capacityController,
+                    keyboardType: TextInputType.number,
+                    inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                    decoration: InputDecoration(
+                      hintText: 'Capacity ($capacity)',
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
                       ),
@@ -255,9 +276,13 @@ class _TreatManagementSheetState extends ConsumerState<_TreatManagementSheet> {
                 const SizedBox(width: 12),
                 ElevatedButton(
                   onPressed: () {
-                    final value = int.tryParse(_controller.text);
+                    final value = int.tryParse(_countController.text);
+                    final newCapacity =
+                        int.tryParse(_capacityController.text);
                     if (value != null && value >= 0) {
-                      ref.read(treatControlProvider).setCount(value);
+                      ref
+                          .read(treatControlProvider)
+                          .setCount(value, capacity: newCapacity);
                       Navigator.pop(context);
                     }
                   },

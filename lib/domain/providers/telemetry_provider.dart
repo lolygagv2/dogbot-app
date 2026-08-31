@@ -105,11 +105,16 @@ class TelemetryNotifier extends StateNotifier<Telemetry> {
           confidence: parsed.confidence,
           // Only update isCharging if we got battery data
           isCharging: parsed.battery > 0 ? parsed.isCharging : state.isCharging,
-          // Only update treatsRemaining if this event actually had the field.
-          // Genuine negatives pass through — the UI prompts a counter reset.
+          // Only update treat counter fields if this event actually had them.
           treatsRemaining: parsed.treatsRemaining != kTreatCountUnknown
               ? parsed.treatsRemaining
               : state.treatsRemaining,
+          treatsGiven: parsed.treatsGiven != kTreatCountUnknown
+              ? parsed.treatsGiven
+              : state.treatsGiven,
+          treatCapacity: parsed.treatCapacity != kTreatCountUnknown
+              ? parsed.treatCapacity
+              : state.treatCapacity,
           activeMissionId: parsed.activeMissionId,
           connectionType: parsed.connectionType ?? state.connectionType,
           // Robot's VolumeManager value — preserve if absent from this event.
@@ -158,6 +163,7 @@ class TelemetryNotifier extends StateNotifier<Telemetry> {
 
       case 'treat':
         // Treat dispensed (legacy format)
+        _applyTreatCounterFields(event.data);
         state = state.copyWith(
           treatsRemaining: event.data['remaining'] as int? ?? state.treatsRemaining,
           lastTreatTime: DateTime.now(),
@@ -165,22 +171,28 @@ class TelemetryNotifier extends StateNotifier<Telemetry> {
         break;
 
       case 'treat_status':
-        // Full treat status update: {treats_loaded, treats_remaining, treats_low}
-        final remaining = event.data['treats_remaining'] as int?;
-        if (remaining != null) {
-          state = state.copyWith(treatsRemaining: remaining);
-        }
+      // Robot 8e8c91c: treats_low / treats_loaded / treats_empty events now
+      // carry treats_given + treat_capacity alongside treats_remaining.
+      // treats_empty is latched robot-side (fires once, cleared by refill/
+      // reset), so no dedup is needed here.
+      case 'treats_low':
+      case 'treats_loaded':
+      case 'treats_empty':
+      // treat_counter_ack: reply to treat_counter_set/reset carrying the
+      // authoritative counter fields — apply immediately instead of waiting
+      // for the next telemetry cycle. NOTE: reset acks report real values;
+      // do not assume zero remaining from a reset.
+      case 'treat_counter_ack':
+        _applyTreatCounterFields(event.data);
         break;
 
       case 'reward':
         // Reward event (e.g. treat_dispensed): {subtype, treats_remaining, treats_low}
         if (event.data['subtype'] == 'treat_dispensed') {
-          final remaining = event.data['treats_remaining'] as int?;
-          if (remaining != null) {
-            state = state.copyWith(
-              treatsRemaining: remaining,
-              lastTreatTime: DateTime.now(),
-            );
+          _applyTreatCounterFields(event.data);
+          if (event.data['treats_remaining'] != null ||
+              event.data['treats_given'] != null) {
+            state = state.copyWith(lastTreatTime: DateTime.now());
           }
         }
         break;
@@ -193,6 +205,7 @@ class TelemetryNotifier extends StateNotifier<Telemetry> {
         final treats = event.data['treats_remaining'] as int?;
         final mode = event.data['mode'] as String?;
         print('BATTERY EVENT RECEIVED: level=$level, charging=$charging, temp=$temp, treats=$treats, mode=$mode');
+        _applyTreatCounterFields(event.data);
         if (level != null) {
           state = state.copyWith(
             battery: level,
@@ -223,6 +236,24 @@ class TelemetryNotifier extends StateNotifier<Telemetry> {
     }
   }
 
+  /// Copy whichever treat counter fields this payload carries into state.
+  /// Robot 8e8c91c contract: treats_given counts up (authoritative),
+  /// treats_remaining is derived server-side, treat_capacity is user-set.
+  /// treats_loaded is a deprecated alias of treats_remaining — accepted as a
+  /// fallback only, for robots still on pre-8e8c91c firmware.
+  void _applyTreatCounterFields(Map<String, dynamic> data) {
+    final given = data['treats_given'] as int?;
+    final capacity = data['treat_capacity'] as int?;
+    final remaining =
+        data['treats_remaining'] as int? ?? data['treats_loaded'] as int?;
+    if (given == null && capacity == null && remaining == null) return;
+    state = state.copyWith(
+      treatsGiven: given ?? state.treatsGiven,
+      treatCapacity: capacity ?? state.treatCapacity,
+      treatsRemaining: remaining ?? state.treatsRemaining,
+    );
+  }
+
   /// Extract telemetry data from any event - robot sends it in various formats
   /// Build 44: Fixed - removed overly aggressive > 0 checks that broke battery display
   void _extractBatteryFromAnyEvent(Map<String, dynamic> data) {
@@ -232,6 +263,7 @@ class TelemetryNotifier extends StateNotifier<Telemetry> {
       final charging = data['charging'] as bool?;
       final temp = (data['temperature'] as num?)?.toDouble();
       final treats = data['treats_remaining'] as int?;
+      _applyTreatCounterFields(data);
       if (level != null) {
         print('BATTERY EXTRACTED (level key): level=$level, charging=$charging, temp=$temp, treats=$treats');
         state = state.copyWith(
@@ -391,11 +423,36 @@ final modeProvider = Provider<String>((ref) {
 });
 
 /// Provider for treats remaining count.
-/// Returns null if robot has never sent the field (show "—" in UI).
-/// Genuine negatives (refill without reset) are passed through so the UI
-/// can prompt "Please reset treat count".
+/// Returns null if robot has never sent (or let us derive) the field —
+/// show "—" in UI. Robot 8e8c91c derives remaining as max(0, capacity -
+/// given) so it can't go negative; pre-8e8c91c firmware could still send a
+/// raw negative, which is clamped here — never render a negative.
 final treatsRemainingProvider = Provider<int?>((ref) {
-  final raw = ref.watch(telemetryProvider).treatsRemaining;
-  if (raw == kTreatCountUnknown) return null; // never received
+  final t = ref.watch(telemetryProvider);
+  var raw = t.treatsRemaining;
+  if (raw == kTreatCountUnknown) {
+    // Derive from given/capacity if remaining itself never arrived.
+    if (t.treatsGiven == kTreatCountUnknown) return null;
+    final capacity = t.treatCapacity != kTreatCountUnknown
+        ? t.treatCapacity
+        : kDefaultTreatCapacity;
+    raw = capacity - t.treatsGiven;
+  }
+  return raw < 0 ? 0 : raw;
+});
+
+/// Treats dispensed since last load/reset (robot 8e8c91c "given" counter).
+/// Null until the robot sends the field — pre-8e8c91c firmware never will,
+/// and the UI falls back to remaining-only display.
+final treatsGivenProvider = Provider<int?>((ref) {
+  final raw = ref.watch(telemetryProvider).treatsGiven;
+  if (raw == kTreatCountUnknown) return null;
+  return raw;
+});
+
+/// Carousel capacity (user-settable on the robot; defaults to 44).
+final treatCapacityProvider = Provider<int>((ref) {
+  final raw = ref.watch(telemetryProvider).treatCapacity;
+  if (raw == kTreatCountUnknown) return kDefaultTreatCapacity;
   return raw;
 });

@@ -497,11 +497,15 @@ class WebSocketClient {
       // 24h window, 2026-07-26): the replay is a deliberate reconnect seed,
       // not feed history, so it must not be watermark-dropped nor advance
       // the watermark.
+      // treat_counter_ack (robot 8e8c91c): direct reply to treat_counter_set/
+      // reset. Transient live state, never replayed — same carve-out logic as
+      // audio_state. [[transient-event-watermark-gate]]
       final isTransientMsg = isControllerMsg ||
           msgType == 'audio_state' ||
           msgType == 'coaching_started' ||
           msgType == 'coach_progress' ||
-          msgType == 'local_mode_starting';
+          msgType == 'local_mode_starting' ||
+          msgType == 'treat_counter_ack';
       if (isControllerMsg) {
         // Build 129: prove on-device that controller_* reaches the socket and
         // survives the watermark gate (the pre-129 drop point). Read via
@@ -664,6 +668,13 @@ class WebSocketClient {
         case 'mode':
         case 'treat':
         case 'treat_status':
+        // Robot 8e8c91c treat-counter events/acks (carry treats_given +
+        // treat_capacity + treats_remaining). Listed explicitly so they get
+        // the target-device filter instead of the unfiltered default case.
+        case 'treats_low':
+        case 'treats_loaded':
+        case 'treats_empty':
+        case 'treat_counter_ack':
         case 'reward':
           if (!_isFromTargetDevice(json)) break;
           final statusEvent = WsEvent.fromJson(json);
@@ -1092,12 +1103,19 @@ class WebSocketClient {
     sendCommand('carousel_rotate');
   }
 
-  /// Set treat counter to a specific count
-  void sendTreatCounterSet(int count) {
-    sendCommand('treat_counter_set', {'count': count});
+  /// Set treat counter after a load: [count] = treats loaded (zeroes
+  /// treats_given robot-side), optional [capacity] when the carousel size
+  /// differs from the amount loaded. Robot replies with treat_counter_ack
+  /// carrying the authoritative counter fields.
+  void sendTreatCounterSet(int count, {int? capacity}) {
+    sendCommand('treat_counter_set', {
+      'count': count,
+      if (capacity != null) 'capacity': capacity,
+    });
   }
 
-  /// Reset treat counter to full
+  /// Zero treats_given, keeping capacity. Robot replies with treat_counter_ack
+  /// carrying REAL values — do not assume zero remaining from a reset.
   void sendTreatCounterReset() {
     sendCommand('treat_counter_reset');
   }

@@ -34,19 +34,37 @@ void main() {
     });
   });
 
-  group('treats_remaining negative handling', () {
-    test('missing field yields the unknown sentinel, not -1', () {
+  group('treat counter parsing (robot 8e8c91c: counts up)', () {
+    test('missing fields yield the unknown sentinel, not -1', () {
       final t = Telemetry.fromApiResponse({'battery': 50});
       expect(t.treatsRemaining, kTreatCountUnknown);
+      expect(t.treatsGiven, kTreatCountUnknown);
+      expect(t.treatCapacity, kTreatCountUnknown);
     });
 
-    test('genuine negative count survives parsing', () {
+    test('treats_given and treat_capacity parse from telemetry', () {
+      final t = Telemetry.fromApiResponse({
+        'treats_given': 7,
+        'treat_capacity': 44,
+        'treats_remaining': 37,
+      });
+      expect(t.treatsGiven, 7);
+      expect(t.treatCapacity, 44);
+      expect(t.treatsRemaining, 37);
+    });
+
+    test('pre-8e8c91c negative remaining survives parsing (provider clamps)',
+        () {
       final t = Telemetry.fromApiResponse({'treats_remaining': -3});
-      expect(t.treatsRemaining, -3);
+      expect(t.treatsRemaining, -3,
+          reason: 'model passes raw value; treatsRemainingProvider clamps to '
+              '0 so the UI never renders a negative');
     });
 
     test('default-constructed telemetry starts unknown', () {
       expect(const Telemetry().treatsRemaining, kTreatCountUnknown);
+      expect(const Telemetry().treatsGiven, kTreatCountUnknown);
+      expect(const Telemetry().treatCapacity, kTreatCountUnknown);
     });
   });
 }

@@ -146,8 +146,12 @@ class NotificationsNotifier extends StateNotifier<List<NotificationEvent>> {
         break;
 
       case 'treat_status':
-        // Only notify when treats are running low
-        final treatsLow = event.data['treats_low'] as bool? ?? false;
+      case 'treats_low':
+        // Only notify when treats are running low. Robot 8e8c91c: treats_low
+        // events carry treats_given/treat_capacity too; remaining is derived
+        // server-side and never negative.
+        final treatsLow = event.type == 'treats_low' ||
+            (event.data['treats_low'] as bool? ?? false);
         if (treatsLow) {
           final remaining = event.data['treats_remaining'] as int? ?? 0;
           notification = NotificationEvent(
@@ -158,6 +162,18 @@ class NotificationsNotifier extends StateNotifier<List<NotificationEvent>> {
             subtitle: '$remaining treats remaining — time to refill!',
           );
         }
+        break;
+
+      case 'treats_empty':
+        // Robot 8e8c91c: fires ONCE on the transition to empty (latched,
+        // cleared by refill/reset) — no dedup needed app-side.
+        notification = NotificationEvent(
+          id: eventId ?? DateTime.now().millisecondsSinceEpoch.toString(),
+          type: NotificationEventType.alert,
+          timestamp: eventTime,
+          title: 'Treats Empty',
+          subtitle: 'Refill the carousel to keep dispensing',
+        );
         break;
 
       case 'mission_start':
@@ -539,7 +555,8 @@ class NotificationsNotifier extends StateNotifier<List<NotificationEvent>> {
       case 'treat_dispensed':
         mapped = NotificationEventType.treatDispensed;
         title = 'Treat Dispensed';
-        final remaining = payload['treats_remaining_after'] as int?;
+        final remaining = payload['treats_remaining_after'] as int? ??
+            payload['treats_remaining'] as int?;
         subtitle = remaining != null ? '$remaining treats remaining' : null;
         break;
       case 'coach_reward':

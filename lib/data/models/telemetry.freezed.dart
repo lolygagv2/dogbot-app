@@ -29,6 +29,10 @@ mixin _$Telemetry {
   bool get isCharging => throw _privateConstructorUsedError;
   int get treatsRemaining =>
       throw _privateConstructorUsedError; // kTreatCountUnknown = not yet received
+  int get treatsGiven =>
+      throw _privateConstructorUsedError; // counts up since last load/reset; read-only from robot
+  int get treatCapacity =>
+      throw _privateConstructorUsedError; // carousel size, user-settable (robot default 44)
   DateTime? get lastTreatTime => throw _privateConstructorUsedError;
   String? get activeMissionId => throw _privateConstructorUsedError;
   String? get connectionType =>
@@ -61,6 +65,8 @@ abstract class $TelemetryCopyWith<$Res> {
       double? confidence,
       bool isCharging,
       int treatsRemaining,
+      int treatsGiven,
+      int treatCapacity,
       DateTime? lastTreatTime,
       String? activeMissionId,
       String? connectionType,
@@ -91,6 +97,8 @@ class _$TelemetryCopyWithImpl<$Res, $Val extends Telemetry>
     Object? confidence = freezed,
     Object? isCharging = null,
     Object? treatsRemaining = null,
+    Object? treatsGiven = null,
+    Object? treatCapacity = null,
     Object? lastTreatTime = freezed,
     Object? activeMissionId = freezed,
     Object? connectionType = freezed,
@@ -129,6 +137,14 @@ class _$TelemetryCopyWithImpl<$Res, $Val extends Telemetry>
       treatsRemaining: null == treatsRemaining
           ? _value.treatsRemaining
           : treatsRemaining // ignore: cast_nullable_to_non_nullable
+              as int,
+      treatsGiven: null == treatsGiven
+          ? _value.treatsGiven
+          : treatsGiven // ignore: cast_nullable_to_non_nullable
+              as int,
+      treatCapacity: null == treatCapacity
+          ? _value.treatCapacity
+          : treatCapacity // ignore: cast_nullable_to_non_nullable
               as int,
       lastTreatTime: freezed == lastTreatTime
           ? _value.lastTreatTime
@@ -171,6 +187,8 @@ abstract class _$$TelemetryImplCopyWith<$Res>
       double? confidence,
       bool isCharging,
       int treatsRemaining,
+      int treatsGiven,
+      int treatCapacity,
       DateTime? lastTreatTime,
       String? activeMissionId,
       String? connectionType,
@@ -199,6 +217,8 @@ class __$$TelemetryImplCopyWithImpl<$Res>
     Object? confidence = freezed,
     Object? isCharging = null,
     Object? treatsRemaining = null,
+    Object? treatsGiven = null,
+    Object? treatCapacity = null,
     Object? lastTreatTime = freezed,
     Object? activeMissionId = freezed,
     Object? connectionType = freezed,
@@ -238,6 +258,14 @@ class __$$TelemetryImplCopyWithImpl<$Res>
           ? _value.treatsRemaining
           : treatsRemaining // ignore: cast_nullable_to_non_nullable
               as int,
+      treatsGiven: null == treatsGiven
+          ? _value.treatsGiven
+          : treatsGiven // ignore: cast_nullable_to_non_nullable
+              as int,
+      treatCapacity: null == treatCapacity
+          ? _value.treatCapacity
+          : treatCapacity // ignore: cast_nullable_to_non_nullable
+              as int,
       lastTreatTime: freezed == lastTreatTime
           ? _value.lastTreatTime
           : lastTreatTime // ignore: cast_nullable_to_non_nullable
@@ -274,6 +302,8 @@ class _$TelemetryImpl implements _Telemetry {
       this.confidence,
       this.isCharging = false,
       this.treatsRemaining = kTreatCountUnknown,
+      this.treatsGiven = kTreatCountUnknown,
+      this.treatCapacity = kTreatCountUnknown,
       this.lastTreatTime,
       this.activeMissionId,
       this.connectionType,
@@ -308,6 +338,14 @@ class _$TelemetryImpl implements _Telemetry {
   final int treatsRemaining;
 // kTreatCountUnknown = not yet received
   @override
+  @JsonKey()
+  final int treatsGiven;
+// counts up since last load/reset; read-only from robot
+  @override
+  @JsonKey()
+  final int treatCapacity;
+// carousel size, user-settable (robot default 44)
+  @override
   final DateTime? lastTreatTime;
   @override
   final String? activeMissionId;
@@ -329,7 +367,7 @@ class _$TelemetryImpl implements _Telemetry {
 
   @override
   String toString() {
-    return 'Telemetry(battery: $battery, temperature: $temperature, mode: $mode, dogDetected: $dogDetected, currentBehavior: $currentBehavior, confidence: $confidence, isCharging: $isCharging, treatsRemaining: $treatsRemaining, lastTreatTime: $lastTreatTime, activeMissionId: $activeMissionId, connectionType: $connectionType, volume: $volume, rawData: $rawData)';
+    return 'Telemetry(battery: $battery, temperature: $temperature, mode: $mode, dogDetected: $dogDetected, currentBehavior: $currentBehavior, confidence: $confidence, isCharging: $isCharging, treatsRemaining: $treatsRemaining, treatsGiven: $treatsGiven, treatCapacity: $treatCapacity, lastTreatTime: $lastTreatTime, activeMissionId: $activeMissionId, connectionType: $connectionType, volume: $volume, rawData: $rawData)';
   }
 
   @override
@@ -351,6 +389,10 @@ class _$TelemetryImpl implements _Telemetry {
                 other.isCharging == isCharging) &&
             (identical(other.treatsRemaining, treatsRemaining) ||
                 other.treatsRemaining == treatsRemaining) &&
+            (identical(other.treatsGiven, treatsGiven) ||
+                other.treatsGiven == treatsGiven) &&
+            (identical(other.treatCapacity, treatCapacity) ||
+                other.treatCapacity == treatCapacity) &&
             (identical(other.lastTreatTime, lastTreatTime) ||
                 other.lastTreatTime == lastTreatTime) &&
             (identical(other.activeMissionId, activeMissionId) ||
@@ -373,6 +415,8 @@ class _$TelemetryImpl implements _Telemetry {
       confidence,
       isCharging,
       treatsRemaining,
+      treatsGiven,
+      treatCapacity,
       lastTreatTime,
       activeMissionId,
       connectionType,
@@ -405,6 +449,8 @@ abstract class _Telemetry implements Telemetry {
       final double? confidence,
       final bool isCharging,
       final int treatsRemaining,
+      final int treatsGiven,
+      final int treatCapacity,
       final DateTime? lastTreatTime,
       final String? activeMissionId,
       final String? connectionType,
@@ -430,6 +476,10 @@ abstract class _Telemetry implements Telemetry {
   bool get isCharging;
   @override
   int get treatsRemaining; // kTreatCountUnknown = not yet received
+  @override
+  int get treatsGiven; // counts up since last load/reset; read-only from robot
+  @override
+  int get treatCapacity; // carousel size, user-settable (robot default 44)
   @override
   DateTime? get lastTreatTime;
   @override

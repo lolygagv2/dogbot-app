@@ -3,11 +3,15 @@ import 'package:freezed_annotation/freezed_annotation.dart';
 part 'telemetry.freezed.dart';
 part 'telemetry.g.dart';
 
-/// Sentinel for "treats_remaining never received". Distinct from small
-/// genuine negatives the robot reports when treats were dispensed past zero
-/// (hopper refilled without pressing reset) — those must reach the UI so it
-/// can prompt "Please reset treat count".
+/// Sentinel for "treat counter field never received". Robot commit 8e8c91c
+/// (2026-08-30) inverted the metric: treats_given counts UP from zero (IR
+/// beam-confirmed), treats_remaining is derived max(0, capacity - given) and
+/// can no longer go negative. Older firmware can still send raw negatives —
+/// treatsRemainingProvider clamps them; never render a negative.
 const int kTreatCountUnknown = -9999;
+
+/// Robot's default carousel capacity (one treat per slot).
+const int kDefaultTreatCapacity = 44;
 
 /// Robot telemetry/status data from /telemetry endpoint
 @freezed
@@ -21,6 +25,8 @@ class Telemetry with _$Telemetry {
     double? confidence,
     @Default(false) bool isCharging,
     @Default(kTreatCountUnknown) int treatsRemaining, // kTreatCountUnknown = not yet received
+    @Default(kTreatCountUnknown) int treatsGiven, // counts up since last load/reset; read-only from robot
+    @Default(kTreatCountUnknown) int treatCapacity, // carousel size, user-settable (robot default 44)
     DateTime? lastTreatTime,
     String? activeMissionId,
     String? connectionType, // "LAN" (P2P), "WAN" (TURN relay), or null
@@ -73,6 +79,8 @@ class Telemetry with _$Telemetry {
       treatsRemaining: json['treats_remaining'] as int? ??
           json['treatsRemaining'] as int? ??
           kTreatCountUnknown, // field missing from this event
+      treatsGiven: json['treats_given'] as int? ?? kTreatCountUnknown,
+      treatCapacity: json['treat_capacity'] as int? ?? kTreatCountUnknown,
       activeMissionId: json['active_mission_id'] as String? ??
           json['activeMission'] as String?,
       connectionType: json['connection_type'] as String?,
