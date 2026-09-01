@@ -19,6 +19,18 @@ class AppTheme {
   static const Color primaryNightDark = Color(0xFF3D6BC4);
 
   // Secondary: Electric Purple (for AI/detection highlights)
+  /// Bark-type (SG reporting group) colors — fixed order, shared by the SG
+  /// summary card and the dog profile's bark breakdown so a type always
+  /// wears the same color everywhere.
+  static const Map<String, Color> barkTypeColors = {
+    'distress': Colors.deepOrange,
+    'demand': Colors.amber,
+    'alarm': Colors.redAccent,
+    'aggressive': Colors.red,
+    'play': Colors.lightGreen,
+    'unclassified': Colors.blueGrey,
+  };
+
   static const Color secondary = Color(0xFFBB86FC);
   static const Color secondaryDark = Color(0xFF9C64FB);
 

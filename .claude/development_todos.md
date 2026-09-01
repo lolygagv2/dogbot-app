@@ -49,6 +49,8 @@
 - [ ] Robot Claude: one-line confirm that the 11-treat cap is a raw constant (not multiplier-derived)
 
 ### Data / ML
+- [x] **Per-dog weekly summary — app slice SHIPPED Build 158 (2026-09-01):** robot 386aef0 live on tb5; dog_weekly_summary_pull → Weekly Summary card on dog profile (auto-pull on open, headline verbatim, bark-type bar, treats/quiets/coaching/guardian). Full-type watermark carve-out. Verify on device; confirm /ws/local handles the command
+- [ ] **BACKFILL REVERSAL (Morgan 2026-09-01): retrofit legacy DBs into wimz.db** — no-backfill rule overturned; app-side requirements in review Addendum 2 (provenance flag, timestamp normalization not copying, legacy→canonical UUID mapping, bark_reward contamination tagging); robot owes design amendment before coding
 - [ ] **Data refactor** — GREEN-LIT by Morgan 2026-09-01; robot already on Phase 2 (spec bump v0.6). App review APPROVED with notes (`.claude/APP_REVIEW_DATA_REFACTOR_2026-09-01.md`) — followed_by as export query (join window must land in spec), ISO8601-with-Z at boundary, canned bark_timeline query deferred. Remaining: Morgan's telemetry-retention call (keep tb2 ≥ freeze-RCA window), Phase 4 archival approval. No backfill (standing).
 - [x] **App slice SHIPPED Build 156 (2026-09-01):** bark rows labeled with `bark_type` ("Distress bark" etc.) in live + history feeds — lenient dig (top-level/data/payload, emotion fallback for pre-8068ef3 robots, unclassified suppressed) in notifications_provider `_barkTypeLabel`
 

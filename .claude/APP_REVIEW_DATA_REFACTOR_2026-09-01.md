@@ -89,5 +89,45 @@ Phase 4 waits for explicit approval per cleanup protocol.
 - Refactor green-lit earlier today; robot completed Phase 2 on-device.
   Phase 4 archival approval still pending (unchanged).
 
+## Addendum 2 — BACKFILL DECISION REVERSED (Morgan, 2026-09-01 evening)
+
+**R5 is overturned: Morgan wants the legacy databases retrofitted —
+backfill legacy rows into wimz.db** so per-dog stats and weekly summaries
+cover real history, not just from-today-forward. App-side requirements
+for the backfill (design amendment to review before coding):
+
+1. **Provenance flag** on every migrated row (`backfilled: true` or a
+   source column) — consumers must be able to separate retrofit data from
+   natively-written rows.
+2. **Normalize timestamps during retrofit, don't copy them** — the audit
+   found local-naive ISO and UTC/local skew in the legacy tables; migrated
+   `ts` must land as true epoch-ms UTC or the weekly buckets will be
+   hours off.
+3. **Map legacy dog identities to the canonical app UUID** — dog_N /
+   aruco_* / the orphan wimz-local UUIDs resolve via the profile
+   name-match (the same heal the app runs on relay rows); unresolvable →
+   dog_id NULL, never a guess.
+4. **bark_reward contamination:** treats dispensed by the removed
+   bark_reward path are indistinguishable from SG rewards in legacy rows
+   unless the dispense log says otherwise — if the source can be
+   identified, tag those rows; if not, note in the spec that pre-removal
+   treat counts are inflated.
+5. The weekly summary's "per-dog barks accrue from today forward" caveat
+   changes once backfill lands — the summary should then say how far back
+   its numbers really go.
+
+## Addendum 3 — dog_weekly_summary consumed (app B158, 2026-09-01)
+
+App slice shipped for robot 386aef0: `dog_weekly_summary_pull` command
+(dog_id + dog_name), `dog_weekly_summary` routed with the FULL-TYPE
+transient watermark carve-out (it is only ever a pull reply — never let
+it touch the watermark), 10s no-response guard for older robots, and a
+Weekly Summary card on the dog profile (headline verbatim, bark-type
+stacked bar with the same colors as the SG card, treats/quiets/coaching/
+guardian rows). unknown_dog renders as "Robot doesn't know this dog yet".
+Local-mode REST fallback (GET /reports/dog/{id}/weekly) not wired v1 —
+the WS command goes over whichever socket is active, same as
+sg_status_pull; confirm it's handled on /ws/local.
+
 *— App Claude, 2026-09-01, reviewed against consumer requirements in
 `APP_REPLY_TO_ROBOT_2026-09-01.md` Part 4.*

@@ -517,6 +517,11 @@ class WebSocketClient {
           msgType == 'local_mode_starting' ||
           msgType == 'treat_counter_ack' ||
           msgType == 'update_status' ||
+          // dog_weekly_summary (robot 386aef0): only ever a live reply to
+          // our dog_weekly_summary_pull command — never replayed, so the
+          // whole type is transient (unlike sg_summary, which has a real
+          // feed variant).
+          msgType == 'dog_weekly_summary' ||
           (msgType == 'sg_summary' && json['action'] == 'status_pull');
       if (isControllerMsg) {
         // Build 129: prove on-device that controller_* reaches the socket and
@@ -693,6 +698,8 @@ class WebSocketClient {
         // push or status_pull response) + panic alerts
         case 'sg_summary':
         case 'panic_alert':
+        // Robot 386aef0 (2026-09-01): per-dog weekly summary pull reply
+        case 'dog_weekly_summary':
         case 'reward':
           if (!_isFromTargetDevice(json)) break;
           final statusEvent = WsEvent.fromJson(json);
@@ -1121,6 +1128,18 @@ class WebSocketClient {
   /// running:false + error when SG isn't running.
   void sendSgStatusPull() {
     sendCommand('sg_status_pull');
+  }
+
+  /// Robot 386aef0: pull a per-dog weekly summary (Mon–Sun) — robot replies
+  /// with a dog_weekly_summary event, or the error flavor
+  /// {"error": "unknown_dog"}. Local-mode REST equivalent:
+  /// GET /reports/dog/{dog_id}/weekly (not wired app-side, v1 sends the WS
+  /// command over whichever socket is active — same rule as sg_status_pull).
+  void sendDogWeeklySummaryPull({String? dogId, String? dogName}) {
+    sendCommand('dog_weekly_summary_pull', {
+      if (dogId != null) 'dog_id': dogId,
+      if (dogName != null) 'dog_name': dogName,
+    });
   }
 
   /// Robot 137a5e8: set music loop mode — 'off' | 'one' | 'all'. State is

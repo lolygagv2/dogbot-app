@@ -10,6 +10,7 @@ import '../../../domain/providers/analytics_provider.dart';
 import '../../../domain/providers/missions_provider.dart';
 import '../../../domain/providers/notifications_provider.dart';
 import '../../theme/app_theme.dart';
+import '../../widgets/dog_profile/weekly_summary_card.dart';
 
 /// Dog profile screen - central hub for a dog's info, stats, and quick actions
 class DogProfileScreen extends ConsumerWidget {
@@ -63,6 +64,11 @@ class DogProfileScreen extends ConsumerWidget {
 
             // Metrics dashboard
             _MetricsDashboard(dogId: profile.id),
+            const SizedBox(height: 24),
+
+            // Robot 386aef0: per-dog weekly summary (barks by type, treats,
+            // coaching, guardian) pulled live from the robot
+            DogWeeklySummaryCard(dogId: profile.id, dogName: profile.name),
             const SizedBox(height: 24),
 
             // Quick actions

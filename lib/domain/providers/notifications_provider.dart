@@ -38,6 +38,26 @@ final filteredNotificationsProvider =
 });
 
 /// Notifications state notifier
+/// Robot 8068ef3 (2026-09-01) stamps bark_type (the SG reporting group:
+/// distress/demand/alarm/aggressive/play) on bark events; older robots only
+/// carry the raw classifier `emotion`, and the field may sit at the top
+/// level or nested under data/payload depending on the path the row took —
+/// dig leniently. Returns the lowercase type, or null (unclassified is
+/// treated as untyped).
+String? rawBarkType(Map<String, dynamic> data) {
+  String? pick(Map m) {
+    final v = (m['bark_type'] ?? m['emotion'] ?? m['bark_label'])?.toString();
+    return (v == null || v.isEmpty || v == 'unclassified') ? null : v;
+  }
+
+  var label = pick(data);
+  if (label == null && data['data'] is Map) label = pick(data['data'] as Map);
+  if (label == null && data['payload'] is Map) {
+    label = pick(data['payload'] as Map);
+  }
+  return label;
+}
+
 class NotificationsNotifier extends StateNotifier<List<NotificationEvent>> {
   final Ref _ref;
   StreamSubscription? _wsSubscription;
@@ -101,7 +121,13 @@ class NotificationsNotifier extends StateNotifier<List<NotificationEvent>> {
             subtitle:
                 _barkTypeLabel(event.data) ?? event.data['details'] as String?,
             dogId: event.data['dog_id'] as String?,
-            metadata: _attributionMeta(event.data),
+            // Keep the raw type queryable (history rows get it for free via
+            // metadata: payload) so per-dog aggregation never parses subtitles.
+            metadata: {
+              ...?_attributionMeta(event.data),
+              if (rawBarkType(event.data) != null)
+                'bark_type': rawBarkType(event.data),
+            },
           );
         }
         break;
@@ -317,22 +343,8 @@ class NotificationsNotifier extends StateNotifier<List<NotificationEvent>> {
     };
   }
 
-  /// Robot 8068ef3 (2026-09-01) stamps bark_type (the SG reporting group:
-  /// distress/demand/alarm/aggressive/play) on bark events; older robots
-  /// only carry the raw classifier `emotion`, and the field may sit at the
-  /// top level or nested under data/payload depending on the path the row
-  /// took — dig leniently, like the dog_id fallback above.
   String? _barkTypeLabel(Map<String, dynamic> data) {
-    String? pick(Map m) {
-      final v = (m['bark_type'] ?? m['emotion'] ?? m['bark_label'])?.toString();
-      return (v == null || v.isEmpty || v == 'unclassified') ? null : v;
-    }
-
-    var label = pick(data);
-    if (label == null && data['data'] is Map) label = pick(data['data'] as Map);
-    if (label == null && data['payload'] is Map) {
-      label = pick(data['payload'] as Map);
-    }
+    final label = rawBarkType(data);
     if (label == null) return null;
     return '${label[0].toUpperCase()}${label.substring(1)} bark';
   }

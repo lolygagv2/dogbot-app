@@ -11,14 +11,7 @@ import '../../theme/app_theme.dart';
 class SgSummaryCard extends ConsumerWidget {
   const SgSummaryCard({super.key});
 
-  static const _typeColors = <String, Color>{
-    'distress': Colors.deepOrange,
-    'demand': Colors.amber,
-    'alarm': Colors.redAccent,
-    'aggressive': Colors.red,
-    'play': Colors.lightGreen,
-    'unclassified': Colors.blueGrey,
-  };
+  static const _typeColors = AppTheme.barkTypeColors;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
