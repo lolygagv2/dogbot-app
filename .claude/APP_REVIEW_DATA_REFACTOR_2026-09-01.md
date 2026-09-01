@@ -81,8 +81,11 @@ Phase 4 waits for explicit approval per cleanup protocol.
 - **SG post-cap behavior: accepted as-is.** No change to the 11-treat cap
   or post-cap non-rewarding. Revisit only if real sg_summary data shows
   treats flatlined at cap + interventions climbing + trend worsening late
-  in a session. One-line confirm requested: is the 11-treat cap a raw
-  constant (not multiplier-derived)?
+  in a session. Two one-line confirms requested: (a) is the 11-treat cap
+  a raw constant (not multiplier-derived)? (b) does stopping/restarting SG
+  reset the 600s treat-eligibility cooldown along with the session state?
+  (Morgan's accepted workaround for an all-day dog is a mid-day session
+  restart — confirm it fully resets the treat budget.)
 - Refactor green-lit earlier today; robot completed Phase 2 on-device.
   Phase 4 archival approval still pending (unchanged).
 
