@@ -42,9 +42,10 @@
 - [ ] **Weekly Summary** accuracy — verify before it becomes an owner/investor metric
 - [ ] End-to-end cloud history after service restart — SG run → bark/guardian/treat all appear in app history (fixes committed 3250698 / f18adb2, dormant until restart)
 
-### Silent Guardian design decisions (user's call)
-- [ ] Expose `treat_eligibility_cooldown` (hardcoded 600s in `silent_guardian.py:132`) to profile yaml
-- [ ] Decide **post-cap behavior** — after the 11-treat session cap, SG keeps intervening but never rewards → possible behavior extinction over an 8h session
+### Silent Guardian design decisions
+- [x] **Post-cap behavior — DECIDED 2026-09-01 (Morgan): accept as-is.** 11-treat cap + 600s eligibility cooldown = cap reachable after ~110 min of continuous compliance; risk (learned irrelevance / extinction burst) only materializes if sessions actually hit the cap. Revisit ONLY if real sg_summary data shows the tell: treats flatlined at 11 + interventions climbing + trend "worsening" in the session's back half. Fix then = expose cap in profile yaml.
+- [ ] Expose `treat_eligibility_cooldown` (hardcoded 600s in `silent_guardian.py:132`) to profile yaml — still open, low priority
+- [ ] Robot Claude: one-line confirm that the 11-treat cap is a raw constant (not multiplier-derived)
 
 ### Data / ML
 - [ ] **Data refactor** — GREEN-LIT by Morgan 2026-09-01; robot already on Phase 2 (spec bump v0.6). App review APPROVED with notes (`.claude/APP_REVIEW_DATA_REFACTOR_2026-09-01.md`) — followed_by as export query (join window must land in spec), ISO8601-with-Z at boundary, canned bark_timeline query deferred. Remaining: Morgan's telemetry-retention call (keep tb2 ≥ freeze-RCA window), Phase 4 archival approval. No backfill (standing).

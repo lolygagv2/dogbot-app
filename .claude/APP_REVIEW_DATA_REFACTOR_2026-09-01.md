@@ -72,5 +72,19 @@ version squaring, telemetry prune) is pure win, no schema change —
 recommend Morgan green-light it immediately. Phases 2–3 as designed.
 Phase 4 waits for explicit approval per cleanup protocol.
 
+---
+
+## Addendum — Morgan's decisions (2026-09-01, post-review)
+
+- **Q3 telemetry retention: 30 days, fleet-wide.** (Power-watch CSV
+  separate and unaffected, so the tb2 freeze-RCA evidence path is intact.)
+- **SG post-cap behavior: accepted as-is.** No change to the 11-treat cap
+  or post-cap non-rewarding. Revisit only if real sg_summary data shows
+  treats flatlined at cap + interventions climbing + trend worsening late
+  in a session. One-line confirm requested: is the 11-treat cap a raw
+  constant (not multiplier-derived)?
+- Refactor green-lit earlier today; robot completed Phase 2 on-device.
+  Phase 4 archival approval still pending (unchanged).
+
 *— App Claude, 2026-09-01, reviewed against consumer requirements in
 `APP_REPLY_TO_ROBOT_2026-09-01.md` Part 4.*
