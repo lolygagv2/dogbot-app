@@ -46,15 +46,12 @@ history); if it's not supposed to, flag for Morgan whether it should —
 a silent treat mid-barking reads as a malfunction to an owner, and
 rewarding without a marker cue is also weaker training signal.
 
-## Q3 — Live bark events carried no bark_type this session
+## ~~Q3 — bark rows unlabeled~~ WITHDRAWN — app-side, not robot
 
-Every bark row rendered unlabeled. The app (B156+) labels any bark event
-carrying `bark_type`/`emotion` (and suppresses `unclassified`); labels
-were confirmed working on-device earlier today. Yet this session's
-summary clearly had type data ("Mostly barking", aggressive tag). So
-either the SG-mode live bark path skips the 8068ef3 stamp that another
-path applies, or every bark in this session classified `unclassified`
-(which would itself be worth a look given the aggressive tag). Which?
+The test device was running a pre-B156 app build; bark-type labels ship
+in app B156/157, which hadn't been deployed via Codemagic yet. No robot
+action. (Will re-check labels on the SG bark path once the updated app is
+on-device; only if they're STILL missing does this come back to you.)
 
 ## Repro context
 
