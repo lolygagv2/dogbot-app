@@ -52,6 +52,11 @@ class DogWeeklySummary {
   final int guardianInterventions;
   final int guardianSuccessfulQuiets;
   final int guardianHouseholdSessions;
+
+  /// Robot c032823 (backfill Amendment A): how far back each number really
+  /// goes — keys per_bark_since / bark_type_since / treats_since /
+  /// coaching_since, values ISO8601 Z. Absent key = no caption for it.
+  final Map<String, String> coverage;
   final DateTime receivedAt;
 
   const DogWeeklySummary({
@@ -67,6 +72,7 @@ class DogWeeklySummary {
     this.guardianInterventions = 0,
     this.guardianSuccessfulQuiets = 0,
     this.guardianHouseholdSessions = 0,
+    this.coverage = const {},
     required this.receivedAt,
   });
 
@@ -112,8 +118,18 @@ class DogWeeklySummary {
           (guardian['successful_quiets'] as num?)?.toInt() ?? 0,
       guardianHouseholdSessions:
           (guardian['household_sessions'] as num?)?.toInt() ?? 0,
+      coverage: _coverage(data['coverage']),
       receivedAt: DateTime.now(),
     );
+  }
+
+  static Map<String, String> _coverage(dynamic raw) {
+    if (raw is! Map) return const {};
+    return {
+      for (final e in raw.entries)
+        if (e.value is String && (e.value as String).isNotEmpty)
+          '${e.key}': e.value as String,
+    };
   }
 }
 

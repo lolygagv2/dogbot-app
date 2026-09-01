@@ -171,10 +171,47 @@ class _DogWeeklySummaryCardState extends ConsumerState<DogWeeklySummaryCard> {
                     fontSize: 12, color: AppTheme.textSecondary),
               ),
             ],
+            // Robot c032823: honest data-coverage caption — how far back
+            // each number really goes after the legacy backfill.
+            if (_coverageCaption(s.coverage) != null) ...[
+              const SizedBox(height: 8),
+              Text(
+                _coverageCaption(s.coverage)!,
+                style: const TextStyle(
+                  fontSize: 10,
+                  fontStyle: FontStyle.italic,
+                  color: AppTheme.textTertiary,
+                ),
+              ),
+            ],
           ],
         ],
       ),
     );
+  }
+
+  /// "Data since: barks Sep 1 · treats Jul 22 · coaching Dec 27 '25" —
+  /// only the metrics the robot reported coverage for; null when none.
+  static String? _coverageCaption(Map<String, String> coverage) {
+    const labels = [
+      ('per_bark_since', 'barks'),
+      ('bark_type_since', 'bark types'),
+      ('treats_since', 'treats'),
+      ('coaching_since', 'coaching'),
+    ];
+    final parts = <String>[];
+    for (final (key, label) in labels) {
+      final d = DateTime.tryParse(coverage[key] ?? '')?.toLocal();
+      if (d == null) continue;
+      const months = [
+        'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+        'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+      ];
+      final year = d.year == DateTime.now().year ? '' : " '${d.year % 100}";
+      parts.add('$label ${months[d.month - 1]} ${d.day}$year');
+    }
+    if (parts.isEmpty) return null;
+    return 'Data since: ${parts.join(' · ')}';
   }
 
   static String _delta(DogWeeklyBarks b) {
