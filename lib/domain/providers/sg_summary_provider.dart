@@ -10,6 +10,27 @@ import 'connection_provider.dart';
 /// Fed by sg_summary events — both the automatic level4_escalation and the
 /// response to our sg_status_pull command update the same card.
 
+/// One bark_timeline bucket: barks per type within the minutes-offset slot.
+class SgTimelineBucket {
+  final int offsetMin;
+  final Map<String, int> counts; // bark type -> count
+  const SgTimelineBucket({required this.offsetMin, required this.counts});
+
+  int get total => counts.values.fold(0, (a, b) => a + b);
+}
+
+/// trend_detail: the numbers behind the improving/worsening/flat verdict.
+class SgTrendDetail {
+  final double recentRatePerMin;
+  final double sessionRatePerMin;
+  final int windowMinutes;
+  const SgTrendDetail({
+    required this.recentRatePerMin,
+    required this.sessionRatePerMin,
+    required this.windowMinutes,
+  });
+}
+
 class SgSummary {
   final String action; // level4_escalation | status_pull
   final int? sessionDurationSec;
@@ -26,6 +47,8 @@ class SgSummary {
   final bool aggressiveTag;
   final bool panicActive;
   final int panicEpisodes;
+  final List<SgTimelineBucket> barkTimeline; // chronological
+  final SgTrendDetail? trendDetail;
   final DateTime receivedAt;
 
   const SgSummary({
@@ -44,6 +67,8 @@ class SgSummary {
     this.aggressiveTag = false,
     this.panicActive = false,
     this.panicEpisodes = 0,
+    this.barkTimeline = const [],
+    this.trendDetail,
     required this.receivedAt,
   });
 
@@ -71,7 +96,32 @@ class SgSummary {
       aggressiveTag: data['aggressive_tag'] == true,
       panicActive: data['panic_active'] == true,
       panicEpisodes: (data['panic_episodes'] as num?)?.toInt() ?? 0,
+      barkTimeline: _timeline(data['bark_timeline'], intMap),
+      trendDetail: _trendDetail(data['trend_detail']),
       receivedAt: DateTime.now(),
+    );
+  }
+
+  static List<SgTimelineBucket> _timeline(
+      dynamic raw, Map<String, int> Function(dynamic) intMap) {
+    if (raw is! List) return const [];
+    final buckets = <SgTimelineBucket>[
+      for (final b in raw)
+        if (b is Map)
+          SgTimelineBucket(
+            offsetMin: (b['offset_min'] as num?)?.toInt() ?? 0,
+            counts: intMap(b['counts']),
+          ),
+    ]..sort((a, b) => a.offsetMin.compareTo(b.offsetMin));
+    return buckets;
+  }
+
+  static SgTrendDetail? _trendDetail(dynamic raw) {
+    if (raw is! Map) return null;
+    return SgTrendDetail(
+      recentRatePerMin: (raw['recent_rate_per_min'] as num?)?.toDouble() ?? 0,
+      sessionRatePerMin: (raw['session_rate_per_min'] as num?)?.toDouble() ?? 0,
+      windowMinutes: (raw['window_minutes'] as num?)?.toInt() ?? 0,
     );
   }
 }

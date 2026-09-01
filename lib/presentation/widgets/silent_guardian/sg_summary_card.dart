@@ -147,6 +147,34 @@ class SgSummaryCard extends ConsumerWidget {
                 ],
               ),
             ],
+            if (s.barkTimeline.isNotEmpty) ...[
+              const SizedBox(height: 10),
+              Row(
+                children: [
+                  const Expanded(
+                    child: Text(
+                      'BARK TIMELINE',
+                      style: TextStyle(
+                        fontSize: 10,
+                        letterSpacing: 0.5,
+                        color: AppTheme.textTertiary,
+                      ),
+                    ),
+                  ),
+                  if (s.trendDetail != null)
+                    Text(
+                      'now ${s.trendDetail!.recentRatePerMin.toStringAsFixed(1)}'
+                      '/min · session '
+                      '${s.trendDetail!.sessionRatePerMin.toStringAsFixed(1)}'
+                      '/min',
+                      style: const TextStyle(
+                          fontSize: 10, color: AppTheme.textSecondary),
+                    ),
+                ],
+              ),
+              const SizedBox(height: 4),
+              _BarkTimelineChart(buckets: s.barkTimeline),
+            ],
             if (s.aggressiveTag || s.panicActive || s.panicEpisodes > 0) ...[
               const SizedBox(height: 8),
               Wrap(
@@ -172,6 +200,87 @@ class SgSummaryCard extends ConsumerWidget {
     final entries = m.entries.where((e) => e.value > 0).toList();
     entries.sort((a, b) => b.value.compareTo(a.value));
     return entries;
+  }
+}
+
+/// Barks over session time: one baseline-anchored bar per bark_timeline
+/// bucket, stacked by type in the same fixed color order as the legend
+/// above. Bar heights scale to the busiest bucket; the type legend is the
+/// percentage-bar legend already on the card.
+class _BarkTimelineChart extends StatelessWidget {
+  final List<SgTimelineBucket> buckets;
+  const _BarkTimelineChart({required this.buckets});
+
+  static String _fmtMin(int m) {
+    if (m < 60) return '${m}m';
+    final h = m ~/ 60, r = m % 60;
+    return r == 0 ? '${h}h' : '${h}h${r}m';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final maxTotal =
+        buckets.fold<int>(0, (m, b) => b.total > m ? b.total : m);
+    if (maxTotal == 0) return const SizedBox.shrink();
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        SizedBox(
+          height: 44,
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              for (final b in buckets)
+                Expanded(
+                  child: Padding(
+                    // Surface gap between adjacent bars.
+                    padding: const EdgeInsets.symmetric(horizontal: 0.5),
+                    child: b.total == 0
+                        ? const SizedBox.shrink()
+                        : FractionallySizedBox(
+                            heightFactor:
+                                (b.total / maxTotal).clamp(0.06, 1.0),
+                            child: ClipRRect(
+                              borderRadius: const BorderRadius.vertical(
+                                  top: Radius.circular(2)),
+                              child: Column(
+                                children: [
+                                  // Stack top-down in reverse fixed order so
+                                  // the first legend type sits on the baseline.
+                                  for (final type in SgSummaryCard
+                                      ._typeColors.keys
+                                      .toList()
+                                      .reversed)
+                                    if ((b.counts[type] ?? 0) > 0)
+                                      Expanded(
+                                        flex: b.counts[type]!,
+                                        child: Container(
+                                            color: SgSummaryCard
+                                                ._typeColors[type]),
+                                      ),
+                                ],
+                              ),
+                            ),
+                          ),
+                  ),
+                ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 2),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(_fmtMin(buckets.first.offsetMin),
+                style: const TextStyle(
+                    fontSize: 9, color: AppTheme.textTertiary)),
+            Text(_fmtMin(buckets.last.offsetMin),
+                style: const TextStyle(
+                    fontSize: 9, color: AppTheme.textTertiary)),
+          ],
+        ),
+      ],
+    );
   }
 }
 

@@ -22,7 +22,7 @@
 - [x] App slice B155: sg_summary card + level4 notification, panic_alert notifications, guardian-stopped wrap-up entry, Loop button, sg_status_pull/audio_loop commands, watermark carve-out for status_pull replies (brief: `.claude/ROBOT_BRIEF_SG_PANIC_LOOP_2026-08-31.md`)
 - [x] **Panic push resolved (2026-09-01):** relay reuses the EXISTING generic push pipeline (same one as "Treat dispensed") with the PANIC text — no new FCM event-type mapping needed. Note: app's panicAlert/sgSummary per-type notification prefs won't gate a generic-typed push; acceptable for v1.
 - [ ] Live test: SG summary pull, panic push end-to-end, Loop button echo; verify sg_status_pull/audio_loop work over /ws/local (REST fallback GET /sg/summary + POST /audio/loop not wired app-side)
-- [ ] Future: chart bark_timeline + trend_detail (received, stored, not rendered)
+- [x] **Chart SHIPPED Build 157 (2026-09-01):** bark_timeline stacked-bar chart (per-bucket, typed colors matching the card legend, baseline-anchored, start/end time axis) + trend_detail rate line ("now X/min · session Y/min") in SgSummaryCard; parsed into SgSummary (SgTimelineBucket/SgTrendDetail)
 
 ### Real push notifications (FCM/APNs) — ✅ DONE (confirmed live 2026-08-30)
 - [x] **App slice SHIPPED 2026-07-30:** firebase_core/messaging deps, PushService, pushSyncProvider (register on login, re-sync on prefs/token change, unregister on logout), /api/push endpoints in RobotApi, iOS aps-environment entitlement; activated with real firebase_options.dart (`wimzpushy`)
