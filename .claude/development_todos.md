@@ -15,12 +15,12 @@
 - [x] Contract draft written: `.claude/OTA_UPDATE_CONTRACT_2026-08-07.md` — app/relay/robot slices, bootstrap plan, acceptance tests
 - [x] **App slice SHIPPED Build 154 (2026-08-30):** Settings "Robot Software" card (version vs latest, UPDATE + confirm dialog, update_status progress, terminal states), sw_version telemetry parse, getLatestRelease (404-tolerant), update_status WS routing + transient watermark carve-out, start_update command — inert until relay/robot ship
 - [x] **Robot slice IMPLEMENTED (robot c28ed1f, 2026-08-31):** event shape confirmed as-is; data layout `/home/morgan/wimz/releases/<v>` + `wimz/shared/`; service treatbot.service; sw_version ships pre-freeze (tb5 = 2026.08.1); terminal events up to ~90s after restarting (encoded app-side B155). Bootstrapping tb5 now, then tb1–tb4
-- [ ] Relay slice: release upload/manifest/download endpoints + update_status transient (non-buffered) forwarding — LAST missing piece for end-to-end
-- [ ] Morgan: pull+restart fleet units so they report sw_version; upload first release artifact once relay slice lands
+- [x] **Relay slice SHIPPED (confirmed 2026-09-01):** first live end-to-end OTA on tb5 — 48s tap-to-healthy. FEATURE COMPLETE.
+- [x] Fleet adoption: ALL ACTIVE robots on OTA (tb3/China assumed permanently offline until further notice)
 
 ### SG bark analytics + Panic + Loop (robot 137a5e8, 2026-08-31) — app slice SHIPPED B155
 - [x] App slice B155: sg_summary card + level4 notification, panic_alert notifications, guardian-stopped wrap-up entry, Loop button, sg_status_pull/audio_loop commands, watermark carve-out for status_pull replies (brief: `.claude/ROBOT_BRIEF_SG_PANIC_LOOP_2026-08-31.md`)
-- [ ] **Relay owes:** panic_alert + sg_summary in FCM push event-type mapping (else no lock-screen panic pushes); confirm sg_summary status_pull replies aren't feed-buffered
+- [x] **Panic push resolved (2026-09-01):** relay reuses the EXISTING generic push pipeline (same one as "Treat dispensed") with the PANIC text — no new FCM event-type mapping needed. Note: app's panicAlert/sgSummary per-type notification prefs won't gate a generic-typed push; acceptable for v1.
 - [ ] Live test: SG summary pull, panic push end-to-end, Loop button echo; verify sg_status_pull/audio_loop work over /ws/local (REST fallback GET /sg/summary + POST /audio/loop not wired app-side)
 - [ ] Future: chart bark_timeline + trend_detail (received, stored, not rendered)
 
@@ -31,8 +31,11 @@
 - [x] End-to-end: Morgan confirmed 2026-08-30 — lock-screen banners arrive with app closed
 
 ### Reliability / Safety (highest priority)
-- [ ] **Silent hard-freeze RCA** — recurring lockups with no kernel/software trace (corrupt journal). Confirm power-delivery/brownout vs hang. Next step: capture `vcgencmd get_throttled` / PMIC after an event.
-- [ ] **Power-button SPOF redesign** — GPIO21 relay gates the only power-off path behind a software watcher; a hang makes the button useless (must pull wire). Restore a hardware-direct OFF path.
+- [ ] **Silent hard-freeze RCA** — recurring lockups with no kernel/software trace (corrupt journal). Power-rail evidence collector deployed on treatbot2; awaiting next occurrence to rule brownout vs true hang.
+- [x] **Power-button SPOF — SOLVED (2026-09-01):** every robot now has a hardware-direct OFF switch; quick physical kill for any circuit problem.
+- [x] **RTC batteries installed (2026-09-01):** all Pi clocks battery-backed; cross-boot timestamps trustworthy.
+- [x] **treatbot2 dispenser — FIXED:** fault was a bad crimp on a stepper coil wire (not the TMC2209 chip); repaired.
+- [x] **B147 drive-screen visual regression check** — completed and passed.
 
 ### Validation (blocking "done" claims)
 - [ ] **Mission Scheduler** — validate auto-start, time-window enforcement, once/daily/weekly logic (implemented, never tested)

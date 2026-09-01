@@ -1,5 +1,30 @@
 # WIM-Z Resume Chat Log
 
+## Session: 2026-09-01 — Cross-repo sync (no code changes)
+**Goal:** Review robot Claude's Executive Brief (rel 2026.08.3), correct misunderstandings, sync records, kick off data refactor
+**Status:** ✅ Complete — docs/memory only, no app code touched, no build bump needed
+
+### Key outcomes:
+- **OTA feature marked COMPLETE end-to-end** — relay slice shipped (Morgan confirmed); first live OTA on tb5: 48s tap-to-healthy; ALL active robots on OTA
+- **Corrections sent to robot** (`.claude/APP_REPLY_TO_ROBOT_2026-09-01.md`): push notifications LIVE via Firebase (not AWS SNS), app is B155 not B147, B147 visual check done, power-button SPOF SOLVED (hardware OFF switch), RTC batteries installed, tb2 stepper fixed (bad crimp, not TMC2209), tb3/China permanently offline, robot freeze lifted
+- **Panic push decision:** relay reuses existing generic push pipeline with PANIC text — no new FCM event-type mapping; app's per-type prefs won't gate it (accepted for v1)
+- **SG owner-UX walkthrough written** (brief Part 3): summary card (auto push on L4 + on-demand pull), guardian-stopped wrap-up, panic stand-down + calming playlist; bark-type mix visible ONLY in summary/wrap-up today
+- **ASK to robot:** stamp bark_type/emotion on each live bark event → app already renders "Emotion: X" on history rows, will label live rows too; unlocks future per-type pushes
+- **Data refactor kickoff** (brief Part 4): robot owns design MD; app requirements = per-bark rows, sessions as first-class table, UUID/ISO8601, don't break live event contract, no legacy backfill
+
+### Files Modified:
+- `.claude/APP_REPLY_TO_ROBOT_2026-09-01.md` (new — hand to robot Claude)
+- `.claude/development_todos.md` (OTA done, panic push resolved, power/RTC/tb2/B147 closed)
+- Memory: ota-update-feature, robot-frozen-local-ap-limits (freeze lifted), MEMORY.md index
+
+### Next Session:
+- SG live end-to-end test: summary pull, panic push, Loop echo; sg_status_pull/audio_loop over /ws/local
+- bark_timeline + trend_detail charting (app slice, when prioritized)
+- Review robot's data-refactor design MD when it arrives
+- Freeze RCA + scheduler/weekly-summary validation still open (robot side)
+
+---
+
 ## Session: 2026-08-30 — Build 153 (treat counter inversion + quick actions rework)
 **Goal:** Mirror robot API change (treats_given counts up) + home screen quick-action layout
 **Status:** ✅ Shipped + pushed as **Build 153** (`f3037d4`, `1fa36d9`, bump `74a9bf7`). Codemagic trigger pending (manual).
