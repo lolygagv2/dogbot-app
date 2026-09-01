@@ -46,7 +46,7 @@
 ### Silent Guardian design decisions
 - [x] **Post-cap behavior — DECIDED 2026-09-01 (Morgan): accept as-is.** 11-treat cap + 600s eligibility cooldown = cap reachable after ~110 min of continuous compliance; risk (learned irrelevance / extinction burst) only materializes if sessions actually hit the cap. Revisit ONLY if real sg_summary data shows the tell: treats flatlined at 11 + interventions climbing + trend "worsening" in the session's back half. Fix then = expose cap in profile yaml.
 - [ ] Expose `treat_eligibility_cooldown` (hardcoded 600s in `silent_guardian.py:132`) to profile yaml — still open, low priority
-- [ ] Robot Claude: one-line confirm that the 11-treat cap is a raw constant (not multiplier-derived)
+- [x] **Robot confirms received (7aa9231):** 11-treat cap = raw constant (session_limits.max_treats yaml); SG stop/restart resets BOTH treat budget and 600s cooldown — all-day-dog restart workaround fully validated. Telemetry 30d fleet-wide implemented. /ws/local pull commands (sg_status_pull, audio_loop, dog_weekly_summary_pull) were missing, now wired + live-verified robot-side; app parser confirmed compatible (B146 unwrap), no app change needed
 
 ### Data / ML
 - [x] **Per-dog weekly summary — app slice SHIPPED Build 158 (2026-09-01):** robot 386aef0 live on tb5; dog_weekly_summary_pull → Weekly Summary card on dog profile (auto-pull on open, headline verbatim, bark-type bar, treats/quiets/coaching/guardian). Full-type watermark carve-out. Verify on device; confirm /ws/local handles the command
