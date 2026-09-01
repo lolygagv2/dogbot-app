@@ -47,7 +47,8 @@
 - [ ] Decide **post-cap behavior** — after the 11-treat session cap, SG keeps intervening but never rewards → possible behavior extinction over an 8h session
 
 ### Data / ML
-- [ ] **Data refactor** — reshape all data into human/ML-friendly tables for analytics + continual learning. Design MD to be written first; do **not** start coding or backfill old rows yet (see memory: project_data_refactor).
+- [ ] **Data refactor** — IN REVIEW: robot design v1 received 2026-09-01 (wimz.db as single behavioral store, 4 phases); app review APPROVED with notes (`.claude/APP_REVIEW_DATA_REFACTOR_2026-09-01.md`) — followed_by as export query OK (define join window in spec), ISO8601-with-Z at boundary OK, canned bark_timeline query deferred. Awaiting Morgan's Phase 1 green light + telemetry-retention call (keep tb2 ≥ freeze-RCA window). No backfill (standing).
+- [ ] **App slice (small, queued):** label live/history bark rows with `bark_type` now that robot stamps it on live bark events (robot 8068ef3); today live rows show `details`, history rows show `emotion`
 
 ---
 
