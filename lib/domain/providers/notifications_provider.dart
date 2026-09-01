@@ -98,7 +98,8 @@ class NotificationsNotifier extends StateNotifier<List<NotificationEvent>> {
             type: NotificationEventType.bark,
             timestamp: eventTime,
             title: 'Barking Detected',
-            subtitle: event.data['details'] as String?,
+            subtitle:
+                _barkTypeLabel(event.data) ?? event.data['details'] as String?,
             dogId: event.data['dog_id'] as String?,
             metadata: _attributionMeta(event.data),
           );
@@ -314,6 +315,26 @@ class NotificationsNotifier extends StateNotifier<List<NotificationEvent>> {
       if (idMethod != null) 'id_method': idMethod,
       if (dogName != null) 'dog_name': dogName,
     };
+  }
+
+  /// Robot 8068ef3 (2026-09-01) stamps bark_type (the SG reporting group:
+  /// distress/demand/alarm/aggressive/play) on bark events; older robots
+  /// only carry the raw classifier `emotion`, and the field may sit at the
+  /// top level or nested under data/payload depending on the path the row
+  /// took — dig leniently, like the dog_id fallback above.
+  String? _barkTypeLabel(Map<String, dynamic> data) {
+    String? pick(Map m) {
+      final v = (m['bark_type'] ?? m['emotion'] ?? m['bark_label'])?.toString();
+      return (v == null || v.isEmpty || v == 'unclassified') ? null : v;
+    }
+
+    var label = pick(data);
+    if (label == null && data['data'] is Map) label = pick(data['data'] as Map);
+    if (label == null && data['payload'] is Map) {
+      label = pick(data['payload'] as Map);
+    }
+    if (label == null) return null;
+    return '${label[0].toUpperCase()}${label.substring(1)} bark';
   }
 
   /// Check if detection is from a known dog (has dog_id, or aruco_id matches a profile,
@@ -625,8 +646,7 @@ class NotificationsNotifier extends StateNotifier<List<NotificationEvent>> {
       case 'bark':
         mapped = NotificationEventType.bark;
         title = 'Barking Detected';
-        final emotion = payload['emotion'] as String?;
-        subtitle = emotion != null ? 'Emotion: $emotion' : null;
+        subtitle = _barkTypeLabel(payload);
         break;
       case 'treat_dispensed':
         mapped = NotificationEventType.treatDispensed;

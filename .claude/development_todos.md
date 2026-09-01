@@ -47,8 +47,8 @@
 - [ ] Decide **post-cap behavior** — after the 11-treat session cap, SG keeps intervening but never rewards → possible behavior extinction over an 8h session
 
 ### Data / ML
-- [ ] **Data refactor** — IN REVIEW: robot design v1 received 2026-09-01 (wimz.db as single behavioral store, 4 phases); app review APPROVED with notes (`.claude/APP_REVIEW_DATA_REFACTOR_2026-09-01.md`) — followed_by as export query OK (define join window in spec), ISO8601-with-Z at boundary OK, canned bark_timeline query deferred. Awaiting Morgan's Phase 1 green light + telemetry-retention call (keep tb2 ≥ freeze-RCA window). No backfill (standing).
-- [ ] **App slice (small, queued):** label live/history bark rows with `bark_type` now that robot stamps it on live bark events (robot 8068ef3); today live rows show `details`, history rows show `emotion`
+- [ ] **Data refactor** — GREEN-LIT by Morgan 2026-09-01; robot already on Phase 2 (spec bump v0.6). App review APPROVED with notes (`.claude/APP_REVIEW_DATA_REFACTOR_2026-09-01.md`) — followed_by as export query (join window must land in spec), ISO8601-with-Z at boundary, canned bark_timeline query deferred. Remaining: Morgan's telemetry-retention call (keep tb2 ≥ freeze-RCA window), Phase 4 archival approval. No backfill (standing).
+- [x] **App slice SHIPPED Build 156 (2026-09-01):** bark rows labeled with `bark_type` ("Distress bark" etc.) in live + history feeds — lenient dig (top-level/data/payload, emotion fallback for pre-8068ef3 robots, unclassified suppressed) in notifications_provider `_barkTypeLabel`
 
 ---
 
