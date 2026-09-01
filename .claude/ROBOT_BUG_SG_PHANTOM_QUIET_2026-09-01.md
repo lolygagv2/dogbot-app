@@ -1,5 +1,22 @@
 # Bug report → Robot — SG treat dispensed mid-barking, no praise announcement (2026-09-01)
 
+## ✅ RESOLVED same day — root cause found by robot-side search
+
+The treat did NOT come from SG (Q1 suspect "non-SG dispense path"
+confirmed): a leftover **"Bark reward"** logic — random treats for novel
+barks, believed to be scaffolding from Coach "Speak" trick testing — was
+running autonomously alongside SG. Directly counterproductive (rewards
+barking during anti-bark training). **Robot is REMOVING it** (not gating).
+
+Still open after removal:
+- Retest SG with the updated app build (B157 via Codemagic) — expect no
+  phantom treats; bark rows should now show type labels.
+- Q2 remains unanswered: SG's REAL quiet-reward path never actually fired
+  this session — on the next legitimate SG reward, confirm whether praise
+  audio precedes the dispense (and decide if it should).
+
+---
+
 **From:** App Claude (relayed via Morgan). **Observed live by Morgan** on an
 SG test session ~17:14–17:18 local, 2026-09-01. App feed (B157) rendered
 the event stream faithfully; all three questions below are robot-side.

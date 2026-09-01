@@ -22,6 +22,7 @@
 - [x] App slice B155: sg_summary card + level4 notification, panic_alert notifications, guardian-stopped wrap-up entry, Loop button, sg_status_pull/audio_loop commands, watermark carve-out for status_pull replies (brief: `.claude/ROBOT_BRIEF_SG_PANIC_LOOP_2026-08-31.md`)
 - [x] **Panic push resolved (2026-09-01):** relay reuses the EXISTING generic push pipeline (same one as "Treat dispensed") with the PANIC text — no new FCM event-type mapping needed. Note: app's panicAlert/sgSummary per-type notification prefs won't gate a generic-typed push; acceptable for v1.
 - [ ] Live test: SG summary pull, panic push end-to-end, Loop button echo; verify sg_status_pull/audio_loop work over /ws/local (REST fallback GET /sg/summary + POST /audio/loop not wired app-side)
+- [x] **SG phantom treat RESOLVED 2026-09-01:** treat mid-barking traced to a leftover "Bark reward" path (random treats for novel barks, Coach "Speak" scaffolding) running alongside SG — robot REMOVING it (`.claude/ROBOT_BUG_SG_PHANTOM_QUIET_2026-09-01.md`). Retest SG post-removal on app B157; still open: confirm SG's real reward path announces praise before dispensing
 - [x] **Chart SHIPPED Build 157 (2026-09-01):** bark_timeline stacked-bar chart (per-bucket, typed colors matching the card legend, baseline-anchored, start/end time axis) + trend_detail rate line ("now X/min · session Y/min") in SgSummaryCard; parsed into SgSummary (SgTimelineBucket/SgTrendDetail)
 
 ### Real push notifications (FCM/APNs) — ✅ DONE (confirmed live 2026-08-30)
