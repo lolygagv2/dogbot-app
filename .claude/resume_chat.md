@@ -1,5 +1,34 @@
 # WIM-Z Resume Chat Log
 
+## Session: 2026-09-01 (evening) — Builds 156–159 + data refactor closed
+**Goal:** SG intelligence rendering, data refactor review cycle, cross-repo sync
+**Status:** ✅ All shipped; app at B159 on main, Codemagic trigger pending (Morgan)
+
+### Shipped:
+- **B156** — bark rows labeled with bark_type (live + history, lenient dig, emotion fallback)
+- **B157** — bark_timeline stacked chart + trend_detail rates in SgSummaryCard
+- **B158** — per-dog Weekly Summary card (robot 386aef0): dog_weekly_summary_pull, full-type transient watermark carve-out, auto-pull profile card; bark colors centralized in AppTheme; rawBarkType public + metadata stamp
+- **B159** — coverage caption ("Data since: treats Jul 22 · …") on Weekly Summary card
+
+### Data refactor (opened AND closed today):
+- Reviewed robot design v1 → APPROVED w/ conditions; Morgan green-lit; robot ran Phases 1–4 + Amendment A backfill (origin provenance, identity ladder, coverage field, 5 bark-lottery rows excluded); wire deltas verified (app has NO consumers of /sg/sessions/recent or /events/dog*); session_id int-shim retirement approved
+- Backfill reversal: Morgan overturned no-backfill rule mid-day
+
+### Bugs/decisions:
+- **SG phantom treat solved:** leftover "bark_reward" test mode (random treats for novel barks) ran alongside SG — robot removed it; memory saved (stray-robot-paths-suspect)
+- Morgan decisions: 30-day telemetry fleet-wide; SG 11-treat post-cap accepted as-is (restart resets budget+cooldown — robot-confirmed); /ws/local pull commands were missing robot-side, now wired (app B146 unwrap verified compatible, no app change)
+
+### Handoff files (all committed):
+- APP_REVIEW_DATA_REFACTOR_2026-09-01.md (review + 4 addenda)
+- ROBOT_BUG_SG_PHANTOM_QUIET_2026-09-01.md (resolved)
+- RELAY_BRIEF_WEEKLY_SUMMARY_2026-09-01.md (OPEN — relay owes: dog_weekly_summary transient forwarding, sg status_pull buffer confirm, panic PANIC-text push deploy confirm)
+
+### Next session:
+- Codemagic B159 build + device pass: weekly summary card, bark labels (canary), SG retest (no phantom treats), praise-on-reward listen, AP-mode pulls
+- Relay confirms from RELAY_BRIEF; future: historical trend charts (export layer), REST local fallbacks
+
+---
+
 ## Session: 2026-09-01 — Cross-repo sync (no code changes)
 **Goal:** Review robot Claude's Executive Brief (rel 2026.08.3), correct misunderstandings, sync records, kick off data refactor
 **Status:** ✅ Complete — docs/memory only, no app code touched, no build bump needed
