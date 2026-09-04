@@ -278,8 +278,20 @@ class WebSocketClient {
 
   /// Set the target device ID for all commands
   void setTargetDevice(String deviceId) {
+    final changed = _targetDeviceId != deviceId;
     _targetDeviceId = deviceId;
     print('WebSocket: Target device set to $deviceId');
+    // B161: the replay watermark is per-robot, but a mid-session robot switch
+    // (device picker, no reconnect) used to leave the OLD robot's watermark in
+    // memory — every frame from the new robot was then judged against a
+    // counter it never shared. Persist the old one and load the new robot's.
+    if (changed &&
+        _expectRelayHandshake &&
+        _watermarkDeviceId != null &&
+        _watermarkDeviceId != deviceId) {
+      connTrace('ws-target-switch', 'from=$_watermarkDeviceId to=$deviceId');
+      _persistWatermark().then((_) => _loadWatermark(deviceId));
+    }
   }
 
   /// Reset reconnect attempt counter (used when app resumes from background)
@@ -545,7 +557,17 @@ class WebSocketClient {
           connTrace('ws-controller-nocb', msgType ?? '');
         }
       }
-      if (seq is int && !isTransientMsg) {
+      // B161 (2026-09-04): the relay fans EVERY paired robot's events to the
+      // app, each robot with its OWN seq counter — including the 5s `status`
+      // frames that carry battery + treats_remaining. This gate ran before the
+      // target-device filter, so with two robots online the one with the
+      // higher counter kept advancing the single watermark and the other's
+      // frames were all dropped here as "duplicates" — its treat count on the
+      // home chip never moved (treatbot2 vs treatbot5). A frame from a
+      // non-target robot must neither be judged by nor advance this robot's
+      // watermark; the target filter in the switch below decides its fate.
+      final isForeignDevice = !_isFromTargetDevice(json);
+      if (seq is int && !isTransientMsg && !isForeignDevice) {
         if (seq <= _lastSeenSeq) {
           // Duplicate per the watermark. Expected for buffered replays
           // (overlapping replay windows across reconnects); a LIVE frame
@@ -685,6 +707,10 @@ class WebSocketClient {
         case 'mode':
         case 'treat':
         case 'treat_status':
+        // Relay-forwarded dispense event (robot main_treatbot forwards the
+        // reward-bus 'treat_dispensed' subtype under this name; carries the
+        // new count as `remaining`). Target-filtered like the rest.
+        case 'treat_dispensed':
         // Robot 8e8c91c treat-counter events/acks (carry treats_given +
         // treat_capacity + treats_remaining). Listed explicitly so they get
         // the target-device filter instead of the unfiltered default case.

@@ -54,6 +54,21 @@ void main() {
     expect(container.read(telemetryProvider).lastTreatTime, isNotNull);
   });
 
+  test('relay treat_dispensed event applies `remaining` immediately', () {
+    notifier.debugHandleEvent(WsEvent(
+      type: 'status_update',
+      data: {'treats_remaining': 29},
+    ));
+    // Robot main_treatbot forwards the dispense with the count under
+    // `remaining` (not treats_remaining) — the chip must move on it.
+    notifier.debugHandleEvent(WsEvent(
+      type: 'treat_dispensed',
+      data: {'dog_id': 'dog-a', 'treats_dispensed': 1, 'remaining': 28},
+    ));
+    expect(remaining(), 28);
+    expect(container.read(telemetryProvider).lastTreatTime, isNotNull);
+  });
+
   test('given-only frame derives remaining against the hard 44', () {
     notifier.debugHandleEvent(WsEvent(
       type: 'treats_low',

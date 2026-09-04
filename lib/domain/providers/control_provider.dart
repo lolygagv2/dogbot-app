@@ -391,11 +391,15 @@ class TreatControl {
   /// Carousel capacity (hard physical constant).
   static const int fullTreatCount = kTreatCapacity;
 
-  /// Zero treats_given after a refill — capacity is kept robot-side.
-  /// (Robot 8e8c91c: counter counts UP; reset ≠ "set remaining to 44".)
+  /// Full refill: set the robot to 44 loaded. Sends treat_counter_set with
+  /// count=44 rather than treat_counter_reset because reset KEEPS the robot's
+  /// stored capacity — and the old "Loaded" box had already pushed
+  /// treatbot2's capacity to 29 (set_treat_count(count) sets capacity=count
+  /// when no capacity is given). count=44 pins capacity back to the physical
+  /// 44 and zeroes given, so remaining reads 44 on every robot.
   void resetCount() {
     if (!_ref.read(connectionProvider).isConnected) return;
-    _ref.read(websocketClientProvider).sendTreatCounterReset();
+    _ref.read(websocketClientProvider).sendTreatCounterSet(kTreatCapacity);
   }
 
   /// Clear treat carousel jam — rotates carousel motor to dislodge stuck treat

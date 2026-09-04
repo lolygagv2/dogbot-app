@@ -349,6 +349,61 @@ void main() {
     expect(client.debugWatermark, 99999);
   });
 
+  // B161 (2026-09-04): the relay fans every paired robot's frames to the app,
+  // each robot with its own seq counter. The watermark gate ran BEFORE the
+  // target-device filter, so a second online robot with a higher counter
+  // dragged the single watermark up and the target robot's status frames
+  // (battery, treats_remaining) were dropped as duplicates — treatbot2's
+  // treat count never moved while treatbot5 was online.
+  String statusFrame({required String device, required int seq, int treats = 0}) =>
+      jsonEncode({
+        'event': 'status',
+        'device_id': device,
+        'seq': seq,
+        'data': {'battery': 80.0, 'mode': 'idle', 'treats_remaining': treats},
+      });
+
+  test('a non-target robot never advances the watermark', () async {
+    client.setTargetDevice('wimz_robot_02');
+    client.debugSetWatermark(0, deviceId: 'wimz_robot_02');
+
+    client.debugHandleMessage(statusFrame(device: 'wimz_robot_05', seq: 500));
+    await Future<void>.delayed(Duration.zero);
+    expect(received, isEmpty, reason: 'other robot is target-filtered');
+    expect(client.debugWatermark, 0,
+        reason: 'foreign seq must not move this robot\'s watermark');
+  });
+
+  test('target robot status below another robot\'s seq is still delivered',
+      () async {
+    client.setTargetDevice('wimz_robot_02');
+    client.debugSetWatermark(0, deviceId: 'wimz_robot_02');
+
+    // Interleaved fanout: tb5 (high counter) then tb2 (low counter).
+    client.debugHandleMessage(statusFrame(device: 'wimz_robot_05', seq: 500));
+    client.debugHandleMessage(
+        statusFrame(device: 'wimz_robot_02', seq: 12, treats: 28));
+    client.debugHandleMessage(statusFrame(device: 'wimz_robot_05', seq: 501));
+    client.debugHandleMessage(
+        statusFrame(device: 'wimz_robot_02', seq: 13, treats: 27));
+    await Future<void>.delayed(Duration.zero);
+
+    expect(received.map((e) => e.type), ['status', 'status']);
+    expect(received.map((e) => e.data['treats_remaining']), [28, 27]);
+    expect(client.debugWatermark, 13);
+  });
+
+  test('target robot duplicates still dedup against its own watermark',
+      () async {
+    client.setTargetDevice('wimz_robot_02');
+    client.debugSetWatermark(20, deviceId: 'wimz_robot_02');
+    client.debugHandleMessage(statusFrame(device: 'wimz_robot_02', seq: 20));
+    client.debugHandleMessage(statusFrame(device: 'wimz_robot_02', seq: 21));
+    await Future<void>.delayed(Duration.zero);
+    expect(received.length, 1);
+    expect(client.debugWatermark, 21);
+  });
+
   test('network_state is forwarded and NOT filtered by target device',
       () async {
     // Breadcrumbs for non-target robots still matter — the cache is per-robot.

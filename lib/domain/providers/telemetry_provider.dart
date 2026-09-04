@@ -195,9 +195,20 @@ class TelemetryNotifier extends StateNotifier<Telemetry> {
         if (event.data['subtype'] == 'treat_dispensed') {
           _applyTreatCounterFields(event.data, event.type);
           if (event.data['treats_remaining'] != null ||
-              event.data['treats_given'] != null) {
+              event.data['treats_given'] != null ||
+              event.data['remaining'] != null) {
             state = state.copyWith(lastTreatTime: DateTime.now());
           }
+        }
+        break;
+
+      case 'treat_dispensed':
+        // Relay-forwarded dispense (robot main_treatbot → relay → app). The
+        // count rides as `remaining`; applying it here moves the chip the
+        // instant the treat drops instead of on the next 5s status frame.
+        _applyTreatCounterFields(event.data, event.type);
+        if (event.data['remaining'] != null) {
+          state = state.copyWith(lastTreatTime: DateTime.now());
         }
         break;
 
@@ -255,7 +266,10 @@ class TelemetryNotifier extends StateNotifier<Telemetry> {
   /// the carousel is physically 44 slots.
   void _applyTreatCounterFields(Map<String, dynamic> data, String source) {
     final given = asLenientInt(data['treats_given']);
+    // `remaining` is the key on the robot's treat_dispensed event (and the
+    // legacy 'treat' event); treats_loaded is the pre-8e8c91c alias.
     final remaining = asLenientInt(data['treats_remaining']) ??
+        asLenientInt(data['remaining']) ??
         asLenientInt(data['treats_loaded']);
     if (given == null && remaining == null) return;
     final nextRemaining = remaining ?? (kTreatCapacity - given!);
