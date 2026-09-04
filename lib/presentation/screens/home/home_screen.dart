@@ -16,7 +16,6 @@ import '../../widgets/video/smart_video_view.dart';
 import '../../widgets/video/audio_mute_toggle.dart';
 import '../../widgets/status/battery_indicator.dart';
 import '../../widgets/status/connection_badge.dart';
-import '../../widgets/status/local_ap_banner.dart';
 import '../../widgets/status/treat_counter_indicator.dart';
 import '../../widgets/controls/quick_actions.dart';
 import '../../widgets/guardian/event_feed.dart';
@@ -89,10 +88,6 @@ class HomeScreen extends ConsumerWidget {
 
           return Column(
             children: [
-              // Build 146: robot-on-its-own-hotspot hint — shows only when the
-              // cloud session lost the robot and its AP credentials are cached.
-              const LocalApOfflineBanner(),
-
               // Video stream — fills available space
               Expanded(
                 flex: isLandscape ? 4 : 5,
