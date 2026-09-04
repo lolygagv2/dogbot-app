@@ -569,17 +569,22 @@ class WebSocketClient {
       final isForeignDevice = !_isFromTargetDevice(json);
       if (seq is int && !isTransientMsg && !isForeignDevice) {
         if (seq <= _lastSeenSeq) {
-          // Duplicate per the watermark. Expected for buffered replays
-          // (overlapping replay windows across reconnects); a LIVE frame
-          // landing here means the watermark is ahead of the relay's counter
-          // and we are silently eating real events — trace it (once per type
-          // per socket) so this class of bug shows in Connection Diagnostics.
-          if (json['buffered'] != true &&
-              _tracedFilterDrops.add('wm:$msgType')) {
-            connTrace('ws-wm-drop-live',
-                'type=$msgType seq=$seq wm=$_lastSeenSeq device=$_watermarkDeviceId');
+          if (json['buffered'] == true) {
+            // Duplicate replay — expected for overlapping replay windows
+            // across reconnects. Drop.
+            return;
           }
-          return;
+          // B162: a LIVE frame can never legitimately sit at or below a
+          // correct watermark — the relay's per-robot counter only climbs.
+          // Landing here means the watermark is poisoned: pre-B161 builds
+          // advanced it with OTHER robots' (higher) seqs and persisted that
+          // under this robot's key, so every real frame from this robot was
+          // eaten for days ("chip never moves"). The live frame is the
+          // truth: heal the watermark down to it and deliver. Worst case on
+          // the next reconnect the relay replays a little more history, and
+          // the feed dedups those by event id anyway.
+          connTrace('ws-wm-heal',
+              'type=$msgType seq=$seq wm=$_lastSeenSeq device=$_watermarkDeviceId');
         }
         _lastSeenSeq = seq;
         _scheduleWatermarkPersist();

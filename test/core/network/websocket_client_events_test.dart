@@ -44,6 +44,14 @@ void main() {
         'success': true,
       });
 
+  String statusFrame({required String device, required int seq, int treats = 0}) =>
+      jsonEncode({
+        'event': 'status',
+        'device_id': device,
+        'seq': seq,
+        'data': {'battery': 80.0, 'mode': 'idle', 'treats_remaining': treats},
+      });
+
   late List<WsEvent> received;
   late StreamSubscription<WsEvent> sub;
 
@@ -105,7 +113,7 @@ void main() {
     expect(received.map((e) => e.type), contains('treat'));
   });
 
-  test('feed events at or below the watermark still dedup', () async {
+  test('buffered replays at or below the watermark still dedup', () async {
     client.setTargetDevice('wimz_robot_01');
     client.debugSetWatermark(100, deviceId: 'wimz_robot_01');
 
@@ -115,6 +123,32 @@ void main() {
 
     expect(received, isEmpty);
     expect(client.debugWatermark, 100);
+  });
+
+  // B162 (2026-09-04): pre-B161 builds poisoned the persisted per-robot
+  // watermark with other robots' higher seqs. A LIVE frame below the
+  // watermark is proof the watermark is wrong (the relay counter only
+  // climbs) — heal to it and deliver, instead of eating the robot's frames
+  // until its counter catches up (which could take weeks).
+  test('a LIVE frame below the watermark heals it and is delivered',
+      () async {
+    client.setTargetDevice('wimz_robot_02');
+    client.debugSetWatermark(900, deviceId: 'wimz_robot_02');
+
+    client.debugHandleMessage(
+        statusFrame(device: 'wimz_robot_02', seq: 14, treats: 26));
+    await pump();
+
+    expect(received.map((e) => e.type), ['status']);
+    expect(received.single.data['treats_remaining'], 26);
+    expect(client.debugWatermark, 14);
+
+    // and it keeps advancing normally from there
+    client.debugHandleMessage(
+        statusFrame(device: 'wimz_robot_02', seq: 15, treats: 25));
+    await pump();
+    expect(received.length, 2);
+    expect(client.debugWatermark, 15);
   });
 
   test('feed events above the watermark advance it', () async {
@@ -355,14 +389,6 @@ void main() {
   // dragged the single watermark up and the target robot's status frames
   // (battery, treats_remaining) were dropped as duplicates — treatbot2's
   // treat count never moved while treatbot5 was online.
-  String statusFrame({required String device, required int seq, int treats = 0}) =>
-      jsonEncode({
-        'event': 'status',
-        'device_id': device,
-        'seq': seq,
-        'data': {'battery': 80.0, 'mode': 'idle', 'treats_remaining': treats},
-      });
-
   test('a non-target robot never advances the watermark', () async {
     client.setTargetDevice('wimz_robot_02');
     client.debugSetWatermark(0, deviceId: 'wimz_robot_02');
@@ -393,14 +419,15 @@ void main() {
     expect(client.debugWatermark, 13);
   });
 
-  test('target robot duplicates still dedup against its own watermark',
+  test('target robot buffered replays still dedup against its own watermark',
       () async {
     client.setTargetDevice('wimz_robot_02');
     client.debugSetWatermark(20, deviceId: 'wimz_robot_02');
-    client.debugHandleMessage(statusFrame(device: 'wimz_robot_02', seq: 20));
+    client.debugHandleMessage(
+        feedFrame(device: 'wimz_robot_02', seq: 20, buffered: true));
     client.debugHandleMessage(statusFrame(device: 'wimz_robot_02', seq: 21));
     await Future<void>.delayed(Duration.zero);
-    expect(received.length, 1);
+    expect(received.map((e) => e.type), ['status']);
     expect(client.debugWatermark, 21);
   });
 
