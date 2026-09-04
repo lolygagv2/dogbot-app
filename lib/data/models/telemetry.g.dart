@@ -18,8 +18,6 @@ _$TelemetryImpl _$$TelemetryImplFromJson(Map<String, dynamic> json) =>
       treatsRemaining:
           (json['treatsRemaining'] as num?)?.toInt() ?? kTreatCountUnknown,
       treatsGiven: (json['treatsGiven'] as num?)?.toInt() ?? kTreatCountUnknown,
-      treatCapacity:
-          (json['treatCapacity'] as num?)?.toInt() ?? kTreatCountUnknown,
       lastTreatTime: json['lastTreatTime'] == null
           ? null
           : DateTime.parse(json['lastTreatTime'] as String),
@@ -41,7 +39,6 @@ Map<String, dynamic> _$$TelemetryImplToJson(_$TelemetryImpl instance) =>
       'isCharging': instance.isCharging,
       'treatsRemaining': instance.treatsRemaining,
       'treatsGiven': instance.treatsGiven,
-      'treatCapacity': instance.treatCapacity,
       'lastTreatTime': instance.lastTreatTime?.toIso8601String(),
       'activeMissionId': instance.activeMissionId,
       'connectionType': instance.connectionType,

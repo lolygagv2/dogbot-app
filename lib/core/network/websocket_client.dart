@@ -1161,15 +1161,13 @@ class WebSocketClient {
     sendCommand('carousel_rotate');
   }
 
-  /// Set treat counter after a load: [count] = treats loaded (zeroes
-  /// treats_given robot-side), optional [capacity] when the carousel size
-  /// differs from the amount loaded. Robot replies with treat_counter_ack
-  /// carrying the authoritative counter fields.
-  void sendTreatCounterSet(int count, {int? capacity}) {
-    sendCommand('treat_counter_set', {
-      'count': count,
-      if (capacity != null) 'capacity': capacity,
-    });
+  /// Set treat counter after a partial load: [count] = treats loaded (zeroes
+  /// treats_given robot-side). `capacity` is deliberately NOT sent (2026-09-04):
+  /// the carousel is a fixed 44 slots, and the robot derives remaining from
+  /// count alone when capacity is omitted. Robot replies with
+  /// treat_counter_ack carrying the authoritative counter fields.
+  void sendTreatCounterSet(int count) {
+    sendCommand('treat_counter_set', {'count': count});
   }
 
   /// Zero treats_given, keeping capacity. Robot replies with treat_counter_ack

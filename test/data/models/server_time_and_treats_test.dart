@@ -34,23 +34,34 @@ void main() {
     });
   });
 
-  group('treat counter parsing (robot 8e8c91c: counts up)', () {
+  group('treat counter parsing (hard 44-slot carousel)', () {
     test('missing fields yield the unknown sentinel, not -1', () {
       final t = Telemetry.fromApiResponse({'battery': 50});
       expect(t.treatsRemaining, kTreatCountUnknown);
       expect(t.treatsGiven, kTreatCountUnknown);
-      expect(t.treatCapacity, kTreatCountUnknown);
     });
 
-    test('treats_given and treat_capacity parse from telemetry', () {
+    test('treats_given and treats_remaining parse; treat_capacity is ignored',
+        () {
       final t = Telemetry.fromApiResponse({
         'treats_given': 7,
-        'treat_capacity': 44,
+        'treat_capacity': 20,
         'treats_remaining': 37,
       });
       expect(t.treatsGiven, 7);
-      expect(t.treatCapacity, 44);
       expect(t.treatsRemaining, 37);
+      expect(kTreatCapacity, 44,
+          reason: 'capacity is a physical constant — 4 wheels × 11 usable '
+              'slots — never soft-coded from the robot');
+    });
+
+    test('lenient numeric types never drop the frame', () {
+      final t = Telemetry.fromApiResponse({
+        'treats_remaining': 37.0,
+        'treats_given': '7',
+      });
+      expect(t.treatsRemaining, 37);
+      expect(t.treatsGiven, 7);
     });
 
     test('pre-8e8c91c negative remaining survives parsing (provider clamps)',
@@ -64,7 +75,6 @@ void main() {
     test('default-constructed telemetry starts unknown', () {
       expect(const Telemetry().treatsRemaining, kTreatCountUnknown);
       expect(const Telemetry().treatsGiven, kTreatCountUnknown);
-      expect(const Telemetry().treatCapacity, kTreatCountUnknown);
     });
   });
 }

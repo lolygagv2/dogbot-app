@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart' show visibleForTesting;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/network/websocket_client.dart';
+import '../../core/utils/conn_trace.dart';
 import '../../data/models/telemetry.dart';
 import 'dog_profiles_provider.dart';
 
@@ -112,9 +113,6 @@ class TelemetryNotifier extends StateNotifier<Telemetry> {
           treatsGiven: parsed.treatsGiven != kTreatCountUnknown
               ? parsed.treatsGiven
               : state.treatsGiven,
-          treatCapacity: parsed.treatCapacity != kTreatCountUnknown
-              ? parsed.treatCapacity
-              : state.treatCapacity,
           activeMissionId: parsed.activeMissionId,
           connectionType: parsed.connectionType ?? state.connectionType,
           // OTA: robot's running release version — preserve if absent.
@@ -123,6 +121,9 @@ class TelemetryNotifier extends StateNotifier<Telemetry> {
           volume: parsed.volume ?? state.volume,
           rawData: parsed.rawData,
         );
+        // Treat counter: the shared applier derives remaining from a
+        // given-only frame and traces changes for on-device diagnostics.
+        _applyTreatCounterFields(event.data, event.type);
         // A status frame carrying a behavior is a fresh point-in-time reading.
         if (parsed.currentBehavior != null || parsed.dogDetected) {
           _behaviorFreshAt = DateTime.now();
@@ -165,9 +166,10 @@ class TelemetryNotifier extends StateNotifier<Telemetry> {
 
       case 'treat':
         // Treat dispensed (legacy format)
-        _applyTreatCounterFields(event.data);
+        _applyTreatCounterFields(event.data, event.type);
         state = state.copyWith(
-          treatsRemaining: event.data['remaining'] as int? ?? state.treatsRemaining,
+          treatsRemaining:
+              asLenientInt(event.data['remaining']) ?? state.treatsRemaining,
           lastTreatTime: DateTime.now(),
         );
         break;
@@ -185,13 +187,13 @@ class TelemetryNotifier extends StateNotifier<Telemetry> {
       // for the next telemetry cycle. NOTE: reset acks report real values;
       // do not assume zero remaining from a reset.
       case 'treat_counter_ack':
-        _applyTreatCounterFields(event.data);
+        _applyTreatCounterFields(event.data, event.type);
         break;
 
       case 'reward':
         // Reward event (e.g. treat_dispensed): {subtype, treats_remaining, treats_low}
         if (event.data['subtype'] == 'treat_dispensed') {
-          _applyTreatCounterFields(event.data);
+          _applyTreatCounterFields(event.data, event.type);
           if (event.data['treats_remaining'] != null ||
               event.data['treats_given'] != null) {
             state = state.copyWith(lastTreatTime: DateTime.now());
@@ -204,10 +206,10 @@ class TelemetryNotifier extends StateNotifier<Telemetry> {
         final level = (event.data['level'] as num?)?.toDouble();
         final charging = event.data['charging'] as bool?;
         final temp = (event.data['temperature'] as num?)?.toDouble();
-        final treats = event.data['treats_remaining'] as int?;
+        final treats = asLenientInt(event.data['treats_remaining']);
         final mode = event.data['mode'] as String?;
         print('BATTERY EVENT RECEIVED: level=$level, charging=$charging, temp=$temp, treats=$treats, mode=$mode');
-        _applyTreatCounterFields(event.data);
+        _applyTreatCounterFields(event.data, event.type);
         if (level != null) {
           state = state.copyWith(
             battery: level,
@@ -239,20 +241,37 @@ class TelemetryNotifier extends StateNotifier<Telemetry> {
   }
 
   /// Copy whichever treat counter fields this payload carries into state.
-  /// Robot 8e8c91c contract: treats_given counts up (authoritative),
-  /// treats_remaining is derived server-side, treat_capacity is user-set.
-  /// treats_loaded is a deprecated alias of treats_remaining — accepted as a
-  /// fallback only, for robots still on pre-8e8c91c firmware.
-  void _applyTreatCounterFields(Map<String, dynamic> data) {
-    final given = data['treats_given'] as int?;
-    final capacity = data['treat_capacity'] as int?;
-    final remaining =
-        data['treats_remaining'] as int? ?? data['treats_loaded'] as int?;
-    if (given == null && capacity == null && remaining == null) return;
+  /// Robot 8e8c91c contract: treats_given counts up, treats_remaining is
+  /// derived server-side. treats_loaded is a deprecated alias of
+  /// treats_remaining — accepted as a fallback only (pre-8e8c91c firmware).
+  ///
+  /// B160 (2026-09-04): `treats_remaining` is the ONE value the UI renders.
+  /// Not every frame carries both fields — periodic status/battery frames
+  /// carry treats_remaining, while treat_counter_ack / treats_* carry
+  /// treats_given — so the display must follow whichever field the latest
+  /// frame has. A given-only frame derives remaining against the hard
+  /// [kTreatCapacity]; a remaining-only frame leaves given untouched (it
+  /// can't be derived after a partial load). `treat_capacity` is ignored:
+  /// the carousel is physically 44 slots.
+  void _applyTreatCounterFields(Map<String, dynamic> data, String source) {
+    final given = asLenientInt(data['treats_given']);
+    final remaining = asLenientInt(data['treats_remaining']) ??
+        asLenientInt(data['treats_loaded']);
+    if (given == null && remaining == null) return;
+    final nextRemaining = remaining ?? (kTreatCapacity - given!);
+    final nextGiven = given ?? state.treatsGiven;
+    if (nextRemaining == state.treatsRemaining &&
+        nextGiven == state.treatsGiven) {
+      return;
+    }
+    // Visible in Settings → Connection Diagnostics; only on change, so the
+    // 2s status cadence doesn't flood the trace. [[debug-via-in-app-diagnostics]]
+    connTrace('treats',
+        'src=$source remaining=$nextRemaining given=$nextGiven'
+        '${remaining == null ? ' (derived from given)' : ''}');
     state = state.copyWith(
-      treatsGiven: given ?? state.treatsGiven,
-      treatCapacity: capacity ?? state.treatCapacity,
-      treatsRemaining: remaining ?? state.treatsRemaining,
+      treatsGiven: nextGiven,
+      treatsRemaining: nextRemaining,
     );
   }
 
@@ -264,8 +283,8 @@ class TelemetryNotifier extends StateNotifier<Telemetry> {
       final level = (data['level'] as num?)?.toDouble();
       final charging = data['charging'] as bool?;
       final temp = (data['temperature'] as num?)?.toDouble();
-      final treats = data['treats_remaining'] as int?;
-      _applyTreatCounterFields(data);
+      final treats = asLenientInt(data['treats_remaining']);
+      _applyTreatCounterFields(data, 'battery-flat');
       if (level != null) {
         print('BATTERY EXTRACTED (level key): level=$level, charging=$charging, temp=$temp, treats=$treats');
         state = state.copyWith(
@@ -284,7 +303,7 @@ class TelemetryNotifier extends StateNotifier<Telemetry> {
       final level = (batteryData['level'] as num?)?.toDouble();
       final charging = batteryData['charging'] as bool?;
       final temp = (batteryData['temperature'] as num?)?.toDouble();
-      final treats = batteryData['treats_remaining'] as int?;
+      final treats = asLenientInt(batteryData['treats_remaining']);
       if (level != null) {
         print('BATTERY EXTRACTED (nested): level=$level, temp=$temp');
         state = state.copyWith(
@@ -424,37 +443,15 @@ final modeProvider = Provider<String>((ref) {
   return ref.watch(telemetryProvider).mode;
 });
 
-/// Provider for treats remaining count.
-/// Returns null if robot has never sent (or let us derive) the field —
-/// show "—" in UI. Robot 8e8c91c derives remaining as max(0, capacity -
-/// given) so it can't go negative; pre-8e8c91c firmware could still send a
-/// raw negative, which is clamped here — never render a negative.
+/// Provider for treats remaining count — the single figure the UI renders
+/// (chip "X/44", sheet, Settings tile). Returns null if the robot has never
+/// sent (or let us derive) the field — show "—" in UI. Clamped to
+/// [0, kTreatCapacity]: pre-8e8c91c firmware could send a raw negative, and a
+/// robot whose capacity drifted above 44 must not render "50/44".
 final treatsRemainingProvider = Provider<int?>((ref) {
   final t = ref.watch(telemetryProvider);
-  var raw = t.treatsRemaining;
-  if (raw == kTreatCountUnknown) {
-    // Derive from given/capacity if remaining itself never arrived.
-    if (t.treatsGiven == kTreatCountUnknown) return null;
-    final capacity = t.treatCapacity != kTreatCountUnknown
-        ? t.treatCapacity
-        : kDefaultTreatCapacity;
-    raw = capacity - t.treatsGiven;
-  }
-  return raw < 0 ? 0 : raw;
-});
-
-/// Treats dispensed since last load/reset (robot 8e8c91c "given" counter).
-/// Null until the robot sends the field — pre-8e8c91c firmware never will,
-/// and the UI falls back to remaining-only display.
-final treatsGivenProvider = Provider<int?>((ref) {
-  final raw = ref.watch(telemetryProvider).treatsGiven;
+  final raw = t.treatsRemaining;
   if (raw == kTreatCountUnknown) return null;
-  return raw;
-});
-
-/// Carousel capacity (user-settable on the robot; defaults to 44).
-final treatCapacityProvider = Provider<int>((ref) {
-  final raw = ref.watch(telemetryProvider).treatCapacity;
-  if (raw == kTreatCountUnknown) return kDefaultTreatCapacity;
-  return raw;
+  if (raw < 0) return 0;
+  return raw > kTreatCapacity ? kTreatCapacity : raw;
 });

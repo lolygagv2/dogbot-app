@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/constants/app_constants.dart';
 import '../../core/network/websocket_client.dart';
+import '../../data/models/telemetry.dart';
 import '../../core/utils/conn_trace.dart';
 import 'connection_mode_provider.dart';
 import 'connection_provider.dart';
@@ -377,17 +378,18 @@ class TreatControl {
     _ref.read(websocketClientProvider).sendCarouselRotate();
   }
 
-  /// Set treat counter after a load: [count] = treats loaded (zeroes the
-  /// robot's treats_given), optional [capacity] if the carousel size differs.
-  void setCount(int count, {int? capacity}) {
+  /// Set treat counter after a partial load: [count] = treats loaded.
+  /// Capacity is never sent — the carousel is physically [kTreatCapacity]
+  /// slots and the app no longer exposes a capacity control (2026-09-04).
+  void setCount(int count) {
     if (!_ref.read(connectionProvider).isConnected) return;
     _ref
         .read(websocketClientProvider)
-        .sendTreatCounterSet(count, capacity: capacity);
+        .sendTreatCounterSet(count.clamp(0, kTreatCapacity));
   }
 
-  /// Robot's default carousel capacity (one treat per slot).
-  static const int fullTreatCount = 44;
+  /// Carousel capacity (hard physical constant).
+  static const int fullTreatCount = kTreatCapacity;
 
   /// Zero treats_given after a refill — capacity is kept robot-side.
   /// (Robot 8e8c91c: counter counts UP; reset ≠ "set remaining to 44".)

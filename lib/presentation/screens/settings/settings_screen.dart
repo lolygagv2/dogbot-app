@@ -11,6 +11,7 @@ import '../../../domain/providers/ota_update_provider.dart';
 import '../../../domain/providers/paired_devices_provider.dart';
 import '../../../domain/providers/settings_provider.dart';
 import '../../../domain/providers/push_to_talk_provider.dart';
+import '../../../data/models/telemetry.dart';
 import '../../../domain/providers/telemetry_provider.dart';
 import '../../../domain/providers/video_quality_provider.dart';
 import '../../../domain/providers/webrtc_provider.dart';
@@ -498,21 +499,16 @@ class _RobotSoftwareTile extends ConsumerWidget {
   }
 }
 
-/// Treat counter display — robot 8e8c91c counts UP: "X of 44 given" is the
-/// primary figure; low/empty derives from treats_remaining (never negative).
+/// Treat counter display — treats remaining out of the fixed 44-slot
+/// carousel (B160: remaining is the single rendered figure).
 class _TreatsRemainingTile extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final given = ref.watch(treatsGivenProvider);
-    final capacity = ref.watch(treatCapacityProvider);
     final remaining = ref.watch(treatsRemainingProvider);
 
     final String display;
-    if (given != null) {
-      display = '$given of $capacity given';
-    } else if (remaining != null) {
-      // Pre-8e8c91c firmware: only remaining is known.
-      display = remaining == 0 ? '0 (refill needed)' : '$remaining';
+    if (remaining != null) {
+      display = '$remaining of $kTreatCapacity';
     } else {
       display = '\u2014';
     }

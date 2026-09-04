@@ -10,8 +10,20 @@ part 'telemetry.g.dart';
 /// treatsRemainingProvider clamps them; never render a negative.
 const int kTreatCountUnknown = -9999;
 
-/// Robot's default carousel capacity (one treat per slot).
-const int kDefaultTreatCapacity = 44;
+/// Carousel capacity — a HARD physical constant, never user-settable
+/// (Morgan, 2026-09-04): 4 wheels × 12 slots, minus one pass-through slot
+/// per wheel = 44 treat slots. The robot's `treat_capacity` field is ignored;
+/// the app never sends `capacity` on treat_counter_set.
+const int kTreatCapacity = 44;
+
+/// Lenient int parse for robot/relay counter fields: int, num (37.0), or a
+/// numeric string. Never throws — a bad type must not drop the whole frame.
+int? asLenientInt(dynamic v) {
+  if (v is int) return v;
+  if (v is num) return v.toInt();
+  if (v is String) return int.tryParse(v);
+  return null;
+}
 
 /// Robot telemetry/status data from /telemetry endpoint
 @freezed
@@ -26,7 +38,6 @@ class Telemetry with _$Telemetry {
     @Default(false) bool isCharging,
     @Default(kTreatCountUnknown) int treatsRemaining, // kTreatCountUnknown = not yet received
     @Default(kTreatCountUnknown) int treatsGiven, // counts up since last load/reset; read-only from robot
-    @Default(kTreatCountUnknown) int treatCapacity, // carousel size, user-settable (robot default 44)
     DateTime? lastTreatTime,
     String? activeMissionId,
     String? connectionType, // "LAN" (P2P), "WAN" (TURN relay), or null
@@ -77,11 +88,10 @@ class Telemetry with _$Telemetry {
           json['current_behavior'] as String? ?? json['behavior'] as String?,
       confidence: (json['confidence'] as num?)?.toDouble(),
       isCharging: isCharging,
-      treatsRemaining: json['treats_remaining'] as int? ??
-          json['treatsRemaining'] as int? ??
+      treatsRemaining: asLenientInt(json['treats_remaining']) ??
+          asLenientInt(json['treatsRemaining']) ??
           kTreatCountUnknown, // field missing from this event
-      treatsGiven: json['treats_given'] as int? ?? kTreatCountUnknown,
-      treatCapacity: json['treat_capacity'] as int? ?? kTreatCountUnknown,
+      treatsGiven: asLenientInt(json['treats_given']) ?? kTreatCountUnknown,
       activeMissionId: json['active_mission_id'] as String? ??
           json['activeMission'] as String?,
       connectionType: json['connection_type'] as String?,
