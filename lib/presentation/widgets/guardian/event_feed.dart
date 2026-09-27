@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../data/models/guardian_event.dart';
 import '../../../domain/providers/guardian_events_provider.dart';
+import '../../../l10n/l10n.dart';
 import '../silent_guardian/sg_summary_card.dart';
 
 /// Widget displaying a scrollable feed of guardian events
@@ -52,7 +53,7 @@ class _EventFeedState extends ConsumerState<EventFeed> {
                   ),
                   const SizedBox(height: 16),
                   Text(
-                    'Silent Guardian Active',
+                    context.l10n.eventFeedSgActive,
                     style: Theme.of(context).textTheme.titleLarge?.copyWith(
                           color: Colors.purple,
                           fontWeight: FontWeight.bold,
@@ -60,7 +61,7 @@ class _EventFeedState extends ConsumerState<EventFeed> {
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    'Watching for activity...',
+                    context.l10n.eventFeedWatching,
                     style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                           color: Theme.of(context)
                               .colorScheme
@@ -87,7 +88,7 @@ class _EventFeedState extends ConsumerState<EventFeed> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                'Recent Events (${events.length})',
+                context.l10n.eventFeedRecentEvents(events.length),
                 style: Theme.of(context).textTheme.titleSmall?.copyWith(
                       color: Colors.purple,
                       fontWeight: FontWeight.bold,
@@ -98,7 +99,7 @@ class _EventFeedState extends ConsumerState<EventFeed> {
                   ref.read(guardianEventsProvider.notifier).clearEvents();
                 },
                 icon: const Icon(Icons.clear_all, size: 16),
-                label: const Text('Clear'),
+                label: Text(context.l10n.eventFeedClear),
                 style: TextButton.styleFrom(
                   foregroundColor: Theme.of(context)
                       .colorScheme
@@ -159,7 +160,7 @@ class EventCard extends StatelessWidget {
           ),
         ),
         title: Text(
-          event.type.label,
+          event.type.localizedLabel(context.l10n),
           style: TextStyle(
             fontWeight: FontWeight.w600,
             color: event.type.color,
@@ -180,7 +181,7 @@ class EventCard extends StatelessWidget {
               )
             : null,
         trailing: Text(
-          event.formattedTime,
+          event.localizedTime(context.l10n),
           style: TextStyle(
             color: Theme.of(context).colorScheme.onSurface.withOpacity(0.5),
             fontSize: 12,
@@ -211,14 +212,14 @@ class CompactEventCard extends StatelessWidget {
           const SizedBox(width: 8),
           Expanded(
             child: Text(
-              event.displayText,
+              event.localizedDisplayText(context.l10n),
               style: const TextStyle(fontSize: 13),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
             ),
           ),
           Text(
-            event.formattedTime,
+            event.localizedTime(context.l10n),
             style: TextStyle(
               fontSize: 11,
               color: Theme.of(context).colorScheme.onSurface.withOpacity(0.5),

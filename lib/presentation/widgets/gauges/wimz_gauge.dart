@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:syncfusion_flutter_gauges/gauges.dart';
 
+import '../../../l10n/l10n.dart';
+
 import '../../theme/app_theme.dart';
 
 /// Premium circular gauge for battery, speed, or other metrics
@@ -166,7 +168,7 @@ class BatteryGauge extends StatelessWidget {
           value: level,
           min: 0,
           max: 100,
-          label: isCharging ? 'CHARGING' : 'BATTERY',
+          label: isCharging ? context.l10n.gaugeCharging : context.l10n.gaugeBattery,
           unit: '%',
           size: size,
           showPointer: false,
@@ -205,13 +207,13 @@ class SpeedGauge extends StatelessWidget {
       children: [
         _SingleSpeedGauge(
           value: leftSpeed,
-          label: 'L',
+          label: context.l10n.gaugeLeft,
           size: size,
         ),
         SizedBox(width: size * 0.1),
         _SingleSpeedGauge(
           value: rightSpeed,
-          label: 'R',
+          label: context.l10n.gaugeRight,
           size: size,
         ),
       ],

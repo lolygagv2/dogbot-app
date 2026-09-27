@@ -3,6 +3,8 @@ import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../data/datasources/robot_api.dart';
+import '../../l10n/l10n.dart';
+import 'l10n_provider.dart';
 
 /// WiFi network from scan results
 class WifiNetwork {
@@ -97,6 +99,8 @@ final wifiConfigProvider =
 
 class WifiConfigNotifier extends StateNotifier<WifiConfigState> {
   final Ref _ref;
+
+  AppLocalizations get _l => _ref.read(l10nProvider);
   Timer? _statusPollTimer;
 
   WifiConfigNotifier(this._ref) : super(const WifiConfigState());
@@ -126,7 +130,7 @@ class WifiConfigNotifier extends StateNotifier<WifiConfigState> {
     } catch (e) {
       state = state.copyWith(
         step: WifiConfigStep.scanError,
-        errorMessage: 'WiFi scan failed: $e',
+        errorMessage: _l.wifiErrScanFailed('$e'),
       );
     }
   }
@@ -154,7 +158,7 @@ class WifiConfigNotifier extends StateNotifier<WifiConfigState> {
       } else {
         state = state.copyWith(
           step: WifiConfigStep.scanComplete,
-          errorMessage: 'Failed to connect: $e',
+          errorMessage: _l.wifiErrConnectFailed('$e'),
         );
       }
     }

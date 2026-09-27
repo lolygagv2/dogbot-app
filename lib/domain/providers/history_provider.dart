@@ -5,6 +5,8 @@ import '../../data/datasources/robot_api.dart';
 import '../../data/models/mission.dart';
 import 'auth_provider.dart';
 import 'dog_profiles_provider.dart';
+import '../../l10n/l10n.dart';
+import 'l10n_provider.dart';
 
 /// History filter settings
 class HistoryFilter {
@@ -120,19 +122,21 @@ final historyProvider =
 class HistoryNotifier extends StateNotifier<HistoryState> {
   final Ref _ref;
 
+  AppLocalizations get _l => _ref.read(l10nProvider);
+
   HistoryNotifier(this._ref) : super(const HistoryState());
 
   /// Load history with current filter (skip in local mode — no relay API)
   Future<void> loadHistory() async {
     final isLocal = _ref.read(localConnectionProvider).isConnected;
     if (isLocal) {
-      state = state.copyWith(error: 'History not available in local mode');
+      state = state.copyWith(error: _l.historyErrLocalMode);
       return;
     }
 
     final token = _ref.read(authTokenProvider);
     if (token == null) {
-      state = state.copyWith(error: 'Not logged in');
+      state = state.copyWith(error: _l.historyErrNotLoggedIn);
       return;
     }
 
@@ -166,7 +170,7 @@ class HistoryNotifier extends StateNotifier<HistoryState> {
     } catch (e) {
       state = state.copyWith(
         isLoading: false,
-        error: 'Failed to load history: $e',
+        error: _l.historyErrLoadFailed('$e'),
       );
     }
   }

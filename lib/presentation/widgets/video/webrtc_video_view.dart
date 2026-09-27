@@ -8,6 +8,7 @@ import '../../../domain/providers/device_provider.dart';
 import '../../../domain/providers/photo_provider.dart';
 import '../../../domain/providers/video_provider.dart';
 import '../../../domain/providers/webrtc_provider.dart';
+import '../../../l10n/l10n.dart';
 import '../../theme/app_theme.dart';
 
 /// WebRTC video view widget for displaying live video from robot via relay
@@ -100,6 +101,7 @@ class _WebRTCVideoViewState extends ConsumerState<WebRTCVideoView> {
   @override
   Widget build(BuildContext context) {
     final webrtcState = ref.watch(webrtcProvider);
+    final l = context.l10n;
 
     switch (webrtcState.state) {
       case WebRTCState.disconnected:
@@ -110,18 +112,18 @@ class _WebRTCVideoViewState extends ConsumerState<WebRTCVideoView> {
         // the banner owns connection recovery.
         if (!ref.watch(connectionProvider).isConnected) {
           return _buildPlaceholder(
-              'Waiting for connection...', Icons.videocam_off, null);
+              l.webrtcWaitingForConnection, Icons.videocam_off, null);
         }
-        return _buildPlaceholder('Tap to connect', Icons.videocam_off, () {
+        return _buildPlaceholder(l.webrtcTapToConnect, Icons.videocam_off, () {
           _requestSent = false;
           _requestVideo();
         });
       case WebRTCState.connecting:
-        return _buildLoading('Connecting video...');
+        return _buildLoading(l.webrtcConnectingVideo);
       case WebRTCState.error:
-        return _buildError(webrtcState.errorMessage);
+        return _buildError(l, webrtcState.errorMessage);
       case WebRTCState.connected:
-        return _buildVideo(webrtcState.renderer);
+        return _buildVideo(l, webrtcState.renderer);
     }
   }
 
@@ -166,7 +168,7 @@ class _WebRTCVideoViewState extends ConsumerState<WebRTCVideoView> {
     );
   }
 
-  Widget _buildError(String? errorMessage) {
+  Widget _buildError(AppLocalizations l, String? errorMessage) {
     return Container(
       color: Colors.black,
       child: Center(
@@ -176,7 +178,7 @@ class _WebRTCVideoViewState extends ConsumerState<WebRTCVideoView> {
             const Icon(Icons.error_outline, color: AppTheme.error, size: 48),
             const SizedBox(height: 16),
             Text(
-              errorMessage ?? 'Video connection failed',
+              errorMessage ?? l.webrtcConnectionFailed,
               style: const TextStyle(color: AppTheme.textSecondary),
               textAlign: TextAlign.center,
             ),
@@ -186,7 +188,7 @@ class _WebRTCVideoViewState extends ConsumerState<WebRTCVideoView> {
                 _requestSent = false;
                 _requestVideo();
               },
-              child: const Text('Retry'),
+              child: Text(l.retry),
             ),
           ],
         ),
@@ -194,9 +196,9 @@ class _WebRTCVideoViewState extends ConsumerState<WebRTCVideoView> {
     );
   }
 
-  Widget _buildVideo(RTCVideoRenderer? renderer) {
+  Widget _buildVideo(AppLocalizations l, RTCVideoRenderer? renderer) {
     if (renderer == null) {
-      return _buildLoading('Initializing renderer...');
+      return _buildLoading(l.webrtcInitializingRenderer);
     }
 
     // Set up listener for dimension changes
@@ -209,7 +211,7 @@ class _WebRTCVideoViewState extends ConsumerState<WebRTCVideoView> {
     print('WebRTC Widget: srcObject=${renderer.srcObject != null}, size=${w}x$h, hasFirstFrame=$_hasFirstFrame');
 
     if (renderer.srcObject == null) {
-      return _buildLoading('Waiting for video stream...');
+      return _buildLoading(l.webrtcWaitingForStream);
     }
 
     // Show loading until we have valid dimensions
@@ -228,15 +230,15 @@ class _WebRTCVideoViewState extends ConsumerState<WebRTCVideoView> {
           AbsorbPointer(
             child: Container(
               color: Colors.black87,
-              child: const Center(
+              child: Center(
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    CircularProgressIndicator(color: AppTheme.primary),
-                    SizedBox(height: 16),
+                    const CircularProgressIndicator(color: AppTheme.primary),
+                    const SizedBox(height: 16),
                     Text(
-                      'Receiving video...',
-                      style: TextStyle(color: AppTheme.textSecondary),
+                      l.webrtcReceivingVideo,
+                      style: const TextStyle(color: AppTheme.textSecondary),
                     ),
                   ],
                 ),
@@ -345,8 +347,8 @@ class VideoRecordButtonState extends ConsumerState<VideoRecordButton>
                 const SizedBox(width: 8),
                 Text(
                   next.lastCaptured!.savedToGallery
-                      ? 'Video saved to gallery!'
-                      : 'Video saved!',
+                      ? context.l10n.videoSavedToGallery
+                      : context.l10n.videoSavedShort,
                 ),
               ],
             ),
@@ -443,8 +445,8 @@ class CameraButton extends ConsumerWidget {
                 const SizedBox(width: 8),
                 Text(
                   next.lastCaptured!.savedToGallery
-                      ? 'Photo saved to gallery!'
-                      : 'Photo saved!',
+                      ? context.l10n.photoSavedToGallery
+                      : context.l10n.photoSavedShort,
                 ),
               ],
             ),

@@ -4,6 +4,7 @@ import 'package:flutter_joystick/flutter_joystick.dart';
 
 import '../../../core/constants/app_constants.dart';
 import '../../../domain/providers/control_provider.dart';
+import '../../../l10n/l10n.dart';
 
 class PanTiltControl extends ConsumerWidget {
   const PanTiltControl({super.key});
@@ -46,12 +47,12 @@ class PanTiltControl extends ConsumerWidget {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Text(
-              'P:${servoState.pan.toStringAsFixed(0)}',
+              context.l10n.panTiltPan(servoState.pan.toStringAsFixed(0)),
               style: const TextStyle(fontSize: 10, fontFamily: 'monospace'),
             ),
             const SizedBox(width: 8),
             Text(
-              'T:${servoState.tilt.toStringAsFixed(0)}',
+              context.l10n.panTiltTilt(servoState.tilt.toStringAsFixed(0)),
               style: const TextStyle(fontSize: 10, fontFamily: 'monospace'),
             ),
           ],
@@ -60,7 +61,7 @@ class PanTiltControl extends ConsumerWidget {
         TextButton.icon(
           onPressed: () => servoControl.center(),
           icon: const Icon(Icons.center_focus_strong, size: 16),
-          label: const Text('Center'),
+          label: Text(context.l10n.panTiltCenter),
           style: TextButton.styleFrom(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
             minimumSize: Size.zero,

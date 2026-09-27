@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../data/models/telemetry.dart';
 import '../../theme/app_theme.dart';
+import '../../../l10n/l10n.dart';
 
 /// Stable per-dog color so the same dog always renders with the same color
 /// across the session. Hash the trackKey into the existing chip palette.
@@ -67,7 +68,7 @@ class DetectionOverlay extends StatelessWidget {
               ),
             ),
             child: Text(
-              '${detection.displayName.isNotEmpty ? "${detection.displayName} • " : ""}${AppTheme.getBehaviorDisplayName(detection.behavior)} ${((detection.confidence ?? 0) * 100).toInt()}%',
+              '${detection.localizedDisplayName(context.l10n).isNotEmpty ? "${detection.localizedDisplayName(context.l10n)} • " : ""}${behaviorDisplayName(context.l10n, detection.behavior)} ${((detection.confidence ?? 0) * 100).toInt()}%',
               style: const TextStyle(
                 color: Colors.white,
                 fontSize: 10,

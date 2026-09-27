@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../../data/datasources/device_api.dart';
 import '../../../domain/providers/device_provider.dart';
 import '../../../domain/providers/paired_devices_provider.dart';
+import '../../../l10n/l10n.dart';
 import '../../theme/app_theme.dart';
 
 class DevicePairingScreen extends ConsumerStatefulWidget {
@@ -39,20 +40,17 @@ class _DevicePairingScreenState extends ConsumerState<DevicePairingScreen> {
   static final _deviceIdRegex = RegExp(r'^[a-zA-Z0-9][a-zA-Z0-9_-]{2,49}$');
 
   Future<void> _pairDevice() async {
+    final l = context.l10n;
     final deviceId = _deviceIdController.text.trim().toLowerCase();
     if (deviceId.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please enter a device ID')),
+        SnackBar(content: Text(l.devicePairingEnterId)),
       );
       return;
     }
     if (!_deviceIdRegex.hasMatch(deviceId)) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
-            'Device ID must be 3–50 characters: letters, numbers, _ or -',
-          ),
-        ),
+        SnackBar(content: Text(l.devicePairingInvalidId)),
       );
       return;
     }
@@ -67,28 +65,29 @@ class _DevicePairingScreenState extends ConsumerState<DevicePairingScreen> {
     if (success && mounted) {
       _deviceIdController.clear();
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Successfully paired $deviceId')),
+        SnackBar(content: Text(l.devicePairingPaired(deviceId))),
       );
     }
   }
 
   Future<void> _unpairDevice(String deviceId) async {
+    final l = context.l10n;
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Unpair Device'),
-        content: Text('Are you sure you want to unpair $deviceId?'),
+        title: Text(l.devicePairingUnpairTitle),
+        content: Text(l.devicePairingUnpairBody(deviceId)),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel'),
+            child: Text(l.cancel),
           ),
           FilledButton(
             onPressed: () => Navigator.pop(context, true),
             style: FilledButton.styleFrom(
               backgroundColor: AppTheme.error,
             ),
-            child: const Text('Unpair'),
+            child: Text(l.devicePairingUnpair),
           ),
         ],
       ),
@@ -103,7 +102,7 @@ class _DevicePairingScreenState extends ConsumerState<DevicePairingScreen> {
     switch (outcome) {
       case UnpairOutcome.success:
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Unpaired $deviceId')),
+          SnackBar(content: Text(l.devicePairingUnpaired(deviceId))),
         );
       case UnpairOutcome.orphaned:
         await _offerLocalDismiss(deviceId);
@@ -116,23 +115,21 @@ class _DevicePairingScreenState extends ConsumerState<DevicePairingScreen> {
   /// Build 94: relay said no such device — pairing row is orphaned. Offer to
   /// hide it locally so the list isn't stuck.
   Future<void> _offerLocalDismiss(String deviceId) async {
+    final l = context.l10n;
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Robot Not Found'),
-        content: Text(
-          'The relay has no record of "$deviceId". This entry is orphaned '
-          'and can\'t be cleanly removed. Hide it from your list anyway?',
-        ),
+        title: Text(l.devicePairingNotFoundTitle),
+        content: Text(l.devicePairingNotFoundBody(deviceId)),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('Keep'),
+            child: Text(l.devicePairingKeep),
           ),
           FilledButton(
             onPressed: () => Navigator.pop(context, true),
             style: FilledButton.styleFrom(backgroundColor: AppTheme.error),
-            child: const Text('Hide'),
+            child: Text(l.devicePairingHide),
           ),
         ],
       ),
@@ -143,7 +140,7 @@ class _DevicePairingScreenState extends ConsumerState<DevicePairingScreen> {
     await ref.read(pairedDevicesProvider.notifier).dismissLocally(deviceId);
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Hid $deviceId from your list')),
+      SnackBar(content: Text(l.devicePairingHidden(deviceId))),
     );
   }
 
@@ -157,7 +154,7 @@ class _DevicePairingScreenState extends ConsumerState<DevicePairingScreen> {
       ..hideCurrentSnackBar()
       ..showSnackBar(
         SnackBar(
-          content: Text('Connecting to $label…'),
+          content: Text(context.l10n.devicePairingConnectingTo(label)),
           duration: const Duration(seconds: 2),
         ),
       );
@@ -168,10 +165,11 @@ class _DevicePairingScreenState extends ConsumerState<DevicePairingScreen> {
   Widget build(BuildContext context) {
     final pairedDevicesState = ref.watch(pairedDevicesProvider);
     final activeDeviceId = ref.watch(deviceIdProvider);
+    final l = context.l10n;
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('My Robots'),
+        title: Text(l.devicePairingTitle),
       ),
       body: Column(
         children: [
@@ -188,7 +186,7 @@ class _DevicePairingScreenState extends ConsumerState<DevicePairingScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'PAIR NEW DEVICE',
+                  l.devicePairingPairNew,
                   style: TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.bold,
@@ -203,7 +201,7 @@ class _DevicePairingScreenState extends ConsumerState<DevicePairingScreen> {
                       child: TextField(
                         controller: _deviceIdController,
                         decoration: InputDecoration(
-                          hintText: 'Enter device ID (e.g., wimz_robot_01)',
+                          hintText: l.devicePairingIdHint,
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(8),
                           ),
@@ -228,7 +226,7 @@ class _DevicePairingScreenState extends ConsumerState<DevicePairingScreen> {
                               ),
                             )
                           : const Icon(Icons.add),
-                      label: const Text('Pair'),
+                      label: Text(l.devicePairingPair),
                     ),
                   ],
                 ),
@@ -300,6 +298,7 @@ class _DevicePairingScreenState extends ConsumerState<DevicePairingScreen> {
 class _EmptyState extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
+    final l = context.l10n;
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -311,7 +310,7 @@ class _EmptyState extends StatelessWidget {
           ),
           const SizedBox(height: 16),
           Text(
-            'No Paired Devices',
+            l.devicePairingNoDevices,
             style: TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.bold,
@@ -320,7 +319,7 @@ class _EmptyState extends StatelessWidget {
           ),
           const SizedBox(height: 8),
           Text(
-            'Enter a device ID above to pair your WIM-Z',
+            l.devicePairingNoDevicesBody,
             style: TextStyle(color: AppTheme.textTertiary),
           ),
         ],
@@ -346,6 +345,7 @@ class _DeviceListItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l = context.l10n;
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
       decoration: BoxDecoration(
@@ -409,9 +409,9 @@ class _DeviceListItem extends StatelessWidget {
                   color: AppTheme.primary,
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: const Text(
-                  'ACTIVE',
-                  style: TextStyle(
+                child: Text(
+                  l.devicePairingActive,
+                  style: const TextStyle(
                     color: Colors.white,
                     fontSize: 10,
                     fontWeight: FontWeight.bold,
@@ -441,7 +441,7 @@ class _DeviceListItem extends StatelessWidget {
                 ),
                 const SizedBox(width: 4),
                 Text(
-                  isOnline ? 'Online' : 'Offline',
+                  isOnline ? l.devicePairingOnline : l.devicePairingOffline,
                   style: TextStyle(
                     fontSize: 12,
                     color: isOnline ? AppTheme.accent : AppTheme.textTertiary,
@@ -449,7 +449,8 @@ class _DeviceListItem extends StatelessWidget {
                 ),
                 if (device.lastSeen != null && !isOnline) ...[
                   Text(
-                    ' - Last seen ${_formatLastSeen(device.lastSeen!)}',
+                    l.devicePairingLastSeen(
+                        _formatLastSeen(l, device.lastSeen!)),
                     style: TextStyle(
                       fontSize: 12,
                       color: AppTheme.textTertiary,
@@ -463,24 +464,24 @@ class _DeviceListItem extends StatelessWidget {
         trailing: IconButton(
           icon: Icon(Icons.link_off, color: AppTheme.error),
           onPressed: onUnpair,
-          tooltip: 'Unpair device',
+          tooltip: l.devicePairingUnpairTooltip,
         ),
       ),
     );
   }
 
-  String _formatLastSeen(DateTime lastSeen) {
+  String _formatLastSeen(AppLocalizations l, DateTime lastSeen) {
     final now = DateTime.now();
     final diff = now.difference(lastSeen);
 
     if (diff.inMinutes < 1) {
-      return 'just now';
+      return l.devicePairingJustNow;
     } else if (diff.inMinutes < 60) {
-      return '${diff.inMinutes}m ago';
+      return l.devicePairingMinutesAgo(diff.inMinutes);
     } else if (diff.inHours < 24) {
-      return '${diff.inHours}h ago';
+      return l.devicePairingHoursAgo(diff.inHours);
     } else {
-      return '${diff.inDays}d ago';
+      return l.devicePairingDaysAgo(diff.inDays);
     }
   }
 }

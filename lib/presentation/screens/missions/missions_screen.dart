@@ -8,6 +8,7 @@ import '../../../domain/providers/connection_provider.dart';
 import '../../../domain/providers/coach_provider.dart';
 import '../../../domain/providers/missions_provider.dart';
 import '../../../domain/providers/programs_provider.dart';
+import '../../../l10n/l10n.dart';
 import '../../theme/app_theme.dart';
 
 class MissionsScreen extends ConsumerWidget {
@@ -24,12 +25,12 @@ class MissionsScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Training'),
+        title: Text(context.l10n.missionsTitle),
         actions: [
           IconButton(
             icon: const Icon(Icons.history),
             onPressed: () => context.push('/history'),
-            tooltip: 'Training History',
+            tooltip: context.l10n.historyTitle,
           ),
         ],
       ),
@@ -62,8 +63,8 @@ class MissionsScreen extends ConsumerWidget {
               progress: missionsState.activeProgress,
               rewards: missionsState.activeRewards,
               status: missionsState.activeStatus,
-              stageDisplay: missionsState.stageDisplay,
-              statusDisplay: missionsState.statusDisplay,
+              stageDisplay: missionsState.currentProgress?.localizedStage(context.l10n),
+              statusDisplay: missionsState.currentProgress?.localizedStatus(context.l10n),
               trick: missionsState.activeTrick,
               dogName: missionsState.activeDogName,
               onStop: () => ref.read(missionsProvider.notifier).stopMission(),
@@ -74,7 +75,7 @@ class MissionsScreen extends ConsumerWidget {
 
           // Programs section
           Text(
-            'Training Programs',
+            context.l10n.missionsProgramsHeader,
             style: TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.w600,
@@ -83,7 +84,7 @@ class MissionsScreen extends ConsumerWidget {
           ),
           const SizedBox(height: 4),
           Text(
-            'Multi-mission sequences with rest periods',
+            context.l10n.missionsProgramsSubtitle,
             style: TextStyle(
               fontSize: 12,
               color: AppTheme.textTertiary,
@@ -106,7 +107,7 @@ class MissionsScreen extends ConsumerWidget {
 
           // Missions section
           Text(
-            'Individual Missions',
+            context.l10n.missionsIndividualHeader,
             style: TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.w600,
@@ -115,7 +116,7 @@ class MissionsScreen extends ConsumerWidget {
           ),
           const SizedBox(height: 4),
           Text(
-            'Single training sessions',
+            context.l10n.missionsIndividualSubtitle,
             style: TextStyle(
               fontSize: 12,
               color: AppTheme.textTertiary,
@@ -125,14 +126,14 @@ class MissionsScreen extends ConsumerWidget {
 
           // Mission list
           if (missionsState.missions.isEmpty)
-            const Center(
+            Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  SizedBox(height: 60),
-                  Icon(Icons.school_outlined, size: 64, color: Colors.grey),
-                  SizedBox(height: 16),
-                  Text('No missions configured', style: TextStyle(color: Colors.grey)),
+                  const SizedBox(height: 60),
+                  const Icon(Icons.school_outlined, size: 64, color: Colors.grey),
+                  const SizedBox(height: 16),
+                  Text(context.l10n.missionsNoneConfigured, style: const TextStyle(color: Colors.grey)),
                 ],
               ),
             )
@@ -226,14 +227,14 @@ class _ActiveMissionCard extends StatelessWidget {
                     color: Colors.white.withOpacity(0.2),
                     borderRadius: BorderRadius.circular(12),
                   ),
-                  child: const Row(
+                  child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(Icons.play_circle, color: Colors.white, size: 16),
-                      SizedBox(width: 4),
+                      const Icon(Icons.play_circle, color: Colors.white, size: 16),
+                      const SizedBox(width: 4),
                       Text(
-                        'ACTIVE',
-                        style: TextStyle(
+                        context.l10n.missionsActiveBadge,
+                        style: const TextStyle(
                           color: Colors.white,
                           fontSize: 11,
                           fontWeight: FontWeight.bold,
@@ -247,9 +248,9 @@ class _ActiveMissionCard extends StatelessWidget {
                 TextButton.icon(
                   onPressed: onDrive,
                   icon: const Icon(Icons.videocam, color: Colors.white, size: 18),
-                  label: const Text(
-                    'DRIVE',
-                    style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                  label: Text(
+                    context.l10n.missionsDriveButton,
+                    style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
                   ),
                   style: TextButton.styleFrom(
                     backgroundColor: Colors.green.shade600,
@@ -261,26 +262,26 @@ class _ActiveMissionCard extends StatelessWidget {
                 TextButton.icon(
                   onPressed: onStop,
                   icon: const Icon(Icons.stop, color: Colors.white70, size: 18),
-                  label: const Text(
-                    'Stop',
-                    style: TextStyle(color: Colors.white70),
+                  label: Text(
+                    context.l10n.missionsStop,
+                    style: const TextStyle(color: Colors.white70),
                   ),
                 ),
               ],
             ),
             const SizedBox(height: 12),
             Text(
-              mission.name,
+              mission.localizedName(context.l10n),
               style: const TextStyle(
                 color: Colors.white,
                 fontSize: 20,
                 fontWeight: FontWeight.bold,
               ),
             ),
-            if (mission.description != null) ...[
+            if (mission.localizedDescription(context.l10n) != null) ...[
               const SizedBox(height: 4),
               Text(
-                mission.description!,
+                mission.localizedDescription(context.l10n)!,
                 style: TextStyle(
                   color: Colors.white.withOpacity(0.8),
                   fontSize: 13,
@@ -325,7 +326,7 @@ class _ActiveMissionCard extends StatelessWidget {
                   )
                 else
                   Text(
-                    '${(progress * 100).toInt()}% complete',
+                    context.l10n.missionsPercentComplete((progress * 100).toInt()),
                     style: TextStyle(
                       color: Colors.white.withOpacity(0.8),
                       fontSize: 12,
@@ -409,10 +410,10 @@ class _MissionCard extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(mission.name, style: Theme.of(context).textTheme.titleMedium),
-                    if (mission.description != null)
+                    Text(mission.localizedName(context.l10n), style: Theme.of(context).textTheme.titleMedium),
+                    if (mission.localizedDescription(context.l10n) != null)
                       Text(
-                        mission.description!,
+                        mission.localizedDescription(context.l10n)!,
                         style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Colors.grey),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
@@ -420,7 +421,7 @@ class _MissionCard extends StatelessWidget {
                     const SizedBox(height: 4),
                     Row(
                       children: [
-                        _InfoChip(icon: Icons.pets, label: mission.targetBehavior),
+                        _InfoChip(icon: Icons.pets, label: behaviorDisplayName(context.l10n, mission.targetBehavior)),
                         const SizedBox(width: 8),
                         _InfoChip(icon: Icons.cookie, label: '${mission.rewardsGiven}/${mission.dailyLimit}'),
                       ],
@@ -534,9 +535,9 @@ class _ProgramCard extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(program.name, style: Theme.of(context).textTheme.titleMedium),
+                    Text(program.localizedName(context.l10n), style: Theme.of(context).textTheme.titleMedium),
                     Text(
-                      program.description,
+                      program.localizedDescription(context.l10n),
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Colors.grey),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
@@ -544,9 +545,9 @@ class _ProgramCard extends StatelessWidget {
                     const SizedBox(height: 4),
                     Row(
                       children: [
-                        _InfoChip(icon: Icons.playlist_play, label: '${program.missionIds.length} missions'),
+                        _InfoChip(icon: Icons.playlist_play, label: context.l10n.missionsCountChip(program.missionIds.length)),
                         const SizedBox(width: 8),
-                        _InfoChip(icon: Icons.timer, label: '${program.restSecondsBetween}s rest'),
+                        _InfoChip(icon: Icons.timer, label: context.l10n.missionsRestChip(program.restSecondsBetween)),
                       ],
                     ),
                   ],
@@ -628,14 +629,14 @@ class _ActiveProgramCard extends StatelessWidget {
                     color: Colors.white.withOpacity(0.2),
                     borderRadius: BorderRadius.circular(12),
                   ),
-                  child: const Row(
+                  child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(Icons.playlist_play, color: Colors.white, size: 16),
-                      SizedBox(width: 4),
+                      const Icon(Icons.playlist_play, color: Colors.white, size: 16),
+                      const SizedBox(width: 4),
                       Text(
-                        'PROGRAM',
-                        style: TextStyle(
+                        context.l10n.missionsProgramBadge,
+                        style: const TextStyle(
                           color: Colors.white,
                           fontSize: 11,
                           fontWeight: FontWeight.bold,
@@ -649,16 +650,16 @@ class _ActiveProgramCard extends StatelessWidget {
                 TextButton.icon(
                   onPressed: onStop,
                   icon: const Icon(Icons.stop, color: Colors.white70, size: 18),
-                  label: const Text(
-                    'Stop',
-                    style: TextStyle(color: Colors.white70),
+                  label: Text(
+                    context.l10n.missionsStop,
+                    style: const TextStyle(color: Colors.white70),
                   ),
                 ),
               ],
             ),
             const SizedBox(height: 12),
             Text(
-              program.name,
+              program.localizedName(context.l10n),
               style: const TextStyle(
                 color: Colors.white,
                 fontSize: 20,
@@ -667,7 +668,7 @@ class _ActiveProgramCard extends StatelessWidget {
             ),
             const SizedBox(height: 4),
             Text(
-              program.description,
+              program.localizedDescription(context.l10n),
               style: TextStyle(
                 color: Colors.white.withOpacity(0.8),
                 fontSize: 13,
@@ -687,7 +688,7 @@ class _ActiveProgramCard extends StatelessWidget {
                     (m) => m?.id == missionId,
                     orElse: () => null,
                   );
-                  final name = mission?.name ?? missionId.replaceAll('_', ' ');
+                  final name = mission?.localizedName(context.l10n) ?? missionIdDisplayName(context.l10n, missionId);
                   final isCurrentMission = index == currentIndex;
                   final isCompleted = index < currentIndex;
 
@@ -762,7 +763,7 @@ class _ActiveProgramCard extends StatelessWidget {
                       const Icon(Icons.pause_circle, color: Colors.amber, size: 16),
                       const SizedBox(width: 4),
                       Text(
-                        'Rest break: ${restSeconds}s',
+                        context.l10n.missionsRestBreak(restSeconds),
                         style: const TextStyle(
                           color: Colors.amber,
                           fontSize: 13,
@@ -773,14 +774,14 @@ class _ActiveProgramCard extends StatelessWidget {
                   )
                 else
                   Text(
-                    'Mission ${currentIndex + 1} of ${program.missionIds.length}',
+                    context.l10n.missionsMissionOf(currentIndex + 1, program.missionIds.length),
                     style: TextStyle(
                       color: Colors.white.withOpacity(0.8),
                       fontSize: 12,
                     ),
                   ),
                 Text(
-                  '${((progress?.progress ?? 0.0) * 100).toInt()}% complete',
+                  context.l10n.missionsPercentComplete(((progress?.progress ?? 0.0) * 100).toInt()),
                   style: TextStyle(
                     color: Colors.white.withOpacity(0.8),
                     fontSize: 12,
@@ -852,7 +853,7 @@ class _CoachModeCard extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Coach Mode',
+                      context.l10n.missionsCoachMode,
                       style: TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.bold,
@@ -861,8 +862,8 @@ class _CoachModeCard extends StatelessWidget {
                     ),
                     Text(
                       isCoaching
-                          ? 'Watching for good behaviors...'
-                          : 'Auto-reward when your dog performs tricks',
+                          ? context.l10n.missionsCoachWatching
+                          : context.l10n.missionsCoachSubtitle,
                       style: TextStyle(
                         fontSize: 12,
                         color: isCoaching
@@ -880,14 +881,14 @@ class _CoachModeCard extends StatelessWidget {
                     color: Colors.white.withOpacity(0.2),
                     borderRadius: BorderRadius.circular(12),
                   ),
-                  child: const Row(
+                  child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(Icons.play_circle, color: Colors.white, size: 14),
-                      SizedBox(width: 4),
+                      const Icon(Icons.play_circle, color: Colors.white, size: 14),
+                      const SizedBox(width: 4),
                       Text(
-                        'ACTIVE',
-                        style: TextStyle(
+                        context.l10n.missionsActiveBadge,
+                        style: const TextStyle(
                           color: Colors.white,
                           fontSize: 10,
                           fontWeight: FontWeight.bold,

@@ -15,6 +15,8 @@ import '../../data/datasources/robot_api.dart';
 import 'auth_provider.dart';
 import 'device_provider.dart';
 import 'notifications_provider.dart';
+import '../../l10n/l10n.dart';
+import 'l10n_provider.dart';
 
 /// 3-tier connection state - honest about what's actually connected
 enum ConnectionStatus {
@@ -94,25 +96,26 @@ class ConnectionState {
   bool get isNotPaired => pairingStatus == PairingStatus.notPaired;
   bool get isSuperseded => status == ConnectionStatus.superseded;
 
-  /// Human-readable status message
-  String get statusMessage {
-    if (isDemoMode) return 'Demo Mode';
+  /// Human-readable status message (localized; pass `context.l10n` or
+  /// `ref.read(l10nProvider)`).
+  String statusMessage(AppLocalizations l) {
+    if (isDemoMode) return l.loginDemoMode;
     switch (status) {
       case ConnectionStatus.disconnected:
-        return 'Disconnected';
+        return l.disconnected;
       case ConnectionStatus.connecting:
-        return 'Connecting to server...';
+        return l.connStatusConnectingServer;
       case ConnectionStatus.relayConnected:
         if (pairingStatus == PairingStatus.notPaired) {
-          return 'Device not paired';
+          return l.connStatusNotPaired;
         }
-        return 'Server connected. Waiting for robot...';
+        return l.connStatusWaitingRobot;
       case ConnectionStatus.robotOnline:
-        return 'Robot online';
+        return l.connStatusRobotOnline;
       case ConnectionStatus.error:
-        return errorMessage ?? 'Connection error';
+        return errorMessage ?? l.connStatusError;
       case ConnectionStatus.superseded:
-        return 'Signed in on another device';
+        return l.connStatusSuperseded;
     }
   }
 
@@ -130,6 +133,8 @@ final connectionProvider =
 /// Connection state notifier
 class ConnectionNotifier extends StateNotifier<ConnectionState> {
   final Ref _ref;
+
+  AppLocalizations get _l => _ref.read(l10nProvider);
   StreamSubscription? _wsStateSubscription;
   StreamSubscription? _wsEventSubscription;
   StreamSubscription? _deviceStatusSubscription;
@@ -191,7 +196,7 @@ class ConnectionNotifier extends StateNotifier<ConnectionState> {
         connTrace('health-fail', '$baseUrl/health');
         state = state.copyWith(
           status: ConnectionStatus.error,
-          errorMessage: 'Server not responding',
+          errorMessage: _l.connErrServerNotResponding,
         );
         return false;
       }
@@ -276,7 +281,7 @@ class ConnectionNotifier extends StateNotifier<ConnectionState> {
         connTrace('conn-ws-failed', 'wsState=${ws.state} — host not saved');
         state = state.copyWith(
           status: ConnectionStatus.error,
-          errorMessage: 'Could not open live connection to server',
+          errorMessage: _l.connErrLiveConnection,
         );
         return false;
       }
@@ -331,7 +336,7 @@ class ConnectionNotifier extends StateNotifier<ConnectionState> {
       // _onWsCloseReason.
       state = state.copyWith(
         status: ConnectionStatus.error,
-        errorMessage: 'Lost connection to server',
+        errorMessage: _l.connErrLostConnection,
       );
     }
   }
@@ -357,7 +362,7 @@ class ConnectionNotifier extends StateNotifier<ConnectionState> {
         _reconnectTimer?.cancel();
         state = state.copyWith(
           status: ConnectionStatus.error,
-          errorMessage: 'Connection handshake failed. Please update the app.',
+          errorMessage: _l.connErrHandshake,
         );
         break;
       case WsCloseReason.invalidToken:
@@ -367,10 +372,10 @@ class ConnectionNotifier extends StateNotifier<ConnectionState> {
         _reconnectTimer?.cancel();
         state = state.copyWith(
           status: ConnectionStatus.error,
-          errorMessage: 'Session expired — please sign in again.',
+          errorMessage: _l.connErrSessionExpired,
         );
         _ref.read(authProvider.notifier).logout(
-              notice: 'Your session expired — please sign in again.',
+              notice: _l.authNoticeSessionExpired,
             );
         break;
     }
@@ -448,19 +453,19 @@ class ConnectionNotifier extends StateNotifier<ConnectionState> {
           state = state.copyWith(
             pairingStatus: PairingStatus.notPaired,
             status: ConnectionStatus.relayConnected,
-            errorMessage: 'Device not paired. Go to Settings to pair.',
+            errorMessage: _l.connErrNotPairedGoSettings,
           );
           break;
         case 'ROBOT_OFFLINE':
         case 'DEVICE_OFFLINE':
           state = state.copyWith(
             status: ConnectionStatus.relayConnected,
-            errorMessage: 'Robot is offline',
+            errorMessage: _l.connErrRobotOffline,
           );
           break;
         case 'NOT_AUTHORIZED':
           state = state.copyWith(
-            errorMessage: 'Not authorized. Please log in again.',
+            errorMessage: _l.errNotAuthorizedLogin,
           );
           break;
         default:
@@ -538,8 +543,7 @@ class ConnectionNotifier extends StateNotifier<ConnectionState> {
     // (allowing the user to tap "take over" and reconnect with a new session).
     state = state.copyWith(
       status: ConnectionStatus.superseded,
-      errorMessage:
-          'This account is now active on another device. Tap to take control back.',
+      errorMessage: _l.connErrSuperseded,
     );
   }
 

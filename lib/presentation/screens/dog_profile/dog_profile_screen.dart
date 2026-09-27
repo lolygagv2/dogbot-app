@@ -9,6 +9,7 @@ import '../../../domain/providers/dog_profiles_provider.dart';
 import '../../../domain/providers/analytics_provider.dart';
 import '../../../domain/providers/missions_provider.dart';
 import '../../../domain/providers/notifications_provider.dart';
+import '../../../l10n/l10n.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/dog_profile/weekly_summary_card.dart';
 
@@ -27,8 +28,8 @@ class DogProfileScreen extends ConsumerWidget {
 
     if (profile == null) {
       return Scaffold(
-        appBar: AppBar(title: const Text('Dog Profile')),
-        body: const Center(child: Text('No dog profile found')),
+        appBar: AppBar(title: Text(context.l10n.dogProfileTitle)),
+        body: Center(child: Text(context.l10n.dogProfileNotFound)),
       );
     }
 
@@ -36,11 +37,11 @@ class DogProfileScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Dog Profile'),
+        title: Text(context.l10n.dogProfileTitle),
         actions: [
           IconButton(
             icon: const Icon(Icons.edit),
-            tooltip: 'Edit dog',
+            tooltip: context.l10n.dogProfileEditTooltip,
             onPressed: () => context.push('/dog/${profile.id}/edit'),
           ),
         ],
@@ -125,7 +126,7 @@ class _DogHeader extends StatelessWidget {
 
         // Breed and age
         Text(
-          _buildSubtitle(),
+          _buildSubtitle(context),
           style: TextStyle(
             fontSize: 14,
             color: AppTheme.textSecondary,
@@ -184,12 +185,12 @@ class _DogHeader extends StatelessWidget {
     );
   }
 
-  String _buildSubtitle() {
+  String _buildSubtitle(BuildContext context) {
     final parts = <String>[];
     if (profile.breed != null && profile.breed!.isNotEmpty) {
       parts.add(profile.breed!);
     }
-    final age = profile.shortAgeString;
+    final age = profile.localizedShortAge(context.l10n);
     if (age != null) parts.add(age);
     return parts.join(' · ');
   }
@@ -228,7 +229,7 @@ class _LaunchMissionButton extends ConsumerWidget {
                       // Start the last mission
                       ref.read(missionsProvider.notifier).startMission(profile.lastMissionId!);
                       ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Mission started')),
+                        SnackBar(content: Text(context.l10n.dogProfileMissionStarted)),
                       );
                     }
                   : () {
@@ -254,10 +255,10 @@ class _LaunchMissionButton extends ConsumerWidget {
                     children: [
                       Text(
                         hasActive
-                            ? 'MISSION ACTIVE'
+                            ? context.l10n.dogProfileMissionActive
                             : hasMission
-                                ? 'LAUNCH LAST MISSION'
-                                : 'START A MISSION',
+                                ? context.l10n.dogProfileLaunchLastMission
+                                : context.l10n.dogProfileStartAMission,
                         style: TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.w700,
@@ -270,7 +271,7 @@ class _LaunchMissionButton extends ConsumerWidget {
                       if (hasActive) ...[
                         const SizedBox(height: 4),
                         Text(
-                          activeMission.name,
+                          activeMission.localizedName(context.l10n),
                           style: TextStyle(
                             fontSize: 12,
                             color: AppTheme.background.withOpacity(0.8),
@@ -307,7 +308,7 @@ class _TodaySummary extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          "Today's Summary",
+          context.l10n.dogProfileTodaySummary,
           style: TextStyle(
             fontSize: 16,
             fontWeight: FontWeight.w600,
@@ -320,7 +321,7 @@ class _TodaySummary extends StatelessWidget {
             Expanded(
               child: _StatCard(
                 value: summary.treatCount.toString(),
-                label: 'Treats',
+                label: context.l10n.dogProfileStatTreats,
                 icon: Icons.cookie,
                 color: AppTheme.accent,
               ),
@@ -329,7 +330,7 @@ class _TodaySummary extends StatelessWidget {
             Expanded(
               child: _StatCard(
                 value: summary.sitCount.toString(),
-                label: 'Sits',
+                label: context.l10n.dogProfileStatSits,
                 icon: Icons.pets,
                 color: AppTheme.primary,
               ),
@@ -338,7 +339,7 @@ class _TodaySummary extends StatelessWidget {
             Expanded(
               child: _StatCard(
                 value: summary.barkCount.toString(),
-                label: 'Barks',
+                label: context.l10n.dogProfileStatBarks,
                 icon: Icons.volume_up,
                 color: Colors.orange,
               ),
@@ -347,7 +348,7 @@ class _TodaySummary extends StatelessWidget {
             Expanded(
               child: _StatCard(
                 value: '${(summary.goalProgress * 100).toInt()}%',
-                label: 'Goal',
+                label: context.l10n.dogProfileStatGoal,
                 icon: Icons.flag,
                 color: AppTheme.secondary,
               ),
@@ -426,7 +427,7 @@ class _MetricsDashboard extends ConsumerWidget {
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Text(
-              'Metrics',
+              context.l10n.dogProfileMetrics,
               style: TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.w600,
@@ -444,17 +445,17 @@ class _MetricsDashboard extends ConsumerWidget {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   _RangeChip(
-                    label: 'Day',
+                    label: context.l10n.dogProfileRangeDay,
                     isSelected: analytics.range == AnalyticsRange.today,
                     onTap: () => notifier.setRange(AnalyticsRange.today),
                   ),
                   _RangeChip(
-                    label: 'Week',
+                    label: context.l10n.dogProfileRangeWeek,
                     isSelected: analytics.range == AnalyticsRange.week,
                     onTap: () => notifier.setRange(AnalyticsRange.week),
                   ),
                   _RangeChip(
-                    label: 'All',
+                    label: context.l10n.dogProfileRangeAll,
                     isSelected: analytics.range == AnalyticsRange.lifetime,
                     onTap: () => notifier.setRange(AnalyticsRange.lifetime),
                   ),
@@ -470,7 +471,7 @@ class _MetricsDashboard extends ConsumerWidget {
             Expanded(
               child: _StatCard(
                 value: analytics.treatCount.toString(),
-                label: 'Treats',
+                label: context.l10n.dogProfileStatTreats,
                 icon: Icons.cookie,
                 color: AppTheme.accent,
               ),
@@ -479,7 +480,7 @@ class _MetricsDashboard extends ConsumerWidget {
             Expanded(
               child: _StatCard(
                 value: analytics.detectionCount.toString(),
-                label: 'Detections',
+                label: context.l10n.dogProfileStatDetections,
                 icon: Icons.visibility,
                 color: AppTheme.primary,
               ),
@@ -488,7 +489,7 @@ class _MetricsDashboard extends ConsumerWidget {
             Expanded(
               child: _StatCard(
                 value: '${analytics.missionsSucceeded}/${analytics.missionsAttempted}',
-                label: 'Missions',
+                label: context.l10n.dogProfileStatMissions,
                 icon: Icons.flag,
                 color: Colors.green,
               ),
@@ -503,7 +504,7 @@ class _MetricsDashboard extends ConsumerWidget {
                 value: analytics.missionsAttempted > 0
                     ? '${(analytics.successRate * 100).toInt()}%'
                     : '--',
-                label: 'Success',
+                label: context.l10n.dogProfileStatSuccess,
                 icon: Icons.check_circle,
                 color: Colors.teal,
               ),
@@ -511,8 +512,8 @@ class _MetricsDashboard extends ConsumerWidget {
             const SizedBox(width: 8),
             Expanded(
               child: _StatCard(
-                value: '${analytics.activeMinutes}m',
-                label: 'Active',
+                value: context.l10n.dogProfileActiveMinutes(analytics.activeMinutes),
+                label: context.l10n.dogProfileStatActive,
                 icon: Icons.timer,
                 color: Colors.deepPurple,
               ),
@@ -521,7 +522,7 @@ class _MetricsDashboard extends ConsumerWidget {
             Expanded(
               child: _StatCard(
                 value: analytics.coachRewards.toString(),
-                label: 'Coach',
+                label: context.l10n.dogProfileStatCoach,
                 icon: Icons.school,
                 color: Colors.orange,
               ),
@@ -537,7 +538,7 @@ class _MetricsDashboard extends ConsumerWidget {
               context.go('/activity');
             },
             icon: const Icon(Icons.bar_chart, size: 18),
-            label: const Text('View Dashboard'),
+            label: Text(context.l10n.dogProfileViewDashboard),
             style: TextButton.styleFrom(
               foregroundColor: AppTheme.primary,
             ),
@@ -595,7 +596,7 @@ class _QuickActionsGrid extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'Quick Actions',
+          context.l10n.dogProfileQuickActions,
           style: TextStyle(
             fontSize: 16,
             fontWeight: FontWeight.w600,
@@ -608,7 +609,7 @@ class _QuickActionsGrid extends StatelessWidget {
             Expanded(
               child: _ActionButton(
                 icon: Icons.mic,
-                label: 'Voice',
+                label: context.l10n.dogProfileActionVoice,
                 onTap: () {
                   // Use standalone route with extra data for reliability
                   context.push('/voice-setup', extra: {'dogId': dogId});
@@ -619,13 +620,13 @@ class _QuickActionsGrid extends StatelessWidget {
             Expanded(
               child: _ActionButton(
                 icon: Icons.bar_chart,
-                label: 'Stats',
+                label: context.l10n.dogProfileActionStats,
                 onTap: () {
                   // Metrics dashboard is inline above — show a hint
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Metrics are shown above — use Day/Week/All toggle'),
-                      duration: Duration(seconds: 2),
+                    SnackBar(
+                      content: Text(context.l10n.dogProfileMetricsHint),
+                      duration: const Duration(seconds: 2),
                       behavior: SnackBarBehavior.floating,
                     ),
                   );
@@ -706,7 +707,7 @@ class _RecentActivity extends ConsumerWidget {
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Text(
-              'Recent Activity',
+              context.l10n.dogProfileRecentActivity,
               style: TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.w600,
@@ -719,7 +720,7 @@ class _RecentActivity extends ConsumerWidget {
                 ref.read(activityTabIndexProvider.notifier).state = 1;
                 context.go('/activity');
               },
-              child: const Text('See all'),
+              child: Text(context.l10n.dogProfileSeeAll),
             ),
           ],
         ),
@@ -733,7 +734,7 @@ class _RecentActivity extends ConsumerWidget {
             ),
             child: Center(
               child: Text(
-                'No recent activity',
+                context.l10n.dogProfileNoRecentActivity,
                 style: TextStyle(color: AppTheme.textTertiary),
               ),
             ),
@@ -797,7 +798,7 @@ class _ActivityItem extends StatelessWidget {
                 ),
               ),
               Text(
-                _formatRelativeTime(notification.timestamp),
+                _formatRelativeTime(context, notification.timestamp),
                 style: TextStyle(
                   fontSize: 12,
                   color: AppTheme.textTertiary,
@@ -816,16 +817,16 @@ class _ActivityItem extends StatelessWidget {
     );
   }
 
-  String _formatRelativeTime(DateTime timestamp) {
+  String _formatRelativeTime(BuildContext context, DateTime timestamp) {
     final now = DateTime.now();
     final diff = now.difference(timestamp);
 
     if (diff.inMinutes < 60) {
-      return '${diff.inMinutes}m';
+      return context.l10n.dogProfileRelMinutes(diff.inMinutes);
     } else if (diff.inHours < 24) {
-      return '${diff.inHours}h';
+      return context.l10n.dogProfileRelHours(diff.inHours);
     } else {
-      return '${diff.inDays}d';
+      return context.l10n.dogProfileRelDays(diff.inDays);
     }
   }
 }
@@ -840,7 +841,7 @@ class DogsListScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Dogs'),
+        title: Text(context.l10n.dogsListTitle),
         actions: [
           IconButton(
             icon: const Icon(Icons.add),
@@ -878,7 +879,7 @@ class DogsListScreen extends ConsumerWidget {
           ),
           const SizedBox(height: 16),
           Text(
-            'No dogs added yet',
+            context.l10n.dogsListEmpty,
             style: TextStyle(
               color: AppTheme.textSecondary,
               fontSize: 16,
@@ -888,7 +889,7 @@ class DogsListScreen extends ConsumerWidget {
           ElevatedButton.icon(
             onPressed: () => context.push('/dogs/add'),
             icon: const Icon(Icons.add),
-            label: const Text('Add Dog'),
+            label: Text(context.l10n.addDogTitle),
           ),
         ],
       ),
@@ -945,7 +946,7 @@ class _DogListTile extends StatelessWidget {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      _buildSubtitle(),
+                      _buildSubtitle(context),
                       style: TextStyle(
                         fontSize: 13,
                         color: AppTheme.textSecondary,
@@ -1008,11 +1009,11 @@ class _DogListTile extends StatelessWidget {
     );
   }
 
-  String _buildSubtitle() {
+  String _buildSubtitle(BuildContext context) {
     final parts = <String>[];
     if (profile.breed != null) parts.add(profile.breed!);
-    final age = profile.shortAgeString;
+    final age = profile.localizedShortAge(context.l10n);
     if (age != null) parts.add(age);
-    return parts.isNotEmpty ? parts.join(' · ') : 'No details';
+    return parts.isNotEmpty ? parts.join(' · ') : context.l10n.dogsListNoDetails;
   }
 }

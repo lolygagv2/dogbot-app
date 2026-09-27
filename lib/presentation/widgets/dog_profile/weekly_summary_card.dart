@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:intl/intl.dart';
 
 import '../../../domain/providers/dog_weekly_summary_provider.dart';
+import '../../../l10n/l10n.dart';
 import '../../theme/app_theme.dart';
 
 /// Robot 386aef0: per-dog weekly summary (Mon–Sun) on the dog profile.
@@ -38,6 +40,7 @@ class _DogWeeklySummaryCardState extends ConsumerState<DogWeeklySummaryCard> {
   Widget build(BuildContext context) {
     final state = ref.watch(dogWeeklySummaryProvider(widget.dogId));
     final s = state.summary;
+    final l = context.l10n;
 
     return Container(
       padding: const EdgeInsets.all(12),
@@ -54,10 +57,10 @@ class _DogWeeklySummaryCardState extends ConsumerState<DogWeeklySummaryCard> {
             children: [
               const Icon(Icons.insights, color: AppTheme.primary, size: 18),
               const SizedBox(width: 6),
-              const Expanded(
+              Expanded(
                 child: Text(
-                  'Weekly Summary',
-                  style: TextStyle(
+                  l.weeklySummaryTitle,
+                  style: const TextStyle(
                     fontWeight: FontWeight.bold,
                     color: AppTheme.textPrimary,
                   ),
@@ -90,9 +93,9 @@ class _DogWeeklySummaryCardState extends ConsumerState<DogWeeklySummaryCard> {
           ],
           if (s == null && state.error == null && !state.pulling) ...[
             const SizedBox(height: 4),
-            const Text(
-              'Tap refresh for this week\'s report',
-              style: TextStyle(color: AppTheme.textTertiary, fontSize: 12),
+            Text(
+              l.weeklyTapRefresh,
+              style: const TextStyle(color: AppTheme.textTertiary, fontSize: 12),
             ),
           ],
           if (s != null) ...[
@@ -109,15 +112,15 @@ class _DogWeeklySummaryCardState extends ConsumerState<DogWeeklySummaryCard> {
             const SizedBox(height: 8),
             Row(
               children: [
-                _Stat('Barks', '${s.barks.total}'),
-                _Stat('vs last wk', _delta(s.barks),
+                _Stat(l.dogProfileStatBarks, '${s.barks.total}'),
+                _Stat(l.weeklyVsLastWeek, _delta(s.barks),
                     color: switch (s.barks.trend) {
                       'down' => Colors.green,
                       'up' => AppTheme.error,
                       _ => null,
                     }),
-                _Stat('Treats', '${s.treatsTotal}'),
-                _Stat('Quiets', '${s.guardianSuccessfulQuiets}'),
+                _Stat(l.dogProfileStatTreats, '${s.treatsTotal}'),
+                _Stat(l.weeklyQuiets, '${s.guardianSuccessfulQuiets}'),
               ],
             ),
             if (s.barks.byType.isNotEmpty) ...[
@@ -155,9 +158,16 @@ class _DogWeeklySummaryCardState extends ConsumerState<DogWeeklySummaryCard> {
             if (s.coaching.attempts > 0) ...[
               const SizedBox(height: 8),
               Text(
-                'Tricks: ${s.coaching.completed}/${s.coaching.attempts}'
-                ' completed'
-                '${s.coaching.successRate != null ? ' (${(s.coaching.successRate! * 100).toStringAsFixed(0)}%)' : ''}',
+                s.coaching.successRate != null
+                    ? l.weeklyTricksWithRate(
+                        s.coaching.completed,
+                        s.coaching.attempts,
+                        (s.coaching.successRate! * 100).toStringAsFixed(0),
+                      )
+                    : l.weeklyTricks(
+                        s.coaching.completed,
+                        s.coaching.attempts,
+                      ),
                 style: const TextStyle(
                     fontSize: 12, color: AppTheme.textSecondary),
               ),
@@ -165,18 +175,20 @@ class _DogWeeklySummaryCardState extends ConsumerState<DogWeeklySummaryCard> {
             if (s.guardianInterventions > 0) ...[
               const SizedBox(height: 2),
               Text(
-                'Guardian: ${s.guardianInterventions} interventions across '
-                '${s.guardianHouseholdSessions} sessions',
+                l.weeklyGuardian(
+                  s.guardianInterventions,
+                  s.guardianHouseholdSessions,
+                ),
                 style: const TextStyle(
                     fontSize: 12, color: AppTheme.textSecondary),
               ),
             ],
             // Robot c032823: honest data-coverage caption — how far back
             // each number really goes after the legacy backfill.
-            if (_coverageCaption(s.coverage) != null) ...[
+            if (_coverageCaption(context, s.coverage) != null) ...[
               const SizedBox(height: 8),
               Text(
-                _coverageCaption(s.coverage)!,
+                _coverageCaption(context, s.coverage)!,
                 style: const TextStyle(
                   fontSize: 10,
                   fontStyle: FontStyle.italic,
@@ -192,26 +204,28 @@ class _DogWeeklySummaryCardState extends ConsumerState<DogWeeklySummaryCard> {
 
   /// "Data since: barks Sep 1 · treats Jul 22 · coaching Dec 27 '25" —
   /// only the metrics the robot reported coverage for; null when none.
-  static String? _coverageCaption(Map<String, String> coverage) {
-    const labels = [
-      ('per_bark_since', 'barks'),
-      ('bark_type_since', 'bark types'),
-      ('treats_since', 'treats'),
-      ('coaching_since', 'coaching'),
+  static String? _coverageCaption(
+      BuildContext context, Map<String, String> coverage) {
+    final l = context.l10n;
+    final locale = l.localeName;
+    final labels = [
+      ('per_bark_since', l.weeklyCoverageBarks),
+      ('bark_type_since', l.weeklyCoverageBarkTypes),
+      ('treats_since', l.weeklyCoverageTreats),
+      ('coaching_since', l.weeklyCoverageCoaching),
     ];
     final parts = <String>[];
+    final thisYear = DateTime.now().year;
     for (final (key, label) in labels) {
       final d = DateTime.tryParse(coverage[key] ?? '')?.toLocal();
       if (d == null) continue;
-      const months = [
-        'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-        'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
-      ];
-      final year = d.year == DateTime.now().year ? '' : " '${d.year % 100}";
-      parts.add('$label ${months[d.month - 1]} ${d.day}$year');
+      final date = d.year == thisYear
+          ? DateFormat.MMMd(locale).format(d)
+          : DateFormat.yMMMd(locale).format(d);
+      parts.add('$label $date');
     }
     if (parts.isEmpty) return null;
-    return 'Data since: ${parts.join(' · ')}';
+    return l.weeklyDataSince(parts.join(' · '));
   }
 
   static String _delta(DogWeeklyBarks b) {

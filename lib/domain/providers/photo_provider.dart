@@ -6,6 +6,8 @@ import '../../core/network/websocket_client.dart';
 import '../../core/utils/remote_logger.dart';
 import '../../data/services/photo_service.dart';
 import 'connection_provider.dart';
+import '../../l10n/l10n.dart';
+import 'l10n_provider.dart';
 
 /// State for photo capture
 class PhotoState {
@@ -47,6 +49,8 @@ final photoProvider =
 /// Photo state notifier
 class PhotoNotifier extends StateNotifier<PhotoState> {
   final Ref _ref;
+
+  AppLocalizations get _l => _ref.read(l10nProvider);
   final PhotoService _photoService = PhotoService.instance;
   StreamSubscription? _photoSubscription;
   Timer? _photoTimeout;
@@ -83,7 +87,7 @@ class PhotoNotifier extends StateNotifier<PhotoState> {
       rlog('PHOTO', 'ERROR - Empty photo data received');
       state = state.copyWith(
         isCapturing: false,
-        error: 'Received empty photo data',
+        error: _l.photoErrEmpty,
       );
       return;
     }
@@ -108,7 +112,7 @@ class PhotoNotifier extends StateNotifier<PhotoState> {
       rlog('PHOTO', 'Failed to save photo: $e');
       state = state.copyWith(
         isCapturing: false,
-        error: 'Failed to save photo: $e',
+        error: _l.editDogPhotoSaveFailed('$e'),
       );
     }
   }
@@ -128,7 +132,7 @@ class PhotoNotifier extends StateNotifier<PhotoState> {
 
     if (!connectionState.isConnected) {
       rlog('PHOTO', 'ERROR - Not connected to robot');
-      state = state.copyWith(error: 'Not connected to robot');
+      state = state.copyWith(error: _l.errNotConnectedToRobot);
       return;
     }
 
@@ -147,7 +151,7 @@ class PhotoNotifier extends StateNotifier<PhotoState> {
         rlog('PHOTO', 'Photo capture timed out after 10s');
         state = state.copyWith(
           isCapturing: false,
-          error: 'Photo capture timed out - no response from robot',
+          error: _l.photoErrTimeout,
         );
       }
       _photoTimeout = null;

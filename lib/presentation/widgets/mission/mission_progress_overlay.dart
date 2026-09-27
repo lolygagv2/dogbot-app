@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../data/models/mission.dart';
 import '../../../domain/providers/missions_provider.dart';
+import '../../../l10n/l10n.dart';
 import '../../theme/app_theme.dart';
 
 /// Mission progress overlay for video stream (Build 31)
@@ -77,9 +78,9 @@ class _MissionOverlayCard extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           // Stage indicator
-          if (progress.stageDisplay != null)
+          if (progress.localizedStage(context.l10n) != null)
             Text(
-              progress.stageDisplay!,
+              progress.localizedStage(context.l10n)!,
               style: TextStyle(
                 color: AppTheme.textSecondary,
                 fontSize: 10,
@@ -89,7 +90,7 @@ class _MissionOverlayCard extends StatelessWidget {
           const SizedBox(height: 8),
 
           // Main content - icon/progress + status
-          _buildMainContent(),
+          _buildMainContent(context),
 
           const SizedBox(height: 8),
 
@@ -127,35 +128,36 @@ class _MissionOverlayCard extends StatelessWidget {
     ).animate().fadeIn(duration: 300.ms).scale(begin: const Offset(0.9, 0.9));
   }
 
-  Widget _buildMainContent() {
+  Widget _buildMainContent(BuildContext context) {
+    final statusLabel = progress.localizedStatus(context.l10n);
     if (status == MissionStatus.watching) {
       // Show circular progress during watching
       return _CircularPieProgress(
         progress: progress.effectiveProgress,
         color: _getStatusColor(),
-        label: progress.statusDisplay,
+        label: statusLabel,
       );
     }
 
     if (status == MissionStatus.success || status == MissionStatus.completed) {
       // Success animation
       return _SuccessIndicator(
-        label: progress.statusDisplay,
+        label: statusLabel,
       );
     }
 
     if (status == MissionStatus.failed) {
       // Failure indicator
       return _FailureIndicator(
-        label: progress.statusDisplay,
+        label: statusLabel,
       );
     }
 
     // Default: pulsing status with icon
     return _StatusIndicator(
       status: status,
-      label: progress.statusDisplay,
-      trick: progress.trick,
+      label: statusLabel,
+      trick: progress.trick == null ? null : behaviorDisplayName(context.l10n, progress.trick),
     );
   }
 

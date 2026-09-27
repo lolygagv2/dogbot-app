@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 import '../../../data/models/mission.dart';
 import '../../../domain/providers/dog_profiles_provider.dart';
 import '../../../domain/providers/history_provider.dart';
+import '../../../l10n/l10n.dart';
 import '../../theme/app_theme.dart';
 
 class HistoryScreen extends ConsumerStatefulWidget {
@@ -37,7 +38,7 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Training History'),
+        title: Text(context.l10n.historyTitle),
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh),
@@ -109,16 +110,16 @@ class _FilterBar extends StatelessWidget {
           Expanded(
             child: DropdownButtonFormField<int>(
               value: filter.days,
-              decoration: const InputDecoration(
-                labelText: 'Time Range',
-                contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                border: OutlineInputBorder(),
+              decoration: InputDecoration(
+                labelText: context.l10n.historyTimeRange,
+                contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                border: const OutlineInputBorder(),
               ),
-              items: const [
-                DropdownMenuItem(value: 1, child: Text('Today')),
-                DropdownMenuItem(value: 7, child: Text('Last 7 days')),
-                DropdownMenuItem(value: 14, child: Text('Last 2 weeks')),
-                DropdownMenuItem(value: 30, child: Text('Last month')),
+              items: [
+                DropdownMenuItem(value: 1, child: Text(context.l10n.today)),
+                DropdownMenuItem(value: 7, child: Text(context.l10n.historyLast7Days)),
+                DropdownMenuItem(value: 14, child: Text(context.l10n.historyLast2Weeks)),
+                DropdownMenuItem(value: 30, child: Text(context.l10n.historyLastMonth)),
               ],
               onChanged: (value) {
                 if (value != null) onDaysChanged(value);
@@ -131,13 +132,13 @@ class _FilterBar extends StatelessWidget {
           Expanded(
             child: DropdownButtonFormField<String?>(
               value: filter.dogId,
-              decoration: const InputDecoration(
-                labelText: 'Dog',
-                contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                border: OutlineInputBorder(),
+              decoration: InputDecoration(
+                labelText: context.l10n.historyDogFilter,
+                contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                border: const OutlineInputBorder(),
               ),
               items: [
-                const DropdownMenuItem(value: null, child: Text('All Dogs')),
+                DropdownMenuItem(value: null, child: Text(context.l10n.historyAllDogs)),
                 ...dogs.map((dog) => DropdownMenuItem(
                       value: dog.id,
                       child: Text(dog.name),
@@ -180,24 +181,24 @@ class _StatsSummary extends StatelessWidget {
         children: [
           _StatItem(
             icon: Icons.flag,
-            label: 'Sessions',
+            label: context.l10n.historyStatSessions,
             value: '$totalMissions',
           ),
           _StatItem(
             icon: Icons.check_circle,
-            label: 'Completed',
+            label: context.l10n.historyStatCompleted,
             value: '$completedMissions',
             color: Colors.green,
           ),
           _StatItem(
             icon: Icons.cookie,
-            label: 'Treats',
+            label: context.l10n.historyStatTreats,
             value: '$totalTreats',
             color: Colors.amber,
           ),
           _StatItem(
             icon: Icons.trending_up,
-            label: 'Success',
+            label: context.l10n.historyStatSuccess,
             value: '${(successRate * 100).toInt()}%',
             color: AppTheme.primary,
           ),
@@ -270,7 +271,7 @@ class _HistoryList extends StatelessWidget {
             Padding(
               padding: const EdgeInsets.symmetric(vertical: 8),
               child: Text(
-                _formatDateHeader(date),
+                _formatDateHeader(context, date),
                 style: TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w600,
@@ -287,17 +288,19 @@ class _HistoryList extends StatelessWidget {
     );
   }
 
-  String _formatDateHeader(DateTime date) {
+  String _formatDateHeader(BuildContext context, DateTime date) {
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
     final yesterday = today.subtract(const Duration(days: 1));
 
     if (date == today) {
-      return 'Today';
+      return context.l10n.today;
     } else if (date == yesterday) {
-      return 'Yesterday';
+      return context.l10n.yesterday;
     } else {
-      return DateFormat('EEEE, MMM d').format(date);
+      // e.g. "Wednesday, September 23" / "9월 23일 수요일"
+      final locale = Localizations.localeOf(context).toString();
+      return DateFormat.MMMMEEEEd(locale).format(date);
     }
   }
 }
@@ -309,10 +312,10 @@ class _HistoryEntryCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final timeFormat = DateFormat('h:mm a');
+    final timeFormat = DateFormat.jm(Localizations.localeOf(context).toString());
     final durationStr = entry.completedAt != null
-        ? _formatDuration(entry.completedAt!.difference(entry.startedAt))
-        : 'In progress';
+        ? _formatDuration(context, entry.completedAt!.difference(entry.startedAt))
+        : context.l10n.historyInProgress;
 
     return Card(
       margin: const EdgeInsets.only(bottom: 8),
@@ -344,7 +347,7 @@ class _HistoryEntryCard extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    entry.missionName,
+                    missionIdDisplayName(context.l10n, entry.missionName),
                     style: const TextStyle(
                       fontWeight: FontWeight.w600,
                     ),
@@ -396,7 +399,7 @@ class _HistoryEntryCard extends StatelessWidget {
                 ),
                 if (entry.totalStages > 0)
                   Text(
-                    '${entry.stagesCompleted}/${entry.totalStages} stages',
+                    context.l10n.historyStages(entry.stagesCompleted, entry.totalStages),
                     style: TextStyle(
                       fontSize: 11,
                       color: AppTheme.textTertiary,
@@ -410,13 +413,14 @@ class _HistoryEntryCard extends StatelessWidget {
     );
   }
 
-  String _formatDuration(Duration duration) {
+  String _formatDuration(BuildContext context, Duration duration) {
+    final l = context.l10n;
     if (duration.inMinutes < 1) {
-      return '${duration.inSeconds}s';
+      return l.historyDurationSeconds(duration.inSeconds);
     } else if (duration.inHours < 1) {
-      return '${duration.inMinutes}m';
+      return l.historyDurationMinutes(duration.inMinutes);
     } else {
-      return '${duration.inHours}h ${duration.inMinutes % 60}m';
+      return l.historyDurationHoursMinutes(duration.inHours, duration.inMinutes % 60);
     }
   }
 }
@@ -433,7 +437,7 @@ class _EmptyView extends StatelessWidget {
           Icon(Icons.history, size: 64, color: AppTheme.textTertiary),
           const SizedBox(height: 16),
           Text(
-            'No training history',
+            context.l10n.historyEmptyTitle,
             style: TextStyle(
               fontSize: 16,
               color: AppTheme.textSecondary,
@@ -441,7 +445,7 @@ class _EmptyView extends StatelessWidget {
           ),
           const SizedBox(height: 8),
           Text(
-            'Complete some training sessions to see your progress',
+            context.l10n.historyEmptyBody,
             style: TextStyle(
               fontSize: 12,
               color: AppTheme.textTertiary,
@@ -479,7 +483,7 @@ class _ErrorView extends StatelessWidget {
           const SizedBox(height: 16),
           ElevatedButton(
             onPressed: onRetry,
-            child: const Text('Retry'),
+            child: Text(context.l10n.retry),
           ),
         ],
       ),

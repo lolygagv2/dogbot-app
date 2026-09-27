@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../../data/models/schedule.dart';
 import '../../../domain/providers/scheduler_provider.dart';
 import '../../../domain/providers/dog_profiles_provider.dart';
+import '../../../l10n/l10n.dart';
 import '../../theme/app_theme.dart';
 
 class SchedulerScreen extends ConsumerStatefulWidget {
@@ -30,12 +31,12 @@ class _SchedulerScreenState extends ConsumerState<SchedulerScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Training Scheduler'),
+        title: Text(context.l10n.schedulerTitle),
         actions: [
           IconButton(
             icon: const Icon(Icons.add),
             onPressed: () => context.push('/scheduler/new'),
-            tooltip: 'Add Schedule',
+            tooltip: context.l10n.schedulerAddSchedule,
           ),
         ],
       ),
@@ -92,7 +93,7 @@ class _SchedulerScreenState extends ConsumerState<SchedulerScreen> {
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => context.push('/scheduler/new'),
         icon: const Icon(Icons.add),
-        label: const Text('Add Schedule'),
+        label: Text(context.l10n.schedulerAddSchedule),
       ),
     );
   }
@@ -134,14 +135,14 @@ class _MasterToggle extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Auto-Scheduler',
+                  context.l10n.schedulerAutoScheduler,
                   style: TextStyle(
                     fontWeight: FontWeight.w600,
                     color: isEnabled ? AppTheme.textPrimary : AppTheme.textSecondary,
                   ),
                 ),
                 Text(
-                  isEnabled ? 'Training runs automatically' : 'Schedules paused',
+                  isEnabled ? context.l10n.schedulerRunsAutomatically : context.l10n.schedulerPaused,
                   style: TextStyle(
                     fontSize: 12,
                     color: isEnabled ? AppTheme.accent : AppTheme.textTertiary,
@@ -179,16 +180,16 @@ class _EmptyState extends StatelessWidget {
               color: AppTheme.textTertiary,
             ),
             const SizedBox(height: 16),
-            const Text(
-              'No Scheduled Training',
-              style: TextStyle(
+            Text(
+              context.l10n.schedulerEmptyTitle,
+              style: const TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.w600,
               ),
             ),
             const SizedBox(height: 8),
             Text(
-              'Schedule automatic training sessions\nfor your dog at specific times',
+              context.l10n.schedulerEmptyBody,
               textAlign: TextAlign.center,
               style: TextStyle(
                 color: AppTheme.textTertiary,
@@ -198,7 +199,7 @@ class _EmptyState extends StatelessWidget {
             OutlinedButton.icon(
               onPressed: onAdd,
               icon: const Icon(Icons.add),
-              label: const Text('Add Schedule'),
+              label: Text(context.l10n.schedulerAddSchedule),
             ),
           ],
         ),
@@ -237,17 +238,17 @@ class _ScheduleCard extends ConsumerWidget {
         return await showDialog<bool>(
           context: context,
           builder: (ctx) => AlertDialog(
-            title: const Text('Delete Schedule'),
-            content: const Text('Are you sure you want to delete this schedule?'),
+            title: Text(context.l10n.schedulerDeleteTitle),
+            content: Text(context.l10n.schedulerDeleteConfirm),
             actions: [
               TextButton(
                 onPressed: () => Navigator.pop(ctx, false),
-                child: const Text('Cancel'),
+                child: Text(context.l10n.cancel),
               ),
               FilledButton(
                 onPressed: () => Navigator.pop(ctx, true),
                 style: FilledButton.styleFrom(backgroundColor: AppTheme.error),
-                child: const Text('Delete'),
+                child: Text(context.l10n.delete),
               ),
             ],
           ),
@@ -291,7 +292,7 @@ class _ScheduleCard extends ConsumerWidget {
                         children: [
                           Expanded(
                             child: Text(
-                              dog?.name ?? 'Unknown Dog',
+                              dog?.name ?? context.l10n.schedulerUnknownDog,
                               style: TextStyle(
                                 fontWeight: FontWeight.w600,
                                 color: isActive
@@ -310,9 +311,9 @@ class _ScheduleCard extends ConsumerWidget {
                                 color: AppTheme.textTertiary.withOpacity(0.2),
                                 borderRadius: BorderRadius.circular(4),
                               ),
-                              child: const Text(
-                                'PAUSED',
-                                style: TextStyle(
+                              child: Text(
+                                context.l10n.schedulerPausedBadge,
+                                style: const TextStyle(
                                   fontSize: 9,
                                   fontWeight: FontWeight.bold,
                                   color: AppTheme.textTertiary,
@@ -323,7 +324,7 @@ class _ScheduleCard extends ConsumerWidget {
                       ),
                       const SizedBox(height: 2),
                       Text(
-                        schedule.missionName,
+                        missionIdDisplayName(context.l10n, schedule.missionName),
                         style: TextStyle(
                           fontSize: 13,
                           color: isActive ? AppTheme.primary : AppTheme.textTertiary,
@@ -339,7 +340,7 @@ class _ScheduleCard extends ConsumerWidget {
                           ),
                           const SizedBox(width: 4),
                           Text(
-                            schedule.scheduleDescription,
+                            schedule.localizedDescription(context.l10n),
                             style: TextStyle(
                               fontSize: 12,
                               color: AppTheme.textTertiary,
@@ -358,7 +359,7 @@ class _ScheduleCard extends ConsumerWidget {
                             ),
                             const SizedBox(width: 4),
                             Text(
-                              'Next: ${schedule.nextRunDisplay}',
+                              context.l10n.schedulerNextRun(schedule.nextRunDisplay!),
                               style: TextStyle(
                                 fontSize: 12,
                                 color: isActive ? AppTheme.accent : AppTheme.textTertiary,

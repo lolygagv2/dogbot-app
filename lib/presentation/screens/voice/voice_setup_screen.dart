@@ -8,6 +8,7 @@ import '../../../data/models/dog_profile.dart';
 import '../../../data/models/voice_command.dart';
 import '../../../domain/providers/dog_profiles_provider.dart';
 import '../../../domain/providers/voice_commands_provider.dart';
+import '../../../l10n/l10n.dart';
 import '../../theme/app_theme.dart';
 
 bool get _isMobilePlatform {
@@ -44,8 +45,8 @@ class _VoiceSetupScreenState extends ConsumerState<VoiceSetupScreen> {
 
     if (dog == null) {
       return Scaffold(
-        appBar: AppBar(title: const Text('Voice Commands')),
-        body: const Center(child: Text('No dog selected')),
+        appBar: AppBar(title: Text(context.l10n.voiceTitle)),
+        body: Center(child: Text(context.l10n.voiceNoDogSelected)),
       );
     }
 
@@ -57,12 +58,12 @@ class _VoiceSetupScreenState extends ConsumerState<VoiceSetupScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Voice Commands'),
+        title: Text(context.l10n.voiceTitle),
         actions: [
           if (hasRecordings)
             IconButton(
               icon: const Icon(Icons.settings_backup_restore),
-              tooltip: 'Reset to default voice',
+              tooltip: context.l10n.voiceResetTooltip,
               onPressed: () => _resetToDefault(dog.name, notifier),
             ),
           TextButton.icon(
@@ -74,7 +75,7 @@ class _VoiceSetupScreenState extends ConsumerState<VoiceSetupScreen> {
                     child: CircularProgressIndicator(strokeWidth: 2),
                   )
                 : const Icon(Icons.cloud_upload, size: 20),
-            label: const Text('Sync All'),
+            label: Text(context.l10n.voiceSyncAll),
           ),
         ],
       ),
@@ -93,7 +94,7 @@ class _VoiceSetupScreenState extends ConsumerState<VoiceSetupScreen> {
                 const SizedBox(width: 12),
                 Expanded(
                   child: Text(
-                    'Record your voice for each command. ${dog.name} will learn to respond to YOUR voice.',
+                    context.l10n.voiceIntro(dog.name),
                     style: TextStyle(
                       color: Theme.of(context).colorScheme.onPrimaryContainer,
                     ),
@@ -114,7 +115,7 @@ class _VoiceSetupScreenState extends ConsumerState<VoiceSetupScreen> {
                   const SizedBox(width: 12),
                   Expanded(
                     child: Text(
-                      'Recording requires the iOS/Android app. Use mobile to record commands.',
+                      context.l10n.voiceMobileOnlyBanner,
                       style: TextStyle(color: Colors.orange.shade900, fontSize: 13),
                     ),
                   ),
@@ -168,11 +169,11 @@ class _VoiceSetupScreenState extends ConsumerState<VoiceSetupScreen> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                '$recorded of $total recorded',
+                context.l10n.voiceRecordedProgress(recorded, total),
                 style: const TextStyle(fontWeight: FontWeight.w500),
               ),
               Text(
-                '$synced synced',
+                context.l10n.voiceSyncedCount(synced),
                 style: TextStyle(
                   color: synced == recorded && recorded > 0
                       ? Colors.green
@@ -206,21 +207,18 @@ class _VoiceSetupScreenState extends ConsumerState<VoiceSetupScreen> {
       showDialog(
         context: context,
         builder: (context) => AlertDialog(
-          title: const Row(
+          title: Row(
             children: [
-              Icon(Icons.phone_android),
-              SizedBox(width: 8),
-              Text('Mobile Required'),
+              const Icon(Icons.phone_android),
+              const SizedBox(width: 8),
+              Text(context.l10n.voiceMobileRequiredTitle),
             ],
           ),
-          content: const Text(
-            'Voice recording requires the iOS or Android app. '
-            'Please use your mobile device to record voice commands.',
-          ),
+          content: Text(context.l10n.voiceMobileRequiredBody),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context),
-              child: const Text('OK'),
+              child: Text(context.l10n.ok),
             ),
           ],
         ),
@@ -231,7 +229,7 @@ class _VoiceSetupScreenState extends ConsumerState<VoiceSetupScreen> {
     // On mobile: show actual recording dialog
     final displayLabel = commandType == VoiceCommandType.name
         ? '"$dogName"'
-        : commandType.label;
+        : commandType.localizedLabel(context.l10n);
 
     showDialog(
       context: context,
@@ -248,16 +246,16 @@ class _VoiceSetupScreenState extends ConsumerState<VoiceSetupScreen> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Delete Recording?'),
-        content: const Text('This will delete the recorded voice command.'),
+        title: Text(context.l10n.voiceDeleteRecordingTitle),
+        content: Text(context.l10n.voiceDeleteRecordingBody),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel'),
+            child: Text(context.l10n.cancel),
           ),
           TextButton(
             onPressed: () => Navigator.pop(context, true),
-            child: const Text('Delete', style: TextStyle(color: Colors.red)),
+            child: Text(context.l10n.delete, style: const TextStyle(color: Colors.red)),
           ),
         ],
       ),
@@ -272,7 +270,7 @@ class _VoiceSetupScreenState extends ConsumerState<VoiceSetupScreen> {
     final success = await notifier.syncCommand(commandId);
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(success ? 'Command synced!' : 'Sync failed')),
+        SnackBar(content: Text(success ? context.l10n.voiceCommandSynced : context.l10n.voiceSyncFailed)),
       );
     }
   }
@@ -285,19 +283,16 @@ class _VoiceSetupScreenState extends ConsumerState<VoiceSetupScreen> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Reset to Default Voice?'),
-        content: Text(
-          'This deletes all $count recording${count == 1 ? '' : 's'} for '
-          '$dogName. WIM-Z will use its built-in voice instead.',
-        ),
+        title: Text(context.l10n.voiceResetTitle),
+        content: Text(context.l10n.voiceResetBody(count, dogName)),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel'),
+            child: Text(context.l10n.cancel),
           ),
           TextButton(
             onPressed: () => Navigator.pop(context, true),
-            child: const Text('Reset', style: TextStyle(color: Colors.red)),
+            child: Text(context.l10n.voiceResetAction, style: const TextStyle(color: Colors.red)),
           ),
         ],
       ),
@@ -307,8 +302,8 @@ class _VoiceSetupScreenState extends ConsumerState<VoiceSetupScreen> {
       await notifier.resetAllToDefault();
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Reset — WIM-Z will use its default voice'),
+          SnackBar(
+            content: Text(context.l10n.voiceResetDone),
           ),
         );
       }
@@ -324,7 +319,7 @@ class _VoiceSetupScreenState extends ConsumerState<VoiceSetupScreen> {
 
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('$count commands synced to robot')),
+        SnackBar(content: Text(context.l10n.voiceSyncedToRobot(count))),
       );
     }
   }
@@ -355,7 +350,7 @@ class _CommandTile extends StatelessWidget {
 
     final displayLabel = commandType == VoiceCommandType.name
         ? '"$dogName"'
-        : commandType.label;
+        : commandType.localizedLabel(context.l10n);
 
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
@@ -383,8 +378,8 @@ class _CommandTile extends StatelessWidget {
         ),
         subtitle: Text(
           isRecorded
-              ? (isSynced ? 'Recorded & Synced' : 'Recorded - tap to sync')
-              : 'Not recorded',
+              ? (isSynced ? context.l10n.voiceRecordedSynced : context.l10n.voiceRecordedTapToSync)
+              : context.l10n.voiceNotRecorded,
           style: TextStyle(
             fontSize: 12,
             color: isRecorded
@@ -400,12 +395,12 @@ class _CommandTile extends StatelessWidget {
                 IconButton(
                   icon: const Icon(Icons.cloud_upload),
                   onPressed: onSync,
-                  tooltip: 'Sync to robot',
+                  tooltip: context.l10n.voiceSyncToRobotTooltip,
                 ),
               IconButton(
                 icon: const Icon(Icons.delete_outline, color: Colors.red),
                 onPressed: onDelete,
-                tooltip: 'Delete',
+                tooltip: context.l10n.delete,
               ),
             ],
             IconButton(
@@ -414,7 +409,7 @@ class _CommandTile extends StatelessWidget {
                 color: AppTheme.primary,
               ),
               onPressed: onRecord,
-              tooltip: isRecorded ? 'Re-record' : 'Record',
+              tooltip: isRecorded ? context.l10n.voiceReRecord : context.l10n.voiceRecord,
             ),
           ],
         ),
@@ -478,7 +473,7 @@ class _RecordingDialogState extends State<_RecordingDialog> {
       });
     } else {
       setState(() {
-        _error = 'Failed to start recording. Check microphone permission.';
+        _error = context.l10n.voiceStartFailed;
       });
     }
   }
@@ -500,7 +495,7 @@ class _RecordingDialogState extends State<_RecordingDialog> {
     } else {
       setState(() {
         _isRecording = false;
-        _error = 'Recording failed. Try again.';
+        _error = context.l10n.voiceRecordingFailed;
       });
     }
   }
@@ -520,7 +515,7 @@ class _RecordingDialogState extends State<_RecordingDialog> {
     final seconds = (_elapsedMs / 1000).toStringAsFixed(1);
 
     return AlertDialog(
-      title: Text(_isDone ? 'Saved!' : 'Record: ${widget.commandLabel}'),
+      title: Text(_isDone ? context.l10n.voiceSavedTitle : context.l10n.voiceRecordTitle(widget.commandLabel)),
       content: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -531,22 +526,22 @@ class _RecordingDialogState extends State<_RecordingDialog> {
           ] else if (_isDone) ...[
             const Icon(Icons.check_circle, color: Colors.green, size: 48),
             const SizedBox(height: 12),
-            const Text('Voice command recorded successfully!'),
+            Text(context.l10n.voiceRecordedSuccess),
           ] else if (_isRecording) ...[
             const Icon(Icons.mic, color: Colors.red, size: 48),
             const SizedBox(height: 12),
             Text(
-              '${seconds}s',
+              context.l10n.voiceSeconds(seconds),
               style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 8),
-            const Text('Say the command clearly...'),
+            Text(context.l10n.voiceSayClearly),
             const SizedBox(height: 16),
             const LinearProgressIndicator(),
           ] else ...[
             const CircularProgressIndicator(),
             const SizedBox(height: 12),
-            const Text('Preparing microphone...'),
+            Text(context.l10n.voicePreparingMic),
           ],
         ],
       ),
@@ -554,7 +549,7 @@ class _RecordingDialogState extends State<_RecordingDialog> {
         if (_error != null || _isDone)
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: Text(_isDone ? 'Done' : 'Close'),
+            child: Text(_isDone ? context.l10n.done : context.l10n.close),
           ),
         if (_error != null && !_isDone)
           TextButton(
@@ -562,17 +557,17 @@ class _RecordingDialogState extends State<_RecordingDialog> {
               setState(() => _error = null);
               _startRecording();
             },
-            child: const Text('Retry'),
+            child: Text(context.l10n.retry),
           ),
         if (_isRecording) ...[
           TextButton(
             onPressed: _cancelRecording,
-            child: const Text('Cancel'),
+            child: Text(context.l10n.cancel),
           ),
           FilledButton.icon(
             onPressed: _stopRecording,
             icon: const Icon(Icons.stop),
-            label: const Text('Stop'),
+            label: Text(context.l10n.voiceStop),
             style: FilledButton.styleFrom(backgroundColor: Colors.red),
           ),
         ],

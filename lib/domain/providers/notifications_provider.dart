@@ -10,9 +10,11 @@ import '../../core/services/local_connection_service.dart';
 import '../../core/services/notification_service.dart';
 import '../../data/datasources/robot_api.dart';
 import '../../data/models/notification_event.dart';
+import '../../l10n/l10n.dart';
 import 'auth_provider.dart';
 import 'connection_provider.dart';
 import 'dog_profiles_provider.dart';
+import 'l10n_provider.dart';
 import 'missions_provider.dart';
 import 'settings_provider.dart';
 
@@ -60,6 +62,9 @@ String? rawBarkType(Map<String, dynamic> data) {
 
 class NotificationsNotifier extends StateNotifier<List<NotificationEvent>> {
   final Ref _ref;
+
+  /// Localized strings for titles/subtitles (no BuildContext here).
+  AppLocalizations get _l => _ref.read(l10nProvider);
   StreamSubscription? _wsSubscription;
 
   NotificationsNotifier(this._ref) : super(const []) {
@@ -117,7 +122,7 @@ class NotificationsNotifier extends StateNotifier<List<NotificationEvent>> {
             id: eventId ?? eventTime.millisecondsSinceEpoch.toString(),
             type: NotificationEventType.bark,
             timestamp: eventTime,
-            title: 'Barking Detected',
+            title: _l.notifBarkingDetected,
             subtitle:
                 _barkTypeLabel(event.data) ?? event.data['details'] as String?,
             dogId: event.data['dog_id'] as String?,
@@ -149,7 +154,9 @@ class NotificationsNotifier extends StateNotifier<List<NotificationEvent>> {
           id: eventId ?? DateTime.now().millisecondsSinceEpoch.toString(),
           type: NotificationEventType.panicAlert,
           timestamp: eventTime,
-          title: panicAction == 'ended' ? 'Panic Episode Ended' : 'Panic Alert',
+          title: panicAction == 'ended'
+              ? _l.notifPanicEpisodeEnded
+              : _l.notifPanicAlert,
           subtitle: event.data['message'] as String?,
           dogId: event.data['dog_id'] as String?,
           metadata: {
@@ -174,9 +181,9 @@ class NotificationsNotifier extends StateNotifier<List<NotificationEvent>> {
             id: eventId ?? DateTime.now().millisecondsSinceEpoch.toString(),
             type: NotificationEventType.sgSummary,
             timestamp: eventTime,
-            title: 'Silent Guardian: Level 4',
+            title: _l.notifSgLevel4,
             subtitle: event.data['headline'] as String? ??
-                'Escalation reached the highest level',
+                _l.notifSgLevel4Body,
             dogId: event.data['dog_id'] as String?,
             metadata: {'action': 'level4_escalation'},
           );
@@ -193,8 +200,10 @@ class NotificationsNotifier extends StateNotifier<List<NotificationEvent>> {
           id: DateTime.now().millisecondsSinceEpoch.toString(),
           type: NotificationEventType.treatDispensed,
           timestamp: eventTime,
-          title: 'Treat Dispensed',
-          subtitle: treatDogName != null ? 'For $treatDogName' : 'Good job!',
+          title: _l.notifTreatDispensed,
+          subtitle: treatDogName != null
+              ? _l.notifTreatFor(treatDogName)
+              : _l.notifGoodJob,
           dogId: event.data['dog_id'] as String?,
           metadata: _attributionMeta(event.data),
         );
@@ -207,8 +216,10 @@ class NotificationsNotifier extends StateNotifier<List<NotificationEvent>> {
             id: eventId ?? DateTime.now().millisecondsSinceEpoch.toString(),
             type: NotificationEventType.treatDispensed,
             timestamp: eventTime,
-            title: 'Treat Dispensed',
-            subtitle: remaining != null ? '$remaining treats remaining' : 'Good job!',
+            title: _l.notifTreatDispensed,
+            subtitle: remaining != null
+                ? _l.notifTreatsRemaining(remaining)
+                : _l.notifGoodJob,
             dogId: event.data['dog_id'] as String?,
             metadata: _attributionMeta(event.data),
           );
@@ -228,8 +239,8 @@ class NotificationsNotifier extends StateNotifier<List<NotificationEvent>> {
             id: eventId ?? DateTime.now().millisecondsSinceEpoch.toString(),
             type: NotificationEventType.alert,
             timestamp: eventTime,
-            title: 'Treats Running Low',
-            subtitle: '$remaining treats remaining — time to refill!',
+            title: _l.notifTreatsRunningLow,
+            subtitle: _l.notifTreatsLowBody(remaining),
           );
         }
         break;
@@ -241,8 +252,8 @@ class NotificationsNotifier extends StateNotifier<List<NotificationEvent>> {
           id: eventId ?? DateTime.now().millisecondsSinceEpoch.toString(),
           type: NotificationEventType.alert,
           timestamp: eventTime,
-          title: 'Treats Empty',
-          subtitle: 'Refill the carousel to keep dispensing',
+          title: _l.notifTreatsEmpty,
+          subtitle: _l.notifTreatsEmptyBody,
         );
         break;
 
@@ -251,7 +262,7 @@ class NotificationsNotifier extends StateNotifier<List<NotificationEvent>> {
           id: DateTime.now().millisecondsSinceEpoch.toString(),
           type: NotificationEventType.missionStarted,
           timestamp: eventTime,
-          title: 'Mission Started',
+          title: _l.notifMissionStarted,
           subtitle: event.data['name'] as String?,
           missionId: event.data['id'] as String?,
           dogId: _missionDogId(event.data),
@@ -264,7 +275,7 @@ class NotificationsNotifier extends StateNotifier<List<NotificationEvent>> {
           id: DateTime.now().millisecondsSinceEpoch.toString(),
           type: NotificationEventType.missionCompleted,
           timestamp: eventTime,
-          title: 'Mission Completed',
+          title: _l.notifMissionCompleted,
           subtitle: event.data['name'] as String?,
           missionId: event.data['id'] as String?,
           dogId: _missionDogId(event.data),
@@ -273,15 +284,17 @@ class NotificationsNotifier extends StateNotifier<List<NotificationEvent>> {
         break;
 
       case 'coach_reward':
-        final behavior = event.data['behavior'] as String? ?? 'trick';
+        final behavior = event.data['behavior'] as String? ?? _l.notifTrick;
         final dogName = event.data['dog_name'] as String?;
         final behaviorLabel = behavior[0].toUpperCase() + behavior.substring(1);
         notification = NotificationEvent(
           id: DateTime.now().millisecondsSinceEpoch.toString(),
           type: NotificationEventType.coachReward,
           timestamp: eventTime,
-          title: dogName != null ? '$dogName: $behaviorLabel rewarded' : '$behaviorLabel rewarded',
-          subtitle: 'Coach mode',
+          title: dogName != null
+              ? _l.notifCoachRewardedFor(dogName, behaviorLabel)
+              : _l.notifCoachRewarded(behaviorLabel),
+          subtitle: _l.notifCoachMode,
           dogId: event.data['dog_id'] as String?,
           metadata: _attributionMeta(event.data),
         );
@@ -294,8 +307,8 @@ class NotificationsNotifier extends StateNotifier<List<NotificationEvent>> {
             id: eventId ?? DateTime.now().millisecondsSinceEpoch.toString(),
             type: NotificationEventType.lowBattery,
             timestamp: eventTime,
-            title: 'Low Battery',
-            subtitle: '${level.toInt()}% remaining',
+            title: _l.notifLowBattery,
+            subtitle: _l.notifBatteryRemaining(level.toInt()),
           );
         }
         break;
@@ -346,7 +359,7 @@ class NotificationsNotifier extends StateNotifier<List<NotificationEvent>> {
   String? _barkTypeLabel(Map<String, dynamic> data) {
     final label = rawBarkType(data);
     if (label == null) return null;
-    return '${label[0].toUpperCase()}${label.substring(1)} bark';
+    return _l.notifBarkType('${label[0].toUpperCase()}${label.substring(1)}');
   }
 
   /// Check if detection is from a known dog (has dog_id, or aruco_id matches a profile,
@@ -379,7 +392,7 @@ class NotificationsNotifier extends StateNotifier<List<NotificationEvent>> {
 
     final confidence = (data['confidence'] as num?)?.toDouble();
     final confidenceStr =
-        confidence != null ? '${(confidence * 100).toInt()}% confidence' : null;
+        confidence != null ? _l.notifConfidence((confidence * 100).toInt()) : null;
 
     // Use the resolved event time / stable id passed in by the caller, NOT
     // DateTime.now(). Buffered store-and-forward replays must keep their real
@@ -430,17 +443,16 @@ class NotificationsNotifier extends StateNotifier<List<NotificationEvent>> {
         (data['headline'] != null || data['bark_types'] != null)) {
       final aggressive = data['aggressive_tag'] == true;
       final panicEpisodes = (data['panic_episodes'] as num?)?.toInt() ?? 0;
-      final headline = data['headline'] as String? ?? 'Session ended';
+      final headline = data['headline'] as String? ?? _l.notifSessionEnded;
       final extras = [
-        if (aggressive) 'Your dog was aggressive today',
-        if (panicEpisodes > 0)
-          '$panicEpisodes panic episode${panicEpisodes == 1 ? '' : 's'}',
+        if (aggressive) _l.notifAggressiveToday,
+        if (panicEpisodes > 0) _l.notifPanicEpisodes(panicEpisodes),
       ].join(' · ');
       return NotificationEvent(
         id: eventId ?? eventTime.millisecondsSinceEpoch.toString(),
         type: NotificationEventType.sgSummary,
         timestamp: eventTime,
-        title: 'Guardian Session Ended',
+        title: _l.notifGuardianSessionEnded,
         subtitle: extras.isEmpty ? headline : '$headline — $extras',
         dogId: data['dog_id'] as String?,
         metadata: {
@@ -461,8 +473,8 @@ class NotificationsNotifier extends StateNotifier<List<NotificationEvent>> {
       id: eventId ?? eventTime.millisecondsSinceEpoch.toString(),
       type: NotificationEventType.alert,
       timestamp: eventTime,
-      title: 'Guardian Alert',
-      subtitle: reason ?? 'Intervention',
+      title: _l.notifGuardianAlert,
+      subtitle: reason ?? _l.notifIntervention,
       dogId: data['dog_id'] as String?,
       metadata: _attributionMeta(data),
     );
@@ -470,22 +482,22 @@ class NotificationsNotifier extends StateNotifier<List<NotificationEvent>> {
 
   String _getDefaultTitle(NotificationEventType type) {
     return switch (type) {
-      NotificationEventType.bark => 'Barking Detected',
-      NotificationEventType.sit => 'Sitting Detected',
-      NotificationEventType.lieDown => 'Lay Down',
-      NotificationEventType.stand => 'Come',
-      NotificationEventType.treatDispensed => 'Treat Dispensed',
-      NotificationEventType.missionStarted => 'Mission Started',
-      NotificationEventType.missionCompleted => 'Mission Completed',
-      NotificationEventType.missionFailed => 'Mission Failed',
-      NotificationEventType.lowBattery => 'Low Battery',
-      NotificationEventType.alert => 'Alert',
-      NotificationEventType.happy => 'Happy Dog',
-      NotificationEventType.connected => 'Connected',
-      NotificationEventType.disconnected => 'Disconnected',
-      NotificationEventType.coachReward => 'Coach Reward',
-      NotificationEventType.panicAlert => 'Panic Alert',
-      NotificationEventType.sgSummary => 'Guardian Summary',
+      NotificationEventType.bark => _l.notifBarkingDetected,
+      NotificationEventType.sit => _l.notifSittingDetected,
+      NotificationEventType.lieDown => _l.notifLayDown,
+      NotificationEventType.stand => _l.notifCome,
+      NotificationEventType.treatDispensed => _l.notifTreatDispensed,
+      NotificationEventType.missionStarted => _l.notifMissionStarted,
+      NotificationEventType.missionCompleted => _l.notifMissionCompleted,
+      NotificationEventType.missionFailed => _l.notifMissionFailed,
+      NotificationEventType.lowBattery => _l.notifLowBattery,
+      NotificationEventType.alert => _l.notifAlert,
+      NotificationEventType.happy => _l.notifHappyDog,
+      NotificationEventType.connected => _l.connected,
+      NotificationEventType.disconnected => _l.disconnected,
+      NotificationEventType.coachReward => _l.notifCoachReward,
+      NotificationEventType.panicAlert => _l.notifPanicAlert,
+      NotificationEventType.sgSummary => _l.notifGuardianSummary,
     };
   }
 
@@ -518,7 +530,11 @@ class NotificationsNotifier extends StateNotifier<List<NotificationEvent>> {
         settings.notificationsEnabled) {
       final notifService = NotificationService.instance;
       if (notifService.isAppBackgrounded) {
-        notifService.showForEvent(notification);
+        notifService.showForEvent(
+          notification,
+          channelName: _l.channelActivityName,
+          channelDescription: _l.channelActivityDescription,
+        );
       }
     }
   }
@@ -657,26 +673,28 @@ class NotificationsNotifier extends StateNotifier<List<NotificationEvent>> {
     switch (typeStr) {
       case 'bark':
         mapped = NotificationEventType.bark;
-        title = 'Barking Detected';
+        title = _l.notifBarkingDetected;
         subtitle = _barkTypeLabel(payload);
         break;
       case 'treat_dispensed':
         mapped = NotificationEventType.treatDispensed;
-        title = 'Treat Dispensed';
+        title = _l.notifTreatDispensed;
         final remaining = payload['treats_remaining_after'] as int? ??
             payload['treats_remaining'] as int?;
-        subtitle = remaining != null ? '$remaining treats remaining' : null;
+        subtitle =
+            remaining != null ? _l.notifTreatsRemaining(remaining) : null;
         break;
       case 'coach_reward':
         mapped = NotificationEventType.coachReward;
-        final trick = payload['trick'] as String? ?? 'trick';
+        final trick = payload['trick'] as String? ?? _l.notifTrick;
         final success = payload['success'] as bool? ?? true;
-        title = success ? '$trick rewarded' : '$trick attempt';
+        title =
+            success ? _l.notifCoachRewarded(trick) : _l.notifCoachAttempt(trick);
         break;
       case 'guardian_alert':
         mapped = NotificationEventType.alert;
-        final reason = payload['reason'] as String? ?? 'Alert';
-        title = 'Guardian: $reason';
+        final reason = payload['reason'] as String? ?? _l.notifAlert;
+        title = _l.notifGuardianReason(reason);
         subtitle = payload['severity'] as String?;
         break;
       // Robot 137a5e8: panic + SG summary rows from relay history
@@ -684,7 +702,9 @@ class NotificationsNotifier extends StateNotifier<List<NotificationEvent>> {
         mapped = NotificationEventType.panicAlert;
         final panicAction =
             (payload['action'] ?? event['action']) as String? ?? 'started';
-        title = panicAction == 'ended' ? 'Panic Episode Ended' : 'Panic Alert';
+        title = panicAction == 'ended'
+            ? _l.notifPanicEpisodeEnded
+            : _l.notifPanicAlert;
         subtitle = payload['message'] as String?;
         break;
       case 'sg_summary':
@@ -694,7 +714,7 @@ class NotificationsNotifier extends StateNotifier<List<NotificationEvent>> {
           return null;
         }
         mapped = NotificationEventType.sgSummary;
-        title = 'Silent Guardian: Level 4';
+        title = _l.notifSgLevel4;
         subtitle = payload['headline'] as String?;
         break;
       // Build 125: robot's unified guardian event ({type:'guardian',
@@ -706,20 +726,20 @@ class NotificationsNotifier extends StateNotifier<List<NotificationEvent>> {
             (payload['action'] ?? event['action']) as String?);
         if (_isGuardianLifecycle(action)) return null;
         mapped = NotificationEventType.alert;
-        title = 'Guardian Alert';
+        title = _l.notifGuardianAlert;
         subtitle = payload['reason'] as String? ??
             payload['details'] as String? ??
             payload['message'] as String?;
         break;
       case 'mission_started':
         mapped = NotificationEventType.missionStarted;
-        title = 'Mission Started';
+        title = _l.notifMissionStarted;
         subtitle = payload['mission_id'] as String?;
         break;
       case 'mission_completed':
         mapped = NotificationEventType.missionCompleted;
         final success = payload['success'] as bool? ?? true;
-        title = success ? 'Mission Completed' : 'Mission Failed';
+        title = success ? _l.notifMissionCompleted : _l.notifMissionFailed;
         if (!success) mapped = NotificationEventType.missionFailed;
         subtitle = payload['mission_id'] as String?;
         break;
@@ -733,8 +753,9 @@ class NotificationsNotifier extends StateNotifier<List<NotificationEvent>> {
           _ => NotificationEventType.alert,
         };
         title = behavior.isEmpty
-            ? 'Behavior Detected'
-            : '${behavior[0].toUpperCase()}${behavior.substring(1)} Detected';
+            ? _l.notifBehaviorDetected
+            : _l.notifBehaviorNamedDetected(
+                '${behavior[0].toUpperCase()}${behavior.substring(1)}');
         break;
       default:
         return null;

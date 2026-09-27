@@ -11,6 +11,7 @@ import '../../../core/storage/secure_token_storage.dart';
 import '../../../domain/providers/auth_provider.dart';
 import '../../../domain/providers/connection_provider.dart';
 import '../../../domain/providers/settings_provider.dart';
+import '../../../l10n/l10n.dart';
 import '../../theme/app_theme.dart';
 
 /// Login/Welcome screen for WIM-Z with 3 options:
@@ -136,10 +137,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         } else {
           setState(() {
             _isConnectingLocal = false;
-            _localError =
-                'Could not connect to robot.\n'
-                'Make sure you\'re on the same WiFi as your robot\n'
-                'or connected to the WIMZ hotspot.';
+            _localError = context.l10n.loginLocalConnectFailed;
           });
         }
       }
@@ -147,7 +145,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       if (mounted) {
         setState(() {
           _isConnectingLocal = false;
-          _localError = 'Connection failed. Check WiFi and try again.';
+          _localError = context.l10n.loginConnectionFailedCheckWifi;
         });
       }
     }
@@ -182,7 +180,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  'Watchful Intelligent Mobile Zen',
+                  context.l10n.loginTagline,
                   style: Theme.of(context).textTheme.bodyLarge?.copyWith(
                         color: Theme.of(context)
                             .colorScheme
@@ -242,8 +240,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     child: ElevatedButton.icon(
                       onPressed: () => setState(() => _showLoginForm = true),
                       icon: const Icon(Icons.cloud),
-                      label: const Text('Login',
-                          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                      label: Text(context.l10n.loginButton,
+                          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: AppTheme.primary,
                         foregroundColor: AppTheme.background,
@@ -253,7 +251,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   ),
                   Padding(
                     padding: const EdgeInsets.only(top: 4, bottom: 20),
-                    child: Text('Cloud connection (requires internet)',
+                    child: Text(context.l10n.loginCloudHint,
                         style: TextStyle(fontSize: 12,
                             color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.4))),
                   ),
@@ -269,7 +267,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                               child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
                           : const Icon(Icons.wifi),
                       label: Text(
-                        _isConnectingLocal ? 'Connecting...' : 'Connect to Robot',
+                        _isConnectingLocal ? context.l10n.connecting : context.l10n.loginConnectToRobot,
                         style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                       ),
                       style: ElevatedButton.styleFrom(
@@ -281,7 +279,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   ),
                   Padding(
                     padding: const EdgeInsets.only(top: 4, bottom: 16),
-                    child: Text('Direct connection via WIMZ WiFi hotspot',
+                    child: Text(context.l10n.loginDirectHint,
                         style: TextStyle(fontSize: 12,
                             color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.4))),
                   ),
@@ -309,7 +307,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   // 3. Demo Mode
                   TextButton(
                     onPressed: () => context.go('/demo'),
-                    child: const Text('Demo Mode'),
+                    child: Text(context.l10n.loginDemoMode),
                   ),
                 ],
 
@@ -329,7 +327,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                 ref.read(authProvider.notifier).clearError();
                               },
                             ),
-                            Text(_isLogin ? 'Sign In' : 'Create Account',
+                            Text(_isLogin ? context.l10n.loginSignIn : context.l10n.loginCreateAccount,
                                 style: Theme.of(context).textTheme.titleMedium
                                     ?.copyWith(fontWeight: FontWeight.bold)),
                           ]),
@@ -337,14 +335,14 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         const SizedBox(height: 16),
                         TextFormField(
                           controller: _emailController,
-                          decoration: const InputDecoration(
-                            labelText: 'Email', hintText: 'you@example.com',
-                            prefixIcon: Icon(Icons.email)),
+                          decoration: InputDecoration(
+                            labelText: context.l10n.loginEmailLabel, hintText: 'you@example.com',
+                            prefixIcon: const Icon(Icons.email)),
                           keyboardType: TextInputType.emailAddress,
                           autocorrect: false,
                           validator: (v) {
-                            if (v == null || v.isEmpty) return 'Please enter email';
-                            if (!v.contains('@') || !v.contains('.')) return 'Invalid email';
+                            if (v == null || v.isEmpty) return context.l10n.loginEnterEmail;
+                            if (!v.contains('@') || !v.contains('.')) return context.l10n.loginInvalidEmail;
                             return null;
                           },
                         ),
@@ -352,7 +350,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         TextFormField(
                           controller: _passwordController,
                           decoration: InputDecoration(
-                            labelText: 'Password',
+                            labelText: context.l10n.loginPasswordLabel,
                             prefixIcon: const Icon(Icons.lock),
                             suffixIcon: IconButton(
                               icon: Icon(_obscurePassword ? Icons.visibility : Icons.visibility_off),
@@ -361,8 +359,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                           ),
                           obscureText: _obscurePassword,
                           validator: (v) {
-                            if (v == null || v.isEmpty) return 'Please enter password';
-                            if (!_isLogin && v.length < 6) return 'Min 6 characters';
+                            if (v == null || v.isEmpty) return context.l10n.loginEnterPassword;
+                            if (!_isLogin && v.length < 6) return context.l10n.loginMin6Chars;
                             return null;
                           },
                         ),
@@ -379,7 +377,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                             GestureDetector(
                               onTap: () => setState(
                                   () => _savePassword = !_savePassword),
-                              child: const Text('Save password'),
+                              child: Text(context.l10n.loginSavePassword),
                             ),
                             const Spacer(),
                             if (_isLogin)
@@ -402,7 +400,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                     },
                                   );
                                 },
-                                child: const Text('Forgot password?'),
+                                child: Text(context.l10n.loginForgotPassword),
                               ),
                           ],
                         ),
@@ -429,7 +427,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                             child: authState.isLoading
                                 ? const SizedBox(width: 24, height: 24,
                                     child: CircularProgressIndicator(strokeWidth: 2))
-                                : Text(_isLogin ? 'Sign In' : 'Create Account'),
+                                : Text(_isLogin ? context.l10n.loginSignIn : context.l10n.loginCreateAccount),
                           ),
                         ),
                         const SizedBox(height: 16),
@@ -439,8 +437,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                             ref.read(authProvider.notifier).clearError();
                           },
                           child: Text(_isLogin
-                              ? "Don't have an account? Sign up"
-                              : 'Already have an account? Sign in'),
+                              ? context.l10n.loginNoAccountSignUp
+                              : context.l10n.loginHaveAccountSignIn),
                         ),
                       ],
                     ),

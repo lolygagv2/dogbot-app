@@ -2,10 +2,12 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:intl/intl.dart';
 import 'package:share_plus/share_plus.dart';
 
 import '../../../data/services/photo_service.dart';
 import '../../../domain/providers/photo_provider.dart';
+import '../../../l10n/l10n.dart';
 
 /// Photo gallery screen showing all captured photos
 class PhotoGalleryScreen extends ConsumerWidget {
@@ -18,13 +20,13 @@ class PhotoGalleryScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Photo Gallery'),
+        title: Text(context.l10n.galleryTitle),
         actions: [
           if (photos.isNotEmpty)
             IconButton(
               icon: const Icon(Icons.refresh),
               onPressed: () => ref.read(photoProvider.notifier).loadPhotos(),
-              tooltip: 'Refresh',
+              tooltip: context.l10n.galleryRefresh,
             ),
         ],
       ),
@@ -46,14 +48,14 @@ class PhotoGalleryScreen extends ConsumerWidget {
           ),
           const SizedBox(height: 16),
           Text(
-            'No photos yet',
+            context.l10n.galleryNoPhotos,
             style: Theme.of(context).textTheme.titleLarge?.copyWith(
                   color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
                 ),
           ),
           const SizedBox(height: 8),
           Text(
-            'Take photos from the video view',
+            context.l10n.galleryTakePhotosHint,
             style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                   color: Theme.of(context).colorScheme.onSurface.withOpacity(0.4),
                 ),
@@ -146,7 +148,7 @@ class _PhotoThumbnail extends StatelessWidget {
                   ),
                 ),
                 child: Text(
-                  photo.formattedTime,
+                  photo.formattedTime(context),
                   style: const TextStyle(
                     color: Colors.white,
                     fontSize: 10,
@@ -163,19 +165,15 @@ class _PhotoThumbnail extends StatelessWidget {
   }
 }
 
-/// Extension to add formatted time to CapturedPhoto
+/// Extension to add locale-aware formatted time/date to CapturedPhoto
 extension CapturedPhotoExt on CapturedPhoto {
-  String get formattedTime {
-    final hour = timestamp.hour;
-    final minute = timestamp.minute.toString().padLeft(2, '0');
-    final period = hour >= 12 ? 'PM' : 'AM';
-    final displayHour = hour == 0 ? 12 : (hour > 12 ? hour - 12 : hour);
-    return '$displayHour:$minute $period';
-  }
+  String formattedTime(BuildContext context) =>
+      DateFormat.jm(Localizations.localeOf(context).toString())
+          .format(timestamp);
 
-  String get formattedDate {
-    return '${timestamp.month}/${timestamp.day}/${timestamp.year}';
-  }
+  String formattedDate(BuildContext context) =>
+      DateFormat.yMd(Localizations.localeOf(context).toString())
+          .format(timestamp);
 }
 
 /// Full screen photo viewer
@@ -192,7 +190,7 @@ class _PhotoViewerScreen extends ConsumerWidget {
         backgroundColor: Colors.black,
         foregroundColor: Colors.white,
         title: Text(
-          '${photo.formattedDate} ${photo.formattedTime}',
+          '${photo.formattedDate(context)} ${photo.formattedTime(context)}',
           style: const TextStyle(fontSize: 14),
         ),
         actions: [
@@ -200,13 +198,13 @@ class _PhotoViewerScreen extends ConsumerWidget {
           IconButton(
             icon: const Icon(Icons.share),
             onPressed: () => _sharePhoto(context),
-            tooltip: 'Share',
+            tooltip: context.l10n.galleryShare,
           ),
           // Delete button
           IconButton(
             icon: const Icon(Icons.delete),
             onPressed: () => _confirmDelete(context, ref),
-            tooltip: 'Delete',
+            tooltip: context.l10n.delete,
           ),
         ],
       ),
@@ -224,7 +222,7 @@ class _PhotoViewerScreen extends ConsumerWidget {
                   const Icon(Icons.broken_image, color: Colors.white54, size: 64),
                   const SizedBox(height: 16),
                   Text(
-                    'Failed to load image',
+                    context.l10n.galleryFailedToLoad,
                     style: TextStyle(color: Colors.white.withOpacity(0.6)),
                   ),
                 ],
@@ -249,13 +247,13 @@ class _PhotoViewerScreen extends ConsumerWidget {
 
       await Share.shareXFiles(
         [XFile(photo.localPath)],
-        text: 'WIM-Z Photo - ${photo.formattedDate}',
+        text: context.l10n.galleryShareText(photo.formattedDate(context)),
         sharePositionOrigin: shareOrigin,
       );
     } catch (e) {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to share: $e')),
+          SnackBar(content: Text(context.l10n.galleryShareFailed('$e'))),
         );
       }
     }
@@ -265,12 +263,12 @@ class _PhotoViewerScreen extends ConsumerWidget {
     showDialog(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        title: const Text('Delete Photo'),
-        content: const Text('Are you sure you want to delete this photo?'),
+        title: Text(context.l10n.galleryDeleteTitle),
+        content: Text(context.l10n.galleryDeleteConfirm),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(dialogContext),
-            child: const Text('Cancel'),
+            child: Text(context.l10n.cancel),
           ),
           FilledButton(
             onPressed: () {
@@ -282,7 +280,7 @@ class _PhotoViewerScreen extends ConsumerWidget {
             style: FilledButton.styleFrom(
               backgroundColor: Colors.red,
             ),
-            child: const Text('Delete'),
+            child: Text(context.l10n.delete),
           ),
         ],
       ),

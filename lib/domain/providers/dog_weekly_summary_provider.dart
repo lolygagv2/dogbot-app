@@ -5,6 +5,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/network/websocket_client.dart';
 import '../../core/utils/conn_trace.dart';
 import 'connection_provider.dart';
+import '../../l10n/l10n.dart';
+import 'l10n_provider.dart';
 
 /// Robot 386aef0 (2026-09-01): per-dog weekly summary (Mon–Sun), pulled via
 /// dog_weekly_summary_pull → answered with a dog_weekly_summary event —
@@ -149,6 +151,8 @@ final dogWeeklySummaryProvider = StateNotifierProvider.family<
 
 class DogWeeklySummaryNotifier extends StateNotifier<DogWeeklySummaryState> {
   final Ref _ref;
+
+  AppLocalizations get _l => _ref.read(l10nProvider);
   final String _dogId;
   StreamSubscription? _sub;
   Timer? _pullTimeout;
@@ -178,7 +182,7 @@ class DogWeeklySummaryNotifier extends StateNotifier<DogWeeklySummaryState> {
         summary: state.summary,
         pulling: false,
         error: error == 'unknown_dog'
-            ? 'Robot doesn\'t know this dog yet'
+            ? _l.weeklyErrUnknownDog
             : error,
       );
       return;
@@ -205,7 +209,7 @@ class DogWeeklySummaryNotifier extends StateNotifier<DogWeeklySummaryState> {
         state = DogWeeklySummaryState(
           summary: state.summary,
           pulling: false,
-          error: 'No response — robot may need an update',
+          error: _l.errNoResponseUpdate,
         );
       }
     });

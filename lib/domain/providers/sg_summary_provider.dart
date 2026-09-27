@@ -5,6 +5,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/network/websocket_client.dart';
 import '../../core/utils/conn_trace.dart';
 import 'connection_provider.dart';
+import '../../l10n/l10n.dart';
+import 'l10n_provider.dart';
 
 /// Robot 137a5e8 (2026-08-31): Silent Guardian session summary card state.
 /// Fed by sg_summary events — both the automatic level4_escalation and the
@@ -149,6 +151,8 @@ final sgSummaryProvider =
 
 class SgSummaryNotifier extends StateNotifier<SgSummaryState> {
   final Ref _ref;
+
+  AppLocalizations get _l => _ref.read(l10nProvider);
   StreamSubscription? _sub;
   Timer? _pullTimeout;
 
@@ -169,7 +173,7 @@ class SgSummaryNotifier extends StateNotifier<SgSummaryState> {
       state = SgSummaryState(
         summary: state.summary,
         pulling: false,
-        error: data['error'] as String? ?? 'Silent Guardian is not running',
+        error: data['error'] as String? ?? _l.sgErrNotRunning,
       );
       return;
     }
@@ -191,7 +195,7 @@ class SgSummaryNotifier extends StateNotifier<SgSummaryState> {
     _pullTimeout = Timer(const Duration(seconds: 10), () {
       if (mounted && state.pulling) {
         state = state.copyWith(
-            pulling: false, error: 'No response — robot may need an update');
+            pulling: false, error: _l.errNoResponseUpdate);
       }
     });
   }

@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../domain/providers/connection_mode_provider.dart';
 import '../../../domain/providers/connection_provider.dart';
 import '../../../domain/providers/device_provider.dart';
+import '../../../l10n/l10n.dart';
 import '../../theme/app_theme.dart';
 
 class ConnectionBadge extends ConsumerWidget {
@@ -12,6 +13,7 @@ class ConnectionBadge extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final connection = ref.watch(connectionProvider);
+    final l = context.l10n;
     // Build 132: "paired" = a robot was actually selected/saved, NOT
     // deviceId != defaultDeviceId — the placeholder equals a real robot's id
     // (wimz_robot_01), so that comparison showed "No Robot" for that robot.
@@ -31,40 +33,40 @@ class ConnectionBadge extends ConsumerWidget {
       return _PillContainer(
         color: AppTheme.disconnected,
         icon: Icons.device_unknown,
-        text: 'No Robot',
+        text: l.connBadgeNoRobot,
       );
     }
 
     switch (connection.status) {
       case ConnectionStatus.disconnected:
         color = AppTheme.disconnected;
-        text = 'Offline';
+        text = l.connBadgeOffline;
         icon = Icons.cloud_off;
         break;
       case ConnectionStatus.connecting:
         color = AppTheme.connecting;
-        text = 'Connecting...';
+        text = l.connecting;
         icon = Icons.cloud_sync;
         break;
       case ConnectionStatus.relayConnected:
         color = connection.isNotPaired ? AppTheme.warning : AppTheme.connecting;
-        text = connection.isNotPaired ? 'Not Paired' : 'Waiting...';
+        text = connection.isNotPaired ? l.connBadgeNotPaired : l.connBadgeWaiting;
         icon = Icons.cloud_done;
         break;
       case ConnectionStatus.robotOnline:
         color = AppTheme.connected;
-        text = 'Robot Online';
+        text = l.connBadgeRobotOnline;
         icon = Icons.smart_toy;
         break;
       case ConnectionStatus.error:
         color = AppTheme.error;
-        text = 'Error';
+        text = l.error;
         icon = Icons.error_outline;
         break;
       case ConnectionStatus.superseded:
         // B1: another device took over this account/device pair.
         color = AppTheme.warning;
-        text = 'Other Device Active';
+        text = l.connBadgeOtherDeviceActive;
         icon = Icons.swap_horiz;
         break;
     }
@@ -72,7 +74,7 @@ class ConnectionBadge extends ConsumerWidget {
     // Demo mode override
     if (connection.isDemoMode) {
       color = AppTheme.secondary;
-      text = 'Demo';
+      text = l.connBadgeDemo;
       icon = Icons.play_circle_outline;
     }
 

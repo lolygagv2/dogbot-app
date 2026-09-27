@@ -17,6 +17,7 @@ import '../../../domain/providers/missions_provider.dart';
 import '../../../domain/providers/mode_provider.dart';
 import '../../../domain/providers/night_mode_provider.dart';
 import '../../../domain/providers/telemetry_provider.dart';
+import '../../../l10n/l10n.dart';
 import '../../widgets/night_mode/mode_badge.dart';
 import '../../widgets/video/smart_video_view.dart';
 import '../../widgets/video/webrtc_video_view.dart' show CameraButton, VideoRecordButton;
@@ -186,7 +187,7 @@ class _DriveScreenState extends ConsumerState<DriveScreen> {
                 ),
                 child: const Icon(Icons.emergency, color: Colors.white),
               ),
-              tooltip: 'Emergency Stop',
+              tooltip: context.l10n.driveEmergencyStop,
             ),
           ),
         ],
@@ -286,19 +287,19 @@ class _DriveScreenState extends ConsumerState<DriveScreen> {
                           children: [
                             _OverlayButton(
                               icon: Icons.campaign,
-                              label: 'CALL',
+                              label: context.l10n.driveCall,
                               onTap: () => ref.read(callDogProvider).call(),
                             ),
                             const SizedBox(width: 12),
                             _OverlayButton(
                               icon: Icons.cookie,
-                              label: 'TREAT',
+                              label: context.l10n.driveTreat,
                               onTap: () => ref.read(treatControlProvider).dispense(),
                             ),
                             const SizedBox(width: 12),
                             _OverlayButton(
                               icon: Icons.center_focus_strong,
-                              label: 'CENTER',
+                              label: context.l10n.driveCenter,
                               onTap: () => ref.read(servoControlProvider.notifier).center(),
                             ),
                           ],
@@ -407,10 +408,10 @@ class _DriveScreenState extends ConsumerState<DriveScreen> {
                     color: Colors.black87,
                     borderRadius: BorderRadius.circular(20),
                   ),
-                  child: const Row(
+                  child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      SizedBox(
+                      const SizedBox(
                         width: 16,
                         height: 16,
                         child: CircularProgressIndicator(
@@ -418,10 +419,10 @@ class _DriveScreenState extends ConsumerState<DriveScreen> {
                           valueColor: AlwaysStoppedAnimation(Colors.orange),
                         ),
                       ),
-                      SizedBox(width: 10),
+                      const SizedBox(width: 10),
                       Text(
-                        'Switching mode...',
-                        style: TextStyle(
+                        context.l10n.driveSwitchingMode,
+                        style: const TextStyle(
                           color: Colors.white,
                           fontSize: 13,
                           fontWeight: FontWeight.w500,
@@ -622,9 +623,9 @@ class _MotorJoystickState extends ConsumerState<_MotorJoystick> {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        const Text(
-          'DRIVE',
-          style: TextStyle(
+        Text(
+          context.l10n.driveLabel,
+          style: const TextStyle(
             color: Colors.white70,
             fontSize: 10,
             fontWeight: FontWeight.bold,
@@ -701,9 +702,9 @@ class _OverlayCameraControl extends ConsumerWidget {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        const Text(
-          'CAMERA',
-          style: TextStyle(
+        Text(
+          context.l10n.driveCamera,
+          style: const TextStyle(
             color: Colors.white70,
             fontSize: 10,
             fontWeight: FontWeight.bold,
@@ -859,9 +860,9 @@ class _DriveCoachOverlay extends ConsumerWidget {
               crossAxisAlignment: CrossAxisAlignment.end,
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Text(
-                  'COACH',
-                  style: TextStyle(
+                Text(
+                  context.l10n.driveCoach,
+                  style: const TextStyle(
                     color: Colors.orange,
                     fontSize: 10,
                     fontWeight: FontWeight.bold,
@@ -886,11 +887,11 @@ class _DriveCoachOverlay extends ConsumerWidget {
                                   .forceTrick(behavior);
                               if (!ok && context.mounted) {
                                 ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(
+                                  SnackBar(
                                     content: Text(
-                                      'Select a dog or wait for the camera to identify one.',
+                                      context.l10n.driveSelectDogFirst,
                                     ),
-                                    duration: Duration(seconds: 2),
+                                    duration: const Duration(seconds: 2),
                                   ),
                                 );
                               }
@@ -917,7 +918,7 @@ class _DriveCoachOverlay extends ConsumerWidget {
                           ),
                         ),
                         child: Text(
-                          AppTheme.getBehaviorDisplayName(behavior).toUpperCase(),
+                          behaviorDisplayName(context.l10n, behavior).toUpperCase(),
                           style: TextStyle(
                             color: isRewarded
                                 ? Colors.green
@@ -946,8 +947,11 @@ class _ActiveMissionBanner extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final missionsState = ref.watch(missionsProvider);
-    final missionName = missionsState.activeMission?.name ?? 'Mission';
-    final stage = missionsState.statusDisplay.isNotEmpty ? missionsState.statusDisplay : missionsState.stageDisplay;
+    final l = context.l10n;
+    final progress = missionsState.currentProgress;
+    final missionName = missionsState.activeMission?.localizedName(l) ?? l.driveMissionFallback;
+    final status = progress?.localizedStatus(l) ?? '';
+    final stage = status.isNotEmpty ? status : progress?.localizedStage(l);
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
@@ -962,7 +966,7 @@ class _ActiveMissionBanner extends ConsumerWidget {
           const SizedBox(width: 8),
           Flexible(
             child: Text(
-              stage != null ? '$missionName — $stage' : missionName,
+              stage != null ? context.l10n.driveMissionStage(missionName, stage) : missionName,
               style: const TextStyle(
                 color: Colors.white,
                 fontSize: 12,
@@ -988,9 +992,9 @@ class _ActiveMissionBanner extends ConsumerWidget {
                 color: Colors.red,
                 borderRadius: BorderRadius.circular(8),
               ),
-              child: const Text(
-                'STOP',
-                style: TextStyle(
+              child: Text(
+                context.l10n.driveStop,
+                style: const TextStyle(
                   color: Colors.white,
                   fontSize: 11,
                   fontWeight: FontWeight.bold,
@@ -1018,7 +1022,7 @@ class _LandscapeModeSelector extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final modeLabel = currentMode.label.toUpperCase();
+    final modeLabel = currentMode.localizedLabel(context.l10n).toUpperCase();
     final color = _getModeColor(currentMode);
 
     return PopupMenuButton<RobotMode>(
@@ -1073,7 +1077,7 @@ class _LandscapeModeSelector extends ConsumerWidget {
               children: [
                 Icon(_getModeIcon(mode), size: 20, color: _getModeColor(mode)),
                 const SizedBox(width: 12),
-                Text(mode.label),
+                Text(mode.localizedLabel(context.l10n)),
                 if (mode == currentMode) ...[
                   const Spacer(),
                   const Icon(Icons.check, size: 20),

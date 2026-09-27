@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../data/models/night_mode_state.dart';
 import '../../../domain/providers/night_mode_provider.dart';
+import '../../../l10n/l10n.dart';
 import '../../theme/app_theme.dart';
 
 /// Settings panel for the robot's day/night camera mode. Mounts into the
@@ -14,12 +15,13 @@ class NightVisionSettingsSection extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final state = ref.watch(nightModeProvider);
     final isStale = ref.watch(nightModeIsStaleProvider);
+    final l = context.l10n;
 
     if (state == null) {
-      return const ListTile(
-        leading: Icon(Icons.nights_stay_outlined),
-        title: Text('Night Vision'),
-        subtitle: Text('Waiting for robot…'),
+      return ListTile(
+        leading: const Icon(Icons.nights_stay_outlined),
+        title: Text(l.nightVisionTitle),
+        subtitle: Text(l.nightVisionWaiting),
       );
     }
 
@@ -45,7 +47,7 @@ class NightVisionSettingsSection extends ConsumerWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      isNight ? 'Night vision' : 'Day mode',
+                      isNight ? l.nightVisionNightMode : l.nightVisionDayMode,
                       style: TextStyle(
                         color: isStale ? AppTheme.textTertiary : accent,
                         fontSize: 17,
@@ -54,7 +56,7 @@ class NightVisionSettingsSection extends ConsumerWidget {
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      _luxLine(state.currentLux),
+                      _luxLine(l, state.currentLux),
                       style: const TextStyle(
                         color: AppTheme.textSecondary,
                         fontSize: 13,
@@ -65,7 +67,7 @@ class NightVisionSettingsSection extends ConsumerWidget {
               ),
               if (isStale)
                 Tooltip(
-                  message: 'No update from robot in 90+ seconds',
+                  message: l.nightVisionStaleTooltip,
                   child: Icon(
                     Icons.cloud_off,
                     color: AppTheme.warning.withOpacity(0.8),
@@ -79,7 +81,7 @@ class NightVisionSettingsSection extends ConsumerWidget {
           if (state.lastChangedAt != null) ...[
             const SizedBox(height: 8),
             Text(
-              _lastChangedLine(state.lastChangedAt!, isNight),
+              _lastChangedLine(l, state.lastChangedAt!, isNight),
               style: const TextStyle(
                 color: AppTheme.textTertiary,
                 fontSize: 12,
@@ -91,21 +93,21 @@ class NightVisionSettingsSection extends ConsumerWidget {
 
           // Override selector
           SegmentedButton<NightModeOverride>(
-            segments: const [
+            segments: [
               ButtonSegment(
                 value: NightModeOverride.auto,
-                label: Text('Auto'),
-                icon: Icon(Icons.brightness_auto, size: 18),
+                label: Text(l.nightVisionAuto),
+                icon: const Icon(Icons.brightness_auto, size: 18),
               ),
               ButtonSegment(
                 value: NightModeOverride.forceDay,
-                label: Text('Day'),
-                icon: Icon(Icons.wb_sunny, size: 18),
+                label: Text(l.nightVisionDay),
+                icon: const Icon(Icons.wb_sunny, size: 18),
               ),
               ButtonSegment(
                 value: NightModeOverride.forceNight,
-                label: Text('Night'),
-                icon: Icon(Icons.nights_stay, size: 18),
+                label: Text(l.nightVisionNight),
+                icon: const Icon(Icons.nights_stay, size: 18),
               ),
             ],
             selected: {state.override},
@@ -125,8 +127,8 @@ class NightVisionSettingsSection extends ConsumerWidget {
           // Helper text or override-active notice
           Text(
             state.override == NightModeOverride.auto
-                ? 'Switches automatically based on lighting.'
-                : 'Manual override active. Tap Auto to resume automatic detection.',
+                ? l.nightVisionAutoHint
+                : l.nightVisionOverrideHint,
             style: TextStyle(
               color: state.override == NightModeOverride.auto
                   ? AppTheme.textTertiary
@@ -138,7 +140,7 @@ class NightVisionSettingsSection extends ConsumerWidget {
           if (isStale) ...[
             const SizedBox(height: 8),
             Text(
-              'Robot offline — change will apply when reconnected.',
+              l.nightVisionOfflineHint,
               style: TextStyle(
                 color: AppTheme.warning.withOpacity(0.9),
                 fontSize: 12,
@@ -150,24 +152,25 @@ class NightVisionSettingsSection extends ConsumerWidget {
     );
   }
 
-  String _luxLine(double? lux) {
-    final label = NightModeState.luxLabel(lux);
-    if (lux == null) return 'Lighting: $label';
-    return '${lux.toStringAsFixed(1)} lux — $label';
+  String _luxLine(AppLocalizations l, double? lux) {
+    final label = luxLocalizedLabel(l, lux);
+    if (lux == null) return l.nightVisionLighting(label);
+    return l.nightVisionLux(lux.toStringAsFixed(1), label);
   }
 
-  String _lastChangedLine(DateTime ts, bool isNight) {
+  String _lastChangedLine(AppLocalizations l, DateTime ts, bool isNight) {
     final ago = DateTime.now().difference(ts);
-    final modeWord = isNight ? 'night vision' : 'day mode';
+    final modeWord =
+        isNight ? l.nightVisionModeWordNight : l.nightVisionModeWordDay;
     if (ago.inSeconds < 60) {
-      return 'Switched to $modeWord ${ago.inSeconds}s ago';
+      return l.nightVisionSwitchedSecondsAgo(modeWord, ago.inSeconds);
     }
     if (ago.inMinutes < 60) {
-      return 'Switched to $modeWord ${ago.inMinutes}m ago';
+      return l.nightVisionSwitchedMinutesAgo(modeWord, ago.inMinutes);
     }
     if (ago.inHours < 24) {
-      return 'Switched to $modeWord ${ago.inHours}h ago';
+      return l.nightVisionSwitchedHoursAgo(modeWord, ago.inHours);
     }
-    return 'Switched to $modeWord ${ago.inDays}d ago';
+    return l.nightVisionSwitchedDaysAgo(modeWord, ago.inDays);
   }
 }

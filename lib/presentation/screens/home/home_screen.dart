@@ -12,6 +12,7 @@ import '../../../domain/providers/guardian_events_provider.dart';
 import '../../../domain/providers/missions_provider.dart';
 import '../../../domain/providers/mode_provider.dart';
 import '../../../domain/providers/telemetry_provider.dart';
+import '../../../l10n/l10n.dart';
 import '../../widgets/video/smart_video_view.dart';
 import '../../widgets/video/audio_mute_toggle.dart';
 import '../../widgets/status/battery_indicator.dart';
@@ -36,7 +37,7 @@ class HomeScreen extends ConsumerWidget {
     // is stale and MUST NOT be shown — it can name a DIFFERENT robot than the
     // one we're physically connected to. Show a neutral local label instead.
     final isLocal = ref.watch(isLocalModeProvider);
-    final displayName = isLocal ? 'Local Robot' : deviceId;
+    final displayName = isLocal ? context.l10n.homeLocalRobot : deviceId;
     // Build 132: "paired" = a robot was actually selected/saved, NOT
     // deviceId != defaultDeviceId — the placeholder equals a real robot's id
     // (wimz_robot_01), so that comparison misread it as "no robot".
@@ -63,7 +64,7 @@ class HomeScreen extends ConsumerWidget {
               GestureDetector(
                 onTap: () => context.push('/device-pairing'),
                 child: Text(
-                  'Find your robot →',
+                  context.l10n.homeFindYourRobot,
                   style: TextStyle(
                     fontSize: 12,
                     color: AppTheme.primary,
@@ -229,7 +230,7 @@ class _DetectionChipState extends State<_DetectionChip> {
             const Icon(Icons.pets, color: Colors.white, size: 16),
             const SizedBox(width: 6),
             Text(
-              AppTheme.getBehaviorDisplayName(widget.behavior).toUpperCase(),
+              behaviorDisplayName(context.l10n, widget.behavior).toUpperCase(),
               style: const TextStyle(
                 color: Colors.white,
                 fontWeight: FontWeight.bold,
@@ -296,7 +297,7 @@ class _UnknownDogBannerState extends ConsumerState<_UnknownDogBanner> {
                 const Icon(Icons.pets, color: Colors.black87, size: 16),
                 const SizedBox(width: 6),
                 Text(
-                  'New dog #${unknownDog.arucoId}',
+                  context.l10n.homeNewDog(unknownDog.arucoId ?? 0),
                   style: const TextStyle(
                     color: Colors.black87,
                     fontWeight: FontWeight.bold,
@@ -304,9 +305,9 @@ class _UnknownDogBannerState extends ConsumerState<_UnknownDogBanner> {
                   ),
                 ),
                 const SizedBox(width: 6),
-                const Text(
-                  'Add',
-                  style: TextStyle(
+                Text(
+                  context.l10n.add,
+                  style: const TextStyle(
                     color: Colors.black54,
                     fontSize: 12,
                     decoration: TextDecoration.underline,
@@ -356,7 +357,7 @@ class _ModeAndDriveRow extends ConsumerWidget {
             behavior: SnackBarBehavior.floating,
             duration: const Duration(seconds: 5),
             action: SnackBarAction(
-              label: 'Dismiss',
+              label: context.l10n.homeDismiss,
               textColor: Colors.white,
               onPressed: () {
                 ref.read(modeStateProvider.notifier).clearError();
@@ -390,7 +391,7 @@ class _ModeAndDriveRow extends ConsumerWidget {
                 final buttonColor = isExitButton
                     ? Colors.red
                     : (isSelected ? color : Colors.transparent);
-                final buttonLabel = isExitButton ? 'EXIT' : _getModeShortLabel(mode);
+                final buttonLabel = isExitButton ? context.l10n.homeExit : _getModeShortLabel(context, mode);
                 final buttonIcon = isExitButton ? Icons.stop_circle : _getModeIcon(mode);
 
                 return Expanded(
@@ -482,8 +483,8 @@ class _ModeAndDriveRow extends ConsumerWidget {
           child: ElevatedButton.icon(
             onPressed: () => context.push('/drive'),
             icon: const Icon(Icons.gamepad, size: 18),
-            label: const Text('DRIVE',
-              style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, letterSpacing: 1),
+            label: Text(context.l10n.driveLabel,
+              style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, letterSpacing: 1),
             ),
             style: ElevatedButton.styleFrom(
               backgroundColor: AppTheme.primary,
@@ -499,12 +500,12 @@ class _ModeAndDriveRow extends ConsumerWidget {
     );
   }
 
-  static String _getModeShortLabel(RobotMode mode) {
+  static String _getModeShortLabel(BuildContext context, RobotMode mode) {
     switch (mode) {
-      case RobotMode.idle: return 'Idle';
-      case RobotMode.silentGuardian: return 'Guard';
-      case RobotMode.coach: return 'Coach';
-      default: return mode.label;
+      case RobotMode.idle: return context.l10n.homeModeIdle;
+      case RobotMode.silentGuardian: return context.l10n.homeModeGuard;
+      case RobotMode.coach: return context.l10n.homeModeCoach;
+      default: return mode.localizedLabel(context.l10n);
     }
   }
 
@@ -621,9 +622,9 @@ class _DogSelector extends ConsumerWidget {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const Text(
-                    'Select Dog',
-                    style: TextStyle(
+                  Text(
+                    context.l10n.homeSelectDog,
+                    style: const TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.bold,
                     ),
@@ -634,7 +635,7 @@ class _DogSelector extends ConsumerWidget {
                       context.push('/dogs/add');
                     },
                     icon: const Icon(Icons.add, size: 18),
-                    label: const Text('Add'),
+                    label: Text(context.l10n.add),
                   ),
                 ],
               ),
@@ -646,7 +647,7 @@ class _DogSelector extends ConsumerWidget {
                   subtitle: dog.breed != null && dog.breed!.isNotEmpty
                       ? Text(dog.breed!)
                       : dog.color != DogColor.mixed
-                          ? Text(dog.color.label)
+                          ? Text(dog.color.localizedLabel(context.l10n))
                           : null,
                   trailing: current?.id == dog.id
                       ? Icon(Icons.check, color: AppTheme.primary)

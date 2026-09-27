@@ -15,6 +15,7 @@ import '../../../domain/providers/device_provider.dart';
 import '../../../domain/providers/dog_profiles_provider.dart';
 import '../../../domain/providers/push_to_talk_provider.dart';
 import '../../../domain/providers/volume_provider.dart';
+import '../../../l10n/l10n.dart';
 import '../../theme/app_theme.dart';
 
 /// Provider to track current lighting pattern index
@@ -104,23 +105,24 @@ class _QuickActionsState extends ConsumerState<QuickActions> {
   void _handleSongDeleted(dynamic event) {
     final data = event.data as Map<String, dynamic>;
     final success = data['success'] as bool? ?? true;
-    final filename = data['filename'] as String? ?? 'song';
-
     if (mounted) {
+      final l = context.l10n;
+      final filename =
+          data['filename'] as String? ?? l.quickActionsSongFallback;
       ScaffoldMessenger.of(context).hideCurrentSnackBar();
       if (success) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Deleted "$filename"'),
+            content: Text(l.quickActionsDeleted(filename)),
             backgroundColor: Colors.green,
             behavior: SnackBarBehavior.floating,
           ),
         );
       } else {
-        final error = data['error'] as String? ?? 'Unknown error';
+        final error = data['error'] as String? ?? l.unknownError;
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Delete failed: $error'),
+            content: Text(l.quickActionsDeleteFailed(error)),
             backgroundColor: Colors.red,
             behavior: SnackBarBehavior.floating,
           ),
@@ -143,11 +145,13 @@ class _QuickActionsState extends ConsumerState<QuickActions> {
     print('[UPLOAD] Result event: type=${event.type}, success=$success, filename=$filename, error=$error');
 
     if (mounted) {
+      final l = context.l10n;
       ScaffoldMessenger.of(context).hideCurrentSnackBar();
       if (success) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Uploaded "$filename" successfully'),
+            content: Text(l.quickActionsUploaded(
+                filename == 'file' ? l.quickActionsFileFallback : filename)),
             backgroundColor: Colors.green,
             behavior: SnackBarBehavior.floating,
           ),
@@ -155,7 +159,7 @@ class _QuickActionsState extends ConsumerState<QuickActions> {
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Upload failed: ${error ?? "Unknown error"}'),
+            content: Text(l.quickActionsUploadFailed(error ?? l.unknownError)),
             backgroundColor: Colors.red,
             behavior: SnackBarBehavior.floating,
           ),
@@ -228,6 +232,7 @@ class _QuickActionsState extends ConsumerState<QuickActions> {
     final blueLedOn = ref.watch(_blueLedOnProvider);
 
     final pttState = ref.watch(pushToTalkProvider);
+    final l = context.l10n;
 
     return Column(
       mainAxisSize: MainAxisSize.min,
@@ -244,7 +249,7 @@ class _QuickActionsState extends ConsumerState<QuickActions> {
             Expanded(
               child: _ActionButton(
                 icon: Icons.pets,
-                label: 'Treat',
+                label: l.quickActionsTreat,
                 color: AppTheme.accent,
                 onPressed: () => treatControl.dispense(),
               ),
@@ -260,7 +265,7 @@ class _QuickActionsState extends ConsumerState<QuickActions> {
             Expanded(
               child: _ActionButton(
                 icon: Icons.thumb_up,
-                label: 'Good',
+                label: l.quickActionsGood,
                 color: Colors.green,
                 onPressed: () {
                   if (selectedDog == null) { _showNoDogError(context); return; }
@@ -274,7 +279,7 @@ class _QuickActionsState extends ConsumerState<QuickActions> {
             Expanded(
               child: _ActionButton(
                 icon: Icons.campaign,
-                label: 'Call Dog',
+                label: l.quickActionsCallDog,
                 color: Colors.deepOrange,
                 onPressed: () {
                   if (selectedDog == null) { _showNoDogError(context); return; }
@@ -295,7 +300,7 @@ class _QuickActionsState extends ConsumerState<QuickActions> {
             Expanded(
               child: _ActionButton(
                 icon: Icons.restaurant,
-                label: 'Want?',
+                label: l.quickActionsWant,
                 color: Colors.amber,
                 onPressed: () {
                   if (selectedDog == null) { _showNoDogError(context); return; }
@@ -309,7 +314,7 @@ class _QuickActionsState extends ConsumerState<QuickActions> {
             Expanded(
               child: _ActionButton(
                 icon: Icons.block,
-                label: 'No',
+                label: l.quickActionsNo,
                 color: Colors.red,
                 onPressed: () {
                   if (selectedDog == null) { _showNoDogError(context); return; }
@@ -324,7 +329,7 @@ class _QuickActionsState extends ConsumerState<QuickActions> {
             Expanded(
               child: _ActionButton(
                 icon: Icons.volume_off,
-                label: 'Quiet',
+                label: l.quickActionsQuiet,
                 color: Colors.purpleAccent,
                 onPressed: () {
                   if (selectedDog == null) { _showNoDogError(context); return; }
@@ -338,7 +343,7 @@ class _QuickActionsState extends ConsumerState<QuickActions> {
             Expanded(
               child: _ActionButton(
                 icon: Icons.airline_seat_recline_normal,
-                label: 'Sit',
+                label: l.quickActionsSit,
                 color: Colors.lightBlue,
                 onPressed: () {
                   if (selectedDog == null) { _showNoDogError(context); return; }
@@ -372,8 +377,9 @@ class _QuickActionsState extends ConsumerState<QuickActions> {
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
                     content: Text(sent
-                        ? 'LED: ${_getPatternDisplayName(patterns[newIndex])}'
-                        : 'Not connected — LED not sent'),
+                        ? l.quickActionsLedPattern(
+                            _getPatternDisplayName(l, patterns[newIndex]))
+                        : l.quickActionsLedNotSent),
                     duration: const Duration(seconds: 1),
                     behavior: SnackBarBehavior.floating,
                     width: sent ? 150 : 220,
@@ -460,8 +466,8 @@ class _QuickActionsState extends ConsumerState<QuickActions> {
       if (!file.name.toLowerCase().endsWith('.mp3')) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Please select an MP3 file'),
+            SnackBar(
+              content: Text(context.l10n.quickActionsSelectMp3),
               backgroundColor: Colors.red,
             ),
           );
@@ -473,8 +479,8 @@ class _QuickActionsState extends ConsumerState<QuickActions> {
       if (file.path == null) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Could not access file'),
+            SnackBar(
+              content: Text(context.l10n.quickActionsFileAccessFailed),
               backgroundColor: Colors.red,
             ),
           );
@@ -487,8 +493,8 @@ class _QuickActionsState extends ConsumerState<QuickActions> {
         print('[UPLOAD] File too large: ${file.size} bytes > $_maxUploadSizeBytes');
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('File too large (max 20MB)'),
+            SnackBar(
+              content: Text(context.l10n.quickActionsFileTooLarge),
               backgroundColor: Colors.red,
             ),
           );
@@ -501,8 +507,8 @@ class _QuickActionsState extends ConsumerState<QuickActions> {
       if (localConn.isConnected) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Music upload not available in local mode'),
+            SnackBar(
+              content: Text(context.l10n.quickActionsUploadLocalUnavailable),
               backgroundColor: Colors.orange,
             ),
           );
@@ -517,8 +523,8 @@ class _QuickActionsState extends ConsumerState<QuickActions> {
       if (token == null) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Not authenticated - please login'),
+            SnackBar(
+              content: Text(context.l10n.quickActionsNotAuthenticated),
               backgroundColor: Colors.red,
             ),
           );
@@ -559,7 +565,7 @@ class _QuickActionsState extends ConsumerState<QuickActions> {
                   child: CircularProgressIndicator(strokeWidth: 2),
                 ),
                 const SizedBox(width: 12),
-                Text('Uploading "$filename"...'),
+                Text(context.l10n.quickActionsUploading(filename)),
               ],
             ),
             duration: const Duration(minutes: 2),
@@ -591,7 +597,7 @@ class _QuickActionsState extends ConsumerState<QuickActions> {
         print('[UPLOAD] HTTP upload successful');
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Uploaded "$filename" successfully'),
+            content: Text(context.l10n.quickActionsUploaded(filename)),
             backgroundColor: Colors.green,
             behavior: SnackBarBehavior.floating,
           ),
@@ -601,7 +607,7 @@ class _QuickActionsState extends ConsumerState<QuickActions> {
         print('[UPLOAD] HTTP upload failed: $error');
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Upload failed: $error'),
+            content: Text(context.l10n.quickActionsUploadFailed(error)),
             backgroundColor: Colors.red,
             behavior: SnackBarBehavior.floating,
           ),
@@ -613,7 +619,8 @@ class _QuickActionsState extends ConsumerState<QuickActions> {
         ScaffoldMessenger.of(context).hideCurrentSnackBar();
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Could not open file picker: ${e.message}'),
+            content: Text(context.l10n
+                .quickActionsFilePickerFailed(e.message ?? e.code)),
             backgroundColor: Colors.red,
           ),
         );
@@ -625,7 +632,7 @@ class _QuickActionsState extends ConsumerState<QuickActions> {
         ScaffoldMessenger.of(context).hideCurrentSnackBar();
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Upload failed: $e'),
+            content: Text(context.l10n.quickActionsUploadFailed('$e')),
             backgroundColor: Colors.red,
           ),
         );
@@ -636,8 +643,8 @@ class _QuickActionsState extends ConsumerState<QuickActions> {
   void _showNoDogError(BuildContext context) {
     ScaffoldMessenger.of(context).hideCurrentSnackBar();
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Please select a dog first'),
+      SnackBar(
+        content: Text(context.l10n.quickActionsSelectDogFirst),
         backgroundColor: Colors.orange,
         behavior: SnackBarBehavior.floating,
       ),
@@ -652,12 +659,12 @@ class _QuickActionsState extends ConsumerState<QuickActions> {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Delete Song'),
-        content: Text('Delete "$displayName" from the playlist?'),
+        title: Text(ctx.l10n.quickActionsDeleteSongTitle),
+        content: Text(ctx.l10n.quickActionsDeleteSongConfirm(displayName)),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(),
-            child: const Text('Cancel'),
+            child: Text(ctx.l10n.cancel),
           ),
           TextButton(
             onPressed: () {
@@ -670,14 +677,14 @@ class _QuickActionsState extends ConsumerState<QuickActions> {
               );
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
-                  content: Text('Deleting "$displayName"...'),
+                  content: Text(context.l10n.quickActionsDeletingSong(displayName)),
                   behavior: SnackBarBehavior.floating,
                   duration: const Duration(seconds: 2),
                 ),
               );
             },
             style: TextButton.styleFrom(foregroundColor: Colors.red),
-            child: const Text('Delete'),
+            child: Text(ctx.l10n.delete),
           ),
         ],
       ),
@@ -692,20 +699,20 @@ class _QuickActionsState extends ConsumerState<QuickActions> {
     return dotIndex > 0 ? filename.substring(0, dotIndex) : filename;
   }
 
-  String _getPatternDisplayName(String pattern) {
+  String _getPatternDisplayName(AppLocalizations l, String pattern) {
     switch (pattern) {
       case LedPatterns.rainbow:
-        return 'Rainbow';
+        return l.ledPatternRainbow;
       case LedPatterns.fire:
-        return 'Fire';
+        return l.ledPatternFire;
       case LedPatterns.solidBlue:
-        return 'Blue';
+        return l.ledPatternBlue;
       case LedPatterns.chase:
-        return 'Chase';
+        return l.ledPatternChase;
       case LedPatterns.ambient:
-        return 'Ambient';
+        return l.ledPatternAmbient;
       case LedPatterns.off:
-        return 'Off';
+        return l.off;
       default:
         return pattern;
     }
@@ -758,7 +765,7 @@ class _PttActionButton extends ConsumerWidget {
         ),
         const SizedBox(height: 3),
         Text(
-          isRecording ? 'Recording' : 'Talk',
+          isRecording ? context.l10n.pttRecording : context.l10n.pttTalk,
           style: TextStyle(
             fontSize: 10,
             color: isRecording ? Colors.red : Colors.cyan,
@@ -847,8 +854,8 @@ class _LightingButton extends StatelessWidget {
         ),
         const SizedBox(height: 4),
         Text(
-          'Lighting',
-          style: TextStyle(
+          context.l10n.quickActionsLighting,
+          style: const TextStyle(
             fontSize: 11,
             color: Colors.orange,
             fontWeight: FontWeight.w500,
@@ -911,8 +918,8 @@ class _BluLightButton extends StatelessWidget {
         ),
         const SizedBox(height: 4),
         Text(
-          'BluLight',
-          style: TextStyle(
+          context.l10n.quickActionsBluLight,
+          style: const TextStyle(
             fontSize: 11,
             color: Colors.blue,
             fontWeight: FontWeight.w500,

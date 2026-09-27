@@ -5,6 +5,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/network/websocket_client.dart';
 import '../../core/utils/conn_trace.dart';
 import '../../data/models/controller_info.dart';
+import '../../l10n/l10n.dart';
+import 'l10n_provider.dart';
 
 /// Robot-hosted Xbox controller pairing.
 ///
@@ -119,6 +121,8 @@ final controllerPairingProvider =
 
 class ControllerPairingNotifier extends StateNotifier<ControllerPairingState> {
   final Ref _ref;
+
+  AppLocalizations get _l => _ref.read(l10nProvider);
   Timer? _capabilityTimer;
   StreamSubscription<WsEvent>? _eventSub;
 
@@ -185,22 +189,22 @@ class ControllerPairingNotifier extends StateNotifier<ControllerPairingState> {
   }
 
   void pair(String address) =>
-      _oneShot(ControllerCommands.pair, address, 'Pairing…');
+      _oneShot(ControllerCommands.pair, address, _l.ctrlPairPairing);
 
   /// The user's sign-off: persist (or un-persist) a controller so the robot
   /// auto-reconnects it after a drop or reboot.
   void setTrusted(String address, bool trusted) => _oneShot(
         ControllerCommands.trust,
         address,
-        trusted ? 'Saving…' : 'Removing trust…',
+        trusted ? _l.ctrlPairSaving : _l.ctrlPairRemovingTrust,
         extra: {'trusted': trusted},
       );
 
   void forget(String address) =>
-      _oneShot(ControllerCommands.forget, address, 'Forgetting…');
+      _oneShot(ControllerCommands.forget, address, _l.ctrlPairForgetting);
 
   void reconnect(String address) =>
-      _oneShot(ControllerCommands.reconnect, address, 'Reconnecting…');
+      _oneShot(ControllerCommands.reconnect, address, _l.ctrlPairReconnecting);
 
   void _oneShot(String command, String address, String progress,
       {Map<String, dynamic>? extra}) {
@@ -263,7 +267,7 @@ class ControllerPairingNotifier extends StateNotifier<ControllerPairingState> {
       case ControllerEvents.error:
         final msg = event.data['message'] as String? ??
             event.data['code'] as String? ??
-            'Controller error';
+            _l.ctrlPairError;
         state = state.copyWith(
           errorMessage: msg,
           clearBusy: true,
@@ -276,11 +280,11 @@ class ControllerPairingNotifier extends StateNotifier<ControllerPairingState> {
   String? _stageLabel(String? stage) {
     switch (stage) {
       case 'pairing':
-        return 'Pairing…';
+        return _l.ctrlPairPairing;
       case 'connecting':
-        return 'Connecting…';
+        return _l.ctrlPairConnecting;
       case 'done':
-        return 'Done';
+        return _l.done;
     }
     return null;
   }

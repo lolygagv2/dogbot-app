@@ -5,6 +5,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/network/websocket_client.dart';
 import '../../data/services/video_service.dart';
 import 'connection_provider.dart';
+import '../../l10n/l10n.dart';
+import 'l10n_provider.dart';
 
 /// State for video recording
 class VideoState {
@@ -67,6 +69,8 @@ final videoProvider =
 /// Video recording state notifier
 class VideoNotifier extends StateNotifier<VideoState> {
   final Ref _ref;
+
+  AppLocalizations get _l => _ref.read(l10nProvider);
   final VideoService _videoService = VideoService.instance;
   StreamSubscription? _videoSubscription;
   Timer? _maxDurationTimer;
@@ -122,7 +126,7 @@ class VideoNotifier extends StateNotifier<VideoState> {
         isProcessing: false,
         downloadProgress: 0,
         clearRecordingStart: true,
-        error: 'Robot could not record the video',
+        error: _l.videoErrRobotRecordFailed,
       );
       return;
     }
@@ -134,7 +138,7 @@ class VideoNotifier extends StateNotifier<VideoState> {
         isProcessing: false,
         downloadProgress: 0,
         clearRecordingStart: true,
-        error: 'No download URL received from robot',
+        error: _l.videoErrNoDownloadUrl,
       );
       return;
     }
@@ -173,11 +177,11 @@ class VideoNotifier extends StateNotifier<VideoState> {
       String errorMsg;
       final eStr = e.toString();
       if (eStr.contains('404')) {
-        errorMsg = 'Video file not found on server — robot may need a direct connection for downloads';
+        errorMsg = _l.videoErrNotFound;
       } else if (eStr.contains('connect') || eStr.contains('timeout')) {
-        errorMsg = 'Could not reach robot for video download';
+        errorMsg = _l.videoErrUnreachable;
       } else {
-        errorMsg = 'Video download failed';
+        errorMsg = _l.videoErrDownloadFailed;
       }
       print('VIDEO: User-facing error: $errorMsg');
       state = state.copyWith(
@@ -197,7 +201,7 @@ class VideoNotifier extends StateNotifier<VideoState> {
     durationSeconds = durationSeconds.clamp(1, _maxRecordingSeconds);
 
     if (!_ref.read(connectionProvider).isConnected) {
-      state = state.copyWith(error: 'Not connected to robot');
+      state = state.copyWith(error: _l.errNotConnectedToRobot);
       return;
     }
 
@@ -254,7 +258,7 @@ class VideoNotifier extends StateNotifier<VideoState> {
           isProcessing: false,
           downloadProgress: 0,
           clearRecordingStart: true,
-          error: 'Video encoding timed out — no response after ${_videoResponseTimeoutSeconds}s',
+          error: _l.videoErrEncodingTimeout(_videoResponseTimeoutSeconds),
         );
       }
     });

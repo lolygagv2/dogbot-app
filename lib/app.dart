@@ -9,8 +9,10 @@ import 'core/network/websocket_client.dart';
 import 'core/services/local_connection_service.dart';
 import 'core/services/wifi_binder.dart';
 import 'data/models/night_mode_state.dart';
+import 'l10n/l10n.dart';
 import 'domain/providers/auth_provider.dart';
 import 'domain/providers/connection_provider.dart';
+import 'domain/providers/locale_provider.dart';
 import 'domain/providers/control_provider.dart';
 import 'domain/providers/network_state_provider.dart';
 import 'domain/providers/night_mode_provider.dart';
@@ -378,7 +380,7 @@ class MainShell extends ConsumerWidget {
           ScaffoldMessenger.of(context).hideCurrentSnackBar();
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: const Text('Too many commands, slow down'),
+              content: Text(context.l10n.appRateLimited),
               backgroundColor: Colors.orange.shade800,
               behavior: SnackBarBehavior.floating,
               duration: const Duration(seconds: 3),
@@ -443,18 +445,18 @@ class MainShell extends ConsumerWidget {
                           ),
                         ),
                         const SizedBox(width: 10),
-                        const Text(
-                          'Reconnecting...',
-                          style: TextStyle(
+                        Text(
+                          context.l10n.appReconnecting,
+                          style: const TextStyle(
                             color: Colors.white,
                             fontSize: 13,
                             fontWeight: FontWeight.w600,
                           ),
                         ),
                         const SizedBox(width: 16),
-                        const Text(
-                          'Tap to retry',
-                          style: TextStyle(
+                        Text(
+                          context.l10n.appTapToRetry,
+                          style: const TextStyle(
                             color: Colors.white70,
                             fontSize: 12,
                           ),
@@ -485,38 +487,38 @@ class MainShell extends ConsumerWidget {
               children: [
                 _NavBarItem(
                   icon: Icons.home,
-                  label: 'Home',
+                  label: context.l10n.navHome,
                   isSelected: currentIndex == 0,
                   onTap: () => _goBranch(0),
                 ),
                 _NavBarItem(
                   icon: Icons.pets,
-                  label: 'Dogs',
+                  label: context.l10n.navDogs,
                   isSelected: currentIndex == 1,
                   onTap: () => _goBranch(1),
                 ),
                 _NavBarItem(
                   icon: Icons.flag,
-                  label: 'Missions',
+                  label: context.l10n.navMissions,
                   isSelected: currentIndex == 2,
                   onTap: () => _goBranch(2),
                 ),
                 _NavBarItem(
                   icon: Icons.photo_library,
-                  label: 'Photos',
+                  label: context.l10n.navPhotos,
                   isSelected: currentIndex == 3,
                   onTap: () => _goBranch(3),
                 ),
                 _NavBarItem(
                   icon: Icons.notifications,
-                  label: 'Activity',
+                  label: context.l10n.navActivity,
                   isSelected: currentIndex == 4,
                   badgeCount: unreadCount,
                   onTap: () => _goBranch(4),
                 ),
                 _NavBarItem(
                   icon: Icons.settings,
-                  label: 'Settings',
+                  label: context.l10n.settings,
                   isSelected: currentIndex == 5,
                   onTap: () => _goBranch(5),
                 ),
@@ -804,6 +806,8 @@ class _WimzAppState extends ConsumerState<WimzApp> with WidgetsBindingObserver {
     final nightState = ref.watch(nightModeProvider);
     final isNight = nightState?.currentMode == DayNight.night;
     final theme = isNight ? AppTheme.darkNight : AppTheme.dark;
+    // Settings → Language. null = follow the device locale.
+    final locale = ref.watch(localeProvider);
     return MaterialApp.router(
       title: 'WIM-Z',
       theme: theme,
@@ -811,6 +815,9 @@ class _WimzAppState extends ConsumerState<WimzApp> with WidgetsBindingObserver {
       themeMode: ThemeMode.dark,
       routerConfig: _router,
       debugShowCheckedModeBanner: false,
+      locale: locale,
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
     );
   }
 }

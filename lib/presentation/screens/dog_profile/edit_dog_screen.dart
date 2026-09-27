@@ -11,6 +11,7 @@ import 'package:printing/printing.dart';
 
 import '../../../data/models/dog_profile.dart';
 import '../../../domain/providers/dog_profiles_provider.dart';
+import '../../../l10n/l10n.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/aruco_marker_view.dart';
 
@@ -63,8 +64,8 @@ class _EditDogScreenState extends ConsumerState<EditDogScreen> {
 
     if (profile == null) {
       return Scaffold(
-        appBar: AppBar(title: const Text('Edit Dog')),
-        body: const Center(child: Text('Dog not found')),
+        appBar: AppBar(title: Text(context.l10n.editDogTitle)),
+        body: Center(child: Text(context.l10n.editDogNotFound)),
       );
     }
 
@@ -72,7 +73,7 @@ class _EditDogScreenState extends ConsumerState<EditDogScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Edit Dog'),
+        title: Text(context.l10n.editDogTitle),
         actions: [
           TextButton(
             onPressed: _isSaving ? null : () => _save(profile),
@@ -82,7 +83,7 @@ class _EditDogScreenState extends ConsumerState<EditDogScreen> {
                     height: 18,
                     child: CircularProgressIndicator(strokeWidth: 2),
                   )
-                : const Text('Save'),
+                : Text(context.l10n.save),
           ),
         ],
       ),
@@ -96,32 +97,32 @@ class _EditDogScreenState extends ConsumerState<EditDogScreen> {
             TextField(
               controller: _nameController,
               textCapitalization: TextCapitalization.words,
-              decoration: const InputDecoration(
-                labelText: 'Name',
-                border: OutlineInputBorder(),
+              decoration: InputDecoration(
+                labelText: context.l10n.dogNameLabel,
+                border: const OutlineInputBorder(),
               ),
             ),
             const SizedBox(height: 16),
             TextField(
               controller: _breedController,
               textCapitalization: TextCapitalization.words,
-              decoration: const InputDecoration(
-                labelText: 'Breed',
-                hintText: 'e.g. Golden Retriever',
-                border: OutlineInputBorder(),
+              decoration: InputDecoration(
+                labelText: context.l10n.dogBreedLabel,
+                hintText: context.l10n.editDogBreedHint,
+                border: const OutlineInputBorder(),
               ),
             ),
             const SizedBox(height: 16),
             DropdownButtonFormField<DogColor>(
               value: _color,
-              decoration: const InputDecoration(
-                labelText: 'Coat color',
-                border: OutlineInputBorder(),
+              decoration: InputDecoration(
+                labelText: context.l10n.editDogCoatColorLabel,
+                border: const OutlineInputBorder(),
               ),
               items: DogColor.values
                   .map((c) => DropdownMenuItem(
                         value: c,
-                        child: Text(c.label),
+                        child: Text(c.localizedLabel(context.l10n)),
                       ))
                   .toList(),
               onChanged: (v) {
@@ -144,7 +145,7 @@ class _EditDogScreenState extends ConsumerState<EditDogScreen> {
               ),
               onPressed: _isSaving ? null : () => _confirmDelete(profile),
               icon: const Icon(Icons.delete_forever),
-              label: const Text('Delete Dog'),
+              label: Text(context.l10n.editDogDeleteDog),
             ),
           ],
         ),
@@ -156,7 +157,7 @@ class _EditDogScreenState extends ConsumerState<EditDogScreen> {
     final newName = _nameController.text.trim();
     if (newName.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Name cannot be empty')),
+        SnackBar(content: Text(context.l10n.editDogNameEmpty)),
       );
       return;
     }
@@ -164,6 +165,7 @@ class _EditDogScreenState extends ConsumerState<EditDogScreen> {
     setState(() => _isSaving = true);
     final messenger = ScaffoldMessenger.of(context);
     final router = GoRouter.of(context);
+    final l = context.l10n;
     try {
       final newBreed = _breedController.text.trim();
       await ref.read(dogProfilesProvider.notifier).updateProfile(
@@ -174,12 +176,12 @@ class _EditDogScreenState extends ConsumerState<EditDogScreen> {
               treatsPerReward: _treatsPerReward.clamp(1, 5),
             ),
           );
-      messenger.showSnackBar(const SnackBar(content: Text('Saved')));
+      messenger.showSnackBar(SnackBar(content: Text(l.editDogSaved)));
       if (mounted) router.pop();
     } catch (e) {
       messenger.showSnackBar(
         SnackBar(
-          content: Text('Save failed: $e'),
+          content: Text(l.editDogSaveFailed('$e')),
           backgroundColor: AppTheme.error,
         ),
       );
@@ -192,24 +194,22 @@ class _EditDogScreenState extends ConsumerState<EditDogScreen> {
     final router = GoRouter.of(context);
     final messenger = ScaffoldMessenger.of(context);
     final notifier = ref.read(dogProfilesProvider.notifier);
+    final l = context.l10n;
 
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Delete Dog?'),
-        content: Text(
-          'Are you sure you want to delete ${profile.name}? '
-          'This will remove all their data and cannot be undone.',
-        ),
+        title: Text(l.editDogDeleteConfirmTitle),
+        content: Text(l.editDogDeleteConfirmBody(profile.name)),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Cancel'),
+            child: Text(l.cancel),
           ),
           FilledButton(
             style: FilledButton.styleFrom(backgroundColor: AppTheme.error),
             onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Delete'),
+            child: Text(l.delete),
           ),
         ],
       ),
@@ -217,7 +217,7 @@ class _EditDogScreenState extends ConsumerState<EditDogScreen> {
 
     if (confirmed != true) return;
     await notifier.removeProfile(profile.id);
-    messenger.showSnackBar(SnackBar(content: Text('${profile.name} deleted')));
+    messenger.showSnackBar(SnackBar(content: Text(l.editDogDeleted(profile.name))));
     if (mounted) router.go('/dogs');
   }
 }
@@ -248,7 +248,7 @@ class _PhotoEditor extends ConsumerWidget {
           TextButton.icon(
             onPressed: () => _changePhoto(context, ref),
             icon: const Icon(Icons.camera_alt, size: 18),
-            label: const Text('Change photo'),
+            label: Text(context.l10n.editDogChangePhoto),
           ),
         ],
       ),
@@ -281,24 +281,25 @@ class _PhotoEditor extends ConsumerWidget {
   Future<void> _changePhoto(BuildContext context, WidgetRef ref) async {
     final messenger = ScaffoldMessenger.of(context);
     final notifier = ref.read(dogProfilesProvider.notifier);
+    final l = context.l10n;
 
     final source = await showDialog<ImageSource>(
       context: context,
       builder: (ctx) => SimpleDialog(
-        title: const Text('Choose Photo Source'),
+        title: Text(l.editDogChoosePhotoSource),
         children: [
           SimpleDialogOption(
             onPressed: () => Navigator.pop(ctx, ImageSource.camera),
-            child: const ListTile(
-              leading: Icon(Icons.camera_alt),
-              title: Text('Take Photo'),
+            child: ListTile(
+              leading: const Icon(Icons.camera_alt),
+              title: Text(l.dogPhotoTakePhoto),
             ),
           ),
           SimpleDialogOption(
             onPressed: () => Navigator.pop(ctx, ImageSource.gallery),
-            child: const ListTile(
-              leading: Icon(Icons.photo_library),
-              title: Text('Choose from Gallery'),
+            child: ListTile(
+              leading: const Icon(Icons.photo_library),
+              title: Text(l.dogPhotoChooseFromGallery),
             ),
           ),
         ],
@@ -324,11 +325,11 @@ class _PhotoEditor extends ConsumerWidget {
       PaintingBinding.instance.imageCache.clearLiveImages();
 
       await notifier.updateProfilePhoto(profile.id, permanentPath);
-      messenger.showSnackBar(const SnackBar(content: Text('Photo updated')));
+      messenger.showSnackBar(SnackBar(content: Text(l.editDogPhotoUpdated)));
     } catch (e) {
       messenger.showSnackBar(
         SnackBar(
-          content: Text('Failed to save photo: $e'),
+          content: Text(l.editDogPhotoSaveFailed('$e')),
           backgroundColor: AppTheme.error,
         ),
       );
@@ -361,10 +362,10 @@ class _TreatsPerRewardStepper extends StatelessWidget {
             children: [
               const Icon(Icons.cookie, color: AppTheme.accent, size: 24),
               const SizedBox(width: 8),
-              const Expanded(
+              Expanded(
                 child: Text(
-                  'Treats per reward',
-                  style: TextStyle(
+                  context.l10n.editDogTreatsPerReward,
+                  style: const TextStyle(
                     color: AppTheme.textPrimary,
                     fontSize: 16,
                     fontWeight: FontWeight.w600,
@@ -397,7 +398,7 @@ class _TreatsPerRewardStepper extends StatelessWidget {
           ),
           const SizedBox(height: 4),
           Text(
-            _helperFor(value),
+            _helperFor(context, value),
             style: const TextStyle(
               color: AppTheme.textSecondary,
               fontSize: 12,
@@ -408,16 +409,16 @@ class _TreatsPerRewardStepper extends StatelessWidget {
     );
   }
 
-  String _helperFor(int n) {
+  String _helperFor(BuildContext context, int n) {
     switch (n) {
       case 1:
-        return 'Default — one treat per reward.';
+        return context.l10n.editDogTreatsHelper1;
       case 2:
-        return 'Medium dogs may benefit from two.';
+        return context.l10n.editDogTreatsHelper2;
       case 3:
-        return 'Big dogs need more to feel rewarded.';
+        return context.l10n.editDogTreatsHelper3;
       default:
-        return 'Very large dogs / high-energy training.';
+        return context.l10n.editDogTreatsHelper4;
     }
   }
 }
@@ -439,9 +440,9 @@ class _MarkerSection extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'ArUco Marker',
-            style: TextStyle(
+          Text(
+            context.l10n.editDogArucoMarker,
+            style: const TextStyle(
               color: AppTheme.textPrimary,
               fontSize: 16,
               fontWeight: FontWeight.w600,
@@ -450,8 +451,8 @@ class _MarkerSection extends StatelessWidget {
           const SizedBox(height: 4),
           Text(
             markerId == null
-                ? 'No marker assigned. Re-create this dog to assign one.'
-                : 'DICT_4X4_1000 — ID $markerId',
+                ? context.l10n.editDogNoMarker
+                : context.l10n.editDogMarkerId(markerId),
             style: const TextStyle(
               color: AppTheme.textSecondary,
               fontSize: 12,
@@ -464,7 +465,7 @@ class _MarkerSection extends StatelessWidget {
             ElevatedButton.icon(
               onPressed: () => _printMarker(context, markerId, profile.name),
               icon: const Icon(Icons.print),
-              label: const Text('Print marker'),
+              label: Text(context.l10n.arucoPrintMarker),
             ),
           ],
         ],
@@ -480,6 +481,7 @@ class _MarkerSection extends StatelessWidget {
   Future<void> _printMarker(
       BuildContext context, int markerId, String dogName) async {
     final messenger = ScaffoldMessenger.of(context);
+    final l = context.l10n;
     final bytes = await loadArucoMarkerBytes(markerId);
     final pdf = pw.Document();
     final hasMarker = bytes != null;
@@ -561,7 +563,7 @@ class _MarkerSection extends StatelessWidget {
     } catch (e) {
       messenger.showSnackBar(
         SnackBar(
-          content: Text('Print failed: $e'),
+          content: Text(l.editDogPrintFailed('$e')),
           backgroundColor: AppTheme.error,
         ),
       );

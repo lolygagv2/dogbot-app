@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../data/models/notification_event.dart';
 import '../../../domain/providers/settings_provider.dart';
+import '../../../l10n/l10n.dart';
 import '../../theme/app_theme.dart';
 
 /// Per-event-type notification preferences.
@@ -14,6 +15,7 @@ class NotificationPreferencesScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final settings = ref.watch(settingsProvider);
     final notifier = ref.read(settingsProvider.notifier);
+    final l = context.l10n;
 
     // Order types so the most actionable ones appear first.
     const ordered = <NotificationEventType>[
@@ -35,16 +37,16 @@ class NotificationPreferencesScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Notification Preferences'),
+        title: Text(l.notifPrefsTitle),
         actions: [
           IconButton(
             icon: const Icon(Icons.restore),
-            tooltip: 'Reset to defaults',
+            tooltip: l.notifPrefsResetDefaults,
             onPressed: () async {
               await notifier.resetNotificationChannels();
               if (context.mounted) {
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Reset to defaults')),
+                  SnackBar(content: Text(l.notifPrefsResetDefaults)),
                 );
               }
             },
@@ -55,18 +57,17 @@ class NotificationPreferencesScreen extends ConsumerWidget {
         children: [
           // Master switch — gates OS push entirely
           SwitchListTile(
-            title: const Text('Enable lock-screen notifications'),
-            subtitle: const Text(
-                'Master switch. When off, nothing pushes to the lock screen or Apple Watch — events still appear in the in-app feed.'),
+            title: Text(l.notifPrefsEnableLockScreen),
+            subtitle: Text(l.notifPrefsMasterSubtitle),
             value: settings.notificationsEnabled,
             onChanged: notifier.setNotificationsEnabled,
           ),
           const Divider(),
-          const Padding(
-            padding: EdgeInsets.fromLTRB(16, 16, 16, 8),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
             child: Text(
-              'Per event type',
-              style: TextStyle(
+              l.notifPrefsPerEventType,
+              style: const TextStyle(
                 fontSize: 12,
                 fontWeight: FontWeight.bold,
                 letterSpacing: 1.2,
@@ -74,13 +75,11 @@ class NotificationPreferencesScreen extends ConsumerWidget {
               ),
             ),
           ),
-          const Padding(
-            padding: EdgeInsets.fromLTRB(16, 0, 16, 12),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
             child: Text(
-              'Off — never recorded.\n'
-              'In-app — appears in the activity feed only.\n'
-              'In-app + Push — also wakes lock screen and Apple Watch.',
-              style: TextStyle(fontSize: 12, color: Colors.grey),
+              l.notifPrefsLegend,
+              style: const TextStyle(fontSize: 12, color: Colors.grey),
             ),
           ),
           for (final type in ordered)
@@ -107,40 +106,40 @@ class _ChannelRow extends StatelessWidget {
     required this.onChanged,
   });
 
-  String get _label {
+  String _label(AppLocalizations l) {
     switch (type) {
       case NotificationEventType.bark:
-        return 'Barking';
+        return l.notifPrefsBarking;
       case NotificationEventType.sit:
-        return 'Sit detected';
+        return l.notifPrefsSitDetected;
       case NotificationEventType.lieDown:
-        return 'Lay down detected';
+        return l.notifPrefsLayDownDetected;
       case NotificationEventType.stand:
-        return 'Come / stand detected';
+        return l.notifPrefsComeStandDetected;
       case NotificationEventType.treatDispensed:
-        return 'Treat dispensed';
+        return l.notifPrefsTreatDispensed;
       case NotificationEventType.missionStarted:
-        return 'Mission started';
+        return l.notifPrefsMissionStarted;
       case NotificationEventType.missionCompleted:
-        return 'Mission completed';
+        return l.notifPrefsMissionCompleted;
       case NotificationEventType.missionFailed:
-        return 'Mission failed';
+        return l.notifPrefsMissionFailed;
       case NotificationEventType.lowBattery:
-        return 'Low battery';
+        return l.notifPrefsLowBattery;
       case NotificationEventType.alert:
-        return 'Guardian alert';
+        return l.notifPrefsGuardianAlert;
       case NotificationEventType.happy:
-        return 'Happy dog';
+        return l.notifPrefsHappyDog;
       case NotificationEventType.connected:
-        return 'Robot connected';
+        return l.notifPrefsRobotConnected;
       case NotificationEventType.disconnected:
-        return 'Robot disconnected';
+        return l.notifPrefsRobotDisconnected;
       case NotificationEventType.coachReward:
-        return 'Coach reward';
+        return l.notifPrefsCoachReward;
       case NotificationEventType.panicAlert:
-        return 'Panic alert';
+        return l.notifPrefsPanicAlert;
       case NotificationEventType.sgSummary:
-        return 'Guardian session summary';
+        return l.notifPrefsSgSummary;
     }
   }
 
@@ -179,6 +178,7 @@ class _ChannelRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l = context.l10n;
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
       child: Column(
@@ -189,7 +189,7 @@ class _ChannelRow extends StatelessWidget {
               Icon(_icon, size: 18, color: AppTheme.primary),
               const SizedBox(width: 8),
               Text(
-                _label,
+                _label(l),
                 style: const TextStyle(fontWeight: FontWeight.w600),
               ),
             ],
@@ -197,21 +197,21 @@ class _ChannelRow extends StatelessWidget {
           const SizedBox(height: 6),
           SegmentedButton<NotificationChannel>(
             showSelectedIcon: false,
-            segments: const [
+            segments: [
               ButtonSegment(
                 value: NotificationChannel.off,
-                label: Text('Off'),
-                icon: Icon(Icons.do_not_disturb_on, size: 16),
+                label: Text(l.off),
+                icon: const Icon(Icons.do_not_disturb_on, size: 16),
               ),
               ButtonSegment(
                 value: NotificationChannel.inApp,
-                label: Text('In-app'),
-                icon: Icon(Icons.list_alt, size: 16),
+                label: Text(l.notifPrefsInApp),
+                icon: const Icon(Icons.list_alt, size: 16),
               ),
               ButtonSegment(
                 value: NotificationChannel.inAppAndPush,
-                label: Text('+ Push'),
-                icon: Icon(Icons.notifications_active, size: 16),
+                label: Text(l.notifPrefsPlusPush),
+                icon: const Icon(Icons.notifications_active, size: 16),
               ),
             ],
             selected: {channel},

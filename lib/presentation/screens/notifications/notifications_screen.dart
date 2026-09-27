@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:intl/intl.dart';
 
 import '../../../data/models/notification_event.dart';
 import '../../../domain/providers/analytics_provider.dart';
 import '../../../domain/providers/dog_profiles_provider.dart';
 import '../../../domain/providers/notifications_provider.dart';
+import '../../../l10n/l10n.dart';
 import '../../theme/app_theme.dart';
 import 'activity_dashboard.dart';
 
@@ -46,7 +48,7 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen>
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Activity'),
+        title: Text(context.l10n.notificationsTitle),
         actions: [
           // Events tab actions only
           if (_tabController.index == 1 && unreadCount > 0)
@@ -54,7 +56,7 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen>
               onPressed: () {
                 ref.read(notificationsProvider.notifier).markAllAsRead();
               },
-              child: const Text('Mark all read'),
+              child: Text(context.l10n.notificationsMarkAllRead),
             ),
           if (_tabController.index == 1)
             PopupMenuButton<String>(
@@ -73,16 +75,16 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen>
                 });
               },
               itemBuilder: (context) => [
-                const PopupMenuItem(value: 'all', child: Text('All')),
-                const PopupMenuItem(value: 'behaviors', child: Text('Behaviors')),
-                const PopupMenuItem(value: 'missions', child: Text('Missions')),
-                const PopupMenuItem(value: 'alerts', child: Text('Alerts')),
-                const PopupMenuItem(value: 'treats', child: Text('Treats')),
-                const PopupMenuItem(value: 'coach', child: Text('Coach')),
+                PopupMenuItem(value: 'all', child: Text(context.l10n.notificationsFilterAll)),
+                PopupMenuItem(value: 'behaviors', child: Text(context.l10n.notificationsFilterBehaviors)),
+                PopupMenuItem(value: 'missions', child: Text(context.l10n.notificationsFilterMissions)),
+                PopupMenuItem(value: 'alerts', child: Text(context.l10n.notificationsFilterAlerts)),
+                PopupMenuItem(value: 'treats', child: Text(context.l10n.notificationsFilterTreats)),
+                PopupMenuItem(value: 'coach', child: Text(context.l10n.notificationsFilterCoach)),
                 const PopupMenuDivider(),
-                const PopupMenuItem(
+                PopupMenuItem(
                   value: 'clear_all',
-                  child: Text('Clear all', style: TextStyle(color: Colors.red)),
+                  child: Text(context.l10n.notificationsClearAll, style: const TextStyle(color: Colors.red)),
                 ),
               ],
             ),
@@ -93,9 +95,9 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen>
           indicatorColor: AppTheme.primary,
           labelColor: AppTheme.primary,
           unselectedLabelColor: AppTheme.textTertiary,
-          tabs: const [
-            Tab(icon: Icon(Icons.bar_chart, size: 20), text: 'Dashboard'),
-            Tab(icon: Icon(Icons.notifications, size: 20), text: 'Events'),
+          tabs: [
+            Tab(icon: const Icon(Icons.bar_chart, size: 20), text: context.l10n.notificationsTabDashboard),
+            Tab(icon: const Icon(Icons.notifications, size: 20), text: context.l10n.notificationsTabEvents),
           ],
         ),
       ),
@@ -155,7 +157,7 @@ class _EventsTab extends ConsumerWidget {
         : ref.watch(notificationsProvider);
 
     if (notifications.isEmpty) {
-      return _buildEmptyState();
+      return _buildEmptyState(context);
     }
 
     final grouped = _groupByDay(notifications);
@@ -173,7 +175,7 @@ class _EventsTab extends ConsumerWidget {
     );
   }
 
-  Widget _buildEmptyState() {
+  Widget _buildEmptyState(BuildContext context) {
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -185,7 +187,7 @@ class _EventsTab extends ConsumerWidget {
           ),
           const SizedBox(height: 16),
           Text(
-            'No notifications yet',
+            context.l10n.notificationsEmpty,
             style: TextStyle(
               color: AppTheme.textSecondary,
               fontSize: 16,
@@ -193,7 +195,7 @@ class _EventsTab extends ConsumerWidget {
           ),
           const SizedBox(height: 8),
           Text(
-            'Events from WIM-Z will appear here',
+            context.l10n.notificationsEmptyHint,
             style: TextStyle(
               color: AppTheme.textTertiary,
               fontSize: 14,
@@ -207,7 +209,7 @@ class _EventsTab extends ConsumerWidget {
   Widget _buildDaySection(
     BuildContext context,
     WidgetRef ref,
-    String dayLabel,
+    _DayGroup group,
     List<NotificationEvent> events,
   ) {
     return Column(
@@ -216,7 +218,7 @@ class _EventsTab extends ConsumerWidget {
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
           child: Text(
-            dayLabel,
+            group.label(context.l10n),
             style: TextStyle(
               color: AppTheme.textTertiary,
               fontSize: 12,
@@ -248,14 +250,14 @@ class _EventsTab extends ConsumerWidget {
     );
   }
 
-  Map<String, List<NotificationEvent>> _groupByDay(
+  Map<_DayGroup, List<NotificationEvent>> _groupByDay(
       List<NotificationEvent> notifications) {
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
     final yesterday = today.subtract(const Duration(days: 1));
     final thisWeekStart = today.subtract(Duration(days: now.weekday - 1));
 
-    final Map<String, List<NotificationEvent>> grouped = {};
+    final Map<_DayGroup, List<NotificationEvent>> grouped = {};
 
     for (final notification in notifications) {
       final date = DateTime(
@@ -264,22 +266,22 @@ class _EventsTab extends ConsumerWidget {
         notification.timestamp.day,
       );
 
-      String label;
+      _DayGroup label;
       if (date == today) {
-        label = 'TODAY';
+        label = _DayGroup.today;
       } else if (date == yesterday) {
-        label = 'YESTERDAY';
+        label = _DayGroup.yesterday;
       } else if (date.isAfter(thisWeekStart)) {
-        label = 'THIS WEEK';
+        label = _DayGroup.thisWeek;
       } else {
-        label = 'EARLIER';
+        label = _DayGroup.earlier;
       }
 
       grouped.putIfAbsent(label, () => []);
       grouped[label]!.add(notification);
     }
 
-    final sortOrder = ['TODAY', 'YESTERDAY', 'THIS WEEK', 'EARLIER'];
+    const sortOrder = _DayGroup.values;
     final sorted = Map.fromEntries(
       sortOrder
           .where((key) => grouped.containsKey(key))
@@ -288,6 +290,21 @@ class _EventsTab extends ConsumerWidget {
 
     return sorted;
   }
+}
+
+/// Day buckets for the events list (declaration order = display order).
+enum _DayGroup {
+  today,
+  yesterday,
+  thisWeek,
+  earlier;
+
+  String label(AppLocalizations l) => switch (this) {
+        _DayGroup.today => l.notificationsGroupToday,
+        _DayGroup.yesterday => l.notificationsGroupYesterday,
+        _DayGroup.thisWeek => l.notificationsGroupThisWeek,
+        _DayGroup.earlier => l.notificationsGroupEarlier,
+      };
 }
 
 /// Individual notification tile widget
@@ -345,7 +362,7 @@ class _NotificationTile extends StatelessWidget {
                           ),
                         ),
                         Text(
-                          _formatTime(event.timestamp),
+                          _formatTime(context, event.timestamp),
                           style: TextStyle(
                             color: AppTheme.textTertiary,
                             fontSize: 12,
@@ -428,18 +445,10 @@ class _NotificationTile extends StatelessWidget {
     };
   }
 
-  static const _months = [
-    'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-    'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
-  ];
-
-  String _formatTime(DateTime timestamp) {
+  String _formatTime(BuildContext context, DateTime timestamp) {
     // Defensive: any UTC-parsed instant renders in device-local time.
-    timestamp = timestamp.toLocal();
-    final hour = timestamp.hour;
-    final minute = timestamp.minute.toString().padLeft(2, '0');
-    final period = hour >= 12 ? 'PM' : 'AM';
-    final hour12 = hour > 12 ? hour - 12 : (hour == 0 ? 12 : hour);
-    return '${_months[timestamp.month - 1]} ${timestamp.day}, $hour12:$minute $period';
+    // Locale-aware: "Sep 4, 3:04 PM" (en) / "9월 4일 오후 3:04" (ko).
+    final locale = Localizations.localeOf(context).toString();
+    return DateFormat.MMMd(locale).add_jm().format(timestamp.toLocal());
   }
 }

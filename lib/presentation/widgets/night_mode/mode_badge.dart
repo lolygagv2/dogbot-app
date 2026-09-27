@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../data/models/night_mode_state.dart';
 import '../../../domain/providers/night_mode_provider.dart';
+import '../../../l10n/l10n.dart';
 import '../../theme/app_theme.dart';
 
 /// Compact day/night badge overlaid on the live video. Display-only — the
@@ -59,7 +60,9 @@ class ModeBadge extends ConsumerWidget {
           ),
           const SizedBox(width: 6),
           Text(
-            isNight ? 'IR night view' : 'Day',
+            isNight
+                ? context.l10n.nightVisionBadgeNight
+                : context.l10n.nightVisionBadgeDay,
             style: TextStyle(
               color: isStale ? AppTheme.textTertiary : accent,
               fontSize: 11,

@@ -10,6 +10,8 @@ import '../../core/utils/conn_trace.dart';
 import 'connection_provider.dart';
 import 'device_provider.dart';
 import 'video_quality_provider.dart';
+import '../../l10n/l10n.dart';
+import 'l10n_provider.dart';
 
 /// WebRTC connection state
 enum WebRTCState { disconnected, connecting, connected, error }
@@ -76,6 +78,8 @@ final webrtcAutoListeningProvider = Provider<bool>((ref) {
 /// WebRTC state notifier - manages peer connection and video rendering
 class WebRTCNotifier extends StateNotifier<WebRTCConnectionState> {
   final Ref _ref;
+
+  AppLocalizations get _l => _ref.read(l10nProvider);
   RTCPeerConnection? _peerConnection;
   RTCVideoRenderer? _renderer;
   RTCDataChannel? _dataChannel;
@@ -599,7 +603,7 @@ class WebRTCNotifier extends StateNotifier<WebRTCConnectionState> {
         connTrace('webrtc-connect-timeout', 'device=$deviceId');
         state = state.copyWith(
           state: WebRTCState.error,
-          errorMessage: 'Connection timed out — tap to retry',
+          errorMessage: _l.webrtcErrTimeoutRetry,
         );
         _scheduleReconnect();
       });
@@ -715,7 +719,7 @@ class WebRTCNotifier extends StateNotifier<WebRTCConnectionState> {
             _disconnectGraceTimer?.cancel();
             state = state.copyWith(
               state: WebRTCState.error,
-              errorMessage: 'Connection failed',
+              errorMessage: _l.webrtcErrFailed,
             );
             _failAndReconnect();
             break;
@@ -732,7 +736,7 @@ class WebRTCNotifier extends StateNotifier<WebRTCConnectionState> {
               print('WebRTC: still disconnected after grace — failing');
               state = state.copyWith(
                 state: WebRTCState.error,
-                errorMessage: 'Connection lost',
+                errorMessage: _l.webrtcErrLost,
               );
               _failAndReconnect();
             });
@@ -1041,7 +1045,7 @@ class WebRTCNotifier extends StateNotifier<WebRTCConnectionState> {
       print('WebRTC: Max reconnect attempts reached');
       state = state.copyWith(
         state: WebRTCState.error,
-        errorMessage: 'Connection failed - tap to retry',
+        errorMessage: _l.webrtcErrFailedRetry,
       );
       return;
     }

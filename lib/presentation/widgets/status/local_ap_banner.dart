@@ -9,6 +9,7 @@ import '../../../core/utils/conn_trace.dart';
 import '../../../domain/providers/connection_provider.dart';
 import '../../../domain/providers/network_state_provider.dart';
 import '../../../domain/providers/settings_provider.dart';
+import '../../../l10n/l10n.dart';
 import '../../theme/app_theme.dart';
 
 // B163 (2026-09-04, Morgan): the home-screen "Robot may be on its own
@@ -47,10 +48,8 @@ Future<void> switchToLocalMode(
       connTrace('local-switch', 'failed — reverted to cloud');
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text(
-              'Couldn\'t reach the robot. Join "${localAp.ssid}" '
-              '(password ${localAp.password}) in WiFi settings first, '
-              'then try again.'),
+          content: Text(context.l10n
+              .localApCouldntReach(localAp.ssid, localAp.password)),
           duration: const Duration(seconds: 5),
         ));
       }
@@ -107,10 +106,8 @@ class _LocalModeSwitchTileState extends ConsumerState<LocalModeSwitchTile> {
     setState(() => _requesting = false);
 
     if (localAp == null) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-        content: Text(
-            'Robot didn\'t confirm hotspot start and no cached hotspot info '
-            'is available. Update the robot and try again.'),
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text(context.l10n.localApNoHotspotInfo),
       ));
       return;
     }
@@ -119,26 +116,21 @@ class _LocalModeSwitchTileState extends ConsumerState<LocalModeSwitchTile> {
     showDialog<void>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        title: const Text('Join the robot\'s hotspot'),
+        title: Text(context.l10n.localApJoinHotspotTitle),
         content: Text(
-          'The robot is starting its hotspot.\n\n'
-          '1. Open WiFi settings on this phone\n'
-          '2. Join "${ap.ssid}"\n    password: ${ap.password}\n'
-          '3. Come back and tap Connect\n\n'
-          'The robot stays on its hotspot until you switch back to cloud '
-          'mode (or 10 minutes with no phone attached).',
+          context.l10n.localApJoinHotspotBody(ap.ssid, ap.password),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(),
-            child: const Text('Cancel'),
+            child: Text(context.l10n.cancel),
           ),
           FilledButton(
             onPressed: () {
               Navigator.of(dialogContext).pop();
               switchToLocalMode(context, ref, ap);
             },
-            child: const Text('Connect'),
+            child: Text(context.l10n.localApConnect),
           ),
         ],
       ),
@@ -150,8 +142,8 @@ class _LocalModeSwitchTileState extends ConsumerState<LocalModeSwitchTile> {
     final isConnected = ref.watch(connectionProvider).isRobotOnline;
     return ListTile(
       leading: const Icon(Icons.wifi_tethering, color: AppTheme.primary),
-      title: const Text('Switch to Local Mode'),
-      subtitle: const Text('Robot starts its hotspot; phone connects directly'),
+      title: Text(context.l10n.localApSwitchTitle),
+      subtitle: Text(context.l10n.localApSwitchSubtitle),
       trailing: _requesting
           ? const SizedBox(
               width: 18, height: 18,

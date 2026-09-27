@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../../data/models/mission.dart';
 import '../../../domain/providers/connection_provider.dart';
 import '../../../domain/providers/missions_provider.dart';
+import '../../../l10n/l10n.dart';
 import '../../theme/app_theme.dart';
 
 class MissionDetailScreen extends ConsumerWidget {
@@ -20,8 +21,8 @@ class MissionDetailScreen extends ConsumerWidget {
 
     if (mission == null) {
       return Scaffold(
-        appBar: AppBar(title: const Text('Mission')),
-        body: const Center(child: Text('Mission not found')),
+        appBar: AppBar(title: Text(context.l10n.missionDetailTitle)),
+        body: Center(child: Text(context.l10n.missionDetailNotFound)),
       );
     }
 
@@ -59,7 +60,7 @@ class MissionDetailScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(mission.name),
+        title: Text(mission.localizedName(context.l10n)),
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
@@ -91,7 +92,7 @@ class MissionDetailScreen extends ConsumerWidget {
             const SizedBox(height: 16),
             Center(
               child: Text(
-                mission.name,
+                mission.localizedName(context.l10n),
                 style: const TextStyle(
                   fontSize: 22,
                   fontWeight: FontWeight.bold,
@@ -100,10 +101,10 @@ class MissionDetailScreen extends ConsumerWidget {
               ),
             ),
             const SizedBox(height: 8),
-            if (mission.description != null)
+            if (mission.localizedDescription(context.l10n) != null)
               Center(
                 child: Text(
-                  mission.description!,
+                  mission.localizedDescription(context.l10n)!,
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     fontSize: 14,
@@ -115,12 +116,12 @@ class MissionDetailScreen extends ConsumerWidget {
 
             // Details section
             _DetailSection(
-              title: 'Mission Details',
+              title: context.l10n.missionDetailSectionDetails,
               children: [
-                _DetailRow(label: 'Target Behavior', value: mission.targetBehavior.toUpperCase()),
-                _DetailRow(label: 'Hold Duration', value: '${mission.requiredDuration.toStringAsFixed(0)}s'),
-                _DetailRow(label: 'Cooldown', value: '${mission.cooldownSeconds}s between rewards'),
-                _DetailRow(label: 'Daily Limit', value: '${mission.dailyLimit} treats'),
+                _DetailRow(label: context.l10n.missionDetailTargetBehavior, value: behaviorDisplayName(context.l10n, mission.targetBehavior).toUpperCase()),
+                _DetailRow(label: context.l10n.missionDetailHoldDuration, value: context.l10n.missionDetailSecondsShort(mission.requiredDuration.toStringAsFixed(0))),
+                _DetailRow(label: context.l10n.missionDetailCooldown, value: context.l10n.missionDetailCooldownValue(mission.cooldownSeconds)),
+                _DetailRow(label: context.l10n.missionDetailDailyLimit, value: context.l10n.missionDetailTreatsCount(mission.dailyLimit)),
               ],
             ),
             const SizedBox(height: 16),
@@ -128,7 +129,7 @@ class MissionDetailScreen extends ConsumerWidget {
             // Progress section (if active)
             if (isThisActive) ...[
               _DetailSection(
-                title: 'Progress',
+                title: context.l10n.missionDetailProgress,
                 children: [
                   Padding(
                     padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
@@ -151,22 +152,22 @@ class MissionDetailScreen extends ConsumerWidget {
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
                             Text(
-                              '${(missionsState.activeProgress * 100).toInt()}% complete',
+                              context.l10n.missionsPercentComplete((missionsState.activeProgress * 100).toInt()),
                               style: TextStyle(color: AppTheme.textSecondary, fontSize: 13),
                             ),
                             Text(
-                              '${missionsState.activeRewards}/${mission.dailyLimit} treats given',
+                              context.l10n.missionDetailTreatsGiven(missionsState.activeRewards, mission.dailyLimit),
                               style: TextStyle(color: AppTheme.textSecondary, fontSize: 13),
                             ),
                           ],
                         ),
                         // Status indicator + trick + stage (Build 31)
-                        if (missionsState.statusDisplay.isNotEmpty ||
+                        if ((missionsState.currentProgress?.localizedStatus(context.l10n) ?? '').isNotEmpty ||
                             missionsState.activeTrick != null) ...[
                           const SizedBox(height: 8),
                           Row(
                             children: [
-                              if (missionsState.statusDisplay.isNotEmpty)
+                              if ((missionsState.currentProgress?.localizedStatus(context.l10n) ?? '').isNotEmpty)
                                 Container(
                                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                                   decoration: BoxDecoration(
@@ -177,7 +178,7 @@ class MissionDetailScreen extends ConsumerWidget {
                                     ),
                                   ),
                                   child: Text(
-                                    missionsState.statusDisplay,
+                                    missionsState.currentProgress!.localizedStatus(context.l10n),
                                     style: TextStyle(
                                       color: _statusColor(missionsState.activeStatus),
                                       fontSize: 12,
@@ -188,7 +189,7 @@ class MissionDetailScreen extends ConsumerWidget {
                               if (missionsState.activeTrick != null) ...[
                                 const SizedBox(width: 8),
                                 Text(
-                                  missionsState.activeTrick!,
+                                  behaviorDisplayName(context.l10n, missionsState.activeTrick),
                                   style: TextStyle(
                                     color: AppTheme.textSecondary,
                                     fontSize: 12,
@@ -198,10 +199,10 @@ class MissionDetailScreen extends ConsumerWidget {
                             ],
                           ),
                         ],
-                        if (missionsState.stageDisplay != null) ...[
+                        if (missionsState.currentProgress?.localizedStage(context.l10n) != null) ...[
                           const SizedBox(height: 4),
                           Text(
-                            missionsState.stageDisplay!,
+                            missionsState.currentProgress!.localizedStage(context.l10n)!,
                             style: TextStyle(
                               color: AppTheme.textSecondary,
                               fontSize: 12,
@@ -218,18 +219,18 @@ class MissionDetailScreen extends ConsumerWidget {
 
             // Requirements
             _DetailSection(
-              title: 'How It Works',
+              title: context.l10n.missionDetailHowItWorks,
               children: [
                 Padding(
                   padding: const EdgeInsets.symmetric(vertical: 8),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      _BulletPoint('WIM-Z watches for the "${mission.targetBehavior}" behavior'),
-                      _BulletPoint('Dog must hold for ${mission.requiredDuration.toStringAsFixed(0)} seconds'),
-                      _BulletPoint('Treat is dispensed automatically on success'),
-                      _BulletPoint('${mission.cooldownSeconds}s cooldown between rewards'),
-                      _BulletPoint('Up to ${mission.dailyLimit} treats per session'),
+                      _BulletPoint(context.l10n.missionDetailBulletWatches(mission.targetBehavior)),
+                      _BulletPoint(context.l10n.missionDetailBulletHold(mission.requiredDuration.toStringAsFixed(0))),
+                      _BulletPoint(context.l10n.missionDetailBulletTreat),
+                      _BulletPoint(context.l10n.missionDetailBulletCooldown(mission.cooldownSeconds)),
+                      _BulletPoint(context.l10n.missionDetailBulletLimit(mission.dailyLimit)),
                     ],
                   ),
                 ),
@@ -245,7 +246,7 @@ class MissionDetailScreen extends ConsumerWidget {
                   Navigator.of(context).pop();
                 },
                 icon: const Icon(Icons.stop),
-                label: const Text('Stop Mission'),
+                label: Text(context.l10n.missionDetailStopMission),
                 style: FilledButton.styleFrom(
                   backgroundColor: Colors.red,
                   padding: const EdgeInsets.symmetric(vertical: 16),
@@ -268,12 +269,12 @@ class MissionDetailScreen extends ConsumerWidget {
                     : const Icon(Icons.play_arrow),
                 label: Text(
                   !isConnected
-                      ? 'Robot Not Connected'
+                      ? context.l10n.missionDetailRobotNotConnected
                       : hasOtherActive
-                          ? 'Another Mission Active'
+                          ? context.l10n.missionDetailAnotherActive
                           : isStarting
-                              ? 'Starting...'
-                              : 'Start Mission',
+                              ? context.l10n.missionDetailStarting
+                              : context.l10n.missionDetailStartMission,
                 ),
                 style: FilledButton.styleFrom(
                   backgroundColor: Colors.green,

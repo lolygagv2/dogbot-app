@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 
+import '../../../l10n/l10n.dart';
+
 import '../../theme/app_theme.dart';
 
 /// Premium HUD overlay for video stream - Tesla/DJI inspired
@@ -30,6 +32,7 @@ class VideoHudOverlay extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l = context.l10n;
     return IgnorePointer(
       child: Stack(
       children: [
@@ -41,7 +44,7 @@ class VideoHudOverlay extends StatelessWidget {
           top: 12,
           left: 12,
           right: 12,
-          child: _buildTopBar(),
+          child: _buildTopBar(l),
         ),
 
         // Bottom bar - mode and controls hint
@@ -49,11 +52,11 @@ class VideoHudOverlay extends StatelessWidget {
           bottom: 12,
           left: 12,
           right: 12,
-          child: _buildBottomBar(),
+          child: _buildBottomBar(l),
         ),
 
         // Detection bounding box
-        if (dogDetected && bbox != null) _buildDetectionBox(),
+        if (dogDetected && bbox != null) _buildDetectionBox(l),
 
         // Center reticle (subtle)
         Center(child: _buildReticle()),
@@ -63,7 +66,7 @@ class VideoHudOverlay extends StatelessWidget {
           Positioned(
             top: 12,
             right: 12,
-            child: _buildRecordingIndicator(),
+            child: _buildRecordingIndicator(l),
           ),
       ],
     ),
@@ -99,13 +102,13 @@ class VideoHudOverlay extends StatelessWidget {
     ];
   }
 
-  Widget _buildTopBar() {
+  Widget _buildTopBar(AppLocalizations l) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
         // FPS counter
         HudLabel(
-          label: 'FPS',
+          label: l.videoHudFps,
           value: fps.toString(),
           valueColor: fps > 10 ? AppTheme.accent : AppTheme.warning,
         ),
@@ -119,7 +122,7 @@ class VideoHudOverlay extends StatelessWidget {
 
         // Battery
         HudLabel(
-          label: 'BAT',
+          label: l.videoHudBattery,
           value: '${battery.toInt()}%',
           icon: Icons.battery_full,
           valueColor: AppTheme.getBatteryColor(battery),
@@ -128,7 +131,7 @@ class VideoHudOverlay extends StatelessWidget {
     );
   }
 
-  Widget _buildBottomBar() {
+  Widget _buildBottomBar(AppLocalizations l) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
@@ -143,8 +146,8 @@ class VideoHudOverlay extends StatelessWidget {
         _ModeBadge(mode: mode),
 
         // Coordinates placeholder
-        const HudLabel(
-          label: 'PAN',
+        HudLabel(
+          label: l.videoHudPan,
           value: '0°',
           valueColor: AppTheme.textSecondary,
         ),
@@ -152,7 +155,7 @@ class VideoHudOverlay extends StatelessWidget {
     );
   }
 
-  Widget _buildDetectionBox() {
+  Widget _buildDetectionBox(AppLocalizations l) {
     if (bbox == null || bbox!.length < 4) return const SizedBox.shrink();
 
     final color = AppTheme.getBehaviorColor(behavior);
@@ -209,7 +212,7 @@ class VideoHudOverlay extends StatelessWidget {
                   borderRadius: BorderRadius.circular(2),
                 ),
                 child: Text(
-                  '${AppTheme.getBehaviorDisplayName(behavior).toUpperCase()} ${((confidence ?? 0) * 100).toInt()}%',
+                  '${behaviorDisplayName(l, behavior).toUpperCase()} ${((confidence ?? 0) * 100).toInt()}%',
                   style: const TextStyle(
                     color: AppTheme.background,
                     fontSize: 10,
@@ -239,7 +242,7 @@ class VideoHudOverlay extends StatelessWidget {
     );
   }
 
-  Widget _buildRecordingIndicator() {
+  Widget _buildRecordingIndicator(AppLocalizations l) {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -256,9 +259,9 @@ class VideoHudOverlay extends StatelessWidget {
             .then()
             .fadeOut(duration: 500.ms),
         const SizedBox(width: 6),
-        const Text(
-          'REC',
-          style: TextStyle(
+        Text(
+          l.videoHudRec,
+          style: const TextStyle(
             color: AppTheme.error,
             fontSize: 10,
             fontWeight: FontWeight.bold,
@@ -298,7 +301,7 @@ class _DetectionBadge extends StatelessWidget {
           PulseIndicator(color: color, size: 8),
           const SizedBox(width: 8),
           Text(
-            AppTheme.getBehaviorDisplayName(behavior).toUpperCase(),
+            behaviorDisplayName(context.l10n, behavior).toUpperCase(),
             style: TextStyle(
               color: color,
               fontSize: 12,
@@ -373,7 +376,7 @@ class _ModeBadge extends StatelessWidget {
           Icon(_modeIcon, size: 14, color: _modeColor),
           const SizedBox(width: 6),
           Text(
-            mode.toUpperCase(),
+            robotModeIdLabel(context.l10n, mode).toUpperCase(),
             style: TextStyle(
               color: _modeColor,
               fontSize: 11,

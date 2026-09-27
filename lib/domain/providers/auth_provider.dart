@@ -13,6 +13,8 @@ import 'missions_provider.dart';
 import 'notifications_provider.dart';
 import 'settings_provider.dart';
 import 'voice_commands_provider.dart';
+import '../../l10n/l10n.dart';
+import 'l10n_provider.dart';
 
 /// Auth state
 class AuthState {
@@ -80,6 +82,8 @@ final authProvider = StateNotifierProvider<AuthNotifier, AuthState>((ref) {
 /// Auth state notifier
 class AuthNotifier extends StateNotifier<AuthState> {
   final Ref _ref;
+
+  AppLocalizations get _l => _ref.read(l10nProvider);
   final SecureTokenStorage _secureStorage = SecureTokenStorage();
 
   AuthNotifier(this._ref) : super(const AuthState()) {
@@ -324,11 +328,11 @@ class AuthNotifier extends StateNotifier<AuthState> {
 
       return true;
     } catch (e) {
-      String errorMsg = 'Registration failed';
+      String errorMsg = _l.authErrRegistrationFailed;
       if (e.toString().contains('409')) {
-        errorMsg = 'Email already registered';
+        errorMsg = _l.authErrEmailRegistered;
       } else if (e.toString().contains('400')) {
-        errorMsg = 'Invalid email or password';
+        errorMsg = _l.authErrInvalidCredentials;
       }
       state = state.copyWith(
         isLoading: false,
@@ -408,11 +412,11 @@ class AuthNotifier extends StateNotifier<AuthState> {
 
       return true;
     } catch (e) {
-      String errorMsg = 'Login failed';
+      String errorMsg = _l.authErrLoginFailed;
       if (e.toString().contains('401') || e.toString().contains('403')) {
-        errorMsg = 'Invalid email or password';
+        errorMsg = _l.authErrInvalidCredentials;
       } else if (e.toString().contains('404')) {
-        errorMsg = 'Account not found';
+        errorMsg = _l.authErrAccountNotFound;
       }
       state = state.copyWith(
         isLoading: false,
@@ -438,7 +442,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
     } catch (e) {
       state = state.copyWith(
         isLoading: false,
-        errorMessage: 'Could not send reset code. Check your connection.',
+        errorMessage: _l.authErrResetCodeSend,
       );
       return false;
     }
@@ -473,11 +477,11 @@ class AuthNotifier extends StateNotifier<AuthState> {
 
       return true;
     } catch (e) {
-      String errorMsg = 'Reset failed';
+      String errorMsg = _l.authErrResetFailed;
       if (e.toString().contains('400')) {
-        errorMsg = 'Invalid or expired code';
+        errorMsg = _l.authErrInvalidCode;
       } else if (e.toString().contains('429')) {
-        errorMsg = 'Too many attempts — try again later';
+        errorMsg = _l.authErrTooManyAttempts;
       }
       state = state.copyWith(
         isLoading: false,

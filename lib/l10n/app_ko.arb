@@ -1,0 +1,2242 @@
+{
+  "@@locale": "ko",
+  "appTitle": "WIM-Z",
+  "cancel": "취소",
+  "save": "저장",
+  "delete": "삭제",
+  "ok": "확인",
+  "done": "완료",
+  "close": "닫기",
+  "retry": "다시 시도",
+  "edit": "편집",
+  "add": "추가",
+  "back": "뒤로",
+  "yes": "예",
+  "no": "아니요",
+  "confirm": "확인",
+  "remove": "제거",
+  "loading": "불러오는 중...",
+  "error": "오류",
+  "unknown": "알 수 없음",
+  "on": "켜짐",
+  "off": "꺼짐",
+  "enabled": "사용",
+  "disabled": "사용 안 함",
+  "connected": "연결됨",
+  "disconnected": "연결 끊김",
+  "connecting": "연결 중...",
+  "settings": "설정",
+  "signOut": "로그아웃",
+  "none": "없음",
+  "today": "오늘",
+  "yesterday": "어제",
+  "language": "언어",
+  "languageSystemDefault": "시스템 기본값",
+  "languageEnglish": "English",
+  "languageKorean": "한국어",
+  "languageSubtitle": "앱 표시 언어를 선택하세요",
+  "appRateLimited": "명령이 너무 많아요. 잠시 천천히 해주세요",
+  "appReconnecting": "다시 연결 중...",
+  "appTapToRetry": "탭하여 다시 시도",
+  "navHome": "홈",
+  "navDogs": "반려견",
+  "navMissions": "미션",
+  "navPhotos": "사진",
+  "navActivity": "활동",
+  "unknownError": "알 수 없는 오류",
+  "quickActionsSongFallback": "노래",
+  "quickActionsFileFallback": "파일",
+  "quickActionsDeleted": "\"{filename}\"을(를) 삭제했습니다",
+  "@quickActionsDeleted": {
+    "placeholders": {
+      "filename": {
+        "type": "String"
+      }
+    }
+  },
+  "quickActionsDeleteFailed": "삭제 실패: {error}",
+  "@quickActionsDeleteFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "quickActionsUploaded": "\"{filename}\" 업로드를 완료했습니다",
+  "@quickActionsUploaded": {
+    "placeholders": {
+      "filename": {
+        "type": "String"
+      }
+    }
+  },
+  "quickActionsUploadFailed": "업로드 실패: {error}",
+  "@quickActionsUploadFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "quickActionsTreat": "간식",
+  "quickActionsGood": "잘했어",
+  "quickActionsCallDog": "부르기",
+  "quickActionsWant": "먹을래?",
+  "quickActionsNo": "안 돼",
+  "quickActionsQuiet": "조용히",
+  "quickActionsSit": "앉아",
+  "quickActionsLedPattern": "LED: {pattern}",
+  "@quickActionsLedPattern": {
+    "placeholders": {
+      "pattern": {
+        "type": "String"
+      }
+    }
+  },
+  "quickActionsLedNotSent": "연결되지 않음 — LED 명령을 보내지 못했습니다",
+  "quickActionsSelectMp3": "MP3 파일을 선택하세요",
+  "quickActionsFileAccessFailed": "파일에 접근할 수 없습니다",
+  "quickActionsFileTooLarge": "파일이 너무 큽니다 (최대 20MB)",
+  "quickActionsUploadLocalUnavailable": "로컬 모드에서는 음악 업로드를 사용할 수 없습니다",
+  "quickActionsNotAuthenticated": "인증되지 않았습니다 - 로그인하세요",
+  "quickActionsUploading": "\"{filename}\" 업로드 중...",
+  "@quickActionsUploading": {
+    "placeholders": {
+      "filename": {
+        "type": "String"
+      }
+    }
+  },
+  "quickActionsFilePickerFailed": "파일 선택기를 열 수 없습니다: {error}",
+  "@quickActionsFilePickerFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "quickActionsSelectDogFirst": "먼저 반려견을 선택하세요",
+  "quickActionsDeleteSongTitle": "노래 삭제",
+  "quickActionsDeleteSongConfirm": "재생 목록에서 \"{name}\"을(를) 삭제할까요?",
+  "@quickActionsDeleteSongConfirm": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "quickActionsDeletingSong": "\"{name}\" 삭제 중...",
+  "@quickActionsDeletingSong": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "ledPatternRainbow": "무지개",
+  "ledPatternFire": "불꽃",
+  "ledPatternBlue": "파랑",
+  "ledPatternChase": "체이스",
+  "ledPatternAmbient": "앰비언트",
+  "quickActionsLighting": "조명",
+  "quickActionsBluLight": "블루라이트",
+  "dismiss": "닫기",
+  "pttTalk": "말하기",
+  "pttRecording": "녹음 중",
+  "pttSent": "전송됨 ✓",
+  "pttSeconds": "{sec}초",
+  "@pttSeconds": {
+    "placeholders": {
+      "sec": {
+        "type": "int"
+      }
+    }
+  },
+  "pttSending": "전송 중...",
+  "pttPlaying": "재생 중...",
+  "pttListening": "듣는 중...",
+  "pttTapToListen": "눌러서 듣기",
+  "panTiltPan": "P:{value}",
+  "@panTiltPan": {
+    "placeholders": {
+      "value": {
+        "type": "String"
+      }
+    }
+  },
+  "panTiltTilt": "T:{value}",
+  "@panTiltTilt": {
+    "placeholders": {
+      "value": {
+        "type": "String"
+      }
+    }
+  },
+  "panTiltCenter": "중앙",
+  "audioMuteListening": "로봇 소리 듣는 중...",
+  "audioMuteUnmute": "음소거 해제",
+  "audioMuteMute": "음소거",
+  "mjpegUnavailable": "영상을 사용할 수 없습니다",
+  "mjpegConnecting": "카메라에 연결 중...",
+  "videoHudFps": "FPS",
+  "videoHudBattery": "배터리",
+  "videoHudPan": "팬",
+  "videoHudRec": "REC",
+  "videoSavedNotWired": "로봇에 녹화 다운로드 기능(Chain REC)이 추가되면 사용할 수 있습니다",
+  "videoSavedSampleData": "샘플 데이터 — 실시간 아님",
+  "videoSavedTitle": "영상이 저장되었습니다",
+  "videoSavedOnRobotAt": "로봇 저장 위치",
+  "videoSavedPathCopied": "경로를 복사했습니다",
+  "videoSavedRetention": "보관: {retentionClass}",
+  "@videoSavedRetention": {
+    "placeholders": {
+      "retentionClass": {
+        "type": "String"
+      }
+    }
+  },
+  "videoSavedSaveToPhone": "휴대폰에 저장",
+  "videoSavedShare": "공유",
+  "webrtcWaitingForConnection": "연결을 기다리는 중...",
+  "webrtcTapToConnect": "눌러서 연결",
+  "webrtcConnectingVideo": "영상 연결 중...",
+  "webrtcConnectionFailed": "영상 연결에 실패했습니다",
+  "webrtcInitializingRenderer": "렌더러 초기화 중...",
+  "webrtcWaitingForStream": "영상 스트림을 기다리는 중...",
+  "webrtcReceivingVideo": "영상 수신 중...",
+  "videoSavedToGallery": "영상을 갤러리에 저장했습니다!",
+  "videoSavedShort": "영상을 저장했습니다!",
+  "photoSavedToGallery": "사진을 갤러리에 저장했습니다!",
+  "photoSavedShort": "사진을 저장했습니다!",
+  "gaugeCharging": "충전 중",
+  "gaugeBattery": "배터리",
+  "gaugeLeft": "좌",
+  "gaugeRight": "우",
+  "schedulerTitle": "훈련 스케줄러",
+  "schedulerAddSchedule": "일정 추가",
+  "schedulerAutoScheduler": "자동 스케줄러",
+  "schedulerRunsAutomatically": "훈련이 자동으로 실행됩니다",
+  "schedulerPaused": "일정이 일시정지되었습니다",
+  "schedulerEmptyTitle": "예약된 훈련이 없습니다",
+  "schedulerEmptyBody": "반려견을 위한 자동 훈련 세션을\n원하는 시간에 예약하세요",
+  "schedulerDeleteTitle": "일정 삭제",
+  "schedulerDeleteConfirm": "이 일정을 삭제하시겠습니까?",
+  "schedulerUnknownDog": "알 수 없는 반려견",
+  "schedulerPausedBadge": "일시정지",
+  "schedulerNextRun": "다음: {next}",
+  "@schedulerNextRun": {
+    "placeholders": {
+      "next": {
+        "type": "String"
+      }
+    }
+  },
+  "scheduleEditSelectDogAndMission": "반려견과 미션을 선택하세요",
+  "scheduleEditSelectOneDay": "요일을 하나 이상 선택하세요",
+  "scheduleEditMissionNotFound": "선택한 미션을 찾을 수 없습니다",
+  "scheduleEditUpdated": "일정이 업데이트되었습니다",
+  "scheduleEditCreated": "일정이 생성되었습니다",
+  "scheduleEditUpdateFailed": "일정 업데이트에 실패했습니다",
+  "scheduleEditCreateFailed": "일정 생성에 실패했습니다",
+  "scheduleEditTitleEdit": "일정 편집",
+  "scheduleEditTitleNew": "새 일정",
+  "scheduleEditSectionDog": "반려견",
+  "scheduleEditSelectDog": "반려견 선택",
+  "scheduleEditSectionMission": "훈련 미션",
+  "scheduleEditSelectMission": "미션 선택",
+  "scheduleEditSectionTime": "시간",
+  "scheduleEditSectionRepeat": "반복",
+  "scheduleEditOnce": "한 번",
+  "scheduleEditDaily": "매일",
+  "scheduleEditWeekly": "매주",
+  "scheduleEditWeekdayLetters": "일,월,화,수,목,금,토",
+  "missionsTitle": "훈련",
+  "missionsProgramsHeader": "훈련 프로그램",
+  "missionsProgramsSubtitle": "휴식 시간이 포함된 다중 미션 시퀀스",
+  "missionsIndividualHeader": "개별 미션",
+  "missionsIndividualSubtitle": "단일 훈련 세션",
+  "missionsNoneConfigured": "설정된 미션이 없습니다",
+  "missionsActiveBadge": "진행 중",
+  "missionsDriveButton": "조종",
+  "missionsStop": "중지",
+  "missionsPercentComplete": "{percent}% 완료",
+  "@missionsPercentComplete": {
+    "placeholders": {
+      "percent": {
+        "type": "int"
+      }
+    }
+  },
+  "missionsCountChip": "미션 {count}개",
+  "@missionsCountChip": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "missionsRestChip": "휴식 {seconds}초",
+  "@missionsRestChip": {
+    "placeholders": {
+      "seconds": {
+        "type": "int"
+      }
+    }
+  },
+  "missionsProgramBadge": "프로그램",
+  "missionsRestBreak": "휴식 시간: {seconds}초",
+  "@missionsRestBreak": {
+    "placeholders": {
+      "seconds": {
+        "type": "int"
+      }
+    }
+  },
+  "missionsMissionOf": "미션 {current}/{total}",
+  "@missionsMissionOf": {
+    "placeholders": {
+      "current": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "missionsCoachMode": "코치 모드",
+  "missionsCoachWatching": "좋은 행동을 지켜보는 중...",
+  "missionsCoachSubtitle": "반려견이 트릭을 하면 자동으로 보상합니다",
+  "missionDetailTitle": "미션",
+  "missionDetailNotFound": "미션을 찾을 수 없습니다",
+  "missionDetailSectionDetails": "미션 정보",
+  "missionDetailTargetBehavior": "목표 행동",
+  "missionDetailHoldDuration": "유지 시간",
+  "missionDetailSecondsShort": "{seconds}초",
+  "@missionDetailSecondsShort": {
+    "placeholders": {
+      "seconds": {
+        "type": "String"
+      }
+    }
+  },
+  "missionDetailCooldown": "쿨다운",
+  "missionDetailCooldownValue": "보상 간 {seconds}초",
+  "@missionDetailCooldownValue": {
+    "placeholders": {
+      "seconds": {
+        "type": "int"
+      }
+    }
+  },
+  "missionDetailDailyLimit": "일일 제한",
+  "missionDetailTreatsCount": "간식 {count}개",
+  "@missionDetailTreatsCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "missionDetailProgress": "진행 상황",
+  "missionDetailTreatsGiven": "간식 {given}/{limit}개 지급",
+  "@missionDetailTreatsGiven": {
+    "placeholders": {
+      "given": {
+        "type": "int"
+      },
+      "limit": {
+        "type": "int"
+      }
+    }
+  },
+  "missionDetailHowItWorks": "작동 방식",
+  "missionDetailBulletWatches": "WIM-Z가 \"{behavior}\" 행동을 지켜봅니다",
+  "@missionDetailBulletWatches": {
+    "placeholders": {
+      "behavior": {
+        "type": "String"
+      }
+    }
+  },
+  "missionDetailBulletHold": "반려견이 {seconds}초 동안 자세를 유지해야 합니다",
+  "@missionDetailBulletHold": {
+    "placeholders": {
+      "seconds": {
+        "type": "String"
+      }
+    }
+  },
+  "missionDetailBulletTreat": "성공하면 간식이 자동으로 지급됩니다",
+  "missionDetailBulletCooldown": "보상 사이 {seconds}초 쿨다운",
+  "@missionDetailBulletCooldown": {
+    "placeholders": {
+      "seconds": {
+        "type": "int"
+      }
+    }
+  },
+  "missionDetailBulletLimit": "세션당 최대 간식 {count}개",
+  "@missionDetailBulletLimit": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "missionDetailStopMission": "미션 중지",
+  "missionDetailRobotNotConnected": "로봇이 연결되지 않음",
+  "missionDetailAnotherActive": "다른 미션 진행 중",
+  "missionDetailStarting": "시작하는 중...",
+  "missionDetailStartMission": "미션 시작",
+  "programTitle": "프로그램",
+  "programNotFound": "프로그램을 찾을 수 없습니다",
+  "programStop": "프로그램 중지",
+  "programMissionSequence": "미션 순서",
+  "programRunningBadge": "실행 중",
+  "programRestBreak": "휴식 시간",
+  "programSecondsUntilNext": "다음 미션까지 {seconds}초",
+  "@programSecondsUntilNext": {
+    "placeholders": {
+      "seconds": {
+        "type": "int"
+      }
+    }
+  },
+  "programPercentThrough": "프로그램 {percent}% 진행",
+  "@programPercentThrough": {
+    "placeholders": {
+      "percent": {
+        "type": "int"
+      }
+    }
+  },
+  "programNowBadge": "지금",
+  "programDetails": "프로그램 정보",
+  "programTotalMissions": "총 미션 수",
+  "programRestBetween": "미션 간 휴식",
+  "programSecondsValue": "{seconds}초",
+  "@programSecondsValue": {
+    "placeholders": {
+      "seconds": {
+        "type": "int"
+      }
+    }
+  },
+  "programEstimatedTime": "예상 시간",
+  "programMinutesRange": "{min}~{max}분",
+  "@programMinutesRange": {
+    "placeholders": {
+      "min": {
+        "type": "int"
+      },
+      "max": {
+        "type": "int"
+      }
+    }
+  },
+  "programStartWith": "{dog} 훈련 시작",
+  "@programStartWith": {
+    "placeholders": {
+      "dog": {
+        "type": "String"
+      }
+    }
+  },
+  "programStart": "프로그램 시작",
+  "programConnectToStart": "시작하려면 로봇에 연결하세요",
+  "programStopCurrentFirst": "현재 진행 중인 훈련을 먼저 중지하세요",
+  "coachCoachingBadge": "코칭 중",
+  "coachStoppedBadge": "중지됨",
+  "coachDogDetected": "반려견 감지됨",
+  "coachWhenDogVisible": "반려견이 보일 때:",
+  "coachSelectDogHint": "반려견을 선택하거나 카메라가 인식할 때까지 기다리세요.",
+  "coachExit": "코치 모드 종료",
+  "coachGoodBang": "잘했어요!",
+  "coachBehaviorBang": "{behavior}!",
+  "@coachBehaviorBang": {
+    "placeholders": {
+      "behavior": {
+        "type": "String"
+      }
+    }
+  },
+  "historyTitle": "훈련 기록",
+  "historyTimeRange": "기간",
+  "historyLast7Days": "최근 7일",
+  "historyLast2Weeks": "최근 2주",
+  "historyLastMonth": "최근 한 달",
+  "historyDogFilter": "반려견",
+  "historyAllDogs": "모든 반려견",
+  "historyStatSessions": "세션",
+  "historyStatCompleted": "완료",
+  "historyStatTreats": "간식",
+  "historyStatSuccess": "성공률",
+  "historyInProgress": "진행 중",
+  "historyStages": "단계 {done}/{total}",
+  "@historyStages": {
+    "placeholders": {
+      "done": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "historyDurationSeconds": "{n}초",
+  "@historyDurationSeconds": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "historyDurationMinutes": "{n}분",
+  "@historyDurationMinutes": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "historyDurationHoursMinutes": "{h}시간 {m}분",
+  "@historyDurationHoursMinutes": {
+    "placeholders": {
+      "h": {
+        "type": "int"
+      },
+      "m": {
+        "type": "int"
+      }
+    }
+  },
+  "historyEmptyTitle": "훈련 기록이 없습니다",
+  "historyEmptyBody": "훈련 세션을 완료하면 진행 상황을 볼 수 있습니다",
+  "signOutConfirmBody": "정말 로그아웃하시겠어요? 다시 로그인해야 합니다.",
+  "settingsSectionConnection": "연결",
+  "settingsSectionMyRobots": "내 로봇",
+  "settingsSectionController": "컨트롤러",
+  "settingsSectionRobotStatus": "로봇 상태",
+  "settingsSectionCalibration": "보정",
+  "settingsSectionCamera": "카메라",
+  "settingsSectionNightVision": "야간 투시",
+  "settingsSectionVideo": "비디오",
+  "settingsSectionAudio": "오디오",
+  "settingsSectionNotifications": "알림",
+  "settingsSectionSilentGuardian": "사일런트 가디언",
+  "settingsSectionTraining": "훈련",
+  "settingsSectionDiagnostics": "진단",
+  "settingsSectionAbout": "정보",
+  "settingsSectionAccount": "계정",
+  "settingsGameController": "게임 컨트롤러",
+  "settingsGameControllerSubtitle": "게임 컨트롤러를 로봇에 페어링합니다",
+  "settingsBattery": "배터리",
+  "settingsTemperature": "온도",
+  "settingsNotAvailable": "해당 없음",
+  "settingsCurrentMode": "현재 모드",
+  "settingsTrainingScheduler": "훈련 스케줄러",
+  "settingsTrainingSchedulerSubtitle": "자동 훈련 세션을 예약합니다",
+  "settingsVoiceCommands": "음성 명령",
+  "settingsVoiceCommandsSubtitle": "반려견을 위한 맞춤 음성 명령을 녹음합니다",
+  "settingsTestRecording": "녹음 테스트",
+  "settingsTestRecordingSubtitle": "녹음 진단을 실행합니다",
+  "settingsConnectionDiagnostics": "연결 진단",
+  "settingsConnectionDiagnosticsSubtitle": "WebRTC 시그널링 추적 (비디오 연결)",
+  "settingsUiPreviews": "UI 미리보기",
+  "settingsUiPreviewsSubtitle": "샘플 데이터 기반 스펙 뷰 (개발용)",
+  "settingsAppName": "WIM-Z 앱",
+  "settingsAppVersion": "버전 {version}",
+  "@settingsAppVersion": {
+    "placeholders": {
+      "version": {
+        "type": "String"
+      }
+    }
+  },
+  "settingsApiVersion": "API 버전",
+  "settingsConnectedToRobot": "로봇에 연결됨 ({ip})",
+  "@settingsConnectedToRobot": {
+    "placeholders": {
+      "ip": {
+        "type": "String"
+      }
+    }
+  },
+  "settingsLocalNotConnected": "로컬 모드 — 연결되지 않음",
+  "settingsDirectViaWifi": "WIMZ WiFi를 통한 직접 연결",
+  "settingsConnectedViaCloud": "클라우드로 연결됨",
+  "settingsRelayHost": "서버: {host}",
+  "@settingsRelayHost": {
+    "placeholders": {
+      "host": {
+        "type": "String"
+      }
+    }
+  },
+  "settingsLocalRobotDirect": "로컬 로봇 · 직접 연결 (192.168.4.1)",
+  "settingsNoRobotsPaired": "페어링된 로봇 없음 — 탭하여 추가하세요",
+  "settingsRobotsPairedActive": "{name} · 로봇 {count}대 페어링됨",
+  "@settingsRobotsPairedActive": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      },
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "settingsRobotsPairedSelect": "로봇 {count}대 페어링됨 — 탭하여 선택하세요",
+  "@settingsRobotsPairedSelect": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "settingsManageRobots": "로봇 관리",
+  "settingsOtaUpdating": "{version}(으)로 업데이트 중: {state}{pct}",
+  "@settingsOtaUpdating": {
+    "placeholders": {
+      "version": {
+        "type": "String"
+      },
+      "state": {
+        "type": "String"
+      },
+      "pct": {
+        "type": "String"
+      }
+    }
+  },
+  "settingsOtaUpdated": "{version}(으)로 업데이트됨 ✓",
+  "@settingsOtaUpdated": {
+    "placeholders": {
+      "version": {
+        "type": "String"
+      }
+    }
+  },
+  "settingsOtaRolledBack": "업데이트 실패 — 안전하게 롤백됨{detail}",
+  "@settingsOtaRolledBack": {
+    "placeholders": {
+      "detail": {
+        "type": "String"
+      }
+    }
+  },
+  "settingsOtaFailed": "업데이트 실패{detail}",
+  "@settingsOtaFailed": {
+    "placeholders": {
+      "detail": {
+        "type": "String"
+      }
+    }
+  },
+  "settingsOtaNotReported": "버전 정보 없음 — 로봇 업데이터가 아직 설치되지 않았습니다",
+  "settingsOtaUpToDateNoRelease": "최신 상태 — 서버에 새 릴리스가 없습니다",
+  "settingsOtaAvailable": "업데이트 가능: {version}",
+  "@settingsOtaAvailable": {
+    "placeholders": {
+      "version": {
+        "type": "String"
+      }
+    }
+  },
+  "settingsOtaUpToDate": "최신 상태",
+  "settingsRobotSoftware": "로봇 소프트웨어",
+  "settingsUpdateCaps": "업데이트",
+  "settingsUpdate": "업데이트",
+  "settingsUpdateRobotSoftware": "로봇 소프트웨어 업데이트",
+  "settingsUpdateConfirmBody": "로봇을 {from}에서 {to}(으)로 업데이트할까요?\n\n로봇은 대기 상태이고 배터리가 30% 이상이어야 합니다. 업데이트 중 재시작되며 문제가 생기면 자동으로 롤백됩니다.",
+  "@settingsUpdateConfirmBody": {
+    "placeholders": {
+      "from": {
+        "type": "String"
+      },
+      "to": {
+        "type": "String"
+      }
+    }
+  },
+  "settingsTreats": "간식",
+  "settingsTreatsOfCapacity": "{remaining} / {capacity}",
+  "@settingsTreatsOfCapacity": {
+    "placeholders": {
+      "remaining": {
+        "type": "int"
+      },
+      "capacity": {
+        "type": "int"
+      }
+    }
+  },
+  "settingsTreatsEmpty": "비어 있음 — 리필이 필요합니다",
+  "settingsTreatsRemaining": "{remaining}개 남음",
+  "@settingsTreatsRemaining": {
+    "placeholders": {
+      "remaining": {
+        "type": "int"
+      }
+    }
+  },
+  "settingsTreatsRemainingLow": "{remaining}개 남음 — 부족합니다",
+  "@settingsTreatsRemainingLow": {
+    "placeholders": {
+      "remaining": {
+        "type": "int"
+      }
+    }
+  },
+  "settingsDailyTreatLimit": "일일 간식 제한",
+  "settingsDailyLimitMax": "하루 최대 {count}개 자동 간식",
+  "@settingsDailyLimitMax": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "settingsDailyLimitNone": "일일 제한 없음 — 자동 간식 무제한",
+  "settingsCameraTrackDog": "카메라 반려견 추적",
+  "settingsCameraTrackOn": "코치/미션 모드에서 카메라가 반려견을 따라갑니다",
+  "settingsCameraTrackOff": "카메라가 중앙에 고정됩니다",
+  "settingsVideoQuality": "비디오 화질",
+  "settingsQualityAuto": "자동",
+  "settingsQualityLow": "낮음",
+  "settingsQualityMed": "중간",
+  "settingsQualityHigh": "높음",
+  "settingsStreamingNotConnected": "연결되지 않음",
+  "settingsCurrentlyStreaming": "현재 스트리밍: {label}",
+  "@settingsCurrentlyStreaming": {
+    "placeholders": {
+      "label": {
+        "type": "String"
+      }
+    }
+  },
+  "settingsBackgroundAudio": "백그라운드 오디오",
+  "settingsBackgroundAudioOn": "앱이 백그라운드에 있어도 계속 듣습니다",
+  "settingsBackgroundAudioOff": "앱이 백그라운드로 가면 오디오가 중지됩니다",
+  "settingsActivityNotifications": "활동 알림",
+  "settingsNotificationsOn": "잠금 화면 및 Apple Watch에 알림 표시",
+  "settingsNotificationsOff": "알림 꺼짐",
+  "settingsPerEventPrefs": "이벤트별 설정",
+  "settingsPerEventPrefsSubtitle": "잠금 화면으로 푸시할 이벤트와 앱 내에서만 표시할 이벤트를 선택하세요",
+  "settingsMotorTrim": "모터 트림 (오른쪽)",
+  "settingsMotorTrimNone": "조정 없음",
+  "settingsMotorTrimSlowing": "오른쪽 모터 {pct}% 감속",
+  "@settingsMotorTrimSlowing": {
+    "placeholders": {
+      "pct": {
+        "type": "int"
+      }
+    }
+  },
+  "settingsMotorTrimSpeeding": "오른쪽 모터 {pct}% 가속",
+  "@settingsMotorTrimSpeeding": {
+    "placeholders": {
+      "pct": {
+        "type": "int"
+      }
+    }
+  },
+  "settingsReset": "초기화",
+  "settingsMotorTrimHint": "로봇이 왼쪽으로 쏠리면 트림을 올리고, 오른쪽으로 쏠리면 내리세요.",
+  "settingsWifiHelp": "WiFi 설정 도움말",
+  "settingsWifiHelpSubtitle": "로봇 연결 방법",
+  "settingsWifiHelpTitle": "WIM-Z를 WiFi에 연결하기",
+  "settingsWifiStep1": "WIM-Z 로봇의 전원을 켜세요",
+  "settingsWifiStep2": "WiFi에 연결되어 있지 않으면 \"WIMZ-XXXX\"라는 핫스팟이 생성됩니다",
+  "settingsWifiStep3": "휴대폰에서 설정 → WiFi로 이동하세요",
+  "settingsWifiStep4": "\"WIMZ-XXXX\"에 연결하세요",
+  "settingsWifiStep4Detail": "비밀번호: wimzsetup",
+  "settingsWifiStep5": "브라우저를 열고 다음 주소로 이동하세요:",
+  "settingsWifiStep6": "집 WiFi 네트워크를 선택하고 비밀번호를 입력하세요",
+  "settingsWifiStep7": "로봇이 재부팅되고 네트워크에 연결됩니다",
+  "settingsWifiStep8": "이 앱으로 돌아와 로봇과 페어링하세요",
+  "settingsLedGuide": "LED 상태 안내",
+  "settingsLedSpinningCyan": "회전하는 청록색",
+  "settingsLedSearchingWifi": "WiFi 검색 중",
+  "settingsLedPulsingBlue": "깜빡이는 파란색",
+  "settingsLedSetupMode": "설정 모드 (WIMZ 핫스팟에 연결)",
+  "settingsLedSolidGreen": "고정 초록색",
+  "settingsLedConnectedWifi": "WiFi에 연결됨",
+  "settingsLedPulsingRed": "깜빡이는 빨간색",
+  "settingsRobotNetwork": "로봇 네트워크",
+  "settingsNetHotspot": "핫스팟 (AP)",
+  "settingsNetWifi": "WiFi",
+  "settingsNetMode": "모드",
+  "settingsNetNetwork": "네트워크",
+  "settingsNetIp": "IP",
+  "settingsConfigureRobotWifi": "로봇 WiFi 설정",
+  "settingsWifiScanFailed": "검색 실패",
+  "settingsWifiScanning": "WiFi 네트워크 검색 중...",
+  "settingsWifiNoneFound": "WiFi 네트워크를 찾을 수 없습니다",
+  "settingsWifiScanAgain": "다시 검색",
+  "settingsWifiPassword": "비밀번호",
+  "settingsWifiPasswordHint": "WiFi 비밀번호를 입력하세요",
+  "settingsWifiConnect": "연결",
+  "settingsTryAgain": "다시 시도",
+  "settingsWifiRobotConnecting": "로봇이 WiFi에 연결하는 중...",
+  "settingsWifiMayTakeMoment": "잠시 시간이 걸릴 수 있습니다.",
+  "settingsWifiRobotSwitching": "로봇이 WiFi로 전환하는 중...",
+  "settingsWifiHotspotShutdown": "로컬 핫스팟이 종료됩니다.\n잠시 후 연결이 끊길 수 있습니다.",
+  "settingsWifiCommandSent": "WiFi 명령을 보냈습니다!",
+  "settingsWifiCommandSentBody": "로봇이 WiFi로 전환 중입니다. 휴대폰을 같은 WiFi 네트워크에 연결한 다음 로컬 모드를 끄면 서버 연결을 사용할 수 있습니다.",
+  "settingsGotIt": "알겠습니다",
+  "settingsSignalExcellent": "매우 좋음",
+  "settingsSignalGood": "좋음",
+  "settingsSignalFair": "보통",
+  "settingsSignalWeak": "약함",
+  "settingsDiagRunning": "진단 실행 중...",
+  "settingsDiagError": "진단 오류: {error}\n\n스택: {stack}",
+  "@settingsDiagError": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      },
+      "stack": {
+        "type": "String"
+      }
+    }
+  },
+  "settingsRecordingDiagnostics": "녹음 진단",
+  "settingsRunningTests": "테스트 실행 중...",
+  "settingsRunAgain": "다시 실행",
+  "notifPrefsTitle": "알림 설정",
+  "notifPrefsResetDefaults": "기본값으로 초기화",
+  "notifPrefsEnableLockScreen": "잠금 화면 알림 사용",
+  "notifPrefsMasterSubtitle": "마스터 스위치입니다. 끄면 잠금 화면이나 Apple Watch로 아무것도 푸시되지 않으며, 이벤트는 앱 내 피드에만 표시됩니다.",
+  "notifPrefsPerEventType": "이벤트 유형별",
+  "notifPrefsLegend": "꺼짐 — 기록하지 않습니다.\n앱 내 — 활동 피드에만 표시됩니다.\n앱 내 + 푸시 — 잠금 화면과 Apple Watch도 깨웁니다.",
+  "notifPrefsBarking": "짖음",
+  "notifPrefsSitDetected": "앉기 감지",
+  "notifPrefsLayDownDetected": "엎드리기 감지",
+  "notifPrefsComeStandDetected": "이리 와 / 서기 감지",
+  "notifPrefsTreatDispensed": "간식 지급",
+  "notifPrefsMissionStarted": "미션 시작",
+  "notifPrefsMissionCompleted": "미션 완료",
+  "notifPrefsMissionFailed": "미션 실패",
+  "notifPrefsLowBattery": "배터리 부족",
+  "notifPrefsGuardianAlert": "가디언 경고",
+  "notifPrefsHappyDog": "행복한 반려견",
+  "notifPrefsRobotConnected": "로봇 연결됨",
+  "notifPrefsRobotDisconnected": "로봇 연결 끊김",
+  "notifPrefsCoachReward": "코치 보상",
+  "notifPrefsPanicAlert": "패닉 경고",
+  "notifPrefsSgSummary": "가디언 세션 요약",
+  "notifPrefsInApp": "앱 내",
+  "notifPrefsPlusPush": "+ 푸시",
+  "controllerPairingTitle": "게임 컨트롤러",
+  "controllerPairingRefresh": "새로고침",
+  "controllerPairingRobotNotConnected": "로봇이 연결되지 않음",
+  "controllerPairingRobotNotConnectedBody": "먼저 로봇에 연결한 다음 다시 돌아와 컨트롤러를 페어링하세요.",
+  "controllerPairingChecking": "로봇 확인 중…",
+  "controllerPairingCheckingBody": "로봇에 컨트롤러 정보를 요청하고 있습니다.",
+  "controllerPairingNoResponse": "로봇 응답 없음",
+  "controllerPairingNoResponseBody": "로봇이 컨트롤러 확인에 응답하지 않았습니다. 아직 시작 중이거나 펌웨어가 컨트롤러 페어링을 지원하지 않을 수 있습니다. 잠시 후 다시 시도하세요.",
+  "controllerPairingSavedControllers": "저장된 컨트롤러",
+  "controllerPairingNoSaved": "저장된 컨트롤러가 아직 없습니다. 아래에서 검색하여 페어링한 다음, 신뢰 설정을 켜면 로봇이 자동으로 다시 연결합니다.",
+  "controllerPairingAddController": "컨트롤러 추가",
+  "controllerPairingForgetTitle": "컨트롤러를 삭제할까요?",
+  "controllerPairingForgetBody": "로봇이 \"{name}\"의 페어링을 해제하고 자동 재연결을 중단합니다. 나중에 다시 페어링할 수 있습니다.",
+  "@controllerPairingForgetBody": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "controllerPairingForget": "삭제",
+  "controllerPairingController": "컨트롤러",
+  "controllerPairingNoneConnected": "연결된 컨트롤러 없음",
+  "controllerPairingTrusted": "신뢰됨",
+  "controllerPairingSavedNotConnected": "저장됨 · 연결되지 않음",
+  "controllerPairingReconnect": "다시 연결",
+  "controllerPairingAutoReconnect": "자동 재연결 (신뢰)",
+  "controllerPairingPair": "페어링",
+  "controllerPairingScanning": "컨트롤러 검색 중…",
+  "controllerPairingScan": "컨트롤러 검색",
+  "controllerPairingScanningHint": "컨트롤러를 페어링 모드로 전환하세요",
+  "controllerPairingScanHint": "로봇이 근처 컨트롤러를 찾습니다",
+  "devicePairingEnterId": "기기 ID를 입력하세요",
+  "devicePairingInvalidId": "기기 ID는 3~50자여야 합니다: 영문, 숫자, _ 또는 -",
+  "devicePairingPaired": "{deviceId} 페어링 완료",
+  "@devicePairingPaired": {
+    "placeholders": {
+      "deviceId": {
+        "type": "String"
+      }
+    }
+  },
+  "devicePairingUnpairTitle": "기기 페어링 해제",
+  "devicePairingUnpairBody": "{deviceId}의 페어링을 해제할까요?",
+  "@devicePairingUnpairBody": {
+    "placeholders": {
+      "deviceId": {
+        "type": "String"
+      }
+    }
+  },
+  "devicePairingUnpair": "페어링 해제",
+  "devicePairingUnpaired": "{deviceId} 페어링 해제됨",
+  "@devicePairingUnpaired": {
+    "placeholders": {
+      "deviceId": {
+        "type": "String"
+      }
+    }
+  },
+  "devicePairingNotFoundTitle": "로봇을 찾을 수 없음",
+  "devicePairingNotFoundBody": "서버에 \"{deviceId}\" 기록이 없습니다. 이 항목은 고아 상태라 정상적으로 제거할 수 없습니다. 그래도 목록에서 숨길까요?",
+  "@devicePairingNotFoundBody": {
+    "placeholders": {
+      "deviceId": {
+        "type": "String"
+      }
+    }
+  },
+  "devicePairingKeep": "유지",
+  "devicePairingHide": "숨기기",
+  "devicePairingHidden": "{deviceId}을(를) 목록에서 숨겼습니다",
+  "@devicePairingHidden": {
+    "placeholders": {
+      "deviceId": {
+        "type": "String"
+      }
+    }
+  },
+  "devicePairingConnectingTo": "{label}에 연결 중…",
+  "@devicePairingConnectingTo": {
+    "placeholders": {
+      "label": {
+        "type": "String"
+      }
+    }
+  },
+  "devicePairingTitle": "내 로봇",
+  "devicePairingPairNew": "새 기기 페어링",
+  "devicePairingIdHint": "기기 ID 입력 (예: wimz_robot_01)",
+  "devicePairingPair": "페어링",
+  "devicePairingNoDevices": "페어링된 기기 없음",
+  "devicePairingNoDevicesBody": "위에 기기 ID를 입력하여 WIM-Z를 페어링하세요",
+  "devicePairingActive": "활성",
+  "devicePairingOnline": "온라인",
+  "devicePairingOffline": "오프라인",
+  "devicePairingLastSeen": " - 마지막 접속 {when}",
+  "@devicePairingLastSeen": {
+    "placeholders": {
+      "when": {
+        "type": "String"
+      }
+    }
+  },
+  "devicePairingUnpairTooltip": "기기 페어링 해제",
+  "devicePairingJustNow": "방금 전",
+  "devicePairingMinutesAgo": "{n}분 전",
+  "@devicePairingMinutesAgo": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "devicePairingHoursAgo": "{n}시간 전",
+  "@devicePairingHoursAgo": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "devicePairingDaysAgo": "{n}일 전",
+  "@devicePairingDaysAgo": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "connDiagCopied": "추적 로그를 클립보드에 복사했습니다",
+  "connDiagShareSubject": "WIM-Z 연결 추적 로그",
+  "connDiagCleared": "추적 로그를 지웠습니다",
+  "connDiagNotConnected": "연결되지 않음 — 먼저 로봇에 연결하세요",
+  "connDiagLedAcked": "LED 응답 {ms}ms — 아무것도 켜지지 않았다면 로봇 쪽 문제입니다",
+  "@connDiagLedAcked": {
+    "placeholders": {
+      "ms": {
+        "type": "int"
+      }
+    }
+  },
+  "connDiagLedTimeout": "LED 명령을 보냈지만 3초 내 응답 없음 — 명령 경로가 끊겼습니다",
+  "connDiagLedFailed": "LED 핑 실패: {error}",
+  "@connDiagLedFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "connDiagTitle": "연결 진단",
+  "connDiagLedPing": "LED 핑",
+  "connDiagCopy": "복사",
+  "connDiagShare": "공유",
+  "connDiagClear": "지우기",
+  "connDiagHeader": "WebRTC 시그널링 추적 — 이벤트 {count}개 기록됨.\n느린 비디오를 재현한 다음 이 추적 로그를 공유하세요.",
+  "@connDiagHeader": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "connDiagEmpty": "아직 기록된 이벤트가 없습니다.\n\n로그인하고 비디오 피드를 연 다음 여기로 돌아오세요.",
+  "nightVisionTitle": "야간 투시",
+  "nightVisionWaiting": "로봇을 기다리는 중…",
+  "nightVisionNightMode": "야간 투시",
+  "nightVisionDayMode": "주간 모드",
+  "nightVisionStaleTooltip": "90초 이상 로봇 업데이트 없음",
+  "nightVisionAuto": "자동",
+  "nightVisionDay": "주간",
+  "nightVisionNight": "야간",
+  "nightVisionAutoHint": "조명에 따라 자동으로 전환됩니다.",
+  "nightVisionOverrideHint": "수동 설정이 켜져 있습니다. 자동을 탭하면 자동 감지를 재개합니다.",
+  "nightVisionOfflineHint": "로봇 오프라인 — 다시 연결되면 변경이 적용됩니다.",
+  "nightVisionLighting": "조명: {label}",
+  "@nightVisionLighting": {
+    "placeholders": {
+      "label": {
+        "type": "String"
+      }
+    }
+  },
+  "nightVisionLux": "{lux} lux — {label}",
+  "@nightVisionLux": {
+    "placeholders": {
+      "lux": {
+        "type": "String"
+      },
+      "label": {
+        "type": "String"
+      }
+    }
+  },
+  "nightVisionModeWordNight": "야간 투시",
+  "nightVisionModeWordDay": "주간 모드",
+  "nightVisionSwitchedSecondsAgo": "{n}초 전 {mode}(으)로 전환됨",
+  "@nightVisionSwitchedSecondsAgo": {
+    "placeholders": {
+      "mode": {
+        "type": "String"
+      },
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "nightVisionSwitchedMinutesAgo": "{n}분 전 {mode}(으)로 전환됨",
+  "@nightVisionSwitchedMinutesAgo": {
+    "placeholders": {
+      "mode": {
+        "type": "String"
+      },
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "nightVisionSwitchedHoursAgo": "{n}시간 전 {mode}(으)로 전환됨",
+  "@nightVisionSwitchedHoursAgo": {
+    "placeholders": {
+      "mode": {
+        "type": "String"
+      },
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "nightVisionSwitchedDaysAgo": "{n}일 전 {mode}(으)로 전환됨",
+  "@nightVisionSwitchedDaysAgo": {
+    "placeholders": {
+      "mode": {
+        "type": "String"
+      },
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "nightVisionBadgeNight": "IR 야간 화면",
+  "nightVisionBadgeDay": "주간",
+  "sgError": "사일런트 가디언: {error}",
+  "@sgError": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "sgInterventionLevel": "개입 수준",
+  "sgInterventionSubtitle": "지속적인 짖음에 로봇이 얼마나 빨리 진정 음악으로 넘어갈지 정합니다.",
+  "sgBpm": "{bpm} BPM",
+  "@sgBpm": {
+    "placeholders": {
+      "bpm": {
+        "type": "int"
+      }
+    }
+  },
+  "sgAggressive": "적극적",
+  "sgTolerant": "관대함",
+  "sgHelperOff": "사용 안 함 — 사일런트 가디언이 일반 L1→L4 단계만 따릅니다.",
+  "sgHelperLow": "약한 정도의 지속적 짖음에도 바로 진정 음악으로 넘어갑니다.",
+  "sgHelperMid": "일반적인 소란스러운 짖음에 진정 음악이 시작됩니다.",
+  "sgHelperHigh": "극심하게 쉬지 않고 짖을 때만 진정 음악이 시작됩니다.",
+  "sgSessionSummary": "세션 요약",
+  "sgTapRefresh": "새로고침을 탭하면 실시간 상태 보고서를 볼 수 있습니다",
+  "sgStatBarks": "짖음",
+  "sgStatTreats": "간식",
+  "sgStatInterventions": "개입",
+  "sgStatLevel": "단계",
+  "sgStatTrend": "추세",
+  "sgBarkTimeline": "짖음 타임라인",
+  "sgRateLine": "현재 {recent}/분 · 세션 {session}/분",
+  "@sgRateLine": {
+    "placeholders": {
+      "recent": {
+        "type": "String"
+      },
+      "session": {
+        "type": "String"
+      }
+    }
+  },
+  "sgPanicActive": "패닉 진행 중",
+  "sgPanicEpisodes": "패닉 에피소드 {count}회",
+  "@sgPanicEpisodes": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "sgAggressiveBehavior": "공격적 행동",
+  "dogProfileTitle": "반려견 프로필",
+  "dogProfileNotFound": "반려견 프로필을 찾을 수 없습니다",
+  "dogProfileEditTooltip": "반려견 편집",
+  "dogProfileMissionStarted": "미션을 시작했습니다",
+  "dogProfileMissionActive": "미션 진행 중",
+  "dogProfileLaunchLastMission": "마지막 미션 시작",
+  "dogProfileStartAMission": "미션 시작하기",
+  "dogProfileTodaySummary": "오늘의 요약",
+  "dogProfileStatTreats": "간식",
+  "dogProfileStatSits": "앉기",
+  "dogProfileStatBarks": "짖음",
+  "dogProfileStatGoal": "목표",
+  "dogProfileMetrics": "지표",
+  "dogProfileRangeDay": "일",
+  "dogProfileRangeWeek": "주",
+  "dogProfileRangeAll": "전체",
+  "dogProfileStatDetections": "감지",
+  "dogProfileStatMissions": "미션",
+  "dogProfileStatSuccess": "성공률",
+  "dogProfileStatActive": "활동",
+  "dogProfileStatCoach": "코치",
+  "dogProfileActiveMinutes": "{minutes}분",
+  "@dogProfileActiveMinutes": {
+    "placeholders": {
+      "minutes": {
+        "type": "int"
+      }
+    }
+  },
+  "dogProfileViewDashboard": "대시보드 보기",
+  "dogProfileQuickActions": "빠른 작업",
+  "dogProfileActionVoice": "음성",
+  "dogProfileActionStats": "통계",
+  "dogProfileMetricsHint": "지표는 위에 표시됩니다. 일/주/전체 토글을 사용하세요",
+  "dogProfileRecentActivity": "최근 활동",
+  "dogProfileSeeAll": "전체 보기",
+  "dogProfileNoRecentActivity": "최근 활동이 없습니다",
+  "dogProfileRelMinutes": "{n}분",
+  "@dogProfileRelMinutes": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "dogProfileRelHours": "{n}시간",
+  "@dogProfileRelHours": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "dogProfileRelDays": "{n}일",
+  "@dogProfileRelDays": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "dogsListTitle": "반려견",
+  "dogsListEmpty": "아직 추가된 반려견이 없습니다",
+  "dogsListNoDetails": "정보 없음",
+  "dogNameLabel": "이름",
+  "dogBreedLabel": "견종",
+  "dogPhotoTakePhoto": "사진 촬영",
+  "dogPhotoChooseFromGallery": "갤러리에서 선택",
+  "dogPhotoRemovePhoto": "사진 제거",
+  "arucoPrintMarker": "마커 인쇄",
+  "editDogTitle": "반려견 편집",
+  "editDogNotFound": "반려견을 찾을 수 없습니다",
+  "editDogBreedHint": "예: 골든 리트리버",
+  "editDogCoatColorLabel": "털 색상",
+  "editDogDeleteDog": "반려견 삭제",
+  "editDogNameEmpty": "이름을 입력하세요",
+  "editDogSaved": "저장되었습니다",
+  "editDogSaveFailed": "저장 실패: {error}",
+  "@editDogSaveFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "editDogDeleteConfirmTitle": "반려견을 삭제할까요?",
+  "editDogDeleteConfirmBody": "{name}을(를) 정말 삭제하시겠어요? 모든 데이터가 삭제되며 되돌릴 수 없습니다.",
+  "@editDogDeleteConfirmBody": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "editDogDeleted": "{name}이(가) 삭제되었습니다",
+  "@editDogDeleted": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "editDogChangePhoto": "사진 변경",
+  "editDogChoosePhotoSource": "사진 가져오기",
+  "editDogPhotoUpdated": "사진이 업데이트되었습니다",
+  "editDogPhotoSaveFailed": "사진 저장 실패: {error}",
+  "@editDogPhotoSaveFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "editDogTreatsPerReward": "보상당 간식 개수",
+  "editDogTreatsHelper1": "기본값 — 보상당 간식 1개.",
+  "editDogTreatsHelper2": "중형견에게는 2개가 좋을 수 있습니다.",
+  "editDogTreatsHelper3": "대형견은 보상을 느끼려면 더 많이 필요합니다.",
+  "editDogTreatsHelper4": "초대형견 또는 고강도 훈련용.",
+  "editDogArucoMarker": "ArUco 마커",
+  "editDogNoMarker": "지정된 마커가 없습니다. 마커를 지정하려면 반려견을 다시 등록하세요.",
+  "editDogMarkerId": "DICT_4X4_1000 — ID {id}",
+  "@editDogMarkerId": {
+    "placeholders": {
+      "id": {
+        "type": "int"
+      }
+    }
+  },
+  "editDogPrintFailed": "인쇄 실패: {error}",
+  "@editDogPrintFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "addDogTitle": "반려견 추가",
+  "addDogSaveDog": "반려견 저장",
+  "addDogContinue": "계속",
+  "addDogStepColor": "색상",
+  "addDogStepPhoto": "사진",
+  "addDogPhotoSelected": "사진 선택됨",
+  "addDogOptional": "선택 사항",
+  "addDogStepAruco": "ARUCO 태그",
+  "addDogNameQuestion": "반려견의 이름은 무엇인가요?",
+  "addDogNameFieldLabel": "반려견 이름",
+  "addDogNameHint": "예: 맥스, 루나, 버디",
+  "addDogNameRequired": "이름을 입력해 주세요",
+  "addDogBreedQuestion": "반려견의 견종은 무엇인가요?",
+  "addDogBreedHint": "예: 골든 리트리버, 믹스, 모름",
+  "addDogColorQuestion": "반려견의 주된 털 색상은 무엇인가요?",
+  "addDogPhotoPrompt": "반려견 프로필 사진을 추가하세요",
+  "addDogTapToAdd": "탭하여 추가",
+  "addDogCamera": "카메라",
+  "addDogGallery": "갤러리",
+  "addDogRemovePhoto": "사진 제거",
+  "addDogArucoIntro": "WIM-Z는 반려견 목걸이의 ARUCO 마커로 반려견을 구분합니다.",
+  "addDogArucoAutoPicked": "다음 빈 ID를 자동으로 골랐습니다. 이 마커를 인쇄해 목걸이에 부착하세요.",
+  "addDogArucoIdLabel": "ARUCO 마커 ID",
+  "addDogArucoIdHint": "예: 42",
+  "addDogArucoSkipHint": "이 필드를 비우면 ArUco를 건너뛸 수 있습니다. 반려견이 한 마리뿐이거나 외형 기반 식별을 선호할 때 유용합니다.",
+  "addDogMarkerBundleMissing": "마커 번들이 아직 생성되지 않았습니다 — scripts/generate_aruco_markers.py를 실행하세요",
+  "addDogPickImageFailed": "이미지 선택 실패: {error}",
+  "@addDogPickImageFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "addDogDuplicateName": "\"{name}\" 이름의 반려견이 이미 있습니다",
+  "@addDogDuplicateName": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "addDogRobotWillRecognize": "이제 로봇이 {name}을(를) 인식합니다",
+  "@addDogRobotWillRecognize": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "weeklySummaryTitle": "주간 요약",
+  "weeklyTapRefresh": "새로고침을 눌러 이번 주 리포트를 확인하세요",
+  "weeklyVsLastWeek": "지난주 대비",
+  "weeklyQuiets": "조용히 성공",
+  "weeklyTricks": "트릭: {attempts}회 중 {completed}회 완료",
+  "@weeklyTricks": {
+    "placeholders": {
+      "completed": {
+        "type": "int"
+      },
+      "attempts": {
+        "type": "int"
+      }
+    }
+  },
+  "weeklyTricksWithRate": "트릭: {attempts}회 중 {completed}회 완료 ({rate}%)",
+  "@weeklyTricksWithRate": {
+    "placeholders": {
+      "completed": {
+        "type": "int"
+      },
+      "attempts": {
+        "type": "int"
+      },
+      "rate": {
+        "type": "String"
+      }
+    }
+  },
+  "weeklyGuardian": "가디언: {sessions}회 세션 동안 {interventions}회 개입",
+  "@weeklyGuardian": {
+    "placeholders": {
+      "interventions": {
+        "type": "int"
+      },
+      "sessions": {
+        "type": "int"
+      }
+    }
+  },
+  "weeklyDataSince": "데이터 시작: {parts}",
+  "@weeklyDataSince": {
+    "placeholders": {
+      "parts": {
+        "type": "String"
+      }
+    }
+  },
+  "weeklyCoverageBarks": "짖음",
+  "weeklyCoverageBarkTypes": "짖음 유형",
+  "weeklyCoverageTreats": "간식",
+  "weeklyCoverageCoaching": "코칭",
+  "voiceTitle": "음성 명령",
+  "voiceNoDogSelected": "선택된 반려견이 없습니다",
+  "voiceResetTooltip": "기본 음성으로 초기화",
+  "voiceSyncAll": "모두 동기화",
+  "voiceIntro": "각 명령에 대해 목소리를 녹음하세요. {dogName}이(가) 당신의 목소리에 반응하도록 배웁니다.",
+  "@voiceIntro": {
+    "placeholders": {
+      "dogName": {
+        "type": "String"
+      }
+    }
+  },
+  "voiceMobileOnlyBanner": "녹음은 iOS/Android 앱에서만 가능합니다. 모바일에서 명령을 녹음하세요.",
+  "voiceRecordedProgress": "{total}개 중 {recorded}개 녹음됨",
+  "@voiceRecordedProgress": {
+    "placeholders": {
+      "recorded": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "voiceSyncedCount": "{count}개 동기화됨",
+  "@voiceSyncedCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "voiceMobileRequiredTitle": "모바일 필요",
+  "voiceMobileRequiredBody": "음성 녹음은 iOS 또는 Android 앱이 필요합니다. 모바일 기기에서 음성 명령을 녹음해 주세요.",
+  "voiceDeleteRecordingTitle": "녹음을 삭제할까요?",
+  "voiceDeleteRecordingBody": "녹음된 음성 명령이 삭제됩니다.",
+  "voiceCommandSynced": "명령이 동기화되었습니다!",
+  "voiceSyncFailed": "동기화 실패",
+  "voiceResetTitle": "기본 음성으로 초기화할까요?",
+  "voiceResetBody": "{dogName}의 녹음 {count}개가 모두 삭제됩니다. WIM-Z는 대신 내장 음성을 사용합니다.",
+  "@voiceResetBody": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      },
+      "dogName": {
+        "type": "String"
+      }
+    }
+  },
+  "voiceResetAction": "초기화",
+  "voiceResetDone": "초기화됨 — WIM-Z가 기본 음성을 사용합니다",
+  "voiceSyncedToRobot": "{count}개 명령이 로봇에 동기화되었습니다",
+  "@voiceSyncedToRobot": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "voiceRecordedSynced": "녹음 및 동기화됨",
+  "voiceRecordedTapToSync": "녹음됨 - 탭하여 동기화",
+  "voiceNotRecorded": "녹음되지 않음",
+  "voiceSyncToRobotTooltip": "로봇에 동기화",
+  "voiceReRecord": "다시 녹음",
+  "voiceRecord": "녹음",
+  "voiceStartFailed": "녹음을 시작하지 못했습니다. 마이크 권한을 확인하세요.",
+  "voiceRecordingFailed": "녹음에 실패했습니다. 다시 시도하세요.",
+  "voiceSavedTitle": "저장됨!",
+  "voiceRecordTitle": "녹음: {label}",
+  "@voiceRecordTitle": {
+    "placeholders": {
+      "label": {
+        "type": "String"
+      }
+    }
+  },
+  "voiceRecordedSuccess": "음성 명령이 녹음되었습니다!",
+  "voiceSeconds": "{seconds}초",
+  "@voiceSeconds": {
+    "placeholders": {
+      "seconds": {
+        "type": "String"
+      }
+    }
+  },
+  "voiceSayClearly": "명령을 또렷하게 말하세요...",
+  "voicePreparingMic": "마이크 준비 중...",
+  "voiceStop": "중지",
+  "arucoIdLabel": "ID {id}",
+  "@arucoIdLabel": {
+    "placeholders": {
+      "id": {
+        "type": "int"
+      }
+    }
+  },
+  "arucoBundleMissing": "마커 번들이 생성되지 않았습니다.\nscripts/generate_aruco_markers.py를 참고하세요",
+  "loginTagline": "Watchful Intelligent Mobile Zen",
+  "loginButton": "로그인",
+  "loginCloudHint": "클라우드 연결 (인터넷 필요)",
+  "loginConnectToRobot": "로봇에 연결",
+  "loginDirectHint": "WIMZ WiFi 핫스팟으로 직접 연결",
+  "loginLocalConnectFailed": "로봇에 연결할 수 없습니다.\n로봇과 같은 WiFi에 연결되어 있거나\nWIMZ 핫스팟에 연결되어 있는지 확인하세요.",
+  "loginConnectionFailedCheckWifi": "연결에 실패했습니다. WiFi를 확인하고 다시 시도하세요.",
+  "loginDemoMode": "데모 모드",
+  "loginSignIn": "로그인",
+  "loginCreateAccount": "계정 만들기",
+  "loginEmailLabel": "이메일",
+  "loginEnterEmail": "이메일을 입력하세요",
+  "loginInvalidEmail": "올바르지 않은 이메일입니다",
+  "loginPasswordLabel": "비밀번호",
+  "loginEnterPassword": "비밀번호를 입력하세요",
+  "loginMin6Chars": "6자 이상 입력하세요",
+  "loginSavePassword": "비밀번호 저장",
+  "loginForgotPassword": "비밀번호를 잊으셨나요?",
+  "loginNoAccountSignUp": "계정이 없으신가요? 회원가입",
+  "loginHaveAccountSignIn": "이미 계정이 있으신가요? 로그인",
+  "forgotTitle": "비밀번호 재설정",
+  "forgotHeading": "비밀번호를 잊으셨나요?",
+  "forgotIntro": "계정 이메일을 입력하시면 비밀번호 재설정용 6자리 코드를 보내드립니다.",
+  "forgotSendCode": "코드 보내기",
+  "forgotCodeSentBanner": "등록된 이메일이라면 6자리 코드가 발송됩니다. 코드는 15분 후 만료됩니다.",
+  "forgotEnterCodeHeading": "코드와 새 비밀번호 입력",
+  "forgotCodeLabel": "6자리 코드",
+  "forgotEnterCode": "코드를 입력하세요",
+  "forgotCodeIs6Digits": "코드는 6자리입니다",
+  "forgotNewPasswordLabel": "새 비밀번호",
+  "forgotEnterNewPassword": "새 비밀번호를 입력하세요",
+  "forgotMin8Chars": "8자 이상 입력하세요",
+  "forgotConfirmPasswordLabel": "새 비밀번호 확인",
+  "forgotConfirmYourPassword": "비밀번호를 다시 입력하세요",
+  "forgotPasswordsDontMatch": "비밀번호가 일치하지 않습니다",
+  "forgotResendCode": "코드 다시 보내기",
+  "homeLocalRobot": "로컬 로봇",
+  "homeFindYourRobot": "로봇 찾기 →",
+  "homeNewDog": "새 반려견 #{arucoId}",
+  "@homeNewDog": {
+    "placeholders": {
+      "arucoId": {
+        "type": "int"
+      }
+    }
+  },
+  "homeDismiss": "닫기",
+  "homeExit": "종료",
+  "homeModeIdle": "대기",
+  "homeModeGuard": "가디언",
+  "homeModeCoach": "코치",
+  "homeSelectDog": "반려견 선택",
+  "driveLabel": "주행",
+  "driveEmergencyStop": "비상 정지",
+  "driveCall": "부르기",
+  "driveTreat": "간식",
+  "driveCenter": "중앙",
+  "driveSwitchingMode": "모드 전환 중...",
+  "driveCamera": "카메라",
+  "driveCoach": "코치",
+  "driveSelectDogFirst": "반려견을 선택하거나 카메라가 인식할 때까지 기다려 주세요.",
+  "driveMissionFallback": "미션",
+  "driveMissionStage": "{name} — {stage}",
+  "@driveMissionStage": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      },
+      "stage": {
+        "type": "String"
+      }
+    }
+  },
+  "driveStop": "정지",
+  "galleryTitle": "사진 갤러리",
+  "galleryRefresh": "새로고침",
+  "galleryNoPhotos": "아직 사진이 없습니다",
+  "galleryTakePhotosHint": "영상 화면에서 사진을 찍어 보세요",
+  "galleryShare": "공유",
+  "galleryFailedToLoad": "이미지를 불러오지 못했습니다",
+  "galleryShareText": "WIM-Z 사진 - {date}",
+  "@galleryShareText": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "galleryShareFailed": "공유 실패: {error}",
+  "@galleryShareFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "galleryDeleteTitle": "사진 삭제",
+  "galleryDeleteConfirm": "이 사진을 삭제하시겠습니까?",
+  "notificationsTitle": "활동",
+  "notificationsMarkAllRead": "모두 읽음으로 표시",
+  "notificationsFilterAll": "전체",
+  "notificationsFilterBehaviors": "행동",
+  "notificationsFilterMissions": "미션",
+  "notificationsFilterAlerts": "경고",
+  "notificationsFilterTreats": "간식",
+  "notificationsFilterCoach": "코치",
+  "notificationsClearAll": "모두 지우기",
+  "notificationsTabDashboard": "대시보드",
+  "notificationsTabEvents": "이벤트",
+  "notificationsEmpty": "아직 알림이 없습니다",
+  "notificationsEmptyHint": "WIM-Z의 이벤트가 여기에 표시됩니다",
+  "notificationsGroupToday": "오늘",
+  "notificationsGroupYesterday": "어제",
+  "notificationsGroupThisWeek": "이번 주",
+  "notificationsGroupEarlier": "이전",
+  "activityNoDogSelected": "선택된 반려견이 없습니다",
+  "activityStatTreats": "간식",
+  "activityStatDetections": "감지",
+  "activityStatMissions": "미션",
+  "activityStatCoach": "코치",
+  "activitySeriesTreats": "간식",
+  "activitySeriesBarks": "짖음",
+  "activitySeriesBehaviors": "행동",
+  "activitySeriesMissions": "미션",
+  "activitySeriesAlerts": "경고",
+  "activityChartTitle": "활동 (7일)",
+  "activityNoSeriesSelected": "선택된 항목이 없습니다",
+  "activitySeriesCount": "{label}: {count}",
+  "@activitySeriesCount": {
+    "placeholders": {
+      "label": {
+        "type": "String"
+      },
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "activityRecentEvents": "최근 이벤트",
+  "activityNoEvents": "아직 이벤트가 없습니다",
+  "connBadgeNoRobot": "로봇 없음",
+  "connBadgeOffline": "오프라인",
+  "connBadgeNotPaired": "페어링 안 됨",
+  "connBadgeWaiting": "대기 중...",
+  "connBadgeRobotOnline": "로봇 온라인",
+  "connBadgeOtherDeviceActive": "다른 기기 사용 중",
+  "connBadgeDemo": "데모",
+  "localApCouldntReach": "로봇에 연결할 수 없습니다. 먼저 WiFi 설정에서 \"{ssid}\"(비밀번호 {password})에 연결한 뒤 다시 시도하세요.",
+  "@localApCouldntReach": {
+    "placeholders": {
+      "ssid": {
+        "type": "String"
+      },
+      "password": {
+        "type": "String"
+      }
+    }
+  },
+  "localApNoHotspotInfo": "로봇이 핫스팟 시작을 확인하지 않았고 저장된 핫스팟 정보도 없습니다. 로봇을 업데이트한 뒤 다시 시도하세요.",
+  "localApJoinHotspotTitle": "로봇 핫스팟에 연결",
+  "localApJoinHotspotBody": "로봇이 핫스팟을 시작하고 있습니다.\n\n1. 이 휴대폰의 WiFi 설정을 여세요\n2. \"{ssid}\"에 연결하세요\n    비밀번호: {password}\n3. 돌아와서 연결을 누르세요\n\n클라우드 모드로 다시 전환할 때까지 (또는 휴대폰 연결 없이 10분이 지날 때까지) 로봇은 핫스팟을 유지합니다.",
+  "@localApJoinHotspotBody": {
+    "placeholders": {
+      "ssid": {
+        "type": "String"
+      },
+      "password": {
+        "type": "String"
+      }
+    }
+  },
+  "localApConnect": "연결",
+  "localApSwitchTitle": "로컬 모드로 전환",
+  "localApSwitchSubtitle": "로봇이 핫스팟을 시작하고 휴대폰이 직접 연결됩니다",
+  "treatCounterOf": "{capacity}개 중 {remaining}개",
+  "@treatCounterOf": {
+    "placeholders": {
+      "remaining": {
+        "type": "int"
+      },
+      "capacity": {
+        "type": "int"
+      }
+    }
+  },
+  "treatCounterTitle": "간식: {headline}",
+  "@treatCounterTitle": {
+    "placeholders": {
+      "headline": {
+        "type": "String"
+      }
+    }
+  },
+  "treatCounterEmptyRefill": "비어 있음 — 리필 필요",
+  "treatCounterRemainingLabel": "남은 간식",
+  "treatCounterRefilledReset": "리필 완료 — 카운터 초기화",
+  "treatCounterClearing": "해결 중...",
+  "treatCounterClearJam": "걸림 해결",
+  "treatCounterLoadedHint": "넣은 간식 수 (최대 {capacity})",
+  "@treatCounterLoadedHint": {
+    "placeholders": {
+      "capacity": {
+        "type": "int"
+      }
+    }
+  },
+  "treatCounterSet": "설정",
+  "eventFeedSgActive": "사일런트 가디언 작동 중",
+  "eventFeedWatching": "활동을 지켜보는 중...",
+  "eventFeedRecentEvents": "최근 이벤트 ({count})",
+  "@eventFeedRecentEvents": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "eventFeedClear": "지우기",
+  "notifBarkingDetected": "짖음 감지",
+  "notifPanicEpisodeEnded": "패닉 에피소드 종료",
+  "notifPanicAlert": "패닉 경고",
+  "notifSgLevel4": "사일런트 가디언: 4단계",
+  "notifSgLevel4Body": "대응 단계가 최고 수준에 도달했습니다",
+  "notifTreatDispensed": "간식 급여됨",
+  "notifTreatFor": "{dogName}에게",
+  "@notifTreatFor": {
+    "placeholders": {
+      "dogName": {
+        "type": "String"
+      }
+    }
+  },
+  "notifGoodJob": "잘했어요!",
+  "notifTreatsRemaining": "간식 {count}개 남음",
+  "@notifTreatsRemaining": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "notifTreatsRunningLow": "간식 부족",
+  "notifTreatsLowBody": "간식 {count}개 남음 — 채워주세요!",
+  "@notifTreatsLowBody": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "notifTreatsEmpty": "간식 없음",
+  "notifTreatsEmptyBody": "계속 급여하려면 캐러셀을 채워주세요",
+  "notifMissionStarted": "미션 시작",
+  "notifMissionCompleted": "미션 완료",
+  "notifMissionFailed": "미션 실패",
+  "notifCoachRewardedFor": "{dogName}: {behavior} 보상",
+  "@notifCoachRewardedFor": {
+    "placeholders": {
+      "dogName": {
+        "type": "String"
+      },
+      "behavior": {
+        "type": "String"
+      }
+    }
+  },
+  "notifCoachRewarded": "{behavior} 보상",
+  "@notifCoachRewarded": {
+    "placeholders": {
+      "behavior": {
+        "type": "String"
+      }
+    }
+  },
+  "notifCoachAttempt": "{behavior} 시도",
+  "@notifCoachAttempt": {
+    "placeholders": {
+      "behavior": {
+        "type": "String"
+      }
+    }
+  },
+  "notifCoachMode": "코치 모드",
+  "notifTrick": "트릭",
+  "notifLowBattery": "배터리 부족",
+  "notifBatteryRemaining": "{percent}% 남음",
+  "@notifBatteryRemaining": {
+    "placeholders": {
+      "percent": {
+        "type": "int"
+      }
+    }
+  },
+  "notifSessionEnded": "세션 종료",
+  "notifAggressiveToday": "오늘 반려견이 공격적이었어요",
+  "notifPanicEpisodes": "패닉 에피소드 {count}회",
+  "@notifPanicEpisodes": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "notifGuardianSessionEnded": "가디언 세션 종료",
+  "notifGuardianAlert": "가디언 경고",
+  "notifIntervention": "개입",
+  "notifGuardianReason": "가디언: {reason}",
+  "@notifGuardianReason": {
+    "placeholders": {
+      "reason": {
+        "type": "String"
+      }
+    }
+  },
+  "notifSittingDetected": "앉기 감지",
+  "notifLayDown": "엎드려",
+  "notifCome": "이리 와",
+  "notifAlert": "경고",
+  "notifHappyDog": "행복한 반려견",
+  "notifCoachReward": "코치 보상",
+  "notifGuardianSummary": "가디언 요약",
+  "notifBehaviorDetected": "행동 감지",
+  "notifBehaviorNamedDetected": "{behavior} 감지",
+  "@notifBehaviorNamedDetected": {
+    "placeholders": {
+      "behavior": {
+        "type": "String"
+      }
+    }
+  },
+  "notifConfidence": "신뢰도 {percent}%",
+  "@notifConfidence": {
+    "placeholders": {
+      "percent": {
+        "type": "int"
+      }
+    }
+  },
+  "notifBarkType": "{type} 짖음",
+  "@notifBarkType": {
+    "placeholders": {
+      "type": {
+        "type": "String"
+      }
+    }
+  },
+  "channelActivityName": "WIM-Z 활동",
+  "channelActivityDescription": "반려견 훈련 활동 알림",
+  "authErrRegistrationFailed": "회원가입에 실패했습니다",
+  "authErrEmailRegistered": "이미 등록된 이메일입니다",
+  "authErrInvalidCredentials": "이메일 또는 비밀번호가 올바르지 않습니다",
+  "authErrLoginFailed": "로그인에 실패했습니다",
+  "authErrAccountNotFound": "계정을 찾을 수 없습니다",
+  "authErrResetCodeSend": "재설정 코드를 보낼 수 없습니다. 연결 상태를 확인하세요.",
+  "authErrResetFailed": "재설정에 실패했습니다",
+  "authErrInvalidCode": "코드가 잘못되었거나 만료되었습니다",
+  "authErrTooManyAttempts": "시도 횟수가 너무 많습니다. 잠시 후 다시 시도하세요",
+  "authNoticeSessionExpired": "세션이 만료되었습니다. 다시 로그인해 주세요.",
+  "connStatusConnectingServer": "서버에 연결 중...",
+  "connStatusNotPaired": "기기가 페어링되지 않았습니다",
+  "connStatusWaitingRobot": "서버 연결됨. 로봇을 기다리는 중...",
+  "connStatusRobotOnline": "로봇 온라인",
+  "connStatusError": "연결 오류",
+  "connStatusSuperseded": "다른 기기에서 로그인됨",
+  "connErrServerNotResponding": "서버가 응답하지 않습니다",
+  "connErrLiveConnection": "서버와 실시간 연결을 열 수 없습니다",
+  "connErrLostConnection": "서버와의 연결이 끊어졌습니다",
+  "connErrHandshake": "연결 핸드셰이크에 실패했습니다. 앱을 업데이트해 주세요.",
+  "connErrSessionExpired": "세션이 만료되었습니다. 다시 로그인해 주세요.",
+  "connErrNotPairedGoSettings": "기기가 페어링되지 않았습니다. 설정에서 페어링하세요.",
+  "connErrRobotOffline": "로봇이 오프라인입니다",
+  "errNotAuthorizedLogin": "권한이 없습니다. 다시 로그인해 주세요.",
+  "connErrSuperseded": "이 계정이 다른 기기에서 사용 중입니다. 탭하여 제어권을 되찾으세요.",
+  "errNotConnectedToRobot": "로봇에 연결되지 않았습니다",
+  "errNoResponseUpdate": "응답 없음 — 로봇 업데이트가 필요할 수 있습니다",
+  "pttErrPlayFailed": "오디오 재생에 실패했습니다",
+  "pttErrMobileOnly": "녹음은 iOS/Android에서만 가능합니다",
+  "pttErrNotConnectedSend": "연결되지 않음 — 음성을 보낼 수 없습니다",
+  "pttErrMicDenied": "마이크 권한이 거부되었습니다",
+  "pttErrStartFailed": "녹음을 시작하지 못했습니다",
+  "pttErrStartFailedDetail": "녹음 시작 실패: {error}",
+  "@pttErrStartFailedDetail": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "pttErrRecordingFailed": "녹음에 실패했습니다",
+  "pttErrFileNotFound": "녹음 파일을 찾을 수 없습니다",
+  "pttErrEmpty": "녹음이 비어 있습니다 — 오디오가 캡처되지 않았습니다",
+  "pttErrNotConnectedNotSent": "연결되지 않음 — 음성 메시지를 보내지 못했습니다",
+  "pttErrSendFailed": "오디오 전송 실패: {error}",
+  "@pttErrSendFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "pttErrNoAudio": "수신된 오디오가 없습니다",
+  "pairErrPairFailed": "기기 페어링에 실패했습니다",
+  "pairErrNetwork": "네트워크 오류입니다. 연결 상태를 확인하세요.",
+  "pairErrUnpairFailed": "기기 페어링 해제에 실패했습니다 (상태 {code})",
+  "@pairErrUnpairFailed": {
+    "placeholders": {
+      "code": {
+        "type": "int"
+      }
+    }
+  },
+  "pairErrDeviceNotFound": "기기를 찾을 수 없습니다. 기기 ID를 확인하세요.",
+  "pairErrAlreadyPaired": "이미 내 계정에 페어링된 기기입니다.",
+  "pairErrRobotUnavailable": "로봇을 사용할 수 없습니다. 전원이 켜져 있고 연결되어 있는지 확인하세요.",
+  "pairErrTimeout": "연결 시간이 초과되었습니다. 로봇을 사용할 수 없는 상태일 수 있습니다.",
+  "pairErrGeneric": "오류가 발생했습니다. 다시 시도해 주세요.",
+  "ctrlPairPairing": "페어링 중…",
+  "ctrlPairSaving": "저장 중…",
+  "ctrlPairRemovingTrust": "신뢰 해제 중…",
+  "ctrlPairForgetting": "삭제 중…",
+  "ctrlPairReconnecting": "다시 연결 중…",
+  "ctrlPairConnecting": "연결 중…",
+  "ctrlPairError": "컨트롤러 오류",
+  "schedErrDeleteFailed": "일정 삭제에 실패했습니다",
+  "schedErrTimeout": "로봇의 일정 응답 시간이 초과되었습니다",
+  "modeErrMissionActive": "미션 진행 중에는 모드를 변경할 수 없습니다",
+  "videoErrRobotRecordFailed": "로봇이 영상을 녹화하지 못했습니다",
+  "videoErrNoDownloadUrl": "로봇에서 다운로드 URL을 받지 못했습니다",
+  "videoErrNotFound": "서버에서 영상 파일을 찾을 수 없습니다 — 다운로드하려면 로봇에 직접 연결해야 할 수 있습니다",
+  "videoErrUnreachable": "영상 다운로드를 위해 로봇에 연결할 수 없습니다",
+  "videoErrDownloadFailed": "영상 다운로드에 실패했습니다",
+  "videoErrEncodingTimeout": "영상 인코딩 시간이 초과되었습니다 — {seconds}초 동안 응답 없음",
+  "@videoErrEncodingTimeout": {
+    "placeholders": {
+      "seconds": {
+        "type": "int"
+      }
+    }
+  },
+  "photoErrEmpty": "빈 사진 데이터를 받았습니다",
+  "photoErrTimeout": "사진 촬영 시간이 초과되었습니다 — 로봇 응답 없음",
+  "webrtcErrTimeoutRetry": "연결 시간 초과 — 탭하여 다시 시도",
+  "webrtcErrFailed": "연결 실패",
+  "webrtcErrLost": "연결 끊김",
+  "webrtcErrFailedRetry": "연결 실패 — 탭하여 다시 시도",
+  "wifiErrScanFailed": "WiFi 검색 실패: {error}",
+  "@wifiErrScanFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "wifiErrConnectFailed": "연결 실패: {error}",
+  "@wifiErrConnectFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "missionsErrIncompleteData": "로봇이 불완전한 미션 데이터를 보냈습니다 — 로봇 로그를 확인하세요",
+  "missionsErrAlreadyActive": "이미 진행 중인 미션이 있습니다",
+  "missionsErrAlreadyActiveNamed": "이미 진행 중인 미션이 있습니다 ({name})",
+  "@missionsErrAlreadyActiveNamed": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "missionsErrStartFailed": "미션을 시작하지 못했습니다",
+  "missionsErrStopFirst": "현재 미션을 먼저 중지하세요 ({name})",
+  "@missionsErrStopFirst": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "missionsErrStartFailedRobot": "로봇에서 미션을 시작하지 못했습니다",
+  "sgErrNotRunning": "사일런트 가디언이 실행 중이 아닙니다",
+  "weeklyErrUnknownDog": "로봇이 아직 이 반려견을 알지 못합니다",
+  "historyErrLocalMode": "로컬 모드에서는 기록을 볼 수 없습니다",
+  "historyErrNotLoggedIn": "로그인되지 않았습니다",
+  "historyErrLoadFailed": "기록 불러오기 실패: {error}",
+  "@historyErrLoadFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "uploadErrFailedStatus": "업로드 실패 ({status})",
+  "@uploadErrFailedStatus": {
+    "placeholders": {
+      "status": {
+        "type": "String"
+      }
+    }
+  },
+  "uploadErrTooLarge": "파일이 서버 제한보다 큽니다",
+  "uploadErrInvalidType": "잘못된 파일 형식 — MP3만 가능합니다",
+  "uploadErrNotAuthorized": "업로드 권한이 없습니다",
+  "uploadErrRobotOffline": "로봇 오프라인",
+  "uploadErrTimeout": "업로드 시간 초과 — 더 작은 파일로 시도하세요",
+  "uploadErrConnection": "연결 오류 — 네트워크를 확인하세요",
+  "uploadErrFailed": "업로드에 실패했습니다",
+  "uploadErrGeneric": "업로드 오류: {error}",
+  "@uploadErrGeneric": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "modelBehaviorDog": "반려견",
+  "modelBehaviorSit": "앉아",
+  "modelBehaviorLayDown": "엎드려",
+  "modelBehaviorCome": "이리 와",
+  "modelBehaviorStay": "기다려",
+  "modelBehaviorSpin": "돌아",
+  "modelBehaviorSpeak": "짖어",
+  "modelBehaviorBark": "짖음",
+  "modelBehaviorQuiet": "조용히",
+  "modelRobotModeIdle": "대기",
+  "modelRobotModeManual": "수동",
+  "modelRobotModeSilentGuardian": "사일런트 가디언",
+  "modelRobotModeCoach": "코치",
+  "modelRobotModeMission": "미션",
+  "modelRobotModeDocking": "도킹",
+  "modelDogColorBlack": "검정",
+  "modelDogColorYellow": "노랑/골든",
+  "modelDogColorBrown": "갈색/초콜릿",
+  "modelDogColorWhite": "흰색",
+  "modelDogColorMixed": "혼합",
+  "modelAgeYears": "{count, plural, other{{count}년}}",
+  "@modelAgeYears": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "modelAgeMonths": "{count, plural, other{{count}개월}}",
+  "@modelAgeMonths": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "modelVoiceCmdName": "반려견 이름",
+  "modelVoiceCmdPromptName": "반려견 이름을 또렷하게 말하세요",
+  "modelVoiceCmdSit": "앉아",
+  "modelVoiceCmdPromptSit": "\"앉아\"를 단호하게 말하세요",
+  "modelVoiceCmdStay": "기다려",
+  "modelVoiceCmdPromptStay": "\"기다려\"를 차분한 어조로 말하세요",
+  "modelVoiceCmdLieDown": "엎드려",
+  "modelVoiceCmdPromptLieDown": "\"엎드려\"라고 말하세요",
+  "modelVoiceCmdSpin": "돌아",
+  "modelVoiceCmdPromptSpin": "\"돌아\"를 신나게 말하세요",
+  "modelVoiceCmdSpeak": "짖어",
+  "modelVoiceCmdPromptSpeak": "\"짖어\"를 신나게 말하세요",
+  "modelVoiceCmdCome": "이리 와",
+  "modelVoiceCmdPromptCome": "\"이리 와\"라고 말하세요",
+  "modelVoiceCmdTreat": "간식 먹을래?",
+  "modelVoiceCmdPromptTreat": "\"간식 먹을래?\"를 장난스럽게 말하세요",
+  "modelVoiceCmdGoodDog": "착하지!",
+  "modelVoiceCmdPromptGoodDog": "\"착하지!\"를 칭찬하듯 말하세요",
+  "modelVoiceCmdNo": "안 돼",
+  "modelVoiceCmdPromptNo": "\"안 돼\"를 단호하게 말하세요",
+  "modelVoiceCmdQuiet": "조용히",
+  "modelVoiceCmdPromptQuiet": "\"조용히\"를 차분하지만 단호하게 말하세요",
+  "modelMissionStatusWaitingForDog": "반려견을 기다리는 중...",
+  "modelMissionStatusGreeting": "인사하는 중...",
+  "modelMissionStatusCommand": "명령 중",
+  "modelMissionStatusWatching": "그대로...",
+  "modelMissionStatusSuccess": "성공!",
+  "modelMissionStatusFailed": "다시 시도",
+  "modelMissionStatusRetry": "다시 시도하는 중...",
+  "modelMissionStatusCompleted": "완료!",
+  "modelMissionStatusStopped": "중지됨",
+  "modelMissionWaitingForDog": "{dogName}을(를) 기다리는 중...",
+  "@modelMissionWaitingForDog": {
+    "placeholders": {
+      "dogName": {
+        "type": "String"
+      }
+    }
+  },
+  "modelMissionGreetingDog": "{dogName}에게 인사하는 중...",
+  "@modelMissionGreetingDog": {
+    "placeholders": {
+      "dogName": {
+        "type": "String"
+      }
+    }
+  },
+  "modelMissionStageOf": "{total}단계 중 {stage}단계",
+  "@modelMissionStageOf": {
+    "placeholders": {
+      "stage": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "modelGuardianEventDogDetected": "반려견 감지됨",
+  "modelGuardianEventDogLeft": "반려견이 화면을 벗어남",
+  "modelGuardianEventBarking": "짖음 감지됨",
+  "modelGuardianEventTreatDispensed": "간식 급여됨",
+  "modelGuardianEventBehaviorChange": "행동 변화",
+  "modelGuardianEventMotionDetected": "움직임 감지됨",
+  "modelGuardianEventQuietReward": "조용히 보상",
+  "modelGuardianEventAlertTriggered": "경고 발생",
+  "modelGuardianEventUnknown": "이벤트",
+  "modelGuardianEventWithDetails": "{label} - {details}",
+  "@modelGuardianEventWithDetails": {
+    "placeholders": {
+      "label": {
+        "type": "String"
+      },
+      "details": {
+        "type": "String"
+      }
+    }
+  },
+  "modelNotifTitleBark": "짖음 감지",
+  "modelNotifTitleSit": "앉기 감지",
+  "modelNotifTitleLieDown": "엎드려",
+  "modelNotifTitleStand": "이리 와",
+  "modelNotifTitleTreatDispensed": "간식 급여",
+  "modelNotifTitleMissionStarted": "미션 시작",
+  "modelNotifTitleMissionCompleted": "미션 완료",
+  "modelNotifTitleMissionFailed": "미션 실패",
+  "modelNotifTitleLowBattery": "배터리 부족",
+  "modelNotifTitleAlert": "경고",
+  "modelNotifTitleHappy": "행복한 반려견",
+  "modelNotifTitleConnected": "연결됨",
+  "modelNotifTitleDisconnected": "연결 끊김",
+  "modelNotifTitleCoachReward": "코치 보상",
+  "modelNotifTitlePanicAlert": "패닉 경고",
+  "modelNotifTitleSgSummary": "가디언 요약",
+  "modelNightOverrideAuto": "자동",
+  "modelNightOverrideDay": "주간 모드",
+  "modelNightOverrideNight": "야간 모드",
+  "modelLuxDetecting": "감지 중…",
+  "modelLuxDark": "어두움",
+  "modelLuxDim": "흐림",
+  "modelLuxIndoor": "실내 조명",
+  "modelLuxWellLit": "밝음",
+  "modelLuxBright": "매우 밝음",
+  "modelControllerKindXbox": "Xbox",
+  "modelControllerKindPlaystation": "PlayStation",
+  "modelControllerKindEightBitDo": "8BitDo",
+  "modelControllerKindGeneric": "컨트롤러",
+  "modelControllerHintXbox": "Xbox 버튼을 누른 뒤 상단의 작은 페어링 버튼을 표시등이 빠르게 깜빡일 때까지 길게 누르세요.",
+  "modelControllerHintPlaystation": "PS 버튼과 Share(또는 Create) 버튼을 라이트 바가 깜빡일 때까지 함께 길게 누르세요.",
+  "modelControllerHintEightBitDo": "컨트롤러를 블루투스 모드로 설정한 뒤 Start(또는 페어링 버튼)를 LED가 깜빡일 때까지 길게 누르세요.",
+  "modelControllerHintGeneric": "컨트롤러를 블루투스 페어링 모드로 전환한 뒤(보통 전용 페어링 버튼을 누르거나 표시등이 깜빡일 때까지 버튼 조합을 길게 누름) 여기에 표시될 때까지 기다리세요.",
+  "modelDetectionDogDetected": "반려견 감지됨",
+  "modelVideoTierLow": "SD 480p",
+  "modelVideoTierMedium": "540p",
+  "modelVideoTierHigh": "HD 720p",
+  "modelVideoQualityAuto": "자동",
+  "modelVideoQualityLow": "낮음",
+  "modelVideoQualityMedium": "중간",
+  "modelVideoQualityHigh": "높음",
+  "modelDaySun": "일",
+  "modelDayMon": "월",
+  "modelDayTue": "화",
+  "modelDayWed": "수",
+  "modelDayThu": "목",
+  "modelDayFri": "금",
+  "modelDaySat": "토",
+  "modelScheduleOnceAt": "{time}에 한 번",
+  "@modelScheduleOnceAt": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "modelScheduleDailyAt": "매일 {time}",
+  "@modelScheduleDailyAt": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "modelScheduleWeeklyAt": "매주 {time}",
+  "@modelScheduleWeeklyAt": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "modelScheduleEveryDayAt": "매일 {time}",
+  "@modelScheduleEveryDayAt": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "modelScheduleDaysAt": "{days} {time}",
+  "@modelScheduleDaysAt": {
+    "placeholders": {
+      "days": {
+        "type": "String"
+      },
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "catalogMissionSit": "앉아",
+  "catalogMissionSitDesc": "간단한 앉아 미션 - 반려견을 기다렸다가 앉으면 보상",
+  "catalogMissionSitTraining": "앉아 훈련",
+  "catalogMissionSitTrainingDesc": "기본 앉아 훈련 - 앉는 행동에 보상",
+  "catalogMissionSitSustained": "앉아 유지",
+  "catalogMissionSitSustainedDesc": "반려견이 앉은 자세를 오래(30초) 유지",
+  "catalogMissionDownSustained": "엎드려 유지",
+  "catalogMissionDownSustainedDesc": "반려견이 엎드린 자세를 오래(30초) 유지",
+  "catalogMissionComeAndSit": "이리 와서 앉아",
+  "catalogMissionComeAndSitDesc": "반려견을 부른 뒤 앉게 하기",
+  "catalogMissionTrainSitDaily": "매일 앉아 훈련",
+  "catalogMissionTrainSitDailyDesc": "난이도와 제한이 점진적으로 높아지는 매일 앉아 훈련",
+  "catalogMissionLaydown": "엎드려",
+  "catalogMissionLaydownDesc": "간단한 엎드려 미션 - 반려견을 기다렸다가 엎드리면 보상",
+  "catalogMissionComeTraining": "이리 와 훈련",
+  "catalogMissionComeTrainingDesc": "리콜 훈련 - 부르면 오는 행동에 보상",
+  "catalogMissionSpinTraining": "돌아 훈련",
+  "catalogMissionSpinTrainingDesc": "돌기 트릭 훈련 - 제자리에서 도는 행동에 보상",
+  "catalogMissionSitAndSpeak": "앉아서 짖어",
+  "catalogMissionSitAndSpeakDesc": "명령에 따라 앉고 짖으면 간식으로 보상",
+  "catalogMissionSpeakMorning": "오전 짖어",
+  "catalogMissionSpeakMorningDesc": "오전(8시~12시) 동안 신호에 맞춰 두 번 짖기",
+  "catalogMissionSpeakAfternoon": "오후 짖어",
+  "catalogMissionSpeakAfternoonDesc": "오후(2시~6시) 동안 신호에 맞춰 두 번 짖기",
+  "catalogMissionAlertTraining": "경계 훈련",
+  "catalogMissionAlertTrainingDesc": "경비견 훈련 - 앉아서 경계 짖음을 하면 보상",
+  "catalogMissionBarkPrevention": "짖음 예방",
+  "catalogMissionBarkPreventionDesc": "조용히 훈련 - 과도한 짖음 줄이기",
+  "catalogMissionStopBarking": "짖음 멈추기",
+  "catalogMissionStopBarkingDesc": "조용히 훈련 - 단계적 대응으로 과도한 짖음 줄이기",
+  "catalogMissionQuietProgressive": "점진적 조용히",
+  "catalogMissionQuietProgressiveDesc": "점진적 조용히 훈련 - 조용히 유지해야 하는 시간이 점점 길어짐",
+  "catalogMissionComfortScared": "겁먹은 반려견 달래기",
+  "catalogMissionComfortScaredDesc": "겁먹거나 불안한 짖음이 감지되면 반려견 달래기",
+  "catalogMissionMorningChill": "오전 휴식",
+  "catalogMissionMorningChillDesc": "오전(8시~12시) 동안 차분한 행동 유지",
+  "catalogMissionMorningQuiet2hr": "오전 2시간 조용히",
+  "catalogMissionMorningQuiet2hrDesc": "오전 시간대(7시~13시)에 2시간 동안 조용히 유지",
+  "catalogMissionAfternoonSit5": "오후 앉아 5회",
+  "catalogMissionAfternoonSit5Desc": "오후(12시~19시) 동안 앉기 5회 수행",
+  "catalogMissionAfternoonDown3": "오후 엎드려 3회",
+  "catalogMissionAfternoonDown3Desc": "오후(12시~18시) 동안 엎드리기 3회 수행",
+  "catalogMissionEveningCalmTransition": "저녁 진정 전환",
+  "catalogMissionEveningCalmTransitionDesc": "조용한 저녁 행동으로 전환하도록 돕기(18시~21시)",
+  "catalogMissionEveningSettle": "저녁 안정",
+  "catalogMissionEveningSettleDesc": "저녁 식사 후 안정 취하기(17시~21시)",
+  "catalogMissionNightQuiet90pct": "야간 90% 조용히",
+  "catalogMissionNightQuiet90pctDesc": "밤새(19시~4시) 90% 조용히 유지",
+  "catalogMissionDownTraining": "엎드려 훈련",
+  "catalogMissionQuietTraining": "조용히 훈련",
+  "catalogMissionStayTraining": "기다려 훈련",
+  "catalogMissionStandTraining": "서 훈련",
+  "catalogProgramPuppyBasics": "강아지 기초",
+  "catalogProgramPuppyBasicsDesc": "기초 훈련: 앉아, 엎드려, 조용히",
+  "catalogProgramObedience101": "복종 훈련 기초",
+  "catalogProgramObedience101Desc": "모든 반려견이 알아야 할 핵심 명령",
+  "catalogProgramCalmDog": "차분한 반려견",
+  "catalogProgramCalmDogDesc": "인내심과 자제력 기르기"
+}

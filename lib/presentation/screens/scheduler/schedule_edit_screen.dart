@@ -6,6 +6,7 @@ import '../../../data/models/schedule.dart';
 import '../../../domain/providers/scheduler_provider.dart';
 import '../../../domain/providers/dog_profiles_provider.dart';
 import '../../../domain/providers/missions_provider.dart';
+import '../../../l10n/l10n.dart';
 import '../../theme/app_theme.dart';
 
 class ScheduleEditScreen extends ConsumerStatefulWidget {
@@ -97,14 +98,14 @@ class _ScheduleEditScreenState extends ConsumerState<ScheduleEditScreen> {
   Future<void> _save() async {
     if (_selectedDogId == null || _selectedMissionId == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please select a dog and mission')),
+        SnackBar(content: Text(context.l10n.scheduleEditSelectDogAndMission)),
       );
       return;
     }
 
     if (_selectedType == ScheduleType.weekly && _selectedWeekdays.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please select at least one day')),
+        SnackBar(content: Text(context.l10n.scheduleEditSelectOneDay)),
       );
       return;
     }
@@ -114,7 +115,7 @@ class _ScheduleEditScreenState extends ConsumerState<ScheduleEditScreen> {
     final selectedMission = missions.where((m) => m.id == _selectedMissionId).firstOrNull;
     if (selectedMission == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Selected mission not found')),
+        SnackBar(content: Text(context.l10n.scheduleEditMissionNotFound)),
       );
       return;
     }
@@ -166,7 +167,7 @@ class _ScheduleEditScreenState extends ConsumerState<ScheduleEditScreen> {
       if (success) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(_isEditing ? 'Schedule updated' : 'Schedule created'),
+            content: Text(_isEditing ? context.l10n.scheduleEditUpdated : context.l10n.scheduleEditCreated),
             backgroundColor: Colors.green,
           ),
         );
@@ -175,7 +176,7 @@ class _ScheduleEditScreenState extends ConsumerState<ScheduleEditScreen> {
         // Build 36: Show specific error from scheduler state
         final schedulerState = ref.read(schedulerProvider);
         final errorMsg = schedulerState.error ??
-            (_isEditing ? 'Failed to update schedule' : 'Failed to create schedule');
+            (_isEditing ? context.l10n.scheduleEditUpdateFailed : context.l10n.scheduleEditCreateFailed);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(errorMsg),
@@ -193,17 +194,17 @@ class _ScheduleEditScreenState extends ConsumerState<ScheduleEditScreen> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Delete Schedule'),
-        content: const Text('Are you sure you want to delete this schedule?'),
+        title: Text(context.l10n.schedulerDeleteTitle),
+        content: Text(context.l10n.schedulerDeleteConfirm),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Cancel'),
+            child: Text(context.l10n.cancel),
           ),
           FilledButton(
             onPressed: () => Navigator.pop(ctx, true),
             style: FilledButton.styleFrom(backgroundColor: AppTheme.error),
-            child: const Text('Delete'),
+            child: Text(context.l10n.delete),
           ),
         ],
       ),
@@ -236,7 +237,7 @@ class _ScheduleEditScreenState extends ConsumerState<ScheduleEditScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(_isEditing ? 'Edit Schedule' : 'New Schedule'),
+        title: Text(_isEditing ? context.l10n.scheduleEditTitleEdit : context.l10n.scheduleEditTitleNew),
         actions: [
           if (_isLoading)
             const Padding(
@@ -250,7 +251,7 @@ class _ScheduleEditScreenState extends ConsumerState<ScheduleEditScreen> {
           else
             TextButton(
               onPressed: _save,
-              child: const Text('Save'),
+              child: Text(context.l10n.save),
             ),
         ],
       ),
@@ -258,7 +259,7 @@ class _ScheduleEditScreenState extends ConsumerState<ScheduleEditScreen> {
         padding: const EdgeInsets.all(16),
         children: [
           // Dog selection
-          _SectionTitle('Dog'),
+          _SectionTitle(context.l10n.scheduleEditSectionDog),
           _DropdownCard<String>(
             value: _selectedDogId,
             items: dogs.map((d) => DropdownMenuItem(
@@ -272,13 +273,13 @@ class _ScheduleEditScreenState extends ConsumerState<ScheduleEditScreen> {
               ),
             )).toList(),
             onChanged: (v) => setState(() => _selectedDogId = v),
-            hint: 'Select a dog',
+            hint: context.l10n.scheduleEditSelectDog,
           ),
 
           const SizedBox(height: 24),
 
           // Mission selection
-          _SectionTitle('Training Mission'),
+          _SectionTitle(context.l10n.scheduleEditSectionMission),
           _DropdownCard<String>(
             value: _selectedMissionId,
             items: missions.map((m) => DropdownMenuItem(
@@ -287,18 +288,18 @@ class _ScheduleEditScreenState extends ConsumerState<ScheduleEditScreen> {
                 children: [
                   const Icon(Icons.flag, size: 20),
                   const SizedBox(width: 8),
-                  Text(m.name),
+                  Text(m.localizedName(context.l10n)),
                 ],
               ),
             )).toList(),
             onChanged: (v) => setState(() => _selectedMissionId = v),
-            hint: 'Select a mission',
+            hint: context.l10n.scheduleEditSelectMission,
           ),
 
           const SizedBox(height: 24),
 
           // Time selection
-          _SectionTitle('Time'),
+          _SectionTitle(context.l10n.scheduleEditSectionTime),
           _TimePickerCard(
             time: _selectedTime,
             onTap: _selectTime,
@@ -307,7 +308,7 @@ class _ScheduleEditScreenState extends ConsumerState<ScheduleEditScreen> {
           const SizedBox(height: 24),
 
           // Repeat type
-          _SectionTitle('Repeat'),
+          _SectionTitle(context.l10n.scheduleEditSectionRepeat),
           _RepeatTypeSelector(
             selectedType: _selectedType,
             onChanged: (type) => setState(() => _selectedType = type),
@@ -328,7 +329,7 @@ class _ScheduleEditScreenState extends ConsumerState<ScheduleEditScreen> {
             OutlinedButton.icon(
               onPressed: _isLoading ? null : _delete,
               icon: const Icon(Icons.delete, color: AppTheme.error),
-              label: const Text('Delete Schedule'),
+              label: Text(context.l10n.schedulerDeleteTitle),
               style: OutlinedButton.styleFrom(
                 foregroundColor: AppTheme.error,
                 side: const BorderSide(color: AppTheme.error),
@@ -411,10 +412,6 @@ class _TimePickerCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final hour = time.hourOfPeriod == 0 ? 12 : time.hourOfPeriod;
-    final period = time.period == DayPeriod.am ? 'AM' : 'PM';
-    final minute = time.minute.toString().padLeft(2, '0');
-
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(12),
@@ -431,7 +428,7 @@ class _TimePickerCard extends StatelessWidget {
             const Icon(Icons.access_time, color: AppTheme.primary),
             const SizedBox(width: 12),
             Text(
-              '$hour:$minute $period',
+              time.format(context),
               style: const TextStyle(
                 fontSize: 24,
                 fontWeight: FontWeight.bold,
@@ -491,7 +488,7 @@ class _RepeatTypeSelector extends StatelessWidget {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      _labelForType(type),
+                      _labelForType(context, type),
                       style: TextStyle(
                         fontSize: 12,
                         fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
@@ -521,14 +518,14 @@ class _RepeatTypeSelector extends StatelessWidget {
     }
   }
 
-  String _labelForType(ScheduleType type) {
+  String _labelForType(BuildContext context, ScheduleType type) {
     switch (type) {
       case ScheduleType.once:
-        return 'Once';
+        return context.l10n.scheduleEditOnce;
       case ScheduleType.daily:
-        return 'Daily';
+        return context.l10n.scheduleEditDaily;
       case ScheduleType.weekly:
-        return 'Weekly';
+        return context.l10n.scheduleEditWeekly;
     }
   }
 }
@@ -542,10 +539,10 @@ class _WeekdaySelector extends StatelessWidget {
     required this.onToggle,
   });
 
-  static const _dayLabels = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
-
   @override
   Widget build(BuildContext context) {
+    // Sunday-first, one label per weekday (localized in the ARB).
+    final dayLabels = context.l10n.scheduleEditWeekdayLetters.split(',');
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
       children: List.generate(7, (index) {
@@ -567,7 +564,7 @@ class _WeekdaySelector extends StatelessWidget {
             ),
             child: Center(
               child: Text(
-                _dayLabels[index],
+                dayLabels[index],
                 style: TextStyle(
                   fontWeight: FontWeight.bold,
                   color: isSelected

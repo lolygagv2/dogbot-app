@@ -10,6 +10,8 @@ import 'auth_provider.dart';
 import 'connection_provider.dart';
 import 'device_provider.dart';
 import 'settings_provider.dart';
+import '../../l10n/l10n.dart';
+import 'l10n_provider.dart';
 
 /// Outcome of [PairedDevicesNotifier.unpairDevice]. [orphaned] means the relay
 /// reported 404 — i.e. the pairing row points to a device that doesn't exist
@@ -60,6 +62,8 @@ final pairedDevicesProvider =
 /// Paired devices state notifier
 class PairedDevicesNotifier extends StateNotifier<PairedDevicesState> {
   final Ref _ref;
+
+  AppLocalizations get _l => _ref.read(l10nProvider);
   StreamSubscription? _deviceStatusSubscription;
 
   /// Build 94: device IDs the user has chosen to hide from the list because
@@ -219,7 +223,7 @@ class PairedDevicesNotifier extends StateNotifier<PairedDevicesState> {
       } else {
         state = state.copyWith(
           isLoading: false,
-          error: 'Failed to pair device',
+          error: _l.pairErrPairFailed,
         );
         return false;
       }
@@ -260,9 +264,7 @@ class PairedDevicesNotifier extends StateNotifier<PairedDevicesState> {
 
     state = state.copyWith(
       isLoading: false,
-      error: code == null
-          ? 'Network error. Check your connection.'
-          : 'Failed to unpair device (status $code)',
+      error: code == null ? _l.pairErrNetwork : _l.pairErrUnpairFailed(code),
     );
     return UnpairOutcome.error;
   }
@@ -311,23 +313,23 @@ class PairedDevicesNotifier extends StateNotifier<PairedDevicesState> {
   String _parseError(dynamic e) {
     final errorStr = e.toString().toLowerCase();
     if (errorStr.contains('401') || errorStr.contains('403')) {
-      return 'Not authorized. Please log in again.';
+      return _l.errNotAuthorizedLogin;
     } else if (errorStr.contains('404')) {
-      return 'Device not found. Check the device ID.';
+      return _l.pairErrDeviceNotFound;
     } else if (errorStr.contains('409')) {
-      return 'Device already paired to your account.';
+      return _l.pairErrAlreadyPaired;
     } else if (errorStr.contains('503') ||
         errorStr.contains('unavailable') ||
         errorStr.contains('offline')) {
       // Issue 6b: Show "Robot unavailable" when robot is offline
-      return 'Robot unavailable. Make sure it is powered on and connected.';
+      return _l.pairErrRobotUnavailable;
     } else if (errorStr.contains('timeout')) {
-      return 'Connection timed out. Robot may be unavailable.';
+      return _l.pairErrTimeout;
     } else if (errorStr.contains('socketexception') ||
         errorStr.contains('connection')) {
-      return 'Network error. Check your connection.';
+      return _l.pairErrNetwork;
     }
-    return 'An error occurred. Please try again.';
+    return _l.pairErrGeneric;
   }
 
   @override

@@ -7,6 +7,7 @@ import '../../../domain/providers/coach_provider.dart';
 import '../../../domain/providers/connection_provider.dart';
 import '../../../domain/providers/dog_profiles_provider.dart';
 import '../../../domain/providers/telemetry_provider.dart';
+import '../../../l10n/l10n.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/video/smart_video_view.dart';
 
@@ -141,7 +142,7 @@ class _CoachScreenState extends ConsumerState<CoachScreen> {
                           ),
                           const SizedBox(width: 6),
                           Text(
-                            coachState.isActive ? 'COACHING' : 'STOPPED',
+                            coachState.isActive ? context.l10n.coachCoachingBadge : context.l10n.coachStoppedBadge,
                             style: const TextStyle(
                               color: Colors.white,
                               fontSize: 12,
@@ -208,7 +209,7 @@ class _CoachScreenState extends ConsumerState<CoachScreen> {
                               Text(
                                 // Priority: detection event dog name > coach state > fallback
                                 // Do NOT use selectedDog.name — that locks to profile selection
-                                coachState.dogName ?? 'Dog Detected',
+                                coachState.dogName ?? context.l10n.coachDogDetected,
                                 style: const TextStyle(
                                   color: Colors.white,
                                   fontSize: 16,
@@ -243,9 +244,9 @@ class _CoachScreenState extends ConsumerState<CoachScreen> {
                             ],
                           ),
                           const SizedBox(height: 12),
-                          const Text(
-                            'When dog visible:',
-                            style: TextStyle(
+                          Text(
+                            context.l10n.coachWhenDogVisible,
+                            style: const TextStyle(
                               color: Colors.white70,
                               fontSize: 12,
                             ),
@@ -268,11 +269,11 @@ class _CoachScreenState extends ConsumerState<CoachScreen> {
                                             .forceTrick(behavior);
                                         if (!ok && context.mounted) {
                                           ScaffoldMessenger.of(context)
-                                              .showSnackBar(const SnackBar(
+                                              .showSnackBar(SnackBar(
                                             content: Text(
-                                              'Select a dog or wait for the camera to identify one.',
+                                              context.l10n.coachSelectDogHint,
                                             ),
-                                            duration: Duration(seconds: 2),
+                                            duration: const Duration(seconds: 2),
                                           ));
                                         }
                                       }
@@ -311,9 +312,9 @@ class _CoachScreenState extends ConsumerState<CoachScreen> {
                           ),
                         ),
                         icon: const Icon(Icons.stop_circle),
-                        label: const Text(
-                          'Exit Coach Mode',
-                          style: TextStyle(
+                        label: Text(
+                          context.l10n.coachExit,
+                          style: const TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.bold,
                           ),
@@ -349,8 +350,8 @@ class _DogChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final dogLabel = detection.displayName;
-    final behaviorLabel = AppTheme.getBehaviorDisplayName(detection.behavior).toUpperCase();
+    final dogLabel = detection.localizedDisplayName(context.l10n);
+    final behaviorLabel = behaviorDisplayName(context.l10n, detection.behavior).toUpperCase();
     final confidence = detection.confidence;
     final color = detection.dogId != null
         ? _dogColor
@@ -464,7 +465,7 @@ class _TrickChip extends StatelessWidget {
               const SizedBox(width: 4),
             ],
             Text(
-              AppTheme.getBehaviorDisplayName(behavior).toUpperCase(),
+              behaviorDisplayName(context.l10n, behavior).toUpperCase(),
               style: TextStyle(
                 color: isHighlighted
                     ? Colors.green
@@ -521,7 +522,7 @@ class _RewardFlash extends StatelessWidget {
             const Icon(Icons.celebration, color: Colors.white, size: 24),
             const SizedBox(width: 8),
             Text(
-              behavior != null ? '${AppTheme.getBehaviorDisplayName(behavior!).toUpperCase()}!' : 'GOOD!',
+              behavior != null ? context.l10n.coachBehaviorBang(AppTheme.getBehaviorDisplayName(behavior!).toUpperCase()) : context.l10n.coachGoodBang,
               style: const TextStyle(
                 color: Colors.white,
                 fontSize: 20,

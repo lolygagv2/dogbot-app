@@ -8,6 +8,7 @@ import '../../../domain/providers/connection_provider.dart';
 import '../../../domain/providers/dog_profiles_provider.dart';
 import '../../../domain/providers/missions_provider.dart';
 import '../../../domain/providers/programs_provider.dart';
+import '../../../l10n/l10n.dart';
 import '../../theme/app_theme.dart';
 
 class ProgramDetailScreen extends ConsumerWidget {
@@ -25,8 +26,8 @@ class ProgramDetailScreen extends ConsumerWidget {
 
     if (program == null) {
       return Scaffold(
-        appBar: AppBar(title: const Text('Program')),
-        body: const Center(child: Text('Program not found')),
+        appBar: AppBar(title: Text(context.l10n.programTitle)),
+        body: Center(child: Text(context.l10n.programNotFound)),
       );
     }
 
@@ -35,13 +36,13 @@ class ProgramDetailScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(program.name),
+        title: Text(program.localizedName(context.l10n)),
         actions: [
           if (isActive)
             IconButton(
               icon: const Icon(Icons.stop, color: Colors.red),
               onPressed: () => ref.read(programsProvider.notifier).stopProgram(),
-              tooltip: 'Stop Program',
+              tooltip: context.l10n.programStop,
             ),
         ],
       ),
@@ -64,7 +65,7 @@ class ProgramDetailScreen extends ConsumerWidget {
 
           // Mission sequence
           Text(
-            'Mission Sequence',
+            context.l10n.programMissionSequence,
             style: TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.w600,
@@ -165,9 +166,9 @@ class _ProgramHeader extends StatelessWidget {
                       color: Colors.white.withOpacity(0.2),
                       borderRadius: BorderRadius.circular(8),
                     ),
-                    child: const Text(
-                      'RUNNING',
-                      style: TextStyle(
+                    child: Text(
+                      context.l10n.programRunningBadge,
+                      style: const TextStyle(
                         color: Colors.white,
                         fontSize: 10,
                         fontWeight: FontWeight.bold,
@@ -176,7 +177,7 @@ class _ProgramHeader extends StatelessWidget {
                     ),
                   ),
                 Text(
-                  program.name,
+                  program.localizedName(context.l10n),
                   style: TextStyle(
                     fontSize: 20,
                     fontWeight: FontWeight.bold,
@@ -185,7 +186,7 @@ class _ProgramHeader extends StatelessWidget {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  program.description,
+                  program.localizedDescription(context.l10n),
                   style: TextStyle(
                     fontSize: 13,
                     color: isActive ? Colors.white.withOpacity(0.9) : Colors.purple.shade700,
@@ -232,8 +233,8 @@ class _ActiveProgress extends StatelessWidget {
               const SizedBox(width: 8),
               Text(
                 progress.isResting
-                    ? 'Rest Break'
-                    : 'Mission ${progress.currentMissionIndex + 1} of ${progress.totalMissions}',
+                    ? context.l10n.programRestBreak
+                    : context.l10n.missionsMissionOf(progress.currentMissionIndex + 1, progress.totalMissions),
                 style: const TextStyle(
                   fontWeight: FontWeight.w600,
                   fontSize: 16,
@@ -256,12 +257,12 @@ class _ActiveProgress extends StatelessWidget {
           const SizedBox(height: 8),
           if (progress.isResting)
             Text(
-              '${progress.restSecondsRemaining} seconds until next mission',
+              context.l10n.programSecondsUntilNext(progress.restSecondsRemaining),
               style: TextStyle(color: Colors.amber.shade300),
             )
           else
             Text(
-              '${(progress.progress * 100).toInt()}% through program',
+              context.l10n.programPercentThrough((progress.progress * 100).toInt()),
               style: TextStyle(color: AppTheme.textSecondary),
             ),
         ],
@@ -291,8 +292,8 @@ class _MissionSequenceItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final name = mission?.name ?? missionId.replaceAll('_', ' ');
-    final description = mission?.description ?? '';
+    final name = mission?.localizedName(context.l10n) ?? missionIdDisplayName(context.l10n, missionId);
+    final description = mission?.localizedDescription(context.l10n) ?? '';
 
     return Column(
       children: [
@@ -376,9 +377,9 @@ class _MissionSequenceItem extends StatelessWidget {
                     color: Colors.purple,
                     borderRadius: BorderRadius.circular(12),
                   ),
-                  child: const Text(
-                    'NOW',
-                    style: TextStyle(
+                  child: Text(
+                    context.l10n.programNowBadge,
+                    style: const TextStyle(
                       color: Colors.white,
                       fontSize: 10,
                       fontWeight: FontWeight.bold,
@@ -402,7 +403,7 @@ class _MissionSequenceItem extends StatelessWidget {
                 Icon(Icons.timer, size: 14, color: AppTheme.textTertiary),
                 const SizedBox(width: 4),
                 Text(
-                  '${restSeconds}s rest',
+                  context.l10n.missionsRestChip(restSeconds),
                   style: TextStyle(
                     fontSize: 11,
                     color: AppTheme.textTertiary,
@@ -433,7 +434,7 @@ class _ProgramInfo extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Program Details',
+            context.l10n.programDetails,
             style: TextStyle(
               fontWeight: FontWeight.w600,
               color: AppTheme.textPrimary,
@@ -442,32 +443,32 @@ class _ProgramInfo extends StatelessWidget {
           const SizedBox(height: 12),
           _InfoRow(
             icon: Icons.playlist_play,
-            label: 'Total Missions',
+            label: context.l10n.programTotalMissions,
             value: '${program.missionIds.length}',
           ),
           const SizedBox(height: 8),
           _InfoRow(
             icon: Icons.timer,
-            label: 'Rest Between Missions',
-            value: '${program.restSecondsBetween} seconds',
+            label: context.l10n.programRestBetween,
+            value: context.l10n.programSecondsValue(program.restSecondsBetween),
           ),
           const SizedBox(height: 8),
           _InfoRow(
             icon: Icons.schedule,
-            label: 'Estimated Time',
-            value: _estimateTime(program),
+            label: context.l10n.programEstimatedTime,
+            value: _estimateTime(context, program),
           ),
         ],
       ),
     );
   }
 
-  String _estimateTime(Program program) {
+  String _estimateTime(BuildContext context, Program program) {
     // Rough estimate: 2-3 minutes per mission + rest periods
     final missionMinutes = program.missionIds.length * 2.5;
     final restMinutes = (program.missionIds.length - 1) * program.restSecondsBetween / 60;
     final totalMinutes = (missionMinutes + restMinutes).round();
-    return '$totalMinutes-${totalMinutes + 5} minutes';
+    return context.l10n.programMinutesRange(totalMinutes, totalMinutes + 5);
   }
 }
 
@@ -536,7 +537,7 @@ class _StartButton extends StatelessWidget {
             ),
             icon: const Icon(Icons.play_arrow, size: 28),
             label: Text(
-              selectedDog != null ? 'Start with $selectedDog' : 'Start Program',
+              selectedDog != null ? context.l10n.programStartWith(selectedDog!) : context.l10n.programStart,
               style: const TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
@@ -547,13 +548,13 @@ class _StartButton extends StatelessWidget {
         if (!isConnected) ...[
           const SizedBox(height: 8),
           Text(
-            'Connect to robot to start',
+            context.l10n.programConnectToStart,
             style: TextStyle(color: AppTheme.textTertiary, fontSize: 12),
           ),
         ] else if (hasOtherActive) ...[
           const SizedBox(height: 8),
           Text(
-            'Stop current training first',
+            context.l10n.programStopCurrentFirst,
             style: TextStyle(color: Colors.orange.shade300, fontSize: 12),
           ),
         ],

@@ -94,6 +94,18 @@ Generated files (`*.g.dart`, `*.freezed.dart`) are excluded from analysis via `a
 LED patterns: `breathing`, `rainbow`, `celebration`, `searching`, `alert`, `idle`
 Modes: `idle`, `guardian`, `training`, `manual`, `docking`
 
+## Localization (i18n)
+
+The app ships English (template) and Korean via Flutter gen-l10n.
+
+- Strings live in `lib/l10n/app_en.arb` (template) and `lib/l10n/app_ko.arb`. Every key must exist in both.
+- Widgets use `context.l10n.someKey` (extension in `lib/l10n/l10n.dart`; import that file, never `app_localizations.dart` directly).
+- Model/enum display labels are localized in `lib/l10n/model_labels.dart` (extensions taking `AppLocalizations`), not on the models.
+- Providers with no `BuildContext` use `ref.read(l10nProvider)` (`lib/domain/providers/l10n_provider.dart`).
+- The user-chosen language is `localeProvider` (Settings → Language: system / English / 한국어), persisted in SharedPreferences.
+- Never hardcode a user-visible English string in a widget. Add a key (camelCase, feature-prefixed, placeholders for interpolation) to both ARBs and run `flutter gen-l10n` (also runs on every `flutter run`/`build`).
+- Platform declarations: `CFBundleLocalizations` in `ios/Runner/Info.plist`, `android:localeConfig` → `android/app/src/main/res/xml/locales_config.xml`. Add new languages to both.
+
 ## Theme
 
 Dark theme only with neon/cyberpunk aesthetic. Primary color is cyan (#00E5FF) matching WIM-Z LED.

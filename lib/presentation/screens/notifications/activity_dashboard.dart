@@ -1,12 +1,14 @@
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:intl/intl.dart';
 
 import '../../../data/models/dog_profile.dart';
 import '../../../data/models/notification_event.dart';
 import '../../../domain/providers/analytics_provider.dart';
 import '../../../domain/providers/dog_profiles_provider.dart';
 import '../../../domain/providers/notifications_provider.dart';
+import '../../../l10n/l10n.dart';
 import '../../theme/app_theme.dart';
 
 /// Activity dashboard — "the money slide" for investors.
@@ -21,10 +23,10 @@ class ActivityDashboard extends ConsumerWidget {
     final effectiveDogId = dogId ?? ref.watch(selectedDogProvider)?.id;
 
     if (effectiveDogId == null) {
-      return const Center(
+      return Center(
         child: Text(
-          'No dog selected',
-          style: TextStyle(color: AppTheme.textSecondary),
+          context.l10n.activityNoDogSelected,
+          style: const TextStyle(color: AppTheme.textSecondary),
         ),
       );
     }
@@ -60,7 +62,7 @@ class _SummaryStatsRow extends ConsumerWidget {
         Expanded(
           child: _CompactStatCard(
             value: analytics.treatCount.toString(),
-            label: 'Treats',
+            label: context.l10n.activityStatTreats,
             icon: Icons.cookie,
             color: AppTheme.accent,
           ),
@@ -69,7 +71,7 @@ class _SummaryStatsRow extends ConsumerWidget {
         Expanded(
           child: _CompactStatCard(
             value: analytics.detectionCount.toString(),
-            label: 'Detections',
+            label: context.l10n.activityStatDetections,
             icon: Icons.visibility,
             color: AppTheme.primary,
           ),
@@ -78,7 +80,7 @@ class _SummaryStatsRow extends ConsumerWidget {
         Expanded(
           child: _CompactStatCard(
             value: '${analytics.missionsSucceeded}/${analytics.missionsAttempted}',
-            label: 'Missions',
+            label: context.l10n.activityStatMissions,
             icon: Icons.flag,
             color: Colors.green,
           ),
@@ -87,7 +89,7 @@ class _SummaryStatsRow extends ConsumerWidget {
         Expanded(
           child: _CompactStatCard(
             value: analytics.coachRewards.toString(),
-            label: 'Coach',
+            label: context.l10n.activityStatCoach,
             icon: Icons.school,
             color: Colors.orange,
           ),
@@ -150,12 +152,12 @@ class _CompactStatCard extends StatelessWidget {
 enum _ActivitySeries { treats, barks, behaviors, missions, alerts }
 
 extension _ActivitySeriesSpec on _ActivitySeries {
-  String get label => switch (this) {
-        _ActivitySeries.treats => 'Treats',
-        _ActivitySeries.barks => 'Barks',
-        _ActivitySeries.behaviors => 'Behaviors',
-        _ActivitySeries.missions => 'Missions',
-        _ActivitySeries.alerts => 'Alerts',
+  String label(AppLocalizations l) => switch (this) {
+        _ActivitySeries.treats => l.activitySeriesTreats,
+        _ActivitySeries.barks => l.activitySeriesBarks,
+        _ActivitySeries.behaviors => l.activitySeriesBehaviors,
+        _ActivitySeries.missions => l.activitySeriesMissions,
+        _ActivitySeries.alerts => l.activitySeriesAlerts,
       };
 
   Color get color => switch (this) {
@@ -206,20 +208,20 @@ class _ActivityLineChart extends ConsumerWidget {
     final maxY = (maxCount < 4 ? 4 : maxCount + 1).toDouble();
     final yInterval = (maxY / 4).ceilToDouble();
 
-    final dayLabels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-    // Align labels to the actual days of the week
+    // Align labels to the actual days of the week (locale-aware short names)
+    final dayFormat = DateFormat.E(Localizations.localeOf(context).toString());
     final now = DateTime.now();
     final labels = List.generate(7, (i) {
       final day = now.subtract(Duration(days: 6 - i));
-      return dayLabels[day.weekday - 1];
+      return dayFormat.format(day);
     });
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
-          'Activity (7 days)',
-          style: TextStyle(
+        Text(
+          context.l10n.activityChartTitle,
+          style: const TextStyle(
             fontSize: 14,
             fontWeight: FontWeight.w600,
             color: AppTheme.textPrimary,
@@ -246,7 +248,7 @@ class _ActivityLineChart extends ConsumerWidget {
                   ),
                 ),
                 label: Text(
-                  s.label,
+                  s.label(context.l10n),
                   style: TextStyle(
                     fontSize: 11,
                     color: visible.contains(s)
@@ -281,10 +283,10 @@ class _ActivityLineChart extends ConsumerWidget {
             border: Border.all(color: AppTheme.glassBorder),
           ),
           child: activeSeries.isEmpty
-              ? const Center(
+              ? Center(
                   child: Text(
-                    'No series selected',
-                    style: TextStyle(color: AppTheme.textTertiary, fontSize: 12),
+                    context.l10n.activityNoSeriesSelected,
+                    style: const TextStyle(color: AppTheme.textTertiary, fontSize: 12),
                   ),
                 )
               : LineChart(
@@ -372,7 +374,7 @@ class _ActivityLineChart extends ConsumerWidget {
                         getTooltipItems: (spots) => [
                           for (final spot in spots)
                             LineTooltipItem(
-                              '${activeSeries[spot.barIndex].label}: ${spot.y.toInt()}',
+                              context.l10n.activitySeriesCount(activeSeries[spot.barIndex].label(context.l10n), spot.y.toInt()),
                               TextStyle(
                                 color: activeSeries[spot.barIndex].color,
                                 fontWeight: FontWeight.bold,
@@ -404,9 +406,9 @@ class _BehaviorEventLog extends ConsumerWidget {
       children: [
         Row(
           children: [
-            const Text(
-              'Recent Events',
-              style: TextStyle(
+            Text(
+              context.l10n.activityRecentEvents,
+              style: const TextStyle(
                 fontSize: 14,
                 fontWeight: FontWeight.w600,
                 color: AppTheme.textPrimary,
@@ -435,7 +437,7 @@ class _BehaviorEventLog extends ConsumerWidget {
             padding: const EdgeInsets.symmetric(vertical: 24),
             child: Center(
               child: Text(
-                'No events yet',
+                context.l10n.activityNoEvents,
                 style: TextStyle(color: AppTheme.textTertiary),
               ),
             ),
@@ -464,7 +466,7 @@ class _EventRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final color = _getEventColor(event.type);
     final icon = _getEventIcon(event.type);
-    final time = _formatTime(event.timestamp);
+    final time = _formatTime(context, event.timestamp);
 
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
@@ -527,18 +529,10 @@ class _EventRow extends StatelessWidget {
     };
   }
 
-  static const _months = [
-    'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-    'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
-  ];
-
-  String _formatTime(DateTime timestamp) {
+  String _formatTime(BuildContext context, DateTime timestamp) {
     // Defensive: any UTC-parsed instant renders in device-local time.
-    timestamp = timestamp.toLocal();
-    final hour = timestamp.hour;
-    final minute = timestamp.minute.toString().padLeft(2, '0');
-    final period = hour >= 12 ? 'PM' : 'AM';
-    final hour12 = hour > 12 ? hour - 12 : (hour == 0 ? 12 : hour);
-    return '${_months[timestamp.month - 1]} ${timestamp.day}, $hour12:$minute $period';
+    // Locale-aware: "Sep 4, 3:04 PM" (en) / "9월 4일 오후 3:04" (ko).
+    final locale = Localizations.localeOf(context).toString();
+    return DateFormat.MMMd(locale).add_jm().format(timestamp.toLocal());
   }
 }

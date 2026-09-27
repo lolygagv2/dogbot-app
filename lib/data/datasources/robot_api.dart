@@ -1,3 +1,5 @@
+import 'dart:ui' show Locale;
+
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -7,10 +9,15 @@ import '../../core/utils/conn_trace.dart';
 import '../models/dog_profile.dart';
 import '../models/mission.dart';
 import '../models/schedule.dart';
+import '../../domain/providers/l10n_provider.dart';
+import '../../l10n/l10n.dart';
 
 /// Provider for RobotApi
 final robotApiProvider = Provider<RobotApi>((ref) {
-  return RobotApi(ref.watch(dioClientProvider));
+  return RobotApi(
+    ref.watch(dioClientProvider),
+    l10n: () => ref.read(l10nProvider),
+  );
 });
 
 /// REST API client for relay server
@@ -19,7 +26,14 @@ final robotApiProvider = Provider<RobotApi>((ref) {
 class RobotApi {
   final Dio _dio;
 
-  RobotApi(this._dio);
+  RobotApi(this._dio, {AppLocalizations Function()? l10n}) : _l10n = l10n;
+
+  /// Localized strings for the few user-facing messages this client
+  /// returns (upload errors). Falls back to English when constructed
+  /// without a provider (tests).
+  final AppLocalizations Function()? _l10n;
+  AppLocalizations get _l =>
+      _l10n?.call() ?? lookupAppLocalizations(const Locale('en'));
 
   /// Check if server is reachable (3-second timeout to avoid hanging)
   Future<bool> healthCheck() async {
@@ -569,7 +583,8 @@ class RobotApi {
         return null; // Success
       }
 
-      final errorMsg = response.data?['error'] ?? 'Upload failed (${response.statusCode})';
+      final errorMsg = response.data?['error'] ??
+          _l.uploadErrFailedStatus('${response.statusCode}');
       print('[MUSIC-UPLOAD] Upload failed: $errorMsg');
       return errorMsg;
     } on DioException catch (e) {
@@ -578,25 +593,25 @@ class RobotApi {
 
       String errorMsg;
       if (statusCode == 413) {
-        errorMsg = 'File too large for server';
+        errorMsg = _l.uploadErrTooLarge;
       } else if (statusCode == 415) {
-        errorMsg = 'Invalid file type - MP3 only';
+        errorMsg = _l.uploadErrInvalidType;
       } else if (statusCode == 401 || statusCode == 403) {
-        errorMsg = 'Not authorized to upload';
+        errorMsg = _l.uploadErrNotAuthorized;
       } else if (statusCode == 503) {
-        errorMsg = 'Robot offline';
+        errorMsg = _l.uploadErrRobotOffline;
       } else if (e.type == DioExceptionType.connectionTimeout ||
                  e.type == DioExceptionType.sendTimeout) {
-        errorMsg = 'Upload timed out - try a smaller file';
+        errorMsg = _l.uploadErrTimeout;
       } else if (e.type == DioExceptionType.connectionError) {
-        errorMsg = 'Connection error - check network';
+        errorMsg = _l.uploadErrConnection;
       } else {
-        errorMsg = e.response?.data?['error'] ?? e.message ?? 'Upload failed';
+        errorMsg = e.response?.data?['error'] ?? e.message ?? _l.uploadErrFailed;
       }
       return errorMsg;
     } catch (e) {
       print('[MUSIC-UPLOAD] Error: $e');
-      return 'Upload error: $e';
+      return _l.uploadErrGeneric('$e');
     }
   }
 

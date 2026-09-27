@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../data/models/telemetry.dart';
 import '../../../domain/providers/control_provider.dart';
 import '../../../domain/providers/telemetry_provider.dart';
+import '../../../l10n/l10n.dart';
 import '../../theme/app_theme.dart';
 
 /// Treat counter indicator for the AppBar.
@@ -110,8 +111,9 @@ class _TreatManagementSheetState extends ConsumerState<_TreatManagementSheet> {
   Widget build(BuildContext context) {
     final remaining = ref.watch(treatsRemainingProvider);
 
+    final l = context.l10n;
     final headline =
-        remaining != null ? '$remaining of $kTreatCapacity' : '—';
+        remaining != null ? l.treatCounterOf(remaining, kTreatCapacity) : '—';
     final bool isEmpty = remaining == 0;
 
     return SafeArea(
@@ -136,7 +138,7 @@ class _TreatManagementSheetState extends ConsumerState<_TreatManagementSheet> {
             ),
             const SizedBox(height: 16),
             Text(
-              'Treats: $headline',
+              l.treatCounterTitle(headline),
               style: const TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
@@ -146,7 +148,7 @@ class _TreatManagementSheetState extends ConsumerState<_TreatManagementSheet> {
             if (remaining != null) ...[
               const SizedBox(height: 4),
               Text(
-                isEmpty ? 'Empty — refill needed' : 'treats remaining',
+                isEmpty ? l.treatCounterEmptyRefill : l.treatCounterRemainingLabel,
                 style: TextStyle(
                   fontSize: 13,
                   fontWeight: isEmpty ? FontWeight.w600 : FontWeight.w400,
@@ -165,9 +167,9 @@ class _TreatManagementSheetState extends ConsumerState<_TreatManagementSheet> {
                   Navigator.pop(context);
                 },
                 icon: const Icon(Icons.refresh),
-                label: const Text(
-                  'Refilled — Reset Counter',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                label: Text(
+                  l.treatCounterRefilledReset,
+                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                 ),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppTheme.accent,
@@ -207,7 +209,7 @@ class _TreatManagementSheetState extends ConsumerState<_TreatManagementSheet> {
                       )
                     : const Icon(Icons.build_circle_outlined),
                 label: Text(
-                  _isClearing ? 'Clearing...' : 'Clear Jam',
+                  _isClearing ? l.treatCounterClearing : l.treatCounterClearJam,
                   style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                 ),
                 style: ElevatedButton.styleFrom(
@@ -232,7 +234,7 @@ class _TreatManagementSheetState extends ConsumerState<_TreatManagementSheet> {
                       LengthLimitingTextInputFormatter(2),
                     ],
                     decoration: InputDecoration(
-                      hintText: 'Treats loaded (max $kTreatCapacity)',
+                      hintText: l.treatCounterLoadedHint(kTreatCapacity),
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
                       ),
@@ -265,7 +267,7 @@ class _TreatManagementSheetState extends ConsumerState<_TreatManagementSheet> {
                       borderRadius: BorderRadius.circular(12),
                     ),
                   ),
-                  child: const Text('Set'),
+                  child: Text(l.treatCounterSet),
                 ),
               ],
             ),

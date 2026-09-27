@@ -1,0 +1,2242 @@
+{
+  "@@locale": "en",
+  "appTitle": "WIM-Z",
+  "cancel": "Cancel",
+  "save": "Save",
+  "delete": "Delete",
+  "ok": "OK",
+  "done": "Done",
+  "close": "Close",
+  "retry": "Retry",
+  "edit": "Edit",
+  "add": "Add",
+  "back": "Back",
+  "yes": "Yes",
+  "no": "No",
+  "confirm": "Confirm",
+  "remove": "Remove",
+  "loading": "Loading...",
+  "error": "Error",
+  "unknown": "Unknown",
+  "on": "On",
+  "off": "Off",
+  "enabled": "Enabled",
+  "disabled": "Disabled",
+  "connected": "Connected",
+  "disconnected": "Disconnected",
+  "connecting": "Connecting...",
+  "settings": "Settings",
+  "signOut": "Sign Out",
+  "none": "None",
+  "today": "Today",
+  "yesterday": "Yesterday",
+  "language": "Language",
+  "languageSystemDefault": "System default",
+  "languageEnglish": "English",
+  "languageKorean": "한국어 (Korean)",
+  "languageSubtitle": "Choose the app display language",
+  "appRateLimited": "Too many commands, slow down",
+  "appReconnecting": "Reconnecting...",
+  "appTapToRetry": "Tap to retry",
+  "navHome": "Home",
+  "navDogs": "Dogs",
+  "navMissions": "Missions",
+  "navPhotos": "Photos",
+  "navActivity": "Activity",
+  "unknownError": "Unknown error",
+  "quickActionsSongFallback": "song",
+  "quickActionsFileFallback": "file",
+  "quickActionsDeleted": "Deleted \"{filename}\"",
+  "@quickActionsDeleted": {
+    "placeholders": {
+      "filename": {
+        "type": "String"
+      }
+    }
+  },
+  "quickActionsDeleteFailed": "Delete failed: {error}",
+  "@quickActionsDeleteFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "quickActionsUploaded": "Uploaded \"{filename}\" successfully",
+  "@quickActionsUploaded": {
+    "placeholders": {
+      "filename": {
+        "type": "String"
+      }
+    }
+  },
+  "quickActionsUploadFailed": "Upload failed: {error}",
+  "@quickActionsUploadFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "quickActionsTreat": "Treat",
+  "quickActionsGood": "Good",
+  "quickActionsCallDog": "Call Dog",
+  "quickActionsWant": "Want?",
+  "quickActionsNo": "No",
+  "quickActionsQuiet": "Quiet",
+  "quickActionsSit": "Sit",
+  "quickActionsLedPattern": "LED: {pattern}",
+  "@quickActionsLedPattern": {
+    "placeholders": {
+      "pattern": {
+        "type": "String"
+      }
+    }
+  },
+  "quickActionsLedNotSent": "Not connected — LED not sent",
+  "quickActionsSelectMp3": "Please select an MP3 file",
+  "quickActionsFileAccessFailed": "Could not access file",
+  "quickActionsFileTooLarge": "File too large (max 20MB)",
+  "quickActionsUploadLocalUnavailable": "Music upload not available in local mode",
+  "quickActionsNotAuthenticated": "Not authenticated - please login",
+  "quickActionsUploading": "Uploading \"{filename}\"...",
+  "@quickActionsUploading": {
+    "placeholders": {
+      "filename": {
+        "type": "String"
+      }
+    }
+  },
+  "quickActionsFilePickerFailed": "Could not open file picker: {error}",
+  "@quickActionsFilePickerFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "quickActionsSelectDogFirst": "Please select a dog first",
+  "quickActionsDeleteSongTitle": "Delete Song",
+  "quickActionsDeleteSongConfirm": "Delete \"{name}\" from the playlist?",
+  "@quickActionsDeleteSongConfirm": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "quickActionsDeletingSong": "Deleting \"{name}\"...",
+  "@quickActionsDeletingSong": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "ledPatternRainbow": "Rainbow",
+  "ledPatternFire": "Fire",
+  "ledPatternBlue": "Blue",
+  "ledPatternChase": "Chase",
+  "ledPatternAmbient": "Ambient",
+  "quickActionsLighting": "Lighting",
+  "quickActionsBluLight": "BluLight",
+  "dismiss": "Dismiss",
+  "pttTalk": "Talk",
+  "pttRecording": "Recording",
+  "pttSent": "Sent ✓",
+  "pttSeconds": "{sec}s",
+  "@pttSeconds": {
+    "placeholders": {
+      "sec": {
+        "type": "int"
+      }
+    }
+  },
+  "pttSending": "Sending...",
+  "pttPlaying": "Playing...",
+  "pttListening": "Listening...",
+  "pttTapToListen": "Tap to listen",
+  "panTiltPan": "P:{value}",
+  "@panTiltPan": {
+    "placeholders": {
+      "value": {
+        "type": "String"
+      }
+    }
+  },
+  "panTiltTilt": "T:{value}",
+  "@panTiltTilt": {
+    "placeholders": {
+      "value": {
+        "type": "String"
+      }
+    }
+  },
+  "panTiltCenter": "Center",
+  "audioMuteListening": "Listening to robot...",
+  "audioMuteUnmute": "Unmute audio",
+  "audioMuteMute": "Mute audio",
+  "mjpegUnavailable": "Video unavailable",
+  "mjpegConnecting": "Connecting to camera...",
+  "videoHudFps": "FPS",
+  "videoHudBattery": "BAT",
+  "videoHudPan": "PAN",
+  "videoHudRec": "REC",
+  "videoSavedNotWired": "Available once the robot ships recording download (Chain REC)",
+  "videoSavedSampleData": "SAMPLE DATA — not live",
+  "videoSavedTitle": "Video saved",
+  "videoSavedOnRobotAt": "SAVED ON ROBOT AT",
+  "videoSavedPathCopied": "Path copied",
+  "videoSavedRetention": "retention: {retentionClass}",
+  "@videoSavedRetention": {
+    "placeholders": {
+      "retentionClass": {
+        "type": "String"
+      }
+    }
+  },
+  "videoSavedSaveToPhone": "Save to Phone",
+  "videoSavedShare": "Share",
+  "webrtcWaitingForConnection": "Waiting for connection...",
+  "webrtcTapToConnect": "Tap to connect",
+  "webrtcConnectingVideo": "Connecting video...",
+  "webrtcConnectionFailed": "Video connection failed",
+  "webrtcInitializingRenderer": "Initializing renderer...",
+  "webrtcWaitingForStream": "Waiting for video stream...",
+  "webrtcReceivingVideo": "Receiving video...",
+  "videoSavedToGallery": "Video saved to gallery!",
+  "videoSavedShort": "Video saved!",
+  "photoSavedToGallery": "Photo saved to gallery!",
+  "photoSavedShort": "Photo saved!",
+  "gaugeCharging": "CHARGING",
+  "gaugeBattery": "BATTERY",
+  "gaugeLeft": "L",
+  "gaugeRight": "R",
+  "schedulerTitle": "Training Scheduler",
+  "schedulerAddSchedule": "Add Schedule",
+  "schedulerAutoScheduler": "Auto-Scheduler",
+  "schedulerRunsAutomatically": "Training runs automatically",
+  "schedulerPaused": "Schedules paused",
+  "schedulerEmptyTitle": "No Scheduled Training",
+  "schedulerEmptyBody": "Schedule automatic training sessions\nfor your dog at specific times",
+  "schedulerDeleteTitle": "Delete Schedule",
+  "schedulerDeleteConfirm": "Are you sure you want to delete this schedule?",
+  "schedulerUnknownDog": "Unknown Dog",
+  "schedulerPausedBadge": "PAUSED",
+  "schedulerNextRun": "Next: {next}",
+  "@schedulerNextRun": {
+    "placeholders": {
+      "next": {
+        "type": "String"
+      }
+    }
+  },
+  "scheduleEditSelectDogAndMission": "Please select a dog and mission",
+  "scheduleEditSelectOneDay": "Please select at least one day",
+  "scheduleEditMissionNotFound": "Selected mission not found",
+  "scheduleEditUpdated": "Schedule updated",
+  "scheduleEditCreated": "Schedule created",
+  "scheduleEditUpdateFailed": "Failed to update schedule",
+  "scheduleEditCreateFailed": "Failed to create schedule",
+  "scheduleEditTitleEdit": "Edit Schedule",
+  "scheduleEditTitleNew": "New Schedule",
+  "scheduleEditSectionDog": "Dog",
+  "scheduleEditSelectDog": "Select a dog",
+  "scheduleEditSectionMission": "Training Mission",
+  "scheduleEditSelectMission": "Select a mission",
+  "scheduleEditSectionTime": "Time",
+  "scheduleEditSectionRepeat": "Repeat",
+  "scheduleEditOnce": "Once",
+  "scheduleEditDaily": "Daily",
+  "scheduleEditWeekly": "Weekly",
+  "scheduleEditWeekdayLetters": "S,M,T,W,T,F,S",
+  "missionsTitle": "Training",
+  "missionsProgramsHeader": "Training Programs",
+  "missionsProgramsSubtitle": "Multi-mission sequences with rest periods",
+  "missionsIndividualHeader": "Individual Missions",
+  "missionsIndividualSubtitle": "Single training sessions",
+  "missionsNoneConfigured": "No missions configured",
+  "missionsActiveBadge": "ACTIVE",
+  "missionsDriveButton": "DRIVE",
+  "missionsStop": "Stop",
+  "missionsPercentComplete": "{percent}% complete",
+  "@missionsPercentComplete": {
+    "placeholders": {
+      "percent": {
+        "type": "int"
+      }
+    }
+  },
+  "missionsCountChip": "{count} missions",
+  "@missionsCountChip": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "missionsRestChip": "{seconds}s rest",
+  "@missionsRestChip": {
+    "placeholders": {
+      "seconds": {
+        "type": "int"
+      }
+    }
+  },
+  "missionsProgramBadge": "PROGRAM",
+  "missionsRestBreak": "Rest break: {seconds}s",
+  "@missionsRestBreak": {
+    "placeholders": {
+      "seconds": {
+        "type": "int"
+      }
+    }
+  },
+  "missionsMissionOf": "Mission {current} of {total}",
+  "@missionsMissionOf": {
+    "placeholders": {
+      "current": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "missionsCoachMode": "Coach Mode",
+  "missionsCoachWatching": "Watching for good behaviors...",
+  "missionsCoachSubtitle": "Auto-reward when your dog performs tricks",
+  "missionDetailTitle": "Mission",
+  "missionDetailNotFound": "Mission not found",
+  "missionDetailSectionDetails": "Mission Details",
+  "missionDetailTargetBehavior": "Target Behavior",
+  "missionDetailHoldDuration": "Hold Duration",
+  "missionDetailSecondsShort": "{seconds}s",
+  "@missionDetailSecondsShort": {
+    "placeholders": {
+      "seconds": {
+        "type": "String"
+      }
+    }
+  },
+  "missionDetailCooldown": "Cooldown",
+  "missionDetailCooldownValue": "{seconds}s between rewards",
+  "@missionDetailCooldownValue": {
+    "placeholders": {
+      "seconds": {
+        "type": "int"
+      }
+    }
+  },
+  "missionDetailDailyLimit": "Daily Limit",
+  "missionDetailTreatsCount": "{count} treats",
+  "@missionDetailTreatsCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "missionDetailProgress": "Progress",
+  "missionDetailTreatsGiven": "{given}/{limit} treats given",
+  "@missionDetailTreatsGiven": {
+    "placeholders": {
+      "given": {
+        "type": "int"
+      },
+      "limit": {
+        "type": "int"
+      }
+    }
+  },
+  "missionDetailHowItWorks": "How It Works",
+  "missionDetailBulletWatches": "WIM-Z watches for the \"{behavior}\" behavior",
+  "@missionDetailBulletWatches": {
+    "placeholders": {
+      "behavior": {
+        "type": "String"
+      }
+    }
+  },
+  "missionDetailBulletHold": "Dog must hold for {seconds} seconds",
+  "@missionDetailBulletHold": {
+    "placeholders": {
+      "seconds": {
+        "type": "String"
+      }
+    }
+  },
+  "missionDetailBulletTreat": "Treat is dispensed automatically on success",
+  "missionDetailBulletCooldown": "{seconds}s cooldown between rewards",
+  "@missionDetailBulletCooldown": {
+    "placeholders": {
+      "seconds": {
+        "type": "int"
+      }
+    }
+  },
+  "missionDetailBulletLimit": "Up to {count} treats per session",
+  "@missionDetailBulletLimit": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "missionDetailStopMission": "Stop Mission",
+  "missionDetailRobotNotConnected": "Robot Not Connected",
+  "missionDetailAnotherActive": "Another Mission Active",
+  "missionDetailStarting": "Starting...",
+  "missionDetailStartMission": "Start Mission",
+  "programTitle": "Program",
+  "programNotFound": "Program not found",
+  "programStop": "Stop Program",
+  "programMissionSequence": "Mission Sequence",
+  "programRunningBadge": "RUNNING",
+  "programRestBreak": "Rest Break",
+  "programSecondsUntilNext": "{seconds} seconds until next mission",
+  "@programSecondsUntilNext": {
+    "placeholders": {
+      "seconds": {
+        "type": "int"
+      }
+    }
+  },
+  "programPercentThrough": "{percent}% through program",
+  "@programPercentThrough": {
+    "placeholders": {
+      "percent": {
+        "type": "int"
+      }
+    }
+  },
+  "programNowBadge": "NOW",
+  "programDetails": "Program Details",
+  "programTotalMissions": "Total Missions",
+  "programRestBetween": "Rest Between Missions",
+  "programSecondsValue": "{seconds} seconds",
+  "@programSecondsValue": {
+    "placeholders": {
+      "seconds": {
+        "type": "int"
+      }
+    }
+  },
+  "programEstimatedTime": "Estimated Time",
+  "programMinutesRange": "{min}-{max} minutes",
+  "@programMinutesRange": {
+    "placeholders": {
+      "min": {
+        "type": "int"
+      },
+      "max": {
+        "type": "int"
+      }
+    }
+  },
+  "programStartWith": "Start with {dog}",
+  "@programStartWith": {
+    "placeholders": {
+      "dog": {
+        "type": "String"
+      }
+    }
+  },
+  "programStart": "Start Program",
+  "programConnectToStart": "Connect to robot to start",
+  "programStopCurrentFirst": "Stop current training first",
+  "coachCoachingBadge": "COACHING",
+  "coachStoppedBadge": "STOPPED",
+  "coachDogDetected": "Dog Detected",
+  "coachWhenDogVisible": "When dog visible:",
+  "coachSelectDogHint": "Select a dog or wait for the camera to identify one.",
+  "coachExit": "Exit Coach Mode",
+  "coachGoodBang": "GOOD!",
+  "coachBehaviorBang": "{behavior}!",
+  "@coachBehaviorBang": {
+    "placeholders": {
+      "behavior": {
+        "type": "String"
+      }
+    }
+  },
+  "historyTitle": "Training History",
+  "historyTimeRange": "Time Range",
+  "historyLast7Days": "Last 7 days",
+  "historyLast2Weeks": "Last 2 weeks",
+  "historyLastMonth": "Last month",
+  "historyDogFilter": "Dog",
+  "historyAllDogs": "All Dogs",
+  "historyStatSessions": "Sessions",
+  "historyStatCompleted": "Completed",
+  "historyStatTreats": "Treats",
+  "historyStatSuccess": "Success",
+  "historyInProgress": "In progress",
+  "historyStages": "{done}/{total} stages",
+  "@historyStages": {
+    "placeholders": {
+      "done": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "historyDurationSeconds": "{n}s",
+  "@historyDurationSeconds": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "historyDurationMinutes": "{n}m",
+  "@historyDurationMinutes": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "historyDurationHoursMinutes": "{h}h {m}m",
+  "@historyDurationHoursMinutes": {
+    "placeholders": {
+      "h": {
+        "type": "int"
+      },
+      "m": {
+        "type": "int"
+      }
+    }
+  },
+  "historyEmptyTitle": "No training history",
+  "historyEmptyBody": "Complete some training sessions to see your progress",
+  "signOutConfirmBody": "Are you sure you want to sign out? You will need to log in again.",
+  "settingsSectionConnection": "Connection",
+  "settingsSectionMyRobots": "My Robots",
+  "settingsSectionController": "Controller",
+  "settingsSectionRobotStatus": "Robot Status",
+  "settingsSectionCalibration": "Calibration",
+  "settingsSectionCamera": "Camera",
+  "settingsSectionNightVision": "Night Vision",
+  "settingsSectionVideo": "Video",
+  "settingsSectionAudio": "Audio",
+  "settingsSectionNotifications": "Notifications",
+  "settingsSectionSilentGuardian": "Silent Guardian",
+  "settingsSectionTraining": "Training",
+  "settingsSectionDiagnostics": "Diagnostics",
+  "settingsSectionAbout": "About",
+  "settingsSectionAccount": "Account",
+  "settingsGameController": "Game Controller",
+  "settingsGameControllerSubtitle": "Pair a game controller to the robot",
+  "settingsBattery": "Battery",
+  "settingsTemperature": "Temperature",
+  "settingsNotAvailable": "N/A",
+  "settingsCurrentMode": "Current Mode",
+  "settingsTrainingScheduler": "Training Scheduler",
+  "settingsTrainingSchedulerSubtitle": "Schedule automatic training sessions",
+  "settingsVoiceCommands": "Voice Commands",
+  "settingsVoiceCommandsSubtitle": "Record custom voice commands for your dog",
+  "settingsTestRecording": "Test Recording",
+  "settingsTestRecordingSubtitle": "Run recording diagnostics",
+  "settingsConnectionDiagnostics": "Connection Diagnostics",
+  "settingsConnectionDiagnosticsSubtitle": "WebRTC signaling trace (video connect)",
+  "settingsUiPreviews": "UI Previews",
+  "settingsUiPreviewsSubtitle": "Spec-shaped views on sample data (dev)",
+  "settingsAppName": "WIM-Z App",
+  "settingsAppVersion": "Version {version}",
+  "@settingsAppVersion": {
+    "placeholders": {
+      "version": {
+        "type": "String"
+      }
+    }
+  },
+  "settingsApiVersion": "API Version",
+  "settingsConnectedToRobot": "Connected to Robot ({ip})",
+  "@settingsConnectedToRobot": {
+    "placeholders": {
+      "ip": {
+        "type": "String"
+      }
+    }
+  },
+  "settingsLocalNotConnected": "Local mode — not connected",
+  "settingsDirectViaWifi": "Direct connection via WIMZ WiFi",
+  "settingsConnectedViaCloud": "Connected via Cloud",
+  "settingsRelayHost": "Relay: {host}",
+  "@settingsRelayHost": {
+    "placeholders": {
+      "host": {
+        "type": "String"
+      }
+    }
+  },
+  "settingsLocalRobotDirect": "Local Robot · direct connection (192.168.4.1)",
+  "settingsNoRobotsPaired": "No robots paired — tap to add one",
+  "settingsRobotsPairedActive": "{name} · {count, plural, =1{1 robot} other{{count} robots}} paired",
+  "@settingsRobotsPairedActive": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      },
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "settingsRobotsPairedSelect": "{count, plural, =1{1 robot} other{{count} robots}} paired — tap to select",
+  "@settingsRobotsPairedSelect": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "settingsManageRobots": "Manage Robots",
+  "settingsOtaUpdating": "Updating to {version}: {state}{pct}",
+  "@settingsOtaUpdating": {
+    "placeholders": {
+      "version": {
+        "type": "String"
+      },
+      "state": {
+        "type": "String"
+      },
+      "pct": {
+        "type": "String"
+      }
+    }
+  },
+  "settingsOtaUpdated": "Updated to {version} ✓",
+  "@settingsOtaUpdated": {
+    "placeholders": {
+      "version": {
+        "type": "String"
+      }
+    }
+  },
+  "settingsOtaRolledBack": "Update failed — rolled back safely{detail}",
+  "@settingsOtaRolledBack": {
+    "placeholders": {
+      "detail": {
+        "type": "String"
+      }
+    }
+  },
+  "settingsOtaFailed": "Update failed{detail}",
+  "@settingsOtaFailed": {
+    "placeholders": {
+      "detail": {
+        "type": "String"
+      }
+    }
+  },
+  "settingsOtaNotReported": "Version not reported — robot updater not installed yet",
+  "settingsOtaUpToDateNoRelease": "Up to date — no newer release on server",
+  "settingsOtaAvailable": "Update available: {version}",
+  "@settingsOtaAvailable": {
+    "placeholders": {
+      "version": {
+        "type": "String"
+      }
+    }
+  },
+  "settingsOtaUpToDate": "Up to date",
+  "settingsRobotSoftware": "Robot Software",
+  "settingsUpdateCaps": "UPDATE",
+  "settingsUpdate": "Update",
+  "settingsUpdateRobotSoftware": "Update Robot Software",
+  "settingsUpdateConfirmBody": "Update robot from {from} to {to}?\n\nThe robot must be idle with battery above 30%. It will restart during the update and roll back automatically if anything goes wrong.",
+  "@settingsUpdateConfirmBody": {
+    "placeholders": {
+      "from": {
+        "type": "String"
+      },
+      "to": {
+        "type": "String"
+      }
+    }
+  },
+  "settingsTreats": "Treats",
+  "settingsTreatsOfCapacity": "{remaining} of {capacity}",
+  "@settingsTreatsOfCapacity": {
+    "placeholders": {
+      "remaining": {
+        "type": "int"
+      },
+      "capacity": {
+        "type": "int"
+      }
+    }
+  },
+  "settingsTreatsEmpty": "Empty — refill needed",
+  "settingsTreatsRemaining": "{remaining} remaining",
+  "@settingsTreatsRemaining": {
+    "placeholders": {
+      "remaining": {
+        "type": "int"
+      }
+    }
+  },
+  "settingsTreatsRemainingLow": "{remaining} remaining — running low",
+  "@settingsTreatsRemainingLow": {
+    "placeholders": {
+      "remaining": {
+        "type": "int"
+      }
+    }
+  },
+  "settingsDailyTreatLimit": "Daily Treat Limit",
+  "settingsDailyLimitMax": "Max {count} auto-treats per day",
+  "@settingsDailyLimitMax": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "settingsDailyLimitNone": "No daily limit — unlimited auto-treats",
+  "settingsCameraTrackDog": "Camera Track Dog",
+  "settingsCameraTrackOn": "Camera follows dog during coach/mission mode",
+  "settingsCameraTrackOff": "Camera stays centered",
+  "settingsVideoQuality": "Video Quality",
+  "settingsQualityAuto": "Auto",
+  "settingsQualityLow": "Low",
+  "settingsQualityMed": "Med",
+  "settingsQualityHigh": "High",
+  "settingsStreamingNotConnected": "not connected",
+  "settingsCurrentlyStreaming": "Currently streaming: {label}",
+  "@settingsCurrentlyStreaming": {
+    "placeholders": {
+      "label": {
+        "type": "String"
+      }
+    }
+  },
+  "settingsBackgroundAudio": "Background Audio",
+  "settingsBackgroundAudioOn": "Keep listening when app is in background",
+  "settingsBackgroundAudioOff": "Audio stops when app is backgrounded",
+  "settingsActivityNotifications": "Activity Notifications",
+  "settingsNotificationsOn": "Show alerts on lock screen & Apple Watch",
+  "settingsNotificationsOff": "Notifications disabled",
+  "settingsPerEventPrefs": "Per-event preferences",
+  "settingsPerEventPrefsSubtitle": "Choose which events push to the lock screen vs in-app only",
+  "settingsMotorTrim": "Motor Trim (Right)",
+  "settingsMotorTrimNone": "No adjustment",
+  "settingsMotorTrimSlowing": "Slowing right motor by {pct}%",
+  "@settingsMotorTrimSlowing": {
+    "placeholders": {
+      "pct": {
+        "type": "int"
+      }
+    }
+  },
+  "settingsMotorTrimSpeeding": "Speeding right motor by {pct}%",
+  "@settingsMotorTrimSpeeding": {
+    "placeholders": {
+      "pct": {
+        "type": "int"
+      }
+    }
+  },
+  "settingsReset": "Reset",
+  "settingsMotorTrimHint": "If robot drifts LEFT, increase trim. If it drifts RIGHT, decrease trim.",
+  "settingsWifiHelp": "WiFi Setup Help",
+  "settingsWifiHelpSubtitle": "How to connect your robot",
+  "settingsWifiHelpTitle": "Connecting Your WIM-Z to WiFi",
+  "settingsWifiStep1": "Power on your WIM-Z robot",
+  "settingsWifiStep2": "If not connected to WiFi, it creates a hotspot called \"WIMZ-XXXX\"",
+  "settingsWifiStep3": "On your phone, go to Settings → WiFi",
+  "settingsWifiStep4": "Connect to \"WIMZ-XXXX\"",
+  "settingsWifiStep4Detail": "Password: wimzsetup",
+  "settingsWifiStep5": "Open your browser and go to:",
+  "settingsWifiStep6": "Select your home WiFi network and enter the password",
+  "settingsWifiStep7": "Robot will reboot and connect to your network",
+  "settingsWifiStep8": "Return to this app and pair with your robot",
+  "settingsLedGuide": "LED Status Guide",
+  "settingsLedSpinningCyan": "Spinning cyan",
+  "settingsLedSearchingWifi": "Searching for WiFi",
+  "settingsLedPulsingBlue": "Pulsing blue",
+  "settingsLedSetupMode": "Setup mode (connect to WIMZ hotspot)",
+  "settingsLedSolidGreen": "Solid green",
+  "settingsLedConnectedWifi": "Connected to WiFi",
+  "settingsLedPulsingRed": "Pulsing red",
+  "settingsRobotNetwork": "Robot Network",
+  "settingsNetHotspot": "Hotspot (AP)",
+  "settingsNetWifi": "WiFi",
+  "settingsNetMode": "Mode",
+  "settingsNetNetwork": "Network",
+  "settingsNetIp": "IP",
+  "settingsConfigureRobotWifi": "Configure Robot WiFi",
+  "settingsWifiScanFailed": "Scan failed",
+  "settingsWifiScanning": "Scanning for WiFi networks...",
+  "settingsWifiNoneFound": "No WiFi networks found",
+  "settingsWifiScanAgain": "Scan Again",
+  "settingsWifiPassword": "Password",
+  "settingsWifiPasswordHint": "Enter WiFi password",
+  "settingsWifiConnect": "Connect",
+  "settingsTryAgain": "Try Again",
+  "settingsWifiRobotConnecting": "Robot is connecting to WiFi...",
+  "settingsWifiMayTakeMoment": "This may take a moment.",
+  "settingsWifiRobotSwitching": "Robot is switching to WiFi...",
+  "settingsWifiHotspotShutdown": "The local hotspot will shut down.\nYour connection may drop shortly.",
+  "settingsWifiCommandSent": "WiFi command sent!",
+  "settingsWifiCommandSentBody": "Robot is switching to WiFi. Connect your phone to the same WiFi network, then disable Local Mode to use relay connection.",
+  "settingsGotIt": "Got it",
+  "settingsSignalExcellent": "Excellent",
+  "settingsSignalGood": "Good",
+  "settingsSignalFair": "Fair",
+  "settingsSignalWeak": "Weak",
+  "settingsDiagRunning": "Running diagnostics...",
+  "settingsDiagError": "DIAGNOSTICS ERROR: {error}\n\nStack: {stack}",
+  "@settingsDiagError": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      },
+      "stack": {
+        "type": "String"
+      }
+    }
+  },
+  "settingsRecordingDiagnostics": "Recording Diagnostics",
+  "settingsRunningTests": "Running tests...",
+  "settingsRunAgain": "Run Again",
+  "notifPrefsTitle": "Notification Preferences",
+  "notifPrefsResetDefaults": "Reset to defaults",
+  "notifPrefsEnableLockScreen": "Enable lock-screen notifications",
+  "notifPrefsMasterSubtitle": "Master switch. When off, nothing pushes to the lock screen or Apple Watch — events still appear in the in-app feed.",
+  "notifPrefsPerEventType": "Per event type",
+  "notifPrefsLegend": "Off — never recorded.\nIn-app — appears in the activity feed only.\nIn-app + Push — also wakes lock screen and Apple Watch.",
+  "notifPrefsBarking": "Barking",
+  "notifPrefsSitDetected": "Sit detected",
+  "notifPrefsLayDownDetected": "Lay down detected",
+  "notifPrefsComeStandDetected": "Come / stand detected",
+  "notifPrefsTreatDispensed": "Treat dispensed",
+  "notifPrefsMissionStarted": "Mission started",
+  "notifPrefsMissionCompleted": "Mission completed",
+  "notifPrefsMissionFailed": "Mission failed",
+  "notifPrefsLowBattery": "Low battery",
+  "notifPrefsGuardianAlert": "Guardian alert",
+  "notifPrefsHappyDog": "Happy dog",
+  "notifPrefsRobotConnected": "Robot connected",
+  "notifPrefsRobotDisconnected": "Robot disconnected",
+  "notifPrefsCoachReward": "Coach reward",
+  "notifPrefsPanicAlert": "Panic alert",
+  "notifPrefsSgSummary": "Guardian session summary",
+  "notifPrefsInApp": "In-app",
+  "notifPrefsPlusPush": "+ Push",
+  "controllerPairingTitle": "Game Controller",
+  "controllerPairingRefresh": "Refresh",
+  "controllerPairingRobotNotConnected": "Robot not connected",
+  "controllerPairingRobotNotConnectedBody": "Connect to your robot first, then come back to pair a controller.",
+  "controllerPairingChecking": "Checking robot…",
+  "controllerPairingCheckingBody": "Asking the robot about its controllers.",
+  "controllerPairingNoResponse": "No response from robot",
+  "controllerPairingNoResponseBody": "The robot didn't answer the controller check. It may still be starting up, or its firmware may not support controller pairing yet. Try again in a moment.",
+  "controllerPairingSavedControllers": "Saved Controllers",
+  "controllerPairingNoSaved": "No saved controllers yet. Scan and pair one below — then trust it so the robot reconnects it automatically.",
+  "controllerPairingAddController": "Add a Controller",
+  "controllerPairingForgetTitle": "Forget controller?",
+  "controllerPairingForgetBody": "The robot will unpair \"{name}\" and stop auto-reconnecting it. You can pair it again later.",
+  "@controllerPairingForgetBody": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "controllerPairingForget": "Forget",
+  "controllerPairingController": "Controller",
+  "controllerPairingNoneConnected": "No controller connected",
+  "controllerPairingTrusted": "Trusted",
+  "controllerPairingSavedNotConnected": "Saved · not connected",
+  "controllerPairingReconnect": "Reconnect",
+  "controllerPairingAutoReconnect": "Auto-reconnect (trusted)",
+  "controllerPairingPair": "Pair",
+  "controllerPairingScanning": "Scanning for controllers…",
+  "controllerPairingScan": "Scan for controllers",
+  "controllerPairingScanningHint": "Put your controller in pairing mode",
+  "controllerPairingScanHint": "Robot will look for nearby controllers",
+  "devicePairingEnterId": "Please enter a device ID",
+  "devicePairingInvalidId": "Device ID must be 3–50 characters: letters, numbers, _ or -",
+  "devicePairingPaired": "Successfully paired {deviceId}",
+  "@devicePairingPaired": {
+    "placeholders": {
+      "deviceId": {
+        "type": "String"
+      }
+    }
+  },
+  "devicePairingUnpairTitle": "Unpair Device",
+  "devicePairingUnpairBody": "Are you sure you want to unpair {deviceId}?",
+  "@devicePairingUnpairBody": {
+    "placeholders": {
+      "deviceId": {
+        "type": "String"
+      }
+    }
+  },
+  "devicePairingUnpair": "Unpair",
+  "devicePairingUnpaired": "Unpaired {deviceId}",
+  "@devicePairingUnpaired": {
+    "placeholders": {
+      "deviceId": {
+        "type": "String"
+      }
+    }
+  },
+  "devicePairingNotFoundTitle": "Robot Not Found",
+  "devicePairingNotFoundBody": "The relay has no record of \"{deviceId}\". This entry is orphaned and can't be cleanly removed. Hide it from your list anyway?",
+  "@devicePairingNotFoundBody": {
+    "placeholders": {
+      "deviceId": {
+        "type": "String"
+      }
+    }
+  },
+  "devicePairingKeep": "Keep",
+  "devicePairingHide": "Hide",
+  "devicePairingHidden": "Hid {deviceId} from your list",
+  "@devicePairingHidden": {
+    "placeholders": {
+      "deviceId": {
+        "type": "String"
+      }
+    }
+  },
+  "devicePairingConnectingTo": "Connecting to {label}…",
+  "@devicePairingConnectingTo": {
+    "placeholders": {
+      "label": {
+        "type": "String"
+      }
+    }
+  },
+  "devicePairingTitle": "My Robots",
+  "devicePairingPairNew": "PAIR NEW DEVICE",
+  "devicePairingIdHint": "Enter device ID (e.g., wimz_robot_01)",
+  "devicePairingPair": "Pair",
+  "devicePairingNoDevices": "No Paired Devices",
+  "devicePairingNoDevicesBody": "Enter a device ID above to pair your WIM-Z",
+  "devicePairingActive": "ACTIVE",
+  "devicePairingOnline": "Online",
+  "devicePairingOffline": "Offline",
+  "devicePairingLastSeen": " - Last seen {when}",
+  "@devicePairingLastSeen": {
+    "placeholders": {
+      "when": {
+        "type": "String"
+      }
+    }
+  },
+  "devicePairingUnpairTooltip": "Unpair device",
+  "devicePairingJustNow": "just now",
+  "devicePairingMinutesAgo": "{n}m ago",
+  "@devicePairingMinutesAgo": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "devicePairingHoursAgo": "{n}h ago",
+  "@devicePairingHoursAgo": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "devicePairingDaysAgo": "{n}d ago",
+  "@devicePairingDaysAgo": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "connDiagCopied": "Trace copied to clipboard",
+  "connDiagShareSubject": "WIM-Z connection trace",
+  "connDiagCleared": "Trace cleared",
+  "connDiagNotConnected": "Not connected — connect to the robot first",
+  "connDiagLedAcked": "LED acknowledged in {ms}ms — if nothing lit, the fault is on the robot",
+  "@connDiagLedAcked": {
+    "placeholders": {
+      "ms": {
+        "type": "int"
+      }
+    }
+  },
+  "connDiagLedTimeout": "LED sent but not acknowledged in 3s — command path broken",
+  "connDiagLedFailed": "LED ping failed: {error}",
+  "@connDiagLedFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "connDiagTitle": "Connection Diagnostics",
+  "connDiagLedPing": "LED ping",
+  "connDiagCopy": "Copy",
+  "connDiagShare": "Share",
+  "connDiagClear": "Clear",
+  "connDiagHeader": "WebRTC signaling trace — {count, plural, =1{1 event} other{{count} events}} captured.\nReproduce the slow video, then Share this trace.",
+  "@connDiagHeader": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "connDiagEmpty": "No events captured yet.\n\nLog in and open the video feed, then return here.",
+  "nightVisionTitle": "Night Vision",
+  "nightVisionWaiting": "Waiting for robot…",
+  "nightVisionNightMode": "Night vision",
+  "nightVisionDayMode": "Day mode",
+  "nightVisionStaleTooltip": "No update from robot in 90+ seconds",
+  "nightVisionAuto": "Auto",
+  "nightVisionDay": "Day",
+  "nightVisionNight": "Night",
+  "nightVisionAutoHint": "Switches automatically based on lighting.",
+  "nightVisionOverrideHint": "Manual override active. Tap Auto to resume automatic detection.",
+  "nightVisionOfflineHint": "Robot offline — change will apply when reconnected.",
+  "nightVisionLighting": "Lighting: {label}",
+  "@nightVisionLighting": {
+    "placeholders": {
+      "label": {
+        "type": "String"
+      }
+    }
+  },
+  "nightVisionLux": "{lux} lux — {label}",
+  "@nightVisionLux": {
+    "placeholders": {
+      "lux": {
+        "type": "String"
+      },
+      "label": {
+        "type": "String"
+      }
+    }
+  },
+  "nightVisionModeWordNight": "night vision",
+  "nightVisionModeWordDay": "day mode",
+  "nightVisionSwitchedSecondsAgo": "Switched to {mode} {n}s ago",
+  "@nightVisionSwitchedSecondsAgo": {
+    "placeholders": {
+      "mode": {
+        "type": "String"
+      },
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "nightVisionSwitchedMinutesAgo": "Switched to {mode} {n}m ago",
+  "@nightVisionSwitchedMinutesAgo": {
+    "placeholders": {
+      "mode": {
+        "type": "String"
+      },
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "nightVisionSwitchedHoursAgo": "Switched to {mode} {n}h ago",
+  "@nightVisionSwitchedHoursAgo": {
+    "placeholders": {
+      "mode": {
+        "type": "String"
+      },
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "nightVisionSwitchedDaysAgo": "Switched to {mode} {n}d ago",
+  "@nightVisionSwitchedDaysAgo": {
+    "placeholders": {
+      "mode": {
+        "type": "String"
+      },
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "nightVisionBadgeNight": "IR night view",
+  "nightVisionBadgeDay": "Day",
+  "sgError": "Silent Guardian: {error}",
+  "@sgError": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "sgInterventionLevel": "Intervention level",
+  "sgInterventionSubtitle": "How fast the robot jumps to calming music for sustained barking.",
+  "sgBpm": "{bpm} BPM",
+  "@sgBpm": {
+    "placeholders": {
+      "bpm": {
+        "type": "int"
+      }
+    }
+  },
+  "sgAggressive": "Aggressive",
+  "sgTolerant": "Tolerant",
+  "sgHelperOff": "Disabled — Silent Guardian climbs the normal L1→L4 ladder only.",
+  "sgHelperLow": "Even modest sustained barking will jump straight to calming music.",
+  "sgHelperMid": "A typical noisy outburst will trigger calming music.",
+  "sgHelperHigh": "Only extreme nonstop barking will trigger calming music.",
+  "sgSessionSummary": "Session Summary",
+  "sgTapRefresh": "Tap refresh for a live status report",
+  "sgStatBarks": "Barks",
+  "sgStatTreats": "Treats",
+  "sgStatInterventions": "Interventions",
+  "sgStatLevel": "Level",
+  "sgStatTrend": "Trend",
+  "sgBarkTimeline": "BARK TIMELINE",
+  "sgRateLine": "now {recent}/min · session {session}/min",
+  "@sgRateLine": {
+    "placeholders": {
+      "recent": {
+        "type": "String"
+      },
+      "session": {
+        "type": "String"
+      }
+    }
+  },
+  "sgPanicActive": "PANIC ACTIVE",
+  "sgPanicEpisodes": "{count, plural, =1{1 panic episode} other{{count} panic episodes}}",
+  "@sgPanicEpisodes": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "sgAggressiveBehavior": "Aggressive behavior",
+  "dogProfileTitle": "Dog Profile",
+  "dogProfileNotFound": "No dog profile found",
+  "dogProfileEditTooltip": "Edit dog",
+  "dogProfileMissionStarted": "Mission started",
+  "dogProfileMissionActive": "MISSION ACTIVE",
+  "dogProfileLaunchLastMission": "LAUNCH LAST MISSION",
+  "dogProfileStartAMission": "START A MISSION",
+  "dogProfileTodaySummary": "Today's Summary",
+  "dogProfileStatTreats": "Treats",
+  "dogProfileStatSits": "Sits",
+  "dogProfileStatBarks": "Barks",
+  "dogProfileStatGoal": "Goal",
+  "dogProfileMetrics": "Metrics",
+  "dogProfileRangeDay": "Day",
+  "dogProfileRangeWeek": "Week",
+  "dogProfileRangeAll": "All",
+  "dogProfileStatDetections": "Detections",
+  "dogProfileStatMissions": "Missions",
+  "dogProfileStatSuccess": "Success",
+  "dogProfileStatActive": "Active",
+  "dogProfileStatCoach": "Coach",
+  "dogProfileActiveMinutes": "{minutes}m",
+  "@dogProfileActiveMinutes": {
+    "placeholders": {
+      "minutes": {
+        "type": "int"
+      }
+    }
+  },
+  "dogProfileViewDashboard": "View Dashboard",
+  "dogProfileQuickActions": "Quick Actions",
+  "dogProfileActionVoice": "Voice",
+  "dogProfileActionStats": "Stats",
+  "dogProfileMetricsHint": "Metrics are shown above — use Day/Week/All toggle",
+  "dogProfileRecentActivity": "Recent Activity",
+  "dogProfileSeeAll": "See all",
+  "dogProfileNoRecentActivity": "No recent activity",
+  "dogProfileRelMinutes": "{n}m",
+  "@dogProfileRelMinutes": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "dogProfileRelHours": "{n}h",
+  "@dogProfileRelHours": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "dogProfileRelDays": "{n}d",
+  "@dogProfileRelDays": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "dogsListTitle": "Dogs",
+  "dogsListEmpty": "No dogs added yet",
+  "dogsListNoDetails": "No details",
+  "dogNameLabel": "Name",
+  "dogBreedLabel": "Breed",
+  "dogPhotoTakePhoto": "Take Photo",
+  "dogPhotoChooseFromGallery": "Choose from Gallery",
+  "dogPhotoRemovePhoto": "Remove Photo",
+  "arucoPrintMarker": "Print marker",
+  "editDogTitle": "Edit Dog",
+  "editDogNotFound": "Dog not found",
+  "editDogBreedHint": "e.g. Golden Retriever",
+  "editDogCoatColorLabel": "Coat color",
+  "editDogDeleteDog": "Delete Dog",
+  "editDogNameEmpty": "Name cannot be empty",
+  "editDogSaved": "Saved",
+  "editDogSaveFailed": "Save failed: {error}",
+  "@editDogSaveFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "editDogDeleteConfirmTitle": "Delete Dog?",
+  "editDogDeleteConfirmBody": "Are you sure you want to delete {name}? This will remove all their data and cannot be undone.",
+  "@editDogDeleteConfirmBody": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "editDogDeleted": "{name} deleted",
+  "@editDogDeleted": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "editDogChangePhoto": "Change photo",
+  "editDogChoosePhotoSource": "Choose Photo Source",
+  "editDogPhotoUpdated": "Photo updated",
+  "editDogPhotoSaveFailed": "Failed to save photo: {error}",
+  "@editDogPhotoSaveFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "editDogTreatsPerReward": "Treats per reward",
+  "editDogTreatsHelper1": "Default — one treat per reward.",
+  "editDogTreatsHelper2": "Medium dogs may benefit from two.",
+  "editDogTreatsHelper3": "Big dogs need more to feel rewarded.",
+  "editDogTreatsHelper4": "Very large dogs / high-energy training.",
+  "editDogArucoMarker": "ArUco Marker",
+  "editDogNoMarker": "No marker assigned. Re-create this dog to assign one.",
+  "editDogMarkerId": "DICT_4X4_1000 — ID {id}",
+  "@editDogMarkerId": {
+    "placeholders": {
+      "id": {
+        "type": "int"
+      }
+    }
+  },
+  "editDogPrintFailed": "Print failed: {error}",
+  "@editDogPrintFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "addDogTitle": "Add Dog",
+  "addDogSaveDog": "Save Dog",
+  "addDogContinue": "Continue",
+  "addDogStepColor": "Color",
+  "addDogStepPhoto": "Photo",
+  "addDogPhotoSelected": "Photo selected",
+  "addDogOptional": "Optional",
+  "addDogStepAruco": "ARUCO Tag",
+  "addDogNameQuestion": "What's your dog's name?",
+  "addDogNameFieldLabel": "Dog Name",
+  "addDogNameHint": "e.g., Max, Luna, Buddy",
+  "addDogNameRequired": "Please enter a name",
+  "addDogBreedQuestion": "What breed is your dog?",
+  "addDogBreedHint": "e.g., Golden Retriever, Mixed, Unknown",
+  "addDogColorQuestion": "What's your dog's primary coat color?",
+  "addDogPhotoPrompt": "Add a profile photo for your dog",
+  "addDogTapToAdd": "Tap to add",
+  "addDogCamera": "Camera",
+  "addDogGallery": "Gallery",
+  "addDogRemovePhoto": "Remove photo",
+  "addDogArucoIntro": "WIM-Z uses an ARUCO marker on your dog's collar to tell them apart.",
+  "addDogArucoAutoPicked": "We picked the next free ID for you. Print this marker and attach it to the collar.",
+  "addDogArucoIdLabel": "ARUCO Marker ID",
+  "addDogArucoIdHint": "e.g., 42",
+  "addDogArucoSkipHint": "You can clear this field to skip ArUco — useful if you only have one dog or prefer appearance-based ID.",
+  "addDogMarkerBundleMissing": "Marker bundle not generated yet — run scripts/generate_aruco_markers.py",
+  "addDogPickImageFailed": "Failed to pick image: {error}",
+  "@addDogPickImageFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "addDogDuplicateName": "A dog named \"{name}\" already exists",
+  "@addDogDuplicateName": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "addDogRobotWillRecognize": "Robot will now recognize {name}",
+  "@addDogRobotWillRecognize": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "weeklySummaryTitle": "Weekly Summary",
+  "weeklyTapRefresh": "Tap refresh for this week's report",
+  "weeklyVsLastWeek": "vs last wk",
+  "weeklyQuiets": "Quiets",
+  "weeklyTricks": "Tricks: {completed}/{attempts} completed",
+  "@weeklyTricks": {
+    "placeholders": {
+      "completed": {
+        "type": "int"
+      },
+      "attempts": {
+        "type": "int"
+      }
+    }
+  },
+  "weeklyTricksWithRate": "Tricks: {completed}/{attempts} completed ({rate}%)",
+  "@weeklyTricksWithRate": {
+    "placeholders": {
+      "completed": {
+        "type": "int"
+      },
+      "attempts": {
+        "type": "int"
+      },
+      "rate": {
+        "type": "String"
+      }
+    }
+  },
+  "weeklyGuardian": "Guardian: {interventions} interventions across {sessions} sessions",
+  "@weeklyGuardian": {
+    "placeholders": {
+      "interventions": {
+        "type": "int"
+      },
+      "sessions": {
+        "type": "int"
+      }
+    }
+  },
+  "weeklyDataSince": "Data since: {parts}",
+  "@weeklyDataSince": {
+    "placeholders": {
+      "parts": {
+        "type": "String"
+      }
+    }
+  },
+  "weeklyCoverageBarks": "barks",
+  "weeklyCoverageBarkTypes": "bark types",
+  "weeklyCoverageTreats": "treats",
+  "weeklyCoverageCoaching": "coaching",
+  "voiceTitle": "Voice Commands",
+  "voiceNoDogSelected": "No dog selected",
+  "voiceResetTooltip": "Reset to default voice",
+  "voiceSyncAll": "Sync All",
+  "voiceIntro": "Record your voice for each command. {dogName} will learn to respond to YOUR voice.",
+  "@voiceIntro": {
+    "placeholders": {
+      "dogName": {
+        "type": "String"
+      }
+    }
+  },
+  "voiceMobileOnlyBanner": "Recording requires the iOS/Android app. Use mobile to record commands.",
+  "voiceRecordedProgress": "{recorded} of {total} recorded",
+  "@voiceRecordedProgress": {
+    "placeholders": {
+      "recorded": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "voiceSyncedCount": "{count} synced",
+  "@voiceSyncedCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "voiceMobileRequiredTitle": "Mobile Required",
+  "voiceMobileRequiredBody": "Voice recording requires the iOS or Android app. Please use your mobile device to record voice commands.",
+  "voiceDeleteRecordingTitle": "Delete Recording?",
+  "voiceDeleteRecordingBody": "This will delete the recorded voice command.",
+  "voiceCommandSynced": "Command synced!",
+  "voiceSyncFailed": "Sync failed",
+  "voiceResetTitle": "Reset to Default Voice?",
+  "voiceResetBody": "This deletes {count, plural, =1{1 recording} other{{count} recordings}} for {dogName}. WIM-Z will use its built-in voice instead.",
+  "@voiceResetBody": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      },
+      "dogName": {
+        "type": "String"
+      }
+    }
+  },
+  "voiceResetAction": "Reset",
+  "voiceResetDone": "Reset — WIM-Z will use its default voice",
+  "voiceSyncedToRobot": "{count} commands synced to robot",
+  "@voiceSyncedToRobot": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "voiceRecordedSynced": "Recorded & Synced",
+  "voiceRecordedTapToSync": "Recorded - tap to sync",
+  "voiceNotRecorded": "Not recorded",
+  "voiceSyncToRobotTooltip": "Sync to robot",
+  "voiceReRecord": "Re-record",
+  "voiceRecord": "Record",
+  "voiceStartFailed": "Failed to start recording. Check microphone permission.",
+  "voiceRecordingFailed": "Recording failed. Try again.",
+  "voiceSavedTitle": "Saved!",
+  "voiceRecordTitle": "Record: {label}",
+  "@voiceRecordTitle": {
+    "placeholders": {
+      "label": {
+        "type": "String"
+      }
+    }
+  },
+  "voiceRecordedSuccess": "Voice command recorded successfully!",
+  "voiceSeconds": "{seconds}s",
+  "@voiceSeconds": {
+    "placeholders": {
+      "seconds": {
+        "type": "String"
+      }
+    }
+  },
+  "voiceSayClearly": "Say the command clearly...",
+  "voicePreparingMic": "Preparing microphone...",
+  "voiceStop": "Stop",
+  "arucoIdLabel": "ID {id}",
+  "@arucoIdLabel": {
+    "placeholders": {
+      "id": {
+        "type": "int"
+      }
+    }
+  },
+  "arucoBundleMissing": "Marker bundle not generated.\nSee scripts/generate_aruco_markers.py",
+  "loginTagline": "Watchful Intelligent Mobile Zen",
+  "loginButton": "Login",
+  "loginCloudHint": "Cloud connection (requires internet)",
+  "loginConnectToRobot": "Connect to Robot",
+  "loginDirectHint": "Direct connection via WIMZ WiFi hotspot",
+  "loginLocalConnectFailed": "Could not connect to robot.\nMake sure you're on the same WiFi as your robot\nor connected to the WIMZ hotspot.",
+  "loginConnectionFailedCheckWifi": "Connection failed. Check WiFi and try again.",
+  "loginDemoMode": "Demo Mode",
+  "loginSignIn": "Sign In",
+  "loginCreateAccount": "Create Account",
+  "loginEmailLabel": "Email",
+  "loginEnterEmail": "Please enter email",
+  "loginInvalidEmail": "Invalid email",
+  "loginPasswordLabel": "Password",
+  "loginEnterPassword": "Please enter password",
+  "loginMin6Chars": "Min 6 characters",
+  "loginSavePassword": "Save password",
+  "loginForgotPassword": "Forgot password?",
+  "loginNoAccountSignUp": "Don't have an account? Sign up",
+  "loginHaveAccountSignIn": "Already have an account? Sign in",
+  "forgotTitle": "Reset Password",
+  "forgotHeading": "Forgot your password?",
+  "forgotIntro": "Enter the email on your account and we'll send you a 6-digit code to reset your password.",
+  "forgotSendCode": "Send Code",
+  "forgotCodeSentBanner": "If that email is registered, a 6-digit code is on the way. It expires in 15 minutes.",
+  "forgotEnterCodeHeading": "Enter Code & New Password",
+  "forgotCodeLabel": "6-digit code",
+  "forgotEnterCode": "Enter the code",
+  "forgotCodeIs6Digits": "Code is 6 digits",
+  "forgotNewPasswordLabel": "New password",
+  "forgotEnterNewPassword": "Enter a new password",
+  "forgotMin8Chars": "Min 8 characters",
+  "forgotConfirmPasswordLabel": "Confirm new password",
+  "forgotConfirmYourPassword": "Confirm your password",
+  "forgotPasswordsDontMatch": "Passwords don't match",
+  "forgotResendCode": "Resend code",
+  "homeLocalRobot": "Local Robot",
+  "homeFindYourRobot": "Find your robot →",
+  "homeNewDog": "New dog #{arucoId}",
+  "@homeNewDog": {
+    "placeholders": {
+      "arucoId": {
+        "type": "int"
+      }
+    }
+  },
+  "homeDismiss": "Dismiss",
+  "homeExit": "EXIT",
+  "homeModeIdle": "Idle",
+  "homeModeGuard": "Guard",
+  "homeModeCoach": "Coach",
+  "homeSelectDog": "Select Dog",
+  "driveLabel": "DRIVE",
+  "driveEmergencyStop": "Emergency Stop",
+  "driveCall": "CALL",
+  "driveTreat": "TREAT",
+  "driveCenter": "CENTER",
+  "driveSwitchingMode": "Switching mode...",
+  "driveCamera": "CAMERA",
+  "driveCoach": "COACH",
+  "driveSelectDogFirst": "Select a dog or wait for the camera to identify one.",
+  "driveMissionFallback": "Mission",
+  "driveMissionStage": "{name} — {stage}",
+  "@driveMissionStage": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      },
+      "stage": {
+        "type": "String"
+      }
+    }
+  },
+  "driveStop": "STOP",
+  "galleryTitle": "Photo Gallery",
+  "galleryRefresh": "Refresh",
+  "galleryNoPhotos": "No photos yet",
+  "galleryTakePhotosHint": "Take photos from the video view",
+  "galleryShare": "Share",
+  "galleryFailedToLoad": "Failed to load image",
+  "galleryShareText": "WIM-Z Photo - {date}",
+  "@galleryShareText": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "galleryShareFailed": "Failed to share: {error}",
+  "@galleryShareFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "galleryDeleteTitle": "Delete Photo",
+  "galleryDeleteConfirm": "Are you sure you want to delete this photo?",
+  "notificationsTitle": "Activity",
+  "notificationsMarkAllRead": "Mark all read",
+  "notificationsFilterAll": "All",
+  "notificationsFilterBehaviors": "Behaviors",
+  "notificationsFilterMissions": "Missions",
+  "notificationsFilterAlerts": "Alerts",
+  "notificationsFilterTreats": "Treats",
+  "notificationsFilterCoach": "Coach",
+  "notificationsClearAll": "Clear all",
+  "notificationsTabDashboard": "Dashboard",
+  "notificationsTabEvents": "Events",
+  "notificationsEmpty": "No notifications yet",
+  "notificationsEmptyHint": "Events from WIM-Z will appear here",
+  "notificationsGroupToday": "TODAY",
+  "notificationsGroupYesterday": "YESTERDAY",
+  "notificationsGroupThisWeek": "THIS WEEK",
+  "notificationsGroupEarlier": "EARLIER",
+  "activityNoDogSelected": "No dog selected",
+  "activityStatTreats": "Treats",
+  "activityStatDetections": "Detections",
+  "activityStatMissions": "Missions",
+  "activityStatCoach": "Coach",
+  "activitySeriesTreats": "Treats",
+  "activitySeriesBarks": "Barks",
+  "activitySeriesBehaviors": "Behaviors",
+  "activitySeriesMissions": "Missions",
+  "activitySeriesAlerts": "Alerts",
+  "activityChartTitle": "Activity (7 days)",
+  "activityNoSeriesSelected": "No series selected",
+  "activitySeriesCount": "{label}: {count}",
+  "@activitySeriesCount": {
+    "placeholders": {
+      "label": {
+        "type": "String"
+      },
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "activityRecentEvents": "Recent Events",
+  "activityNoEvents": "No events yet",
+  "connBadgeNoRobot": "No Robot",
+  "connBadgeOffline": "Offline",
+  "connBadgeNotPaired": "Not Paired",
+  "connBadgeWaiting": "Waiting...",
+  "connBadgeRobotOnline": "Robot Online",
+  "connBadgeOtherDeviceActive": "Other Device Active",
+  "connBadgeDemo": "Demo",
+  "localApCouldntReach": "Couldn't reach the robot. Join \"{ssid}\" (password {password}) in WiFi settings first, then try again.",
+  "@localApCouldntReach": {
+    "placeholders": {
+      "ssid": {
+        "type": "String"
+      },
+      "password": {
+        "type": "String"
+      }
+    }
+  },
+  "localApNoHotspotInfo": "Robot didn't confirm hotspot start and no cached hotspot info is available. Update the robot and try again.",
+  "localApJoinHotspotTitle": "Join the robot's hotspot",
+  "localApJoinHotspotBody": "The robot is starting its hotspot.\n\n1. Open WiFi settings on this phone\n2. Join \"{ssid}\"\n    password: {password}\n3. Come back and tap Connect\n\nThe robot stays on its hotspot until you switch back to cloud mode (or 10 minutes with no phone attached).",
+  "@localApJoinHotspotBody": {
+    "placeholders": {
+      "ssid": {
+        "type": "String"
+      },
+      "password": {
+        "type": "String"
+      }
+    }
+  },
+  "localApConnect": "Connect",
+  "localApSwitchTitle": "Switch to Local Mode",
+  "localApSwitchSubtitle": "Robot starts its hotspot; phone connects directly",
+  "treatCounterOf": "{remaining} of {capacity}",
+  "@treatCounterOf": {
+    "placeholders": {
+      "remaining": {
+        "type": "int"
+      },
+      "capacity": {
+        "type": "int"
+      }
+    }
+  },
+  "treatCounterTitle": "Treats: {headline}",
+  "@treatCounterTitle": {
+    "placeholders": {
+      "headline": {
+        "type": "String"
+      }
+    }
+  },
+  "treatCounterEmptyRefill": "Empty — refill needed",
+  "treatCounterRemainingLabel": "treats remaining",
+  "treatCounterRefilledReset": "Refilled — Reset Counter",
+  "treatCounterClearing": "Clearing...",
+  "treatCounterClearJam": "Clear Jam",
+  "treatCounterLoadedHint": "Treats loaded (max {capacity})",
+  "@treatCounterLoadedHint": {
+    "placeholders": {
+      "capacity": {
+        "type": "int"
+      }
+    }
+  },
+  "treatCounterSet": "Set",
+  "eventFeedSgActive": "Silent Guardian Active",
+  "eventFeedWatching": "Watching for activity...",
+  "eventFeedRecentEvents": "Recent Events ({count})",
+  "@eventFeedRecentEvents": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "eventFeedClear": "Clear",
+  "notifBarkingDetected": "Barking Detected",
+  "notifPanicEpisodeEnded": "Panic Episode Ended",
+  "notifPanicAlert": "Panic Alert",
+  "notifSgLevel4": "Silent Guardian: Level 4",
+  "notifSgLevel4Body": "Escalation reached the highest level",
+  "notifTreatDispensed": "Treat Dispensed",
+  "notifTreatFor": "For {dogName}",
+  "@notifTreatFor": {
+    "placeholders": {
+      "dogName": {
+        "type": "String"
+      }
+    }
+  },
+  "notifGoodJob": "Good job!",
+  "notifTreatsRemaining": "{count, plural, =1{1 treat remaining} other{{count} treats remaining}}",
+  "@notifTreatsRemaining": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "notifTreatsRunningLow": "Treats Running Low",
+  "notifTreatsLowBody": "{count, plural, =1{1 treat remaining — time to refill!} other{{count} treats remaining — time to refill!}}",
+  "@notifTreatsLowBody": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "notifTreatsEmpty": "Treats Empty",
+  "notifTreatsEmptyBody": "Refill the carousel to keep dispensing",
+  "notifMissionStarted": "Mission Started",
+  "notifMissionCompleted": "Mission Completed",
+  "notifMissionFailed": "Mission Failed",
+  "notifCoachRewardedFor": "{dogName}: {behavior} rewarded",
+  "@notifCoachRewardedFor": {
+    "placeholders": {
+      "dogName": {
+        "type": "String"
+      },
+      "behavior": {
+        "type": "String"
+      }
+    }
+  },
+  "notifCoachRewarded": "{behavior} rewarded",
+  "@notifCoachRewarded": {
+    "placeholders": {
+      "behavior": {
+        "type": "String"
+      }
+    }
+  },
+  "notifCoachAttempt": "{behavior} attempt",
+  "@notifCoachAttempt": {
+    "placeholders": {
+      "behavior": {
+        "type": "String"
+      }
+    }
+  },
+  "notifCoachMode": "Coach mode",
+  "notifTrick": "trick",
+  "notifLowBattery": "Low Battery",
+  "notifBatteryRemaining": "{percent}% remaining",
+  "@notifBatteryRemaining": {
+    "placeholders": {
+      "percent": {
+        "type": "int"
+      }
+    }
+  },
+  "notifSessionEnded": "Session ended",
+  "notifAggressiveToday": "Your dog was aggressive today",
+  "notifPanicEpisodes": "{count, plural, =1{1 panic episode} other{{count} panic episodes}}",
+  "@notifPanicEpisodes": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "notifGuardianSessionEnded": "Guardian Session Ended",
+  "notifGuardianAlert": "Guardian Alert",
+  "notifIntervention": "Intervention",
+  "notifGuardianReason": "Guardian: {reason}",
+  "@notifGuardianReason": {
+    "placeholders": {
+      "reason": {
+        "type": "String"
+      }
+    }
+  },
+  "notifSittingDetected": "Sitting Detected",
+  "notifLayDown": "Lay Down",
+  "notifCome": "Come",
+  "notifAlert": "Alert",
+  "notifHappyDog": "Happy Dog",
+  "notifCoachReward": "Coach Reward",
+  "notifGuardianSummary": "Guardian Summary",
+  "notifBehaviorDetected": "Behavior Detected",
+  "notifBehaviorNamedDetected": "{behavior} Detected",
+  "@notifBehaviorNamedDetected": {
+    "placeholders": {
+      "behavior": {
+        "type": "String"
+      }
+    }
+  },
+  "notifConfidence": "{percent}% confidence",
+  "@notifConfidence": {
+    "placeholders": {
+      "percent": {
+        "type": "int"
+      }
+    }
+  },
+  "notifBarkType": "{type} bark",
+  "@notifBarkType": {
+    "placeholders": {
+      "type": {
+        "type": "String"
+      }
+    }
+  },
+  "channelActivityName": "WIM-Z Activity",
+  "channelActivityDescription": "Dog training activity notifications",
+  "authErrRegistrationFailed": "Registration failed",
+  "authErrEmailRegistered": "Email already registered",
+  "authErrInvalidCredentials": "Invalid email or password",
+  "authErrLoginFailed": "Login failed",
+  "authErrAccountNotFound": "Account not found",
+  "authErrResetCodeSend": "Could not send reset code. Check your connection.",
+  "authErrResetFailed": "Reset failed",
+  "authErrInvalidCode": "Invalid or expired code",
+  "authErrTooManyAttempts": "Too many attempts — try again later",
+  "authNoticeSessionExpired": "Your session expired — please sign in again.",
+  "connStatusConnectingServer": "Connecting to server...",
+  "connStatusNotPaired": "Device not paired",
+  "connStatusWaitingRobot": "Server connected. Waiting for robot...",
+  "connStatusRobotOnline": "Robot online",
+  "connStatusError": "Connection error",
+  "connStatusSuperseded": "Signed in on another device",
+  "connErrServerNotResponding": "Server not responding",
+  "connErrLiveConnection": "Could not open live connection to server",
+  "connErrLostConnection": "Lost connection to server",
+  "connErrHandshake": "Connection handshake failed. Please update the app.",
+  "connErrSessionExpired": "Session expired — please sign in again.",
+  "connErrNotPairedGoSettings": "Device not paired. Go to Settings to pair.",
+  "connErrRobotOffline": "Robot is offline",
+  "errNotAuthorizedLogin": "Not authorized. Please log in again.",
+  "connErrSuperseded": "This account is now active on another device. Tap to take control back.",
+  "errNotConnectedToRobot": "Not connected to robot",
+  "errNoResponseUpdate": "No response — robot may need an update",
+  "pttErrPlayFailed": "Failed to play audio",
+  "pttErrMobileOnly": "Recording only available on iOS/Android",
+  "pttErrNotConnectedSend": "Not connected — cannot send voice",
+  "pttErrMicDenied": "Microphone permission denied",
+  "pttErrStartFailed": "Recording failed to start",
+  "pttErrStartFailedDetail": "Failed to start recording: {error}",
+  "@pttErrStartFailedDetail": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "pttErrRecordingFailed": "Recording failed",
+  "pttErrFileNotFound": "Recording file not found",
+  "pttErrEmpty": "Recording was empty - no audio captured",
+  "pttErrNotConnectedNotSent": "Not connected — voice message not sent",
+  "pttErrSendFailed": "Failed to send audio: {error}",
+  "@pttErrSendFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "pttErrNoAudio": "No audio received",
+  "pairErrPairFailed": "Failed to pair device",
+  "pairErrNetwork": "Network error. Check your connection.",
+  "pairErrUnpairFailed": "Failed to unpair device (status {code})",
+  "@pairErrUnpairFailed": {
+    "placeholders": {
+      "code": {
+        "type": "int"
+      }
+    }
+  },
+  "pairErrDeviceNotFound": "Device not found. Check the device ID.",
+  "pairErrAlreadyPaired": "Device already paired to your account.",
+  "pairErrRobotUnavailable": "Robot unavailable. Make sure it is powered on and connected.",
+  "pairErrTimeout": "Connection timed out. Robot may be unavailable.",
+  "pairErrGeneric": "An error occurred. Please try again.",
+  "ctrlPairPairing": "Pairing…",
+  "ctrlPairSaving": "Saving…",
+  "ctrlPairRemovingTrust": "Removing trust…",
+  "ctrlPairForgetting": "Forgetting…",
+  "ctrlPairReconnecting": "Reconnecting…",
+  "ctrlPairConnecting": "Connecting…",
+  "ctrlPairError": "Controller error",
+  "schedErrDeleteFailed": "Failed to delete schedule",
+  "schedErrTimeout": "Timeout waiting for schedules from robot",
+  "modeErrMissionActive": "Cannot change mode while mission is active",
+  "videoErrRobotRecordFailed": "Robot could not record the video",
+  "videoErrNoDownloadUrl": "No download URL received from robot",
+  "videoErrNotFound": "Video file not found on server — robot may need a direct connection for downloads",
+  "videoErrUnreachable": "Could not reach robot for video download",
+  "videoErrDownloadFailed": "Video download failed",
+  "videoErrEncodingTimeout": "Video encoding timed out — no response after {seconds}s",
+  "@videoErrEncodingTimeout": {
+    "placeholders": {
+      "seconds": {
+        "type": "int"
+      }
+    }
+  },
+  "photoErrEmpty": "Received empty photo data",
+  "photoErrTimeout": "Photo capture timed out - no response from robot",
+  "webrtcErrTimeoutRetry": "Connection timed out — tap to retry",
+  "webrtcErrFailed": "Connection failed",
+  "webrtcErrLost": "Connection lost",
+  "webrtcErrFailedRetry": "Connection failed - tap to retry",
+  "wifiErrScanFailed": "WiFi scan failed: {error}",
+  "@wifiErrScanFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "wifiErrConnectFailed": "Failed to connect: {error}",
+  "@wifiErrConnectFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "missionsErrIncompleteData": "Robot sent incomplete mission data - check robot logs",
+  "missionsErrAlreadyActive": "A mission is already active",
+  "missionsErrAlreadyActiveNamed": "A mission is already active ({name})",
+  "@missionsErrAlreadyActiveNamed": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "missionsErrStartFailed": "Mission failed to start",
+  "missionsErrStopFirst": "Stop current mission first ({name})",
+  "@missionsErrStopFirst": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "missionsErrStartFailedRobot": "Mission failed to start on robot",
+  "sgErrNotRunning": "Silent Guardian is not running",
+  "weeklyErrUnknownDog": "Robot doesn't know this dog yet",
+  "historyErrLocalMode": "History not available in local mode",
+  "historyErrNotLoggedIn": "Not logged in",
+  "historyErrLoadFailed": "Failed to load history: {error}",
+  "@historyErrLoadFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "uploadErrFailedStatus": "Upload failed ({status})",
+  "@uploadErrFailedStatus": {
+    "placeholders": {
+      "status": {
+        "type": "String"
+      }
+    }
+  },
+  "uploadErrTooLarge": "File too large for server",
+  "uploadErrInvalidType": "Invalid file type - MP3 only",
+  "uploadErrNotAuthorized": "Not authorized to upload",
+  "uploadErrRobotOffline": "Robot offline",
+  "uploadErrTimeout": "Upload timed out - try a smaller file",
+  "uploadErrConnection": "Connection error - check network",
+  "uploadErrFailed": "Upload failed",
+  "uploadErrGeneric": "Upload error: {error}",
+  "@uploadErrGeneric": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "modelBehaviorDog": "Dog",
+  "modelBehaviorSit": "Sit",
+  "modelBehaviorLayDown": "Lay Down",
+  "modelBehaviorCome": "Come",
+  "modelBehaviorStay": "Stay",
+  "modelBehaviorSpin": "Spin",
+  "modelBehaviorSpeak": "Speak",
+  "modelBehaviorBark": "Bark",
+  "modelBehaviorQuiet": "Quiet",
+  "modelRobotModeIdle": "Idle",
+  "modelRobotModeManual": "Manual",
+  "modelRobotModeSilentGuardian": "Silent Guardian",
+  "modelRobotModeCoach": "Coach",
+  "modelRobotModeMission": "Mission",
+  "modelRobotModeDocking": "Docking",
+  "modelDogColorBlack": "Black",
+  "modelDogColorYellow": "Yellow/Golden",
+  "modelDogColorBrown": "Brown/Chocolate",
+  "modelDogColorWhite": "White",
+  "modelDogColorMixed": "Mixed/Multi",
+  "modelAgeYears": "{count, plural, =1{1 year} other{{count} years}}",
+  "@modelAgeYears": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "modelAgeMonths": "{count, plural, =1{1 month} other{{count} months}}",
+  "@modelAgeMonths": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "modelVoiceCmdName": "Dog's Name",
+  "modelVoiceCmdPromptName": "Say your dog's name clearly",
+  "modelVoiceCmdSit": "Sit",
+  "modelVoiceCmdPromptSit": "Say \"Sit\" firmly",
+  "modelVoiceCmdStay": "Stay",
+  "modelVoiceCmdPromptStay": "Say \"Stay\" with a steady tone",
+  "modelVoiceCmdLieDown": "Lay Down",
+  "modelVoiceCmdPromptLieDown": "Say \"Lay Down\" or \"Down\"",
+  "modelVoiceCmdSpin": "Spin",
+  "modelVoiceCmdPromptSpin": "Say \"Spin\" enthusiastically",
+  "modelVoiceCmdSpeak": "Speak",
+  "modelVoiceCmdPromptSpeak": "Say \"Speak\" enthusiastically",
+  "modelVoiceCmdCome": "Come",
+  "modelVoiceCmdPromptCome": "Say \"Come\" or \"Come here\"",
+  "modelVoiceCmdTreat": "Want a treat?",
+  "modelVoiceCmdPromptTreat": "Say \"Want a treat?\" playfully",
+  "modelVoiceCmdGoodDog": "Good dog!",
+  "modelVoiceCmdPromptGoodDog": "Say \"Good dog!\" with praise",
+  "modelVoiceCmdNo": "No / Bad",
+  "modelVoiceCmdPromptNo": "Say \"No\" or \"Bad\" firmly",
+  "modelVoiceCmdQuiet": "Quiet",
+  "modelVoiceCmdPromptQuiet": "Say \"Quiet\" calmly but firmly",
+  "modelMissionStatusWaitingForDog": "Waiting for dog...",
+  "modelMissionStatusGreeting": "Greeting...",
+  "modelMissionStatusCommand": "Commanding",
+  "modelMissionStatusWatching": "Hold it...",
+  "modelMissionStatusSuccess": "Success!",
+  "modelMissionStatusFailed": "Try again",
+  "modelMissionStatusRetry": "Trying again...",
+  "modelMissionStatusCompleted": "Complete!",
+  "modelMissionStatusStopped": "Stopped",
+  "modelMissionWaitingForDog": "Waiting for {dogName}...",
+  "@modelMissionWaitingForDog": {
+    "placeholders": {
+      "dogName": {
+        "type": "String"
+      }
+    }
+  },
+  "modelMissionGreetingDog": "Greeting {dogName}...",
+  "@modelMissionGreetingDog": {
+    "placeholders": {
+      "dogName": {
+        "type": "String"
+      }
+    }
+  },
+  "modelMissionStageOf": "Stage {stage} of {total}",
+  "@modelMissionStageOf": {
+    "placeholders": {
+      "stage": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "modelGuardianEventDogDetected": "Dog detected",
+  "modelGuardianEventDogLeft": "Dog left frame",
+  "modelGuardianEventBarking": "Barking detected",
+  "modelGuardianEventTreatDispensed": "Treat dispensed",
+  "modelGuardianEventBehaviorChange": "Behavior change",
+  "modelGuardianEventMotionDetected": "Motion detected",
+  "modelGuardianEventQuietReward": "Quiet reward",
+  "modelGuardianEventAlertTriggered": "Alert triggered",
+  "modelGuardianEventUnknown": "Event",
+  "modelGuardianEventWithDetails": "{label} - {details}",
+  "@modelGuardianEventWithDetails": {
+    "placeholders": {
+      "label": {
+        "type": "String"
+      },
+      "details": {
+        "type": "String"
+      }
+    }
+  },
+  "modelNotifTitleBark": "Barking Detected",
+  "modelNotifTitleSit": "Sitting Detected",
+  "modelNotifTitleLieDown": "Lay Down",
+  "modelNotifTitleStand": "Come",
+  "modelNotifTitleTreatDispensed": "Treat Dispensed",
+  "modelNotifTitleMissionStarted": "Mission Started",
+  "modelNotifTitleMissionCompleted": "Mission Completed",
+  "modelNotifTitleMissionFailed": "Mission Failed",
+  "modelNotifTitleLowBattery": "Low Battery",
+  "modelNotifTitleAlert": "Alert",
+  "modelNotifTitleHappy": "Happy Dog",
+  "modelNotifTitleConnected": "Connected",
+  "modelNotifTitleDisconnected": "Disconnected",
+  "modelNotifTitleCoachReward": "Coach Reward",
+  "modelNotifTitlePanicAlert": "Panic Alert",
+  "modelNotifTitleSgSummary": "Guardian Summary",
+  "modelNightOverrideAuto": "Auto",
+  "modelNightOverrideDay": "Day mode",
+  "modelNightOverrideNight": "Night mode",
+  "modelLuxDetecting": "detecting…",
+  "modelLuxDark": "dark",
+  "modelLuxDim": "dim",
+  "modelLuxIndoor": "indoor lighting",
+  "modelLuxWellLit": "well lit",
+  "modelLuxBright": "bright",
+  "modelControllerKindXbox": "Xbox",
+  "modelControllerKindPlaystation": "PlayStation",
+  "modelControllerKindEightBitDo": "8BitDo",
+  "modelControllerKindGeneric": "Controller",
+  "modelControllerHintXbox": "Hold the Xbox button, then hold the small Pair button on top until the light flashes quickly.",
+  "modelControllerHintPlaystation": "Hold the PS button + Share (or Create) button together until the light bar flashes.",
+  "modelControllerHintEightBitDo": "Set the controller to its Bluetooth mode, then hold Start (or the Pair button) until the LEDs flash.",
+  "modelControllerHintGeneric": "Put the controller into Bluetooth pairing mode (usually a dedicated Pair button or a button-combo held until the light flashes), then wait for it to appear here.",
+  "modelDetectionDogDetected": "Dog Detected",
+  "modelVideoTierLow": "SD 480p",
+  "modelVideoTierMedium": "540p",
+  "modelVideoTierHigh": "HD 720p",
+  "modelVideoQualityAuto": "Auto",
+  "modelVideoQualityLow": "Low",
+  "modelVideoQualityMedium": "Medium",
+  "modelVideoQualityHigh": "High",
+  "modelDaySun": "Sun",
+  "modelDayMon": "Mon",
+  "modelDayTue": "Tue",
+  "modelDayWed": "Wed",
+  "modelDayThu": "Thu",
+  "modelDayFri": "Fri",
+  "modelDaySat": "Sat",
+  "modelScheduleOnceAt": "Once at {time}",
+  "@modelScheduleOnceAt": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "modelScheduleDailyAt": "Daily at {time}",
+  "@modelScheduleDailyAt": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "modelScheduleWeeklyAt": "Weekly at {time}",
+  "@modelScheduleWeeklyAt": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "modelScheduleEveryDayAt": "Every day at {time}",
+  "@modelScheduleEveryDayAt": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "modelScheduleDaysAt": "{days} at {time}",
+  "@modelScheduleDaysAt": {
+    "placeholders": {
+      "days": {
+        "type": "String"
+      },
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "catalogMissionSit": "Sit",
+  "catalogMissionSitDesc": "Quick sit mission - wait for dog, then reward sit",
+  "catalogMissionSitTraining": "Sit Training",
+  "catalogMissionSitTrainingDesc": "Basic sit training - rewards dog for sitting behavior",
+  "catalogMissionSitSustained": "Sit Sustained",
+  "catalogMissionSitSustainedDesc": "Dog holds sit position for extended duration (30 seconds)",
+  "catalogMissionDownSustained": "Lay Down Sustained",
+  "catalogMissionDownSustainedDesc": "Dog holds lay down position for extended duration (30 seconds)",
+  "catalogMissionComeAndSit": "Come and Sit",
+  "catalogMissionComeAndSitDesc": "Call the dog over, then ask for a sit",
+  "catalogMissionTrainSitDaily": "Daily Sit Training",
+  "catalogMissionTrainSitDailyDesc": "Daily sit training with progressive difficulty and limits",
+  "catalogMissionLaydown": "Lay Down",
+  "catalogMissionLaydownDesc": "Quick lay down mission - wait for dog, then reward lay down",
+  "catalogMissionComeTraining": "Come Training",
+  "catalogMissionComeTrainingDesc": "Recall training - rewards dog for coming when called",
+  "catalogMissionSpinTraining": "Spin Training",
+  "catalogMissionSpinTrainingDesc": "Spin trick training - rewards dog for spinning in a circle",
+  "catalogMissionSitAndSpeak": "Sit and Speak",
+  "catalogMissionSitAndSpeakDesc": "Train dog to sit and bark on command for treat",
+  "catalogMissionSpeakMorning": "Speak Morning",
+  "catalogMissionSpeakMorningDesc": "Dog barks on cue twice during morning (8am-12pm)",
+  "catalogMissionSpeakAfternoon": "Speak Afternoon",
+  "catalogMissionSpeakAfternoonDesc": "Dog barks on cue twice during afternoon (2pm-6pm)",
+  "catalogMissionAlertTraining": "Alert Training",
+  "catalogMissionAlertTrainingDesc": "Guard dog training - rewards dog for sitting and giving alert barks",
+  "catalogMissionBarkPrevention": "Bark Prevention",
+  "catalogMissionBarkPreventionDesc": "Quiet training - reduces excessive barking behavior",
+  "catalogMissionStopBarking": "Stop Barking",
+  "catalogMissionStopBarkingDesc": "Quiet training - reduces excessive barking with escalation",
+  "catalogMissionQuietProgressive": "Quiet Progressive",
+  "catalogMissionQuietProgressiveDesc": "Progressive quiet training - increasing quiet duration requirements",
+  "catalogMissionComfortScared": "Comfort Scared",
+  "catalogMissionComfortScaredDesc": "Comfort dog when scared or anxious barking detected",
+  "catalogMissionMorningChill": "Morning Chill",
+  "catalogMissionMorningChillDesc": "Dog maintains calm behavior during morning (8am-12pm)",
+  "catalogMissionMorningQuiet2hr": "Morning Quiet 2hr",
+  "catalogMissionMorningQuiet2hrDesc": "Dog maintains quiet for 2 hours during morning period (7am-1pm)",
+  "catalogMissionAfternoonSit5": "Afternoon Sit 5",
+  "catalogMissionAfternoonSit5Desc": "Dog performs 5 sits during afternoon (12pm-7pm)",
+  "catalogMissionAfternoonDown3": "Afternoon Lay Down 3",
+  "catalogMissionAfternoonDown3Desc": "Dog performs 3 lay downs during afternoon (12pm-6pm)",
+  "catalogMissionEveningCalmTransition": "Evening Calm Transition",
+  "catalogMissionEveningCalmTransitionDesc": "Help dog transition to quiet evening behavior (6pm-9pm)",
+  "catalogMissionEveningSettle": "Evening Settle",
+  "catalogMissionEveningSettleDesc": "Dog settles down after dinner (5pm-9pm)",
+  "catalogMissionNightQuiet90pct": "Night Quiet 90%",
+  "catalogMissionNightQuiet90pctDesc": "Dog maintains 90% quiet overnight (7pm-4am)",
+  "catalogMissionDownTraining": "Down Training",
+  "catalogMissionQuietTraining": "Quiet Training",
+  "catalogMissionStayTraining": "Stay Training",
+  "catalogMissionStandTraining": "Stand Training",
+  "catalogProgramPuppyBasics": "Puppy Basics",
+  "catalogProgramPuppyBasicsDesc": "Foundation training: sit, down, and quiet behaviors",
+  "catalogProgramObedience101": "Obedience 101",
+  "catalogProgramObedience101Desc": "Core commands every dog should know",
+  "catalogProgramCalmDog": "Calm Dog",
+  "catalogProgramCalmDogDesc": "Build patience and self-control"
+}

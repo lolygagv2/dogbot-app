@@ -53,19 +53,27 @@ class NotificationService {
   }
 
   /// Show a local notification for an activity event.
-  Future<void> showForEvent(NotificationEvent event) async {
+  ///
+  /// [channelName]/[channelDescription] are the user-visible Android channel
+  /// strings; the caller (notifications_provider) passes localized ones.
+  Future<void> showForEvent(
+    NotificationEvent event, {
+    String? channelName,
+    String? channelDescription,
+  }) async {
     if (!_initialized) return;
 
-    const details = NotificationDetails(
-      iOS: DarwinNotificationDetails(
+    final details = NotificationDetails(
+      iOS: const DarwinNotificationDetails(
         presentAlert: true,
         presentBadge: true,
         presentSound: true,
       ),
       android: AndroidNotificationDetails(
         'wimz_activity',
-        'WIM-Z Activity',
-        channelDescription: 'Dog training activity notifications',
+        channelName ?? 'WIM-Z Activity',
+        channelDescription:
+            channelDescription ?? 'Dog training activity notifications',
         importance: Importance.high,
         priority: Priority.high,
       ),

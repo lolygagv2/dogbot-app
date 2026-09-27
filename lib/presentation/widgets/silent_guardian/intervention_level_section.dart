@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../domain/providers/silent_guardian_provider.dart';
+import '../../../l10n/l10n.dart';
 import '../../theme/app_theme.dart';
 
 /// "Intervention level" slider for Silent Guardian fast-escalation.
@@ -26,6 +27,7 @@ class _InterventionLevelSectionState
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(silentGuardianProvider);
+    final l = context.l10n;
 
     // Surface acked errors as a transient toast — once per distinct error.
     if (state.lastError != null && state.lastError != _lastShownError) {
@@ -36,7 +38,7 @@ class _InterventionLevelSectionState
         messenger?.hideCurrentSnackBar();
         messenger?.showSnackBar(
           SnackBar(
-            content: Text('Silent Guardian: ${state.lastError}'),
+            content: Text(l.sgError('${state.lastError}')),
             backgroundColor: AppTheme.error,
             duration: const Duration(seconds: 4),
           ),
@@ -63,23 +65,22 @@ class _InterventionLevelSectionState
                 size: 28,
               ),
               const SizedBox(width: 12),
-              const Expanded(
+              Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Intervention level',
-                      style: TextStyle(
+                      l.sgInterventionLevel,
+                      style: const TextStyle(
                         color: AppTheme.textPrimary,
                         fontSize: 17,
                         fontWeight: FontWeight.w600,
                       ),
                     ),
-                    SizedBox(height: 2),
+                    const SizedBox(height: 2),
                     Text(
-                      'How fast the robot jumps to calming music for '
-                      'sustained barking.',
-                      style: TextStyle(
+                      l.sgInterventionSubtitle,
+                      style: const TextStyle(
                         color: AppTheme.textSecondary,
                         fontSize: 12,
                       ),
@@ -95,7 +96,7 @@ class _InterventionLevelSectionState
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Text(
-                  isOff ? 'Off' : '$current BPM',
+                  isOff ? l.off : l.sgBpm(current),
                   style: TextStyle(
                     color: accent,
                     fontSize: 13,
@@ -126,7 +127,7 @@ class _InterventionLevelSectionState
               min: 0,
               max: 90,
               divisions: 9,
-              label: isOff ? 'Off' : '$current BPM',
+              label: isOff ? l.off : l.sgBpm(current),
               onChanged: (v) => setState(() => _dragValue = v),
               onChangeEnd: (v) {
                 final next = v.round();
@@ -143,24 +144,24 @@ class _InterventionLevelSectionState
             padding: const EdgeInsets.symmetric(horizontal: 8),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: const [
+              children: [
                 Text(
-                  'Off',
-                  style: TextStyle(
+                  l.off,
+                  style: const TextStyle(
                     color: AppTheme.textTertiary,
                     fontSize: 11,
                   ),
                 ),
                 Text(
-                  'Aggressive',
-                  style: TextStyle(
+                  l.sgAggressive,
+                  style: const TextStyle(
                     color: AppTheme.textTertiary,
                     fontSize: 11,
                   ),
                 ),
                 Text(
-                  'Tolerant',
-                  style: TextStyle(
+                  l.sgTolerant,
+                  style: const TextStyle(
                     color: AppTheme.textTertiary,
                     fontSize: 11,
                   ),
@@ -172,7 +173,7 @@ class _InterventionLevelSectionState
           const SizedBox(height: 10),
 
           Text(
-            _helperText(current),
+            _helperText(l, current),
             style: const TextStyle(
               color: AppTheme.textSecondary,
               fontSize: 12,
@@ -183,17 +184,10 @@ class _InterventionLevelSectionState
     );
   }
 
-  String _helperText(int bpm) {
-    if (bpm == 0) {
-      return 'Disabled — Silent Guardian climbs the normal L1→L4 ladder only.';
-    }
-    if (bpm <= 15) {
-      return 'Even modest sustained barking will jump straight to calming '
-          'music.';
-    }
-    if (bpm <= 45) {
-      return 'A typical noisy outburst will trigger calming music.';
-    }
-    return 'Only extreme nonstop barking will trigger calming music.';
+  String _helperText(AppLocalizations l, int bpm) {
+    if (bpm == 0) return l.sgHelperOff;
+    if (bpm <= 15) return l.sgHelperLow;
+    if (bpm <= 45) return l.sgHelperMid;
+    return l.sgHelperHigh;
   }
 }

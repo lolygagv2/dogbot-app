@@ -6,6 +6,8 @@ import '../../core/network/websocket_client.dart';
 import '../../core/utils/conn_trace.dart';
 import 'connection_provider.dart';
 import 'telemetry_provider.dart';
+import '../../l10n/l10n.dart';
+import 'l10n_provider.dart';
 
 /// Available robot modes
 enum RobotMode {
@@ -143,6 +145,8 @@ final modeStateProvider =
 /// events override user mode selections. Period.
 class ModeStateNotifier extends StateNotifier<ModeState> {
   final Ref _ref;
+
+  AppLocalizations get _l => _ref.read(l10nProvider);
   Timer? _timeoutTimer;
   Timer? _errorDismissTimer;
   StreamSubscription? _wsSubscription;
@@ -419,7 +423,7 @@ class ModeStateNotifier extends StateNotifier<ModeState> {
   Future<void> setMode(RobotMode mode, {String source = 'dropdown'}) async {
     if (!_ref.read(connectionProvider).isConnected) {
       state = state.copyWith(
-        error: 'Not connected to robot',
+        error: _l.errNotConnectedToRobot,
         errorTime: DateTime.now(),
       );
       _scheduleErrorDismiss();
@@ -430,7 +434,7 @@ class ModeStateNotifier extends StateNotifier<ModeState> {
     if (state.isModeLocked && mode != RobotMode.mission) {
       print('Mode: Cannot change to ${mode.value} - mode locked (mission: ${state.activeMissionName})');
       state = state.copyWith(
-        error: 'Cannot change mode while mission is active',
+        error: _l.modeErrMissionActive,
         errorTime: DateTime.now(),
       );
       _scheduleErrorDismiss();

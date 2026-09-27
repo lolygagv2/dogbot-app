@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../domain/providers/sg_summary_provider.dart';
+import '../../../l10n/l10n.dart';
 import '../../theme/app_theme.dart';
 
 /// Robot 137a5e8: Silent Guardian session summary card. Shown above the SG
@@ -17,6 +18,7 @@ class SgSummaryCard extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final state = ref.watch(sgSummaryProvider);
     final s = state.summary;
+    final l = context.l10n;
 
     return Container(
       margin: const EdgeInsets.fromLTRB(12, 8, 12, 4),
@@ -38,10 +40,10 @@ class SgSummaryCard extends ConsumerWidget {
             children: [
               const Icon(Icons.shield_outlined, color: Colors.purple, size: 18),
               const SizedBox(width: 6),
-              const Expanded(
+              Expanded(
                 child: Text(
-                  'Session Summary',
-                  style: TextStyle(
+                  l.sgSessionSummary,
+                  style: const TextStyle(
                     fontWeight: FontWeight.bold,
                     color: AppTheme.textPrimary,
                   ),
@@ -73,9 +75,9 @@ class SgSummaryCard extends ConsumerWidget {
           ],
           if (s == null && state.error == null) ...[
             const SizedBox(height: 4),
-            const Text(
-              'Tap refresh for a live status report',
-              style: TextStyle(color: AppTheme.textTertiary, fontSize: 12),
+            Text(
+              l.sgTapRefresh,
+              style: const TextStyle(color: AppTheme.textTertiary, fontSize: 12),
             ),
           ],
           if (s != null) ...[
@@ -100,11 +102,11 @@ class SgSummaryCard extends ConsumerWidget {
             const SizedBox(height: 8),
             Row(
               children: [
-                _Stat('Barks', '${s.totalBarks}'),
-                _Stat('Treats', '${s.treatsDispensed}'),
-                _Stat('Interventions', '${s.interventionsTriggered}'),
+                _Stat(l.sgStatBarks, '${s.totalBarks}'),
+                _Stat(l.sgStatTreats, '${s.treatsDispensed}'),
+                _Stat(l.sgStatInterventions, '${s.interventionsTriggered}'),
                 if (s.escalationLevel != null)
-                  _Stat('Level', '${s.escalationLevel}',
+                  _Stat(l.sgStatLevel, '${s.escalationLevel}',
                       color: s.escalationLevel! >= 4 ? AppTheme.error : null),
                 _TrendStat(trend: s.trend),
               ],
@@ -144,10 +146,10 @@ class SgSummaryCard extends ConsumerWidget {
               const SizedBox(height: 10),
               Row(
                 children: [
-                  const Expanded(
+                  Expanded(
                     child: Text(
-                      'BARK TIMELINE',
-                      style: TextStyle(
+                      l.sgBarkTimeline,
+                      style: const TextStyle(
                         fontSize: 10,
                         letterSpacing: 0.5,
                         color: AppTheme.textTertiary,
@@ -156,10 +158,10 @@ class SgSummaryCard extends ConsumerWidget {
                   ),
                   if (s.trendDetail != null)
                     Text(
-                      'now ${s.trendDetail!.recentRatePerMin.toStringAsFixed(1)}'
-                      '/min · session '
-                      '${s.trendDetail!.sessionRatePerMin.toStringAsFixed(1)}'
-                      '/min',
+                      l.sgRateLine(
+                        s.trendDetail!.recentRatePerMin.toStringAsFixed(1),
+                        s.trendDetail!.sessionRatePerMin.toStringAsFixed(1),
+                      ),
                       style: const TextStyle(
                           fontSize: 10, color: AppTheme.textSecondary),
                     ),
@@ -173,13 +175,11 @@ class SgSummaryCard extends ConsumerWidget {
               Wrap(
                 spacing: 6,
                 children: [
-                  if (s.panicActive)
-                    const _Tag('PANIC ACTIVE', AppTheme.error),
+                  if (s.panicActive) _Tag(l.sgPanicActive, AppTheme.error),
                   if (!s.panicActive && s.panicEpisodes > 0)
-                    _Tag('${s.panicEpisodes} panic episode'
-                        '${s.panicEpisodes == 1 ? '' : 's'}', AppTheme.warning),
+                    _Tag(l.sgPanicEpisodes(s.panicEpisodes), AppTheme.warning),
                   if (s.aggressiveTag)
-                    const _Tag('Aggressive behavior', Colors.red),
+                    _Tag(l.sgAggressiveBehavior, Colors.red),
                 ],
               ),
             ],
@@ -350,9 +350,9 @@ class _TrendStat extends StatelessWidget {
       child: Column(
         children: [
           Icon(icon, size: 18, color: color),
-          const Text(
-            'Trend',
-            style: TextStyle(fontSize: 10, color: AppTheme.textTertiary),
+          Text(
+            context.l10n.sgStatTrend,
+            style: const TextStyle(fontSize: 10, color: AppTheme.textTertiary),
           ),
         ],
       ),

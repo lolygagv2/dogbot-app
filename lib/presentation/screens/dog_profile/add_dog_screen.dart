@@ -12,6 +12,7 @@ import 'package:uuid/uuid.dart';
 
 import '../../../data/models/dog_profile.dart';
 import '../../../domain/providers/dog_profiles_provider.dart';
+import '../../../l10n/l10n.dart';
 import '../../widgets/aruco_marker_view.dart';
 
 /// Add Dog screen with stepper flow
@@ -74,7 +75,7 @@ class _AddDogScreenState extends ConsumerState<AddDogScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Add Dog'),
+        title: Text(context.l10n.addDogTitle),
       ),
       body: Stepper(
         currentStep: _currentStep,
@@ -93,13 +94,13 @@ class _AddDogScreenState extends ConsumerState<AddDogScreen> {
               children: [
                 FilledButton(
                   onPressed: details.onStepContinue,
-                  child: Text(isLastStep ? 'Save Dog' : 'Continue'),
+                  child: Text(isLastStep ? context.l10n.addDogSaveDog : context.l10n.addDogContinue),
                 ),
                 const SizedBox(width: 12),
                 if (_currentStep > 0)
                   TextButton(
                     onPressed: details.onStepCancel,
-                    child: const Text('Back'),
+                    child: Text(context.l10n.back),
                   ),
               ],
             ),
@@ -108,7 +109,7 @@ class _AddDogScreenState extends ConsumerState<AddDogScreen> {
         steps: [
           // Step 1: Name
           Step(
-            title: const Text('Name'),
+            title: Text(context.l10n.dogNameLabel),
             subtitle: _nameController.text.isNotEmpty
                 ? Text(_nameController.text)
                 : null,
@@ -119,8 +120,8 @@ class _AddDogScreenState extends ConsumerState<AddDogScreen> {
 
           // Step 2: Color
           Step(
-            title: const Text('Color'),
-            subtitle: Text(_selectedColor.label),
+            title: Text(context.l10n.addDogStepColor),
+            subtitle: Text(_selectedColor.localizedLabel(context.l10n)),
             isActive: _currentStep >= 1,
             state: _currentStep > 1 ? StepState.complete : StepState.indexed,
             content: _buildColorStep(),
@@ -128,10 +129,10 @@ class _AddDogScreenState extends ConsumerState<AddDogScreen> {
 
           // Step 3: Photo
           Step(
-            title: const Text('Photo'),
+            title: Text(context.l10n.addDogStepPhoto),
             subtitle: _photoPath != null
-                ? const Text('Photo selected')
-                : const Text('Optional'),
+                ? Text(context.l10n.addDogPhotoSelected)
+                : Text(context.l10n.addDogOptional),
             isActive: _currentStep >= 2,
             state: _currentStep > 2 ? StepState.complete : StepState.indexed,
             content: _buildPhotoStep(),
@@ -139,8 +140,8 @@ class _AddDogScreenState extends ConsumerState<AddDogScreen> {
 
           // Step 4: ARUCO (Optional)
           Step(
-            title: const Text('ARUCO Tag'),
-            subtitle: const Text('Optional'),
+            title: Text(context.l10n.addDogStepAruco),
+            subtitle: Text(context.l10n.addDogOptional),
             isActive: _currentStep >= 3,
             state: StepState.indexed,
             content: _buildArucoStep(),
@@ -156,41 +157,41 @@ class _AddDogScreenState extends ConsumerState<AddDogScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            "What's your dog's name?",
-            style: TextStyle(fontSize: 16),
+          Text(
+            context.l10n.addDogNameQuestion,
+            style: const TextStyle(fontSize: 16),
           ),
           const SizedBox(height: 16),
           TextFormField(
             controller: _nameController,
-            decoration: const InputDecoration(
-              labelText: 'Dog Name',
-              hintText: 'e.g., Max, Luna, Buddy',
-              border: OutlineInputBorder(),
-              prefixIcon: Icon(Icons.pets),
+            decoration: InputDecoration(
+              labelText: context.l10n.addDogNameFieldLabel,
+              hintText: context.l10n.addDogNameHint,
+              border: const OutlineInputBorder(),
+              prefixIcon: const Icon(Icons.pets),
             ),
             textCapitalization: TextCapitalization.words,
             autofocus: true,
             validator: (value) {
               if (value == null || value.trim().isEmpty) {
-                return 'Please enter a name';
+                return context.l10n.addDogNameRequired;
               }
               return null;
             },
           ),
           const SizedBox(height: 24),
-          const Text(
-            "What breed is your dog?",
-            style: TextStyle(fontSize: 16),
+          Text(
+            context.l10n.addDogBreedQuestion,
+            style: const TextStyle(fontSize: 16),
           ),
           const SizedBox(height: 16),
           TextFormField(
             controller: _breedController,
-            decoration: const InputDecoration(
-              labelText: 'Breed',
-              hintText: 'e.g., Golden Retriever, Mixed, Unknown',
-              border: OutlineInputBorder(),
-              prefixIcon: Icon(Icons.category),
+            decoration: InputDecoration(
+              labelText: context.l10n.dogBreedLabel,
+              hintText: context.l10n.addDogBreedHint,
+              border: const OutlineInputBorder(),
+              prefixIcon: const Icon(Icons.category),
             ),
             textCapitalization: TextCapitalization.words,
           ),
@@ -203,9 +204,9 @@ class _AddDogScreenState extends ConsumerState<AddDogScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
-          "What's your dog's primary coat color?",
-          style: TextStyle(fontSize: 16),
+        Text(
+          context.l10n.addDogColorQuestion,
+          style: const TextStyle(fontSize: 16),
         ),
         const SizedBox(height: 16),
         Wrap(
@@ -246,7 +247,7 @@ class _AddDogScreenState extends ConsumerState<AddDogScreen> {
                     ),
                     const SizedBox(width: 8),
                     Text(
-                      color.label,
+                      color.localizedLabel(context.l10n),
                       style: TextStyle(
                         fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
                       ),
@@ -273,9 +274,9 @@ class _AddDogScreenState extends ConsumerState<AddDogScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
-          'Add a profile photo for your dog',
-          style: TextStyle(fontSize: 16),
+        Text(
+          context.l10n.addDogPhotoPrompt,
+          style: const TextStyle(fontSize: 16),
         ),
         const SizedBox(height: 16),
 
@@ -313,7 +314,7 @@ class _AddDogScreenState extends ConsumerState<AddDogScreen> {
                         ),
                         const SizedBox(height: 8),
                         Text(
-                          'Tap to add',
+                          context.l10n.addDogTapToAdd,
                           style: TextStyle(
                             color: Theme.of(context).colorScheme.primary,
                             fontWeight: FontWeight.w500,
@@ -334,13 +335,13 @@ class _AddDogScreenState extends ConsumerState<AddDogScreen> {
             OutlinedButton.icon(
               onPressed: () => _pickPhoto(ImageSource.camera),
               icon: const Icon(Icons.camera_alt),
-              label: const Text('Camera'),
+              label: Text(context.l10n.addDogCamera),
             ),
             const SizedBox(width: 12),
             OutlinedButton.icon(
               onPressed: () => _pickPhoto(ImageSource.gallery),
               icon: const Icon(Icons.photo_library),
-              label: const Text('Gallery'),
+              label: Text(context.l10n.addDogGallery),
             ),
           ],
         ),
@@ -350,7 +351,7 @@ class _AddDogScreenState extends ConsumerState<AddDogScreen> {
           Center(
             child: TextButton(
               onPressed: () => setState(() => _photoPath = null),
-              child: const Text('Remove photo'),
+              child: Text(context.l10n.addDogRemovePhoto),
             ),
           ),
         ],
@@ -363,13 +364,13 @@ class _AddDogScreenState extends ConsumerState<AddDogScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
-          'WIM-Z uses an ARUCO marker on your dog\'s collar to tell them apart.',
-          style: TextStyle(fontSize: 16),
+        Text(
+          context.l10n.addDogArucoIntro,
+          style: const TextStyle(fontSize: 16),
         ),
         const SizedBox(height: 8),
         Text(
-          'We picked the next free ID for you. Print this marker and attach it to the collar.',
+          context.l10n.addDogArucoAutoPicked,
           style: TextStyle(
             fontSize: 14,
             color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
@@ -378,11 +379,11 @@ class _AddDogScreenState extends ConsumerState<AddDogScreen> {
         const SizedBox(height: 16),
         TextFormField(
           controller: _arucoController,
-          decoration: const InputDecoration(
-            labelText: 'ARUCO Marker ID',
-            hintText: 'e.g., 42',
-            border: OutlineInputBorder(),
-            prefixIcon: Icon(Icons.qr_code_2),
+          decoration: InputDecoration(
+            labelText: context.l10n.addDogArucoIdLabel,
+            hintText: context.l10n.addDogArucoIdHint,
+            border: const OutlineInputBorder(),
+            prefixIcon: const Icon(Icons.qr_code_2),
           ),
           keyboardType: TextInputType.number,
           onChanged: (_) => setState(() {}), // refresh marker preview
@@ -395,7 +396,7 @@ class _AddDogScreenState extends ConsumerState<AddDogScreen> {
             child: OutlinedButton.icon(
               onPressed: () => _printMarker(markerId, _nameController.text.trim()),
               icon: const Icon(Icons.print),
-              label: const Text('Print marker'),
+              label: Text(context.l10n.arucoPrintMarker),
             ),
           ),
           const SizedBox(height: 12),
@@ -416,7 +417,7 @@ class _AddDogScreenState extends ConsumerState<AddDogScreen> {
               const SizedBox(width: 12),
               Expanded(
                 child: Text(
-                  'You can clear this field to skip ArUco — useful if you only have one dog or prefer appearance-based ID.',
+                  context.l10n.addDogArucoSkipHint,
                   style: TextStyle(
                     fontSize: 13,
                     color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
@@ -435,10 +436,8 @@ class _AddDogScreenState extends ConsumerState<AddDogScreen> {
     if (bytes == null) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text(
-              'Marker bundle not generated yet — run scripts/generate_aruco_markers.py',
-            ),
+          SnackBar(
+            content: Text(context.l10n.addDogMarkerBundleMissing),
           ),
         );
       }
@@ -508,7 +507,7 @@ class _AddDogScreenState extends ConsumerState<AddDogScreen> {
           children: [
             ListTile(
               leading: const Icon(Icons.camera_alt),
-              title: const Text('Take Photo'),
+              title: Text(context.l10n.dogPhotoTakePhoto),
               onTap: () {
                 Navigator.pop(context);
                 _pickPhoto(ImageSource.camera);
@@ -516,7 +515,7 @@ class _AddDogScreenState extends ConsumerState<AddDogScreen> {
             ),
             ListTile(
               leading: const Icon(Icons.photo_library),
-              title: const Text('Choose from Gallery'),
+              title: Text(context.l10n.dogPhotoChooseFromGallery),
               onTap: () {
                 Navigator.pop(context);
                 _pickPhoto(ImageSource.gallery);
@@ -525,7 +524,7 @@ class _AddDogScreenState extends ConsumerState<AddDogScreen> {
             if (_photoPath != null)
               ListTile(
                 leading: const Icon(Icons.delete, color: Colors.red),
-                title: const Text('Remove Photo', style: TextStyle(color: Colors.red)),
+                title: Text(context.l10n.dogPhotoRemovePhoto, style: const TextStyle(color: Colors.red)),
                 onTap: () {
                   Navigator.pop(context);
                   setState(() => _photoPath = null);
@@ -558,7 +557,7 @@ class _AddDogScreenState extends ConsumerState<AddDogScreen> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to pick image: $e')),
+          SnackBar(content: Text(context.l10n.addDogPickImageFailed('$e'))),
         );
       }
     }
@@ -569,7 +568,7 @@ class _AddDogScreenState extends ConsumerState<AddDogScreen> {
       // Validate name
       if (_nameController.text.trim().isEmpty) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Please enter a name')),
+          SnackBar(content: Text(context.l10n.addDogNameRequired)),
         );
         return;
       }
@@ -597,7 +596,7 @@ class _AddDogScreenState extends ConsumerState<AddDogScreen> {
     final name = _nameController.text.trim();
     if (name.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please enter a name')),
+        SnackBar(content: Text(context.l10n.addDogNameRequired)),
       );
       return;
     }
@@ -625,7 +624,7 @@ class _AddDogScreenState extends ConsumerState<AddDogScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('A dog named "$name" already exists'),
+            content: Text(context.l10n.addDogDuplicateName(name)),
             backgroundColor: Colors.red,
           ),
         );
@@ -638,7 +637,7 @@ class _AddDogScreenState extends ConsumerState<AddDogScreen> {
 
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Robot will now recognize ${profile.name}')),
+        SnackBar(content: Text(context.l10n.addDogRobotWillRecognize(profile.name))),
       );
       context.pop();
     }

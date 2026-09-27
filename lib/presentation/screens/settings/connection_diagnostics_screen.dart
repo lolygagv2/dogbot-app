@@ -6,6 +6,7 @@ import 'package:share_plus/share_plus.dart';
 
 import '../../../core/network/websocket_client.dart';
 import '../../../core/utils/conn_trace.dart';
+import '../../../l10n/l10n.dart';
 import '../../theme/app_theme.dart';
 
 /// On-device viewer for the WebRTC signaling/connection trace ([connTrace]).
@@ -53,14 +54,15 @@ class _ConnectionDiagnosticsScreenState
     await Clipboard.setData(ClipboardData(text: ConnTraceLog.asText));
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Trace copied to clipboard')),
+      SnackBar(content: Text(context.l10n.connDiagCopied)),
     );
   }
 
   Future<void> _share() async {
+    final subject = context.l10n.connDiagShareSubject;
     await Share.share(
       ConnTraceLog.asText,
-      subject: 'WIM-Z connection trace',
+      subject: subject,
     );
   }
 
@@ -68,7 +70,7 @@ class _ConnectionDiagnosticsScreenState
     ConnTraceLog.clear();
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Trace cleared')),
+      SnackBar(content: Text(context.l10n.connDiagCleared)),
     );
   }
 
@@ -79,11 +81,12 @@ class _ConnectionDiagnosticsScreenState
   /// far end (if the strip still didn't light, it's robot/electrical — see
   /// R-LED); a timeout means the command path itself is broken.
   Future<void> _ledPing() async {
+    final l = context.l10n;
     final ws = WebSocketClient.instance;
     if (ws.state != WsConnectionState.connected) {
       connTrace('led-ping-skip', 'ws state=${ws.state.name}');
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Not connected — connect to the robot first')),
+        SnackBar(content: Text(l.connDiagNotConnected)),
       );
       return;
     }
@@ -101,14 +104,13 @@ class _ConnectionDiagnosticsScreenState
       final ack = await ackFuture;
       stopwatch.stop();
       connTrace('led-ping-ack', '${stopwatch.elapsedMilliseconds}ms (${ack.type})');
-      result = 'LED acknowledged in ${stopwatch.elapsedMilliseconds}ms — '
-          'if nothing lit, the fault is on the robot';
+      result = l.connDiagLedAcked(stopwatch.elapsedMilliseconds);
     } on TimeoutException {
       connTrace('led-ping-timeout', 'no ack within 3000ms');
-      result = 'LED sent but not acknowledged in 3s — command path broken';
+      result = l.connDiagLedTimeout;
     } catch (e) {
       connTrace('led-ping-error', '$e');
-      result = 'LED ping failed: $e';
+      result = l.connDiagLedFailed('$e');
     }
     if (!mounted) return;
     setState(() => _pinging = false);
@@ -118,10 +120,11 @@ class _ConnectionDiagnosticsScreenState
   @override
   Widget build(BuildContext context) {
     final entries = ConnTraceLog.entries;
+    final l = context.l10n;
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Connection Diagnostics'),
+        title: Text(l.connDiagTitle),
         actions: [
           IconButton(
             icon: _pinging
@@ -131,22 +134,22 @@ class _ConnectionDiagnosticsScreenState
                     child: CircularProgressIndicator(strokeWidth: 2),
                   )
                 : const Icon(Icons.lightbulb_outline),
-            tooltip: 'LED ping',
+            tooltip: l.connDiagLedPing,
             onPressed: _pinging ? null : _ledPing,
           ),
           IconButton(
             icon: const Icon(Icons.copy),
-            tooltip: 'Copy',
+            tooltip: l.connDiagCopy,
             onPressed: entries.isEmpty ? null : _copy,
           ),
           IconButton(
             icon: const Icon(Icons.share),
-            tooltip: 'Share',
+            tooltip: l.connDiagShare,
             onPressed: entries.isEmpty ? null : _share,
           ),
           IconButton(
             icon: const Icon(Icons.delete_outline),
-            tooltip: 'Clear',
+            tooltip: l.connDiagClear,
             onPressed: entries.isEmpty ? null : _clear,
           ),
         ],
@@ -158,20 +161,17 @@ class _ConnectionDiagnosticsScreenState
             padding: const EdgeInsets.all(12),
             color: AppTheme.surfaceLight,
             child: Text(
-              'WebRTC signaling trace — ${entries.length} event'
-              '${entries.length == 1 ? '' : 's'} captured.\n'
-              'Reproduce the slow video, then Share this trace.',
+              l.connDiagHeader(entries.length),
               style: Theme.of(context).textTheme.bodySmall,
             ),
           ),
           Expanded(
             child: entries.isEmpty
-                ? const Center(
+                ? Center(
                     child: Padding(
-                      padding: EdgeInsets.all(24),
+                      padding: const EdgeInsets.all(24),
                       child: Text(
-                        'No events captured yet.\n\n'
-                        'Log in and open the video feed, then return here.',
+                        l.connDiagEmpty,
                         textAlign: TextAlign.center,
                       ),
                     ),

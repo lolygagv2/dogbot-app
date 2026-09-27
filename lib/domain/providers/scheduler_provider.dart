@@ -6,6 +6,8 @@ import 'package:uuid/uuid.dart';
 
 import '../../core/network/websocket_client.dart';
 import '../../data/models/schedule.dart';
+import '../../l10n/l10n.dart';
+import 'l10n_provider.dart';
 
 /// Cache key for scheduler enabled state
 const _schedulerEnabledKey = 'scheduler_global_enabled';
@@ -36,6 +38,8 @@ final scheduleByIdProvider = Provider.family<MissionSchedule?, String>((ref, id)
 /// Robot stores schedules locally for offline execution
 class SchedulerNotifier extends StateNotifier<SchedulerState> {
   final Ref _ref;
+
+  AppLocalizations get _l => _ref.read(l10nProvider);
   SharedPreferences? _prefs;
   StreamSubscription? _wsSubscription;
 
@@ -114,7 +118,7 @@ class SchedulerNotifier extends StateNotifier<SchedulerState> {
 
     // Build 41.1: If success is false, complete pending operation as failed and remove ghost entry
     if (!success) {
-      final error = data['error'] as String? ?? 'Failed to create schedule';
+      final error = data['error'] as String? ?? _l.scheduleEditCreateFailed;
       print('Scheduler: Create failed - $error');
 
       if (scheduleId != null && _pendingOperations.containsKey(scheduleId)) {
@@ -203,7 +207,7 @@ class SchedulerNotifier extends StateNotifier<SchedulerState> {
 
   void _handleScheduleError(Map<String, dynamic> data) {
     final scheduleId = data['schedule_id'] as String?;
-    final error = data['error'] as String? ?? 'Unknown error';
+    final error = data['error'] as String? ?? _l.unknownError;
     print('Scheduler: schedule_error event, id=$scheduleId, error=$error');
 
     _completePendingOperation(scheduleId, false);
@@ -238,7 +242,7 @@ class SchedulerNotifier extends StateNotifier<SchedulerState> {
       if (state.isLoading) {
         state = state.copyWith(
           isLoading: false,
-          error: 'Timeout waiting for schedules from robot',
+          error: _l.schedErrTimeout,
         );
       }
     });
@@ -329,7 +333,7 @@ class SchedulerNotifier extends StateNotifier<SchedulerState> {
         // Revert optimistic update
         state = state.copyWith(
           schedules: state.schedules.where((s) => s.id != scheduleId).toList(),
-          error: state.error ?? 'Failed to create schedule',
+          error: state.error ?? _l.scheduleEditCreateFailed,
         );
       }
 
@@ -338,7 +342,7 @@ class SchedulerNotifier extends StateNotifier<SchedulerState> {
       print('Scheduler: Create error: $e');
       state = state.copyWith(
         schedules: state.schedules.where((s) => s.id != scheduleId).toList(),
-        error: 'Failed to create schedule',
+        error: _l.scheduleEditCreateFailed,
       );
       return false;
     }
@@ -388,7 +392,7 @@ class SchedulerNotifier extends StateNotifier<SchedulerState> {
         // Revert
         state = state.copyWith(
           schedules: state.schedules.map((s) => s.id == schedule.id ? oldSchedule : s).toList(),
-          error: state.error ?? 'Failed to update schedule',
+          error: state.error ?? _l.scheduleEditUpdateFailed,
         );
       }
 
@@ -397,7 +401,7 @@ class SchedulerNotifier extends StateNotifier<SchedulerState> {
       print('Scheduler: Update error: $e');
       state = state.copyWith(
         schedules: state.schedules.map((s) => s.id == schedule.id ? oldSchedule : s).toList(),
-        error: 'Failed to update schedule',
+        error: _l.scheduleEditUpdateFailed,
       );
       return false;
     }
@@ -448,7 +452,7 @@ class SchedulerNotifier extends StateNotifier<SchedulerState> {
         // Revert
         state = state.copyWith(
           schedules: [...state.schedules, oldSchedule],
-          error: state.error ?? 'Failed to delete schedule',
+          error: state.error ?? _l.schedErrDeleteFailed,
         );
       }
 
@@ -457,7 +461,7 @@ class SchedulerNotifier extends StateNotifier<SchedulerState> {
       print('Scheduler: Delete error: $e');
       state = state.copyWith(
         schedules: [...state.schedules, oldSchedule],
-        error: 'Failed to delete schedule',
+        error: _l.schedErrDeleteFailed,
       );
       return false;
     }

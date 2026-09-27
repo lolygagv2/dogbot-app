@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../domain/providers/webrtc_provider.dart';
+import '../../../l10n/l10n.dart';
 
 /// Small speaker mute/unmute toggle overlaid on video feed.
 /// Purely app-side — does NOT send any command to the robot.
@@ -29,8 +30,8 @@ class AudioMuteToggle extends ConsumerWidget {
 
     return Tooltip(
       message: isAutoListening
-          ? 'Listening to robot...'
-          : (isMuted ? 'Unmute audio' : 'Mute audio'),
+          ? context.l10n.audioMuteListening
+          : (isMuted ? context.l10n.audioMuteUnmute : context.l10n.audioMuteMute),
       child: GestureDetector(
         onTap: () {
           HapticFeedback.lightImpact();

@@ -7,6 +7,7 @@ import '../../../domain/providers/auth_provider.dart';
 import '../../../domain/providers/connection_mode_provider.dart';
 import '../../../domain/providers/connection_provider.dart';
 import '../../../domain/providers/device_provider.dart';
+import '../../../domain/providers/locale_provider.dart';
 import '../../../domain/providers/ota_update_provider.dart';
 import '../../../domain/providers/paired_devices_provider.dart';
 import '../../../domain/providers/settings_provider.dart';
@@ -16,6 +17,7 @@ import '../../../domain/providers/telemetry_provider.dart';
 import '../../../domain/providers/video_quality_provider.dart';
 import '../../../domain/providers/webrtc_provider.dart';
 import '../../../domain/providers/wifi_config_provider.dart';
+import '../../../l10n/l10n.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/night_mode/night_vision_settings_section.dart';
 import '../../widgets/status/local_ap_banner.dart';
@@ -45,16 +47,16 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Sign Out'),
-        content: const Text('Are you sure you want to sign out? You will need to log in again.'),
+        title: Text(ctx.l10n.signOut),
+        content: Text(ctx.l10n.signOutConfirmBody),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Cancel'),
+            child: Text(ctx.l10n.cancel),
           ),
           TextButton(
             onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Sign Out', style: TextStyle(color: Colors.red)),
+            child: Text(ctx.l10n.signOut, style: const TextStyle(color: Colors.red)),
           ),
         ],
       ),
@@ -81,13 +83,14 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     final telemetry = ref.watch(telemetryProvider);
     final settings = ref.watch(settingsProvider);
     final isLocalMode = settings.localModeEnabled;
+    final l = context.l10n;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Settings')),
+      appBar: AppBar(title: Text(l.settings)),
       body: ListView(
         children: [
           // Connection Status
-          _SectionHeader('Connection'),
+          _SectionHeader(l.settingsSectionConnection),
           _ConnectionInfoTile(isLocalMode: isLocalMode),
           // Build 146: in-session switch onto the robot's hotspot (cloud only)
           if (!isLocalMode) const LocalModeSwitchTile(),
@@ -99,7 +102,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           // ("My Robots") screen now — having both was the source of the
           // "why do I see my robot twice" confusion.
           if (!isLocalMode) ...[
-            _SectionHeader('My Robots'),
+            _SectionHeader(l.settingsSectionMyRobots),
             const _ManageDevicesTile(),
             const Divider(),
           ],
@@ -111,128 +114,132 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           // Controller pairing (robot-hosted Bluetooth). Shown in both modes —
           // most useful in local-AP during field deployment, where re-pairing a
           // dropped Xbox controller otherwise means SSH.
-          _SectionHeader('Controller'),
+          _SectionHeader(l.settingsSectionController),
           ListTile(
             leading: const Icon(Icons.sports_esports),
-            title: const Text('Game Controller'),
-            subtitle: const Text('Pair a game controller to the robot'),
+            title: Text(l.settingsGameController),
+            subtitle: Text(l.settingsGameControllerSubtitle),
             trailing: const Icon(Icons.chevron_right),
             onTap: () => context.push('/controller-pairing'),
           ),
           const Divider(),
 
-          _SectionHeader('Robot Status'),
+          _SectionHeader(l.settingsSectionRobotStatus),
           ListTile(
             leading: Icon(
               telemetry.isCharging ? Icons.battery_charging_full : Icons.battery_full,
               color: telemetry.battery > 20 ? Colors.green : Colors.red,
             ),
-            title: const Text('Battery'),
+            title: Text(l.settingsBattery),
             trailing: Text(
               '${telemetry.battery.toInt()}%${telemetry.isCharging ? ' ⚡' : ''}',
             ),
           ),
           ListTile(
             leading: const Icon(Icons.thermostat),
-            title: const Text('Temperature'),
-            trailing: Text(telemetry.temperature > 0 ? '${telemetry.temperature.toInt()}°C' : 'N/A'),
+            title: Text(l.settingsTemperature),
+            trailing: Text(telemetry.temperature > 0 ? '${telemetry.temperature.toInt()}°C' : l.settingsNotAvailable),
           ),
           _TreatsRemainingTile(),
           ListTile(
             leading: const Icon(Icons.tune),
-            title: const Text('Current Mode'),
-            trailing: Text(telemetry.mode.toUpperCase()),
+            title: Text(l.settingsCurrentMode),
+            trailing: Text(robotModeIdLabel(l, telemetry.mode).toUpperCase()),
           ),
           const _RobotSoftwareTile(),
           const Divider(),
 
-          _SectionHeader('Calibration'),
+          _SectionHeader(l.settingsSectionCalibration),
           _MotorTrimSlider(),
           const Divider(),
 
-          _SectionHeader('Camera'),
+          _SectionHeader(l.settingsSectionCamera),
           const _CameraTrackingTile(),
           const Divider(),
 
-          _SectionHeader('Night Vision'),
+          _SectionHeader(l.settingsSectionNightVision),
           const NightVisionSettingsSection(),
           const Divider(),
 
-          _SectionHeader('Video'),
+          _SectionHeader(l.settingsSectionVideo),
           const _VideoQualityTile(),
           const Divider(),
 
-          _SectionHeader('Audio'),
+          _SectionHeader(l.settingsSectionAudio),
           const _BackgroundAudioTile(),
           const Divider(),
 
-          _SectionHeader('Notifications'),
+          _SectionHeader(l.settingsSectionNotifications),
           const _NotificationsTile(),
           const Divider(),
 
-          _SectionHeader('Silent Guardian'),
+          _SectionHeader(l.settingsSectionSilentGuardian),
           const InterventionLevelSection(),
           const Divider(),
 
-          _SectionHeader('Training'),
+          _SectionHeader(l.settingsSectionTraining),
           const _DailyLimitTile(),
           ListTile(
             leading: const Icon(Icons.schedule),
-            title: const Text('Training Scheduler'),
-            subtitle: const Text('Schedule automatic training sessions'),
+            title: Text(l.settingsTrainingScheduler),
+            subtitle: Text(l.settingsTrainingSchedulerSubtitle),
             trailing: const Icon(Icons.chevron_right),
             onTap: () => context.push('/scheduler'),
           ),
           ListTile(
             leading: const Icon(Icons.mic),
-            title: const Text('Voice Commands'),
-            subtitle: const Text('Record custom voice commands for your dog'),
+            title: Text(l.settingsVoiceCommands),
+            subtitle: Text(l.settingsVoiceCommandsSubtitle),
             trailing: const Icon(Icons.chevron_right),
             onTap: () => context.push('/voice-setup'),
           ),
           const Divider(),
 
-          _SectionHeader('Diagnostics'),
+          _SectionHeader(l.settingsSectionDiagnostics),
           ListTile(
             leading: const Icon(Icons.bug_report),
-            title: const Text('Test Recording'),
-            subtitle: const Text('Run recording diagnostics'),
+            title: Text(l.settingsTestRecording),
+            subtitle: Text(l.settingsTestRecordingSubtitle),
             trailing: const Icon(Icons.chevron_right),
             onTap: () => _showRecordingDiagnostics(context, ref),
           ),
           ListTile(
             leading: const Icon(Icons.lan),
-            title: const Text('Connection Diagnostics'),
-            subtitle: const Text('WebRTC signaling trace (video connect)'),
+            title: Text(l.settingsConnectionDiagnostics),
+            subtitle: Text(l.settingsConnectionDiagnosticsSubtitle),
             trailing: const Icon(Icons.chevron_right),
             onTap: () => context.push('/settings/connection-diagnostics'),
           ),
           ListTile(
             leading: const Icon(Icons.preview),
-            title: const Text('UI Previews'),
-            subtitle: const Text('Spec-shaped views on sample data (dev)'),
+            title: Text(l.settingsUiPreviews),
+            subtitle: Text(l.settingsUiPreviewsSubtitle),
             trailing: const Icon(Icons.chevron_right),
             onTap: () => context.push('/settings/ui-previews'),
           ),
           const Divider(),
 
-          _SectionHeader('About'),
-          const ListTile(
-            leading: Icon(Icons.info),
-            title: Text('WIM-Z App'),
-            subtitle: Text('Version 1.0.0'),
+          _SectionHeader(l.language),
+          const _LanguageTile(),
+          const Divider(),
+
+          _SectionHeader(l.settingsSectionAbout),
+          ListTile(
+            leading: const Icon(Icons.info),
+            title: Text(l.settingsAppName),
+            subtitle: Text(l.settingsAppVersion('1.0.0')),
           ),
-          const ListTile(
-            leading: Icon(Icons.code),
-            title: Text('API Version'),
-            subtitle: Text('v1'),
+          ListTile(
+            leading: const Icon(Icons.code),
+            title: Text(l.settingsApiVersion),
+            subtitle: const Text('v1'),
           ),
           const Divider(),
 
-          _SectionHeader('Account'),
+          _SectionHeader(l.settingsSectionAccount),
           ListTile(
             leading: const Icon(Icons.logout, color: Colors.red),
-            title: const Text('Sign Out'),
+            title: Text(l.signOut),
             subtitle: Text(
               ref.watch(authProvider).email ?? '',
               style: TextStyle(color: AppTheme.textTertiary, fontSize: 12),
@@ -242,6 +249,67 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           const SizedBox(height: 32),
         ],
       ),
+    );
+  }
+}
+
+/// Settings → Language. Null locale = follow the device language.
+class _LanguageTile extends ConsumerWidget {
+  const _LanguageTile();
+
+  static String _label(AppLocalizations l, Locale? locale) {
+    switch (locale?.languageCode) {
+      case 'en':
+        return l.languageEnglish;
+      case 'ko':
+        return l.languageKorean;
+      default:
+        return l.languageSystemDefault;
+    }
+  }
+
+  Future<void> _pick(BuildContext context, WidgetRef ref) async {
+    final l = context.l10n;
+    final current = ref.read(localeProvider);
+    // Sentinel so "system default" (null) is distinguishable from "dismissed".
+    const system = Locale('und');
+    final chosen = await showDialog<Locale>(
+      context: context,
+      builder: (ctx) => SimpleDialog(
+        title: Text(l.language),
+        children: [
+          for (final entry in <Locale, String>{
+            system: l.languageSystemDefault,
+            const Locale('en'): l.languageEnglish,
+            const Locale('ko'): l.languageKorean,
+          }.entries)
+            RadioListTile<Locale>(
+              value: entry.key,
+              groupValue: current ?? system,
+              title: Text(entry.value),
+              onChanged: (v) => Navigator.pop(ctx, v),
+            ),
+        ],
+      ),
+    );
+    if (chosen == null) return;
+    await ref
+        .read(localeProvider.notifier)
+        .setLocale(chosen == system ? null : chosen);
+  }
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final l = context.l10n;
+    final locale = ref.watch(localeProvider);
+    return ListTile(
+      leading: const Icon(Icons.language),
+      title: Text(l.language),
+      subtitle: Text(
+        '${_label(l, locale)} · ${l.languageSubtitle}',
+        style: TextStyle(color: AppTheme.textTertiary, fontSize: 12),
+      ),
+      onTap: () => _pick(context, ref),
     );
   }
 }
@@ -277,6 +345,7 @@ class _ConnectionInfoTile extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final localConn = ref.watch(localConnectionProvider);
     final connection = ref.watch(connectionProvider);
+    final l = context.l10n;
 
     final bool isConnected;
     final String title;
@@ -289,17 +358,17 @@ class _ConnectionInfoTile extends ConsumerWidget {
       icon = Icons.wifi;
       color = isConnected ? AppTheme.accent : AppTheme.textTertiary;
       title = isConnected
-          ? 'Connected to Robot (${localConn.robotIp ?? "192.168.4.1"})'
-          : 'Local mode — not connected';
-      subtitle = 'Direct connection via WIMZ WiFi';
+          ? l.settingsConnectedToRobot(localConn.robotIp ?? '192.168.4.1')
+          : l.settingsLocalNotConnected;
+      subtitle = l.settingsDirectViaWifi;
     } else {
       isConnected = connection.isRobotOnline;
       icon = Icons.cloud;
       color = isConnected ? AppTheme.accent : AppTheme.textTertiary;
       title = isConnected
-          ? 'Connected via Cloud'
-          : connection.statusMessage;
-      subtitle = 'Relay: api.wimzai.com';
+          ? l.settingsConnectedViaCloud
+          : connection.statusMessage(l);
+      subtitle = l.settingsRelayHost('api.wimzai.com');
     }
 
     return ListTile(
@@ -336,6 +405,7 @@ class _ManageDevicesTile extends ConsumerWidget {
     final activeDeviceId = ref.watch(deviceIdProvider);
     final isLocal = ref.watch(isLocalModeProvider);
     final count = pairedDevices.devices.length;
+    final l = context.l10n;
 
     // Resolve the active device's display name (falls back to its id).
     // Build 132: "active" = a robot was actually selected/saved, NOT
@@ -356,21 +426,20 @@ class _ManageDevicesTile extends ConsumerWidget {
       // Build 112: local AP mode is a single direct connection with no relay
       // device list. Never surface the stale saved relay id here — it can name
       // a different robot than the one we're physically connected to.
-      subtitle = 'Local Robot · direct connection (192.168.4.1)';
+      subtitle = l.settingsLocalRobotDirect;
     } else if (pairedDevices.isLoading && count == 0) {
-      subtitle = 'Loading…';
+      subtitle = l.loading;
     } else if (count == 0) {
-      subtitle = 'No robots paired — tap to add one';
+      subtitle = l.settingsNoRobotsPaired;
     } else {
-      final plural = count == 1 ? 'robot' : 'robots';
       subtitle = activeName != null
-          ? '$activeName · $count $plural paired'
-          : '$count $plural paired — tap to select';
+          ? l.settingsRobotsPairedActive(activeName, count)
+          : l.settingsRobotsPairedSelect(count);
     }
 
     return ListTile(
       leading: const Icon(Icons.smart_toy),
-      title: const Text('Manage Robots'),
+      title: Text(l.settingsManageRobots),
       subtitle: Text(
         subtitle,
         style: TextStyle(color: AppTheme.textTertiary, fontSize: 12),
@@ -394,6 +463,7 @@ class _RobotSoftwareTile extends ConsumerWidget {
     final running = ref.watch(telemetryProvider).swVersion;
     final latestAsync = ref.watch(latestReleaseProvider);
     final ota = ref.watch(otaUpdateProvider);
+    final l = context.l10n;
 
     final latest = latestAsync.valueOrNull;
     final latestVersion = latest?['version'] as String?;
@@ -408,32 +478,33 @@ class _RobotSoftwareTile extends ConsumerWidget {
     Color? subtitleColor;
     if (ota.inProgress) {
       final pct = ota.progressPct != null ? ' ${ota.progressPct}%' : '';
-      subtitle = 'Updating to ${ota.version ?? '?'}: ${ota.state}$pct';
+      subtitle = l.settingsOtaUpdating(ota.version ?? '?', ota.state ?? '', pct);
       subtitleColor = AppTheme.accent;
     } else if (ota.isTerminal) {
       switch (ota.state) {
         case 'success':
-          subtitle = 'Updated to ${ota.version ?? '?'} ✓';
+          subtitle = l.settingsOtaUpdated(ota.version ?? '?');
           subtitleColor = Colors.green;
           break;
         case 'rolled_back':
-          subtitle =
-              'Update failed — rolled back safely${ota.error != null ? ' (${ota.error})' : ''}';
+          subtitle = l.settingsOtaRolledBack(
+              ota.error != null ? ' (${ota.error})' : '');
           subtitleColor = AppTheme.warning;
           break;
         default: // failed
-          subtitle = 'Update failed${ota.error != null ? ': ${ota.error}' : ''}';
+          subtitle = l.settingsOtaFailed(
+              ota.error != null ? ': ${ota.error}' : '');
           subtitleColor = AppTheme.error;
       }
     } else if (running == null) {
-      subtitle = 'Version not reported — robot updater not installed yet';
+      subtitle = l.settingsOtaNotReported;
     } else if (latestVersion == null) {
-      subtitle = 'Up to date — no newer release on server';
+      subtitle = l.settingsOtaUpToDateNoRelease;
     } else if (updateAvailable) {
-      subtitle = 'Update available: $latestVersion';
+      subtitle = l.settingsOtaAvailable(latestVersion);
       subtitleColor = AppTheme.accent;
     } else {
-      subtitle = 'Up to date';
+      subtitle = l.settingsOtaUpToDate;
     }
 
     return ListTile(
@@ -441,7 +512,7 @@ class _RobotSoftwareTile extends ConsumerWidget {
         Icons.system_update_alt,
         color: updateAvailable ? AppTheme.accent : null,
       ),
-      title: const Text('Robot Software'),
+      title: Text(l.settingsRobotSoftware),
       subtitle: Text(
         subtitle,
         style: TextStyle(color: subtitleColor ?? AppTheme.textTertiary, fontSize: 12),
@@ -455,7 +526,7 @@ class _RobotSoftwareTile extends ConsumerWidget {
           : ota.isTerminal
               ? TextButton(
                   onPressed: () => ref.read(otaUpdateProvider.notifier).dismiss(),
-                  child: const Text('OK'),
+                  child: Text(l.ok),
                 )
               : updateAvailable
                   ? ElevatedButton(
@@ -464,7 +535,7 @@ class _RobotSoftwareTile extends ConsumerWidget {
                         backgroundColor: AppTheme.accent,
                         foregroundColor: AppTheme.background,
                       ),
-                      child: const Text('UPDATE'),
+                      child: Text(l.settingsUpdateCaps),
                     )
                   : Text(running ?? '—'),
       onTap: () => ref.invalidate(latestReleaseProvider), // tap to re-check
@@ -472,26 +543,24 @@ class _RobotSoftwareTile extends ConsumerWidget {
   }
 
   void _confirmUpdate(BuildContext context, WidgetRef ref, String version) {
-    final running = ref.read(telemetryProvider).swVersion ?? 'unknown';
+    final l = context.l10n;
+    final running = ref.read(telemetryProvider).swVersion ?? l.unknown;
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Update Robot Software'),
-        content: Text(
-            'Update robot from $running to $version?\n\nThe robot must be '
-            'idle with battery above 30%. It will restart during the update '
-            'and roll back automatically if anything goes wrong.'),
+        title: Text(l.settingsUpdateRobotSoftware),
+        content: Text(l.settingsUpdateConfirmBody(running, version)),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(),
-            child: const Text('Cancel'),
+            child: Text(l.cancel),
           ),
           ElevatedButton(
             onPressed: () {
               Navigator.of(ctx).pop();
               ref.read(otaUpdateProvider.notifier).startUpdate(version);
             },
-            child: const Text('Update'),
+            child: Text(l.settingsUpdate),
           ),
         ],
       ),
@@ -505,10 +574,11 @@ class _TreatsRemainingTile extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final remaining = ref.watch(treatsRemainingProvider);
+    final l = context.l10n;
 
     final String display;
     if (remaining != null) {
-      display = '$remaining of $kTreatCapacity';
+      display = l.settingsTreatsOfCapacity(remaining, kTreatCapacity);
     } else {
       display = '\u2014';
     }
@@ -522,13 +592,15 @@ class _TreatsRemainingTile extends ConsumerWidget {
               : isLow
                   ? AppTheme.warning
                   : null),
-      title: const Text('Treats'),
+      title: Text(l.settingsTreats),
       subtitle: remaining == null
           ? null
           : Text(
               isEmpty
-                  ? 'Empty \u2014 refill needed'
-                  : '$remaining remaining${isLow ? ' \u2014 running low' : ''}',
+                  ? l.settingsTreatsEmpty
+                  : isLow
+                      ? l.settingsTreatsRemainingLow(remaining)
+                      : l.settingsTreatsRemaining(remaining),
               style: TextStyle(
                 color: isEmpty
                     ? AppTheme.error
@@ -553,6 +625,7 @@ class _DailyLimitTile extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final settings = ref.watch(settingsProvider);
+    final l = context.l10n;
 
     return Column(
       children: [
@@ -561,11 +634,11 @@ class _DailyLimitTile extends ConsumerWidget {
             Icons.cookie,
             color: settings.dailyLimitEnabled ? AppTheme.warning : AppTheme.textTertiary,
           ),
-          title: const Text('Daily Treat Limit'),
+          title: Text(l.settingsDailyTreatLimit),
           subtitle: Text(
             settings.dailyLimitEnabled
-                ? 'Max ${settings.dailyLimitCount} auto-treats per day'
-                : 'No daily limit — unlimited auto-treats',
+                ? l.settingsDailyLimitMax(settings.dailyLimitCount)
+                : l.settingsDailyLimitNone,
             style: TextStyle(fontSize: 12, color: AppTheme.textTertiary),
           ),
           value: settings.dailyLimitEnabled,
@@ -607,17 +680,18 @@ class _CameraTrackingTile extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final settings = ref.watch(settingsProvider);
+    final l = context.l10n;
 
     return SwitchListTile(
       secondary: Icon(
         settings.cameraTrackingEnabled ? Icons.videocam : Icons.videocam_off,
         color: settings.cameraTrackingEnabled ? AppTheme.accent : AppTheme.textTertiary,
       ),
-      title: const Text('Camera Track Dog'),
+      title: Text(l.settingsCameraTrackDog),
       subtitle: Text(
         settings.cameraTrackingEnabled
-            ? 'Camera follows dog during coach/mission mode'
-            : 'Camera stays centered',
+            ? l.settingsCameraTrackOn
+            : l.settingsCameraTrackOff,
         style: TextStyle(fontSize: 12, color: AppTheme.textTertiary),
       ),
       value: settings.cameraTrackingEnabled,
@@ -638,6 +712,7 @@ class _VideoQualityTile extends ConsumerWidget {
     final mode = ref.watch(settingsProvider.select((s) => s.videoQualityMode));
     final webrtcState = ref.watch(webrtcStateProvider);
     final qualityState = ref.watch(videoQualityStateProvider);
+    final l = context.l10n;
 
     // "Currently streaming" line — covers the three edge cases:
     //  - WebRTC not connected        → "not connected"
@@ -645,11 +720,11 @@ class _VideoQualityTile extends ConsumerWidget {
     //  - connected, state received   → the robot's live tier label
     final String streamingLabel;
     if (webrtcState != WebRTCState.connected) {
-      streamingLabel = 'not connected';
+      streamingLabel = l.settingsStreamingNotConnected;
     } else if (qualityState == null) {
       streamingLabel = '—';
     } else {
-      streamingLabel = qualityState.tier.label;
+      streamingLabel = qualityState.tier.localizedLabel(l);
     }
 
     return Padding(
@@ -662,7 +737,7 @@ class _VideoQualityTile extends ConsumerWidget {
               const Icon(Icons.hd),
               const SizedBox(width: 16),
               Text(
-                'Video Quality',
+                l.settingsVideoQuality,
                 style: Theme.of(context).textTheme.titleMedium,
               ),
             ],
@@ -671,14 +746,19 @@ class _VideoQualityTile extends ConsumerWidget {
           SizedBox(
             width: double.infinity,
             child: SegmentedButton<VideoQualityMode>(
-              segments: const [
+              segments: [
                 ButtonSegment(
-                    value: VideoQualityMode.auto, label: Text('Auto')),
-                ButtonSegment(value: VideoQualityMode.low, label: Text('Low')),
+                    value: VideoQualityMode.auto,
+                    label: Text(l.settingsQualityAuto)),
                 ButtonSegment(
-                    value: VideoQualityMode.medium, label: Text('Med')),
+                    value: VideoQualityMode.low,
+                    label: Text(l.settingsQualityLow)),
                 ButtonSegment(
-                    value: VideoQualityMode.high, label: Text('High')),
+                    value: VideoQualityMode.medium,
+                    label: Text(l.settingsQualityMed)),
+                ButtonSegment(
+                    value: VideoQualityMode.high,
+                    label: Text(l.settingsQualityHigh)),
               ],
               selected: {mode},
               showSelectedIcon: false,
@@ -691,7 +771,7 @@ class _VideoQualityTile extends ConsumerWidget {
           ),
           const SizedBox(height: 8),
           Text(
-            'Currently streaming: $streamingLabel',
+            l.settingsCurrentlyStreaming(streamingLabel),
             style: TextStyle(fontSize: 12, color: AppTheme.textTertiary),
           ),
         ],
@@ -707,17 +787,18 @@ class _BackgroundAudioTile extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final settings = ref.watch(settingsProvider);
+    final l = context.l10n;
 
     return SwitchListTile(
       secondary: Icon(
         Icons.headphones,
         color: settings.backgroundAudioEnabled ? AppTheme.accent : AppTheme.textTertiary,
       ),
-      title: const Text('Background Audio'),
+      title: Text(l.settingsBackgroundAudio),
       subtitle: Text(
         settings.backgroundAudioEnabled
-            ? 'Keep listening when app is in background'
-            : 'Audio stops when app is backgrounded',
+            ? l.settingsBackgroundAudioOn
+            : l.settingsBackgroundAudioOff,
         style: TextStyle(fontSize: 12, color: AppTheme.textTertiary),
       ),
       value: settings.backgroundAudioEnabled,
@@ -735,6 +816,7 @@ class _NotificationsTile extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final settings = ref.watch(settingsProvider);
+    final l = context.l10n;
 
     return Column(
       children: [
@@ -743,11 +825,11 @@ class _NotificationsTile extends ConsumerWidget {
             settings.notificationsEnabled ? Icons.notifications_active : Icons.notifications_off,
             color: settings.notificationsEnabled ? AppTheme.accent : AppTheme.textTertiary,
           ),
-          title: const Text('Activity Notifications'),
+          title: Text(l.settingsActivityNotifications),
           subtitle: Text(
             settings.notificationsEnabled
-                ? 'Show alerts on lock screen & Apple Watch'
-                : 'Notifications disabled',
+                ? l.settingsNotificationsOn
+                : l.settingsNotificationsOff,
             style: TextStyle(fontSize: 12, color: AppTheme.textTertiary),
           ),
           value: settings.notificationsEnabled,
@@ -757,10 +839,10 @@ class _NotificationsTile extends ConsumerWidget {
         ),
         ListTile(
           leading: const Icon(Icons.tune),
-          title: const Text('Per-event preferences'),
-          subtitle: const Text(
-            'Choose which events push to the lock screen vs in-app only',
-            style: TextStyle(fontSize: 12),
+          title: Text(l.settingsPerEventPrefs),
+          subtitle: Text(
+            l.settingsPerEventPrefsSubtitle,
+            style: const TextStyle(fontSize: 12),
           ),
           trailing: const Icon(Icons.chevron_right),
           onTap: () =>
@@ -777,24 +859,25 @@ class _MotorTrimSlider extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final settings = ref.watch(settingsProvider);
     final trimPercent = (settings.motorTrimRight * 100).round();
+    final l = context.l10n;
 
     return Column(
       children: [
         ListTile(
           leading: const Icon(Icons.speed),
-          title: const Text('Motor Trim (Right)'),
+          title: Text(l.settingsMotorTrim),
           subtitle: Text(
             trimPercent == 0
-                ? 'No adjustment'
+                ? l.settingsMotorTrimNone
                 : trimPercent > 0
-                    ? 'Slowing right motor by $trimPercent%'
-                    : 'Speeding right motor by ${-trimPercent}%',
+                    ? l.settingsMotorTrimSlowing(trimPercent)
+                    : l.settingsMotorTrimSpeeding(-trimPercent),
           ),
           trailing: TextButton(
             onPressed: trimPercent != 0
                 ? () => ref.read(settingsProvider.notifier).resetMotorTrim()
                 : null,
-            child: const Text('Reset'),
+            child: Text(l.settingsReset),
           ),
         ),
         Padding(
@@ -821,7 +904,7 @@ class _MotorTrimSlider extends ConsumerWidget {
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16),
           child: Text(
-            'If robot drifts LEFT, increase trim. If it drifts RIGHT, decrease trim.',
+            l.settingsMotorTrimHint,
             style: TextStyle(
               fontSize: 12,
               color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
@@ -841,78 +924,64 @@ class _WiFiSetupHelp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final textTheme = Theme.of(context).textTheme;
+    final l = context.l10n;
 
     return ExpansionTile(
       leading: const Icon(Icons.wifi_tethering),
-      title: const Text('WiFi Setup Help'),
-      subtitle: const Text('How to connect your robot'),
+      title: Text(l.settingsWifiHelp),
+      subtitle: Text(l.settingsWifiHelpSubtitle),
       childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
       expandedCrossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'Connecting Your WIM-Z to WiFi',
+          l.settingsWifiHelpTitle,
           style: textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 12),
 
-        _SetupStep(number: '1', text: 'Power on your WIM-Z robot'),
-        _SetupStep(
-          number: '2',
-          text: 'If not connected to WiFi, it creates a hotspot called "WIMZ-XXXX"',
-        ),
-        _SetupStep(
-          number: '3',
-          text: 'On your phone, go to Settings → WiFi',
-        ),
+        _SetupStep(number: '1', text: l.settingsWifiStep1),
+        _SetupStep(number: '2', text: l.settingsWifiStep2),
+        _SetupStep(number: '3', text: l.settingsWifiStep3),
         _SetupStep(
           number: '4',
-          text: 'Connect to "WIMZ-XXXX"',
-          detail: 'Password: wimzsetup',
+          text: l.settingsWifiStep4,
+          detail: l.settingsWifiStep4Detail,
         ),
         _SetupStep(
           number: '5',
-          text: 'Open your browser and go to:',
+          text: l.settingsWifiStep5,
           detail: 'http://192.168.4.1',
         ),
-        _SetupStep(
-          number: '6',
-          text: 'Select your home WiFi network and enter the password',
-        ),
-        _SetupStep(
-          number: '7',
-          text: 'Robot will reboot and connect to your network',
-        ),
-        _SetupStep(
-          number: '8',
-          text: 'Return to this app and pair with your robot',
-        ),
+        _SetupStep(number: '6', text: l.settingsWifiStep6),
+        _SetupStep(number: '7', text: l.settingsWifiStep7),
+        _SetupStep(number: '8', text: l.settingsWifiStep8),
 
         const SizedBox(height: 16),
         Text(
-          'LED Status Guide',
+          l.settingsLedGuide,
           style: textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 8),
 
         _LedIndicator(
           color: Colors.cyan,
-          label: 'Spinning cyan',
-          meaning: 'Searching for WiFi',
+          label: l.settingsLedSpinningCyan,
+          meaning: l.settingsLedSearchingWifi,
         ),
         _LedIndicator(
           color: Colors.blue,
-          label: 'Pulsing blue',
-          meaning: 'Setup mode (connect to WIMZ hotspot)',
+          label: l.settingsLedPulsingBlue,
+          meaning: l.settingsLedSetupMode,
         ),
         _LedIndicator(
           color: Colors.green,
-          label: 'Solid green',
-          meaning: 'Connected to WiFi',
+          label: l.settingsLedSolidGreen,
+          meaning: l.settingsLedConnectedWifi,
         ),
         _LedIndicator(
           color: Colors.red,
-          label: 'Pulsing red',
-          meaning: 'Error',
+          label: l.settingsLedPulsingRed,
+          meaning: l.error,
         ),
       ],
     );
@@ -1066,7 +1135,12 @@ class _NetworkStatusIndicatorState
       return const SizedBox.shrink();
     }
 
-    final modeLabel = status.isAP ? 'Hotspot (AP)' : status.isWifi ? 'WiFi' : status.mode;
+    final l = context.l10n;
+    final modeLabel = status.isAP
+        ? l.settingsNetHotspot
+        : status.isWifi
+            ? l.settingsNetWifi
+            : robotModeIdLabel(l, status.mode);
     final modeColor = status.isAP ? AppTheme.warning : AppTheme.accent;
 
     return Container(
@@ -1088,7 +1162,7 @@ class _NetworkStatusIndicatorState
               ),
               const SizedBox(width: 8),
               Text(
-                'Robot Network',
+                l.settingsRobotNetwork,
                 style: TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.bold,
@@ -1098,11 +1172,11 @@ class _NetworkStatusIndicatorState
             ],
           ),
           const SizedBox(height: 8),
-          _statusRow('Mode', modeLabel),
+          _statusRow(l.settingsNetMode, modeLabel),
           if (status.networkName.isNotEmpty)
-            _statusRow('Network', status.networkName),
+            _statusRow(l.settingsNetNetwork, status.networkName),
           if (status.ipAddress.isNotEmpty)
-            _statusRow('IP', status.ipAddress),
+            _statusRow(l.settingsNetIp, status.ipAddress),
         ],
       ),
     );
@@ -1197,9 +1271,9 @@ class _WifiConfigSheetState extends ConsumerState<_WifiConfigSheet> {
               children: [
                 const Icon(Icons.wifi, color: AppTheme.primary),
                 const SizedBox(width: 12),
-                const Text(
-                  'Configure Robot WiFi',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                Text(
+                  context.l10n.settingsConfigureRobotWifi,
+                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                 ),
                 const Spacer(),
                 if (wifiState.step == WifiConfigStep.scanning)
@@ -1231,7 +1305,8 @@ class _WifiConfigSheetState extends ConsumerState<_WifiConfigSheet> {
         return _buildNetworkList(wifiState);
 
       case WifiConfigStep.scanError:
-        return _buildErrorView(wifiState.errorMessage ?? 'Scan failed');
+        return _buildErrorView(
+            wifiState.errorMessage ?? context.l10n.settingsWifiScanFailed);
 
       case WifiConfigStep.connecting:
         return _buildConnectingView();
@@ -1245,13 +1320,13 @@ class _WifiConfigSheetState extends ConsumerState<_WifiConfigSheet> {
   }
 
   Widget _buildScanningView() {
-    return const Center(
+    return Center(
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          CircularProgressIndicator(),
-          SizedBox(height: 16),
-          Text('Scanning for WiFi networks...'),
+          const CircularProgressIndicator(),
+          const SizedBox(height: 16),
+          Text(context.l10n.settingsWifiScanning),
         ],
       ),
     );
@@ -1259,6 +1334,7 @@ class _WifiConfigSheetState extends ConsumerState<_WifiConfigSheet> {
 
   Widget _buildNetworkList(WifiConfigState wifiState) {
     final networks = wifiState.networks;
+    final l = context.l10n;
 
     return Column(
       children: [
@@ -1270,13 +1346,13 @@ class _WifiConfigSheetState extends ConsumerState<_WifiConfigSheet> {
                     children: [
                       Icon(Icons.wifi_off, size: 48, color: AppTheme.textTertiary),
                       const SizedBox(height: 12),
-                      const Text('No WiFi networks found'),
+                      Text(l.settingsWifiNoneFound),
                       const SizedBox(height: 16),
                       OutlinedButton.icon(
                         onPressed: () =>
                             ref.read(wifiConfigProvider.notifier).scanNetworks(),
                         icon: const Icon(Icons.refresh),
-                        label: const Text('Scan Again'),
+                        label: Text(l.settingsWifiScanAgain),
                       ),
                     ],
                   ),
@@ -1328,8 +1404,8 @@ class _WifiConfigSheetState extends ConsumerState<_WifiConfigSheet> {
                                   controller: _passwordController,
                                   obscureText: _obscurePassword,
                                   decoration: InputDecoration(
-                                    labelText: 'Password',
-                                    hintText: 'Enter WiFi password',
+                                    labelText: l.settingsWifiPassword,
+                                    hintText: l.settingsWifiPasswordHint,
                                     prefixIcon:
                                         const Icon(Icons.lock_outline, size: 20),
                                     suffixIcon: IconButton(
@@ -1365,7 +1441,7 @@ class _WifiConfigSheetState extends ConsumerState<_WifiConfigSheet> {
                                           );
                                     },
                                     icon: const Icon(Icons.wifi),
-                                    label: const Text('Connect'),
+                                    label: Text(l.settingsWifiConnect),
                                     style: FilledButton.styleFrom(
                                       backgroundColor: AppTheme.primary,
                                       foregroundColor: AppTheme.background,
@@ -1403,7 +1479,7 @@ class _WifiConfigSheetState extends ConsumerState<_WifiConfigSheet> {
                   ref.read(wifiConfigProvider.notifier).scanNetworks();
                 },
                 icon: const Icon(Icons.refresh, size: 18),
-                label: const Text('Scan Again'),
+                label: Text(l.settingsWifiScanAgain),
               ),
             ),
           ),
@@ -1426,7 +1502,7 @@ class _WifiConfigSheetState extends ConsumerState<_WifiConfigSheet> {
               onPressed: () =>
                   ref.read(wifiConfigProvider.notifier).scanNetworks(),
               icon: const Icon(Icons.refresh),
-              label: const Text('Try Again'),
+              label: Text(context.l10n.settingsTryAgain),
             ),
           ],
         ),
@@ -1435,20 +1511,21 @@ class _WifiConfigSheetState extends ConsumerState<_WifiConfigSheet> {
   }
 
   Widget _buildConnectingView() {
-    return const Center(
+    final l = context.l10n;
+    return Center(
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          CircularProgressIndicator(),
-          SizedBox(height: 16),
+          const CircularProgressIndicator(),
+          const SizedBox(height: 16),
           Text(
-            'Robot is connecting to WiFi...',
-            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+            l.settingsWifiRobotConnecting,
+            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
           ),
-          SizedBox(height: 8),
+          const SizedBox(height: 8),
           Text(
-            'This may take a moment.',
-            style: TextStyle(color: AppTheme.textTertiary),
+            l.settingsWifiMayTakeMoment,
+            style: const TextStyle(color: AppTheme.textTertiary),
           ),
         ],
       ),
@@ -1456,24 +1533,24 @@ class _WifiConfigSheetState extends ConsumerState<_WifiConfigSheet> {
   }
 
   Widget _buildWaitingView() {
-    return const Center(
+    final l = context.l10n;
+    return Center(
       child: Padding(
-        padding: EdgeInsets.all(32),
+        padding: const EdgeInsets.all(32),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            CircularProgressIndicator(color: AppTheme.warning),
-            SizedBox(height: 16),
+            const CircularProgressIndicator(color: AppTheme.warning),
+            const SizedBox(height: 16),
             Text(
-              'Robot is switching to WiFi...',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+              l.settingsWifiRobotSwitching,
+              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
             ),
-            SizedBox(height: 8),
+            const SizedBox(height: 8),
             Text(
-              'The local hotspot will shut down.\n'
-              'Your connection may drop shortly.',
+              l.settingsWifiHotspotShutdown,
               textAlign: TextAlign.center,
-              style: TextStyle(color: AppTheme.textTertiary),
+              style: const TextStyle(color: AppTheme.textTertiary),
             ),
           ],
         ),
@@ -1482,6 +1559,7 @@ class _WifiConfigSheetState extends ConsumerState<_WifiConfigSheet> {
   }
 
   Widget _buildConnectionLostView() {
+    final l = context.l10n;
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(32),
@@ -1490,17 +1568,15 @@ class _WifiConfigSheetState extends ConsumerState<_WifiConfigSheet> {
           children: [
             const Icon(Icons.check_circle, size: 56, color: AppTheme.accent),
             const SizedBox(height: 16),
-            const Text(
-              'WiFi command sent!',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            Text(
+              l.settingsWifiCommandSent,
+              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 12),
-            const Text(
-              'Robot is switching to WiFi. '
-              'Connect your phone to the same WiFi network, '
-              'then disable Local Mode to use relay connection.',
+            Text(
+              l.settingsWifiCommandSentBody,
               textAlign: TextAlign.center,
-              style: TextStyle(height: 1.5),
+              style: const TextStyle(height: 1.5),
             ),
             const SizedBox(height: 24),
             FilledButton(
@@ -1509,7 +1585,7 @@ class _WifiConfigSheetState extends ConsumerState<_WifiConfigSheet> {
                 backgroundColor: AppTheme.primary,
                 foregroundColor: AppTheme.background,
               ),
-              child: const Text('Got it'),
+              child: Text(l.settingsGotIt),
             ),
           ],
         ),
@@ -1527,11 +1603,12 @@ class _WifiConfigSheetState extends ConsumerState<_WifiConfigSheet> {
   }
 
   String _signalLabel(int signal) {
+    final l = context.l10n;
     final strength = signal < 0 ? signal : -(100 - signal);
-    if (strength > -50) return 'Excellent';
-    if (strength > -70) return 'Good';
-    if (strength > -80) return 'Fair';
-    return 'Weak';
+    if (strength > -50) return l.settingsSignalExcellent;
+    if (strength > -70) return l.settingsSignalGood;
+    if (strength > -80) return l.settingsSignalFair;
+    return l.settingsSignalWeak;
   }
 }
 
@@ -1556,9 +1633,10 @@ class _RecordingDiagnosticsDialogState
   }
 
   Future<void> _runDiagnostics() async {
+    final l = context.l10n;
     setState(() {
       _isRunning = true;
-      _results = 'Running diagnostics...\n';
+      _results = '${l.settingsDiagRunning}\n';
     });
 
     try {
@@ -1570,7 +1648,7 @@ class _RecordingDiagnosticsDialogState
       });
     } catch (e, stack) {
       setState(() {
-        _results = 'DIAGNOSTICS ERROR: $e\n\nStack: $stack';
+        _results = l.settingsDiagError('$e', '$stack');
         _isRunning = false;
       });
     }
@@ -1578,12 +1656,13 @@ class _RecordingDiagnosticsDialogState
 
   @override
   Widget build(BuildContext context) {
+    final l = context.l10n;
     return AlertDialog(
       title: Row(
         children: [
           Icon(Icons.bug_report, color: AppTheme.accent),
           const SizedBox(width: 8),
-          const Text('Recording Diagnostics'),
+          Text(l.settingsRecordingDiagnostics),
         ],
       ),
       content: SizedBox(
@@ -1593,17 +1672,17 @@ class _RecordingDiagnosticsDialogState
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             if (_isRunning)
-              const Padding(
-                padding: EdgeInsets.only(bottom: 16),
+              Padding(
+                padding: const EdgeInsets.only(bottom: 16),
                 child: Row(
                   children: [
-                    SizedBox(
+                    const SizedBox(
                       width: 20,
                       height: 20,
                       child: CircularProgressIndicator(strokeWidth: 2),
                     ),
-                    SizedBox(width: 12),
-                    Text('Running tests...'),
+                    const SizedBox(width: 12),
+                    Text(l.settingsRunningTests),
                   ],
                 ),
               ),
@@ -1632,11 +1711,11 @@ class _RecordingDiagnosticsDialogState
       actions: [
         TextButton(
           onPressed: _isRunning ? null : _runDiagnostics,
-          child: const Text('Run Again'),
+          child: Text(l.settingsRunAgain),
         ),
         FilledButton(
           onPressed: () => Navigator.pop(context),
-          child: const Text('Close'),
+          child: Text(l.close),
         ),
       ],
     );

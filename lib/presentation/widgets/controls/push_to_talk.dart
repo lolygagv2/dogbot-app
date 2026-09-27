@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../domain/providers/push_to_talk_provider.dart';
+import '../../../l10n/l10n.dart';
 import '../../theme/app_theme.dart';
 
 /// Push-to-talk controls widget with mic toggle and listen buttons
@@ -34,7 +35,7 @@ class _PushToTalkControlsState extends ConsumerState<PushToTalkControls> {
               behavior: SnackBarBehavior.floating,
               duration: const Duration(seconds: 3),
               action: SnackBarAction(
-                label: 'Dismiss',
+                label: context.l10n.dismiss,
                 textColor: Colors.white,
                 onPressed: () {
                   ref.read(pushToTalkProvider.notifier).clearError();
@@ -148,15 +149,16 @@ class _MicToggleButtonState extends ConsumerState<_MicToggleButton>
     }
 
     // Label text
+    final l = context.l10n;
     String label;
     if (isSent) {
-      label = 'Sent \u2713';
+      label = l.pttSent;
     } else if (isRecording) {
-      label = '${remainingSec}s';
+      label = l.pttSeconds(remainingSec);
     } else if (isSending) {
-      label = 'Sending...';
+      label = l.pttSending;
     } else {
-      label = 'Talk';
+      label = l.pttTalk;
     }
 
     return Column(
@@ -337,8 +339,10 @@ class _ListenButton extends ConsumerWidget {
           const SizedBox(height: 4),
           Text(
             isPlaying
-                ? 'Playing...'
-                : (isRequesting ? 'Listening...' : 'Tap to listen'),
+                ? context.l10n.pttPlaying
+                : (isRequesting
+                    ? context.l10n.pttListening
+                    : context.l10n.pttTapToListen),
             style: TextStyle(
               fontSize: 10,
               color: isPlaying

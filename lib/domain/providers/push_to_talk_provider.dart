@@ -10,6 +10,8 @@ import 'package:record/record.dart';
 import '../../core/network/websocket_client.dart';
 import '../../core/utils/remote_logger.dart';
 import 'webrtc_provider.dart';
+import '../../l10n/l10n.dart';
+import 'l10n_provider.dart';
 
 /// Push-to-talk state
 enum PttState {
@@ -73,6 +75,8 @@ final pushToTalkProvider =
 /// Push-to-talk notifier using record package
 class PushToTalkNotifier extends StateNotifier<PttStateData> {
   final Ref _ref;
+
+  AppLocalizations get _l => _ref.read(l10nProvider);
   StreamSubscription? _audioMessageSubscription;
 
   // Recording
@@ -141,7 +145,7 @@ class PushToTalkNotifier extends StateNotifier<PttStateData> {
       await _playAudioFile(filePath);
     } catch (e) {
       rlog('PTT_ERROR', 'Failed to handle incoming audio: $e');
-      state = state.copyWith(state: PttState.idle, error: 'Failed to play audio');
+      state = state.copyWith(state: PttState.idle, error: _l.pttErrPlayFailed);
     }
   }
 
@@ -153,7 +157,7 @@ class PushToTalkNotifier extends StateNotifier<PttStateData> {
       await _audioPlayer!.play(DeviceFileSource(filePath));
     } catch (e) {
       rlog('PTT_ERROR', 'Failed to play audio: $e');
-      state = state.copyWith(state: PttState.idle, error: 'Failed to play audio');
+      state = state.copyWith(state: PttState.idle, error: _l.pttErrPlayFailed);
     }
   }
 
@@ -217,7 +221,7 @@ class PushToTalkNotifier extends StateNotifier<PttStateData> {
     if (!isMobile) {
       print('[PTT] ERROR: Not on mobile platform');
       rlog('PTT_ERROR', 'Not on mobile platform');
-      state = state.copyWith(error: 'Recording only available on iOS/Android');
+      state = state.copyWith(error: _l.pttErrMobileOnly);
       return false;
     }
 
@@ -225,7 +229,7 @@ class PushToTalkNotifier extends StateNotifier<PttStateData> {
     if (WebSocketClient.instance.state != WsConnectionState.connected) {
       print('[PTT] ERROR: WebSocket not connected — cannot send voice');
       rlog('PTT_ERROR', 'WebSocket not connected');
-      state = state.copyWith(error: 'Not connected — cannot send voice');
+      state = state.copyWith(error: _l.pttErrNotConnectedSend);
       return false;
     }
 
@@ -243,7 +247,7 @@ class PushToTalkNotifier extends StateNotifier<PttStateData> {
       if (!hasPermission) {
         print('[PTT] ERROR: Microphone permission denied');
         rlog('PTT_ERROR', 'Permission denied');
-        state = state.copyWith(error: 'Microphone permission denied');
+        state = state.copyWith(error: _l.pttErrMicDenied);
         return false;
       }
 
@@ -277,7 +281,7 @@ class PushToTalkNotifier extends StateNotifier<PttStateData> {
       if (!isActuallyRecording) {
         rlog('PTT_ERROR', 'Recorder.start() returned but isRecording=false');
         _restoreWebRTCAudio();
-        state = state.copyWith(error: 'Recording failed to start');
+        state = state.copyWith(error: _l.pttErrStartFailed);
         return false;
       }
       print('[PTT] Mic capture started — WAV 44100Hz mono');
@@ -320,7 +324,7 @@ class PushToTalkNotifier extends StateNotifier<PttStateData> {
       print('[PTT] ERROR: Failed to start recording: $e');
       rlog('PTT_ERROR', 'Starting recording: $e');
       _restoreWebRTCAudio();
-      state = state.copyWith(error: 'Failed to start recording: $e');
+      state = state.copyWith(error: _l.pttErrStartFailedDetail('$e'));
       return false;
     }
   }
@@ -347,7 +351,7 @@ class PushToTalkNotifier extends StateNotifier<PttStateData> {
       if (path == null || path.isEmpty) {
         rlog('PTT_ERROR', 'Empty path returned from recorder');
         _restoreWebRTCAudio();
-        state = state.copyWith(state: PttState.idle, error: 'Recording failed');
+        state = state.copyWith(state: PttState.idle, error: _l.pttErrRecordingFailed);
         return false;
       }
 
@@ -358,7 +362,7 @@ class PushToTalkNotifier extends StateNotifier<PttStateData> {
       if (!await file.exists()) {
         rlog('PTT_ERROR', 'File does not exist at $path');
         _restoreWebRTCAudio();
-        state = state.copyWith(state: PttState.idle, error: 'Recording file not found');
+        state = state.copyWith(state: PttState.idle, error: _l.pttErrFileNotFound);
         return false;
       }
 
@@ -374,7 +378,7 @@ class PushToTalkNotifier extends StateNotifier<PttStateData> {
         print('[PTT] ERROR: Recording empty ($fileSize bytes) — no audio captured');
         rlog('PTT_ERROR', 'File too small ($fileSize bytes) - recording is empty');
         _restoreWebRTCAudio();
-        state = state.copyWith(state: PttState.idle, error: 'Recording was empty - no audio captured');
+        state = state.copyWith(state: PttState.idle, error: _l.pttErrEmpty);
         try { await file.delete(); } catch (_) {}
         return false;
       }
@@ -384,7 +388,7 @@ class PushToTalkNotifier extends StateNotifier<PttStateData> {
         print('[PTT] ERROR: Connection dropped — cannot send audio');
         rlog('PTT_ERROR', 'WebSocket not connected, cannot send audio');
         _restoreWebRTCAudio();
-        state = state.copyWith(state: PttState.idle, error: 'Not connected — voice message not sent');
+        state = state.copyWith(state: PttState.idle, error: _l.pttErrNotConnectedNotSent);
         try { await file.delete(); } catch (_) {}
         return false;
       }
@@ -429,7 +433,7 @@ class PushToTalkNotifier extends StateNotifier<PttStateData> {
       print('[PTT] ERROR: Send failed — $e');
       rlog('PTT_ERROR', 'Stop/send failed: $e');
       _restoreWebRTCAudio();
-      state = state.copyWith(state: PttState.idle, error: 'Failed to send audio: $e');
+      state = state.copyWith(state: PttState.idle, error: _l.pttErrSendFailed('$e'));
       return false;
     }
   }
@@ -473,7 +477,7 @@ class PushToTalkNotifier extends StateNotifier<PttStateData> {
 
     Future.delayed(Duration(seconds: durationSeconds + 2), () {
       if (state.state == PttState.requesting) {
-        state = state.copyWith(state: PttState.idle, error: 'No audio received');
+        state = state.copyWith(state: PttState.idle, error: _l.pttErrNoAudio);
       }
     });
   }

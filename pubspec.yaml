@@ -1,7 +1,7 @@
 name: wimz_app
 description: WIM-Z Robotic Dog Trainer - Mobile Control App
 publish_to: 'none'
-version: 1.0.0+163
+version: 1.0.0+164
  
 environment:
   sdk: '>=3.2.0 <4.0.0'
@@ -45,7 +45,7 @@ dependencies:
 
   # ============ Charts & Gauges ============
   fl_chart: ^0.66.0                # Beautiful charts
-  syncfusion_flutter_gauges: ^24.1.41  # Circular gauges
+  syncfusion_flutter_gauges: ^28.1.38  # Circular gauges (bumped for intl 0.20 / flutter_localizations)
   percent_indicator: ^4.2.3        # Progress indicators
 
   # ============ Icons ============
@@ -83,7 +83,9 @@ dependencies:
   # ============ Utilities ============
   logger: ^2.0.2+1
   equatable: ^2.0.5
-  intl: ^0.19.0                    # Date/number formatting
+  intl: ^0.20.2                    # Date/number formatting (pinned by flutter_localizations)
+  flutter_localizations:
+    sdk: flutter
   wakelock_plus: ^1.2.5            # Keep screen on in drive mode
   uuid: ^4.3.3                     # UUID generation for schedules
 
@@ -111,6 +113,7 @@ flutter_launcher_icons:
 
 flutter:
   uses-material-design: true
+  generate: true   # gen-l10n → lib/l10n/app_localizations*.dart (see l10n.yaml)
 
   assets:
     - assets/images/

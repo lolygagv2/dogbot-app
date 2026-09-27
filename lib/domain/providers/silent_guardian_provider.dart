@@ -4,6 +4,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../core/network/websocket_client.dart';
+import '../../l10n/l10n.dart';
+import 'l10n_provider.dart';
 
 /// Persisted prefs keys for Silent Guardian config.
 class _SgKeys {
@@ -55,6 +57,8 @@ final silentGuardianProvider =
 
 class SilentGuardianNotifier extends StateNotifier<SilentGuardianState> {
   final Ref _ref;
+
+  AppLocalizations get _l => _ref.read(l10nProvider);
   SharedPreferences? _prefs;
   StreamSubscription<WsConnectionState>? _stateSub;
   StreamSubscription<WsEvent>? _eventSub;
@@ -93,7 +97,7 @@ class SilentGuardianNotifier extends StateNotifier<SilentGuardianState> {
           state = state.copyWith(lastError: null);
         }
       } else {
-        final err = event.data['error']?.toString() ?? 'Unknown error';
+        final err = event.data['error']?.toString() ?? _l.unknownError;
         state = state.copyWith(lastError: err);
       }
     });

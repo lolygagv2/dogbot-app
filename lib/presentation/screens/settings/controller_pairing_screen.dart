@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../data/models/controller_info.dart';
 import '../../../domain/providers/connection_mode_provider.dart';
 import '../../../domain/providers/controller_pairing_provider.dart';
+import '../../../l10n/l10n.dart';
 import '../../theme/app_theme.dart';
 
 /// Bump with each pubspec build so the on-screen debug strip identifies the
@@ -49,6 +50,7 @@ class _ControllerPairingScreenState
     final state = ref.watch(controllerPairingProvider);
     final notifier = ref.read(controllerPairingProvider.notifier);
     final connected = ref.watch(isConnectedAnyModeProvider);
+    final l = context.l10n;
 
     // Surface non-fatal messages as snackbars.
     ref.listen(controllerPairingProvider, (prev, next) {
@@ -63,12 +65,12 @@ class _ControllerPairingScreenState
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Game Controller'),
+        title: Text(l.controllerPairingTitle),
         actions: [
           if (state.phase == ControllerPhase.ready)
             IconButton(
               icon: const Icon(Icons.refresh),
-              tooltip: 'Refresh',
+              tooltip: l.controllerPairingRefresh,
               onPressed: notifier.refreshStatus,
             ),
         ],
@@ -78,30 +80,26 @@ class _ControllerPairingScreenState
           _DebugStrip(state: state, connected: connected),
           Expanded(
             child: !connected
-                ? const _CenteredHint(
+                ? _CenteredHint(
                     icon: Icons.wifi_off,
-                    title: 'Robot not connected',
-                    body: 'Connect to your robot first, then come back to pair '
-                        'a controller.',
+                    title: l.controllerPairingRobotNotConnected,
+                    body: l.controllerPairingRobotNotConnectedBody,
                   )
                 : switch (state.phase) {
-                    ControllerPhase.unknown => const _CenteredHint(
+                    ControllerPhase.unknown => _CenteredHint(
                         icon: Icons.sync,
-                        title: 'Checking robot…',
-                        body: 'Asking the robot about its controllers.',
+                        title: l.controllerPairingChecking,
+                        body: l.controllerPairingCheckingBody,
                         showSpinner: true,
                       ),
                     ControllerPhase.unsupported => _CenteredHint(
                         icon: Icons.help_outline,
-                        title: 'No response from robot',
-                        body: 'The robot didn\'t answer the controller check. '
-                            'It may still be starting up, or its firmware may '
-                            'not support controller pairing yet. Try again in '
-                            'a moment.',
+                        title: l.controllerPairingNoResponse,
+                        body: l.controllerPairingNoResponseBody,
                         action: FilledButton.icon(
                           onPressed: notifier.retry,
                           icon: const Icon(Icons.refresh),
-                          label: const Text('Retry'),
+                          label: Text(l.retry),
                         ),
                       ),
                     ControllerPhase.ready => _ReadyBody(state: state),
@@ -152,6 +150,7 @@ class _ReadyBody extends ConsumerWidget {
     final notifier = ref.read(controllerPairingProvider.notifier);
     final snapshot = state.snapshot;
     final active = snapshot.activeController;
+    final l = context.l10n;
 
     return ListView(
       padding: const EdgeInsets.only(bottom: 32),
@@ -178,14 +177,13 @@ class _ReadyBody extends ConsumerWidget {
         const Divider(),
 
         // ---- Saved controllers (trusted / bonded) ----
-        const _SectionHeader('Saved Controllers'),
+        _SectionHeader(l.controllerPairingSavedControllers),
         if (snapshot.known.isEmpty)
-          const Padding(
-            padding: EdgeInsets.fromLTRB(16, 4, 16, 12),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
             child: Text(
-              'No saved controllers yet. Scan and pair one below — then trust '
-              'it so the robot reconnects it automatically.',
-              style: TextStyle(color: AppTheme.textTertiary, fontSize: 13),
+              l.controllerPairingNoSaved,
+              style: const TextStyle(color: AppTheme.textTertiary, fontSize: 13),
             ),
           )
         else
@@ -200,13 +198,13 @@ class _ReadyBody extends ConsumerWidget {
         const Divider(),
 
         // ---- Scan / discovered ----
-        const _SectionHeader('Add a Controller'),
+        _SectionHeader(l.controllerPairingAddController),
         _ScanTile(scanning: snapshot.scanning, onToggle: notifier.setScan),
         if (snapshot.scanning && snapshot.discovered.isEmpty)
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
             child: Text(
-              controllerPairingHint(ControllerKind.generic),
+              ControllerKind.generic.localizedPairingHint(context.l10n),
               style: const TextStyle(color: AppTheme.textTertiary, fontSize: 13),
             ),
           ),
@@ -224,20 +222,20 @@ class _ReadyBody extends ConsumerWidget {
     ControllerPairingNotifier notifier,
     ControllerInfo c,
   ) async {
+    final l = context.l10n;
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Forget controller?'),
-        content: Text(
-            'The robot will unpair "${c.name}" and stop auto-reconnecting it. '
-            'You can pair it again later.'),
+        title: Text(l.controllerPairingForgetTitle),
+        content: Text(l.controllerPairingForgetBody(c.name)),
         actions: [
           TextButton(
               onPressed: () => Navigator.pop(ctx, false),
-              child: const Text('Cancel')),
+              child: Text(l.cancel)),
           TextButton(
             onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Forget', style: TextStyle(color: Colors.red)),
+            child: Text(l.controllerPairingForget,
+                style: const TextStyle(color: Colors.red)),
           ),
         ],
       ),
@@ -256,6 +254,7 @@ class _ActiveCard extends StatelessWidget {
     final c = controller;
     final connected = c?.connected == true;
     final color = connected ? AppTheme.connected : AppTheme.disconnected;
+    final l = context.l10n;
 
     return Container(
       margin: const EdgeInsets.fromLTRB(16, 16, 16, 8),
@@ -274,7 +273,9 @@ class _ActiveCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  connected ? (c?.name ?? 'Controller') : 'No controller connected',
+                  connected
+                      ? (c?.name ?? l.controllerPairingController)
+                      : l.controllerPairingNoneConnected,
                   style: const TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.w600,
@@ -292,7 +293,7 @@ class _ActiveCard extends StatelessWidget {
                     ),
                     const SizedBox(width: 6),
                     Text(
-                      connected ? 'Connected' : 'Disconnected',
+                      connected ? l.connected : l.disconnected,
                       style: TextStyle(color: color, fontSize: 13),
                     ),
                     if (connected && c?.trusted == true) ...[
@@ -300,8 +301,8 @@ class _ActiveCard extends StatelessWidget {
                       const Icon(Icons.verified_user,
                           size: 14, color: AppTheme.primary),
                       const SizedBox(width: 2),
-                      const Text('Trusted',
-                          style: TextStyle(
+                      Text(l.controllerPairingTrusted,
+                          style: const TextStyle(
                               color: AppTheme.primary, fontSize: 12)),
                     ],
                     if (connected && c?.battery != null) ...[
@@ -342,6 +343,7 @@ class _KnownTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = controller;
+    final l = context.l10n;
     return Column(
       children: [
         ListTile(
@@ -351,7 +353,7 @@ class _KnownTile extends StatelessWidget {
           ),
           title: Text(c.name),
           subtitle: Text(
-            c.connected ? 'Connected' : 'Saved · not connected',
+            c.connected ? l.connected : l.controllerPairingSavedNotConnected,
             style: TextStyle(
               color: c.connected ? AppTheme.connected : AppTheme.textTertiary,
               fontSize: 12,
@@ -370,9 +372,12 @@ class _KnownTile extends StatelessWidget {
                   },
                   itemBuilder: (_) => [
                     if (!c.connected)
-                      const PopupMenuItem(
-                          value: 'reconnect', child: Text('Reconnect')),
-                    const PopupMenuItem(value: 'forget', child: Text('Forget')),
+                      PopupMenuItem(
+                          value: 'reconnect',
+                          child: Text(l.controllerPairingReconnect)),
+                    PopupMenuItem(
+                        value: 'forget',
+                        child: Text(l.controllerPairingForget)),
                   ],
                 ),
         ),
@@ -381,10 +386,11 @@ class _KnownTile extends StatelessWidget {
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Expanded(
+              Expanded(
                 child: Text(
-                  'Auto-reconnect (trusted)',
-                  style: TextStyle(color: AppTheme.textSecondary, fontSize: 13),
+                  l.controllerPairingAutoReconnect,
+                  style: const TextStyle(
+                      color: AppTheme.textSecondary, fontSize: 13),
                 ),
               ),
               Switch(
@@ -412,7 +418,7 @@ class _DiscoveredTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final label = controllerKindLabel(controller.kind);
+    final label = controller.kind.localizedLabel(context.l10n);
     final subtitle = controller.kind == ControllerKind.generic
         ? controller.address
         : '$label · ${controller.address}';
@@ -429,7 +435,8 @@ class _DiscoveredTile extends StatelessWidget {
               height: 20,
               child: CircularProgressIndicator(strokeWidth: 2),
             )
-          : FilledButton(onPressed: onPair, child: const Text('Pair')),
+          : FilledButton(
+              onPressed: onPair, child: Text(context.l10n.controllerPairingPair)),
     );
   }
 }
@@ -441,6 +448,7 @@ class _ScanTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l = context.l10n;
     return ListTile(
       leading: scanning
           ? const SizedBox(
@@ -449,11 +457,12 @@ class _ScanTile extends StatelessWidget {
               child: CircularProgressIndicator(strokeWidth: 2),
             )
           : const Icon(Icons.bluetooth),
-      title: Text(scanning ? 'Scanning for controllers…' : 'Scan for controllers'),
+      title: Text(
+          scanning ? l.controllerPairingScanning : l.controllerPairingScan),
       subtitle: Text(
         scanning
-            ? 'Put your controller in pairing mode'
-            : 'Robot will look for nearby controllers',
+            ? l.controllerPairingScanningHint
+            : l.controllerPairingScanHint,
         style: const TextStyle(fontSize: 12),
       ),
       trailing: Switch(value: scanning, onChanged: onToggle),

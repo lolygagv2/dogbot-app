@@ -9,6 +9,7 @@ import '../../../core/network/dio_client.dart';
 import '../../../domain/providers/auth_provider.dart';
 import '../../../domain/providers/connection_provider.dart';
 import '../../../domain/providers/settings_provider.dart';
+import '../../../l10n/l10n.dart';
 import '../../theme/app_theme.dart';
 
 /// Two-stage password recovery screen.
@@ -141,7 +142,7 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
             }
           },
         ),
-        title: const Text('Reset Password'),
+        title: Text(context.l10n.forgotTitle),
       ),
       body: SafeArea(
         child: Center(
@@ -163,7 +164,7 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Text(
-            'Forgot your password?',
+            context.l10n.forgotHeading,
             style: Theme.of(context).textTheme.titleLarge?.copyWith(
                   fontWeight: FontWeight.bold,
                 ),
@@ -171,8 +172,7 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
           ),
           const SizedBox(height: 12),
           Text(
-            "Enter the email on your account and we'll send you a "
-            "6-digit code to reset your password.",
+            context.l10n.forgotIntro,
             textAlign: TextAlign.center,
             style: TextStyle(
               color: Theme.of(context)
@@ -184,18 +184,18 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
           const SizedBox(height: 32),
           TextFormField(
             controller: _emailController,
-            decoration: const InputDecoration(
-              labelText: 'Email',
+            decoration: InputDecoration(
+              labelText: context.l10n.loginEmailLabel,
               hintText: 'you@example.com',
-              prefixIcon: Icon(Icons.email),
+              prefixIcon: const Icon(Icons.email),
             ),
             keyboardType: TextInputType.emailAddress,
             autocorrect: false,
             textInputAction: TextInputAction.done,
             onFieldSubmitted: (_) => _sendCode(),
             validator: (v) {
-              if (v == null || v.trim().isEmpty) return 'Please enter email';
-              if (!v.contains('@') || !v.contains('.')) return 'Invalid email';
+              if (v == null || v.trim().isEmpty) return context.l10n.loginEnterEmail;
+              if (!v.contains('@') || !v.contains('.')) return context.l10n.loginInvalidEmail;
               return null;
             },
           ),
@@ -214,7 +214,7 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
                       height: 24,
                       child: CircularProgressIndicator(strokeWidth: 2),
                     )
-                  : const Text('Send Code'),
+                  : Text(context.l10n.forgotSendCode),
             ),
           ),
         ],
@@ -246,8 +246,7 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
                   const SizedBox(width: 10),
                   Expanded(
                     child: Text(
-                      'If that email is registered, a 6-digit code is on the '
-                      'way. It expires in 15 minutes.',
+                      context.l10n.forgotCodeSentBanner,
                       style: const TextStyle(
                           color: AppTheme.primary, fontSize: 13),
                     ),
@@ -256,7 +255,7 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
               ),
             ),
           Text(
-            'Enter Code & New Password',
+            context.l10n.forgotEnterCodeHeading,
             style: Theme.of(context).textTheme.titleLarge?.copyWith(
                   fontWeight: FontWeight.bold,
                 ),
@@ -277,9 +276,9 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
           const SizedBox(height: 24),
           TextFormField(
             controller: _codeController,
-            decoration: const InputDecoration(
-              labelText: '6-digit code',
-              prefixIcon: Icon(Icons.pin),
+            decoration: InputDecoration(
+              labelText: context.l10n.forgotCodeLabel,
+              prefixIcon: const Icon(Icons.pin),
               counterText: '',
             ),
             keyboardType: TextInputType.number,
@@ -290,8 +289,8 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
             maxLength: 6,
             autocorrect: false,
             validator: (v) {
-              if (v == null || v.isEmpty) return 'Enter the code';
-              if (v.length != 6) return 'Code is 6 digits';
+              if (v == null || v.isEmpty) return context.l10n.forgotEnterCode;
+              if (v.length != 6) return context.l10n.forgotCodeIs6Digits;
               return null;
             },
           ),
@@ -299,7 +298,7 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
           TextFormField(
             controller: _newPasswordController,
             decoration: InputDecoration(
-              labelText: 'New password',
+              labelText: context.l10n.forgotNewPasswordLabel,
               prefixIcon: const Icon(Icons.lock),
               suffixIcon: IconButton(
                 icon: Icon(_obscurePassword
@@ -311,10 +310,10 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
             ),
             obscureText: _obscurePassword,
             validator: (v) {
-              if (v == null || v.isEmpty) return 'Enter a new password';
+              if (v == null || v.isEmpty) return context.l10n.forgotEnterNewPassword;
               // Relay enforces 8+; mirror that here so the user gets the
               // feedback before paying for a round-trip.
-              if (v.length < 8) return 'Min 8 characters';
+              if (v.length < 8) return context.l10n.forgotMin8Chars;
               return null;
             },
           ),
@@ -322,7 +321,7 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
           TextFormField(
             controller: _confirmPasswordController,
             decoration: InputDecoration(
-              labelText: 'Confirm new password',
+              labelText: context.l10n.forgotConfirmPasswordLabel,
               prefixIcon: const Icon(Icons.lock_outline),
               suffixIcon: IconButton(
                 icon: Icon(_obscureConfirm
@@ -334,9 +333,9 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
             ),
             obscureText: _obscureConfirm,
             validator: (v) {
-              if (v == null || v.isEmpty) return 'Confirm your password';
+              if (v == null || v.isEmpty) return context.l10n.forgotConfirmYourPassword;
               if (v != _newPasswordController.text) {
-                return "Passwords don't match";
+                return context.l10n.forgotPasswordsDontMatch;
               }
               return null;
             },
@@ -356,13 +355,13 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
                       height: 24,
                       child: CircularProgressIndicator(strokeWidth: 2),
                     )
-                  : const Text('Reset Password'),
+                  : Text(context.l10n.forgotTitle),
             ),
           ),
           const SizedBox(height: 8),
           TextButton(
             onPressed: authState.isLoading ? null : _sendCode,
-            child: const Text('Resend code'),
+            child: Text(context.l10n.forgotResendCode),
           ),
         ],
       ),

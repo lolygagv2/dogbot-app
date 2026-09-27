@@ -10,6 +10,8 @@ import '../../data/datasources/robot_api.dart';
 import '../../data/models/mission.dart';
 import 'auth_provider.dart';
 import 'dog_profiles_provider.dart';
+import '../../l10n/l10n.dart';
+import 'l10n_provider.dart';
 
 /// Predefined training missions (Build 41.1 - synced with robot's mission list)
 final _predefinedMissions = [
@@ -351,6 +353,8 @@ const _missionsCacheKey = 'cached_missions';
 /// Missions state notifier
 class MissionsNotifier extends StateNotifier<MissionsState> {
   final Ref _ref;
+
+  AppLocalizations get _l => _ref.read(l10nProvider);
   StreamSubscription? _wsSubscription;
   bool _isLoading = false;
   Timer? _startVerificationTimer;
@@ -487,7 +491,7 @@ class MissionsNotifier extends StateNotifier<MissionsState> {
                 missionId: missionId,
                 status: 'error',
               ),
-              error: 'Robot sent incomplete mission data - check robot logs',
+              error: _l.missionsErrIncompleteData,
             );
             return;
           }
@@ -506,7 +510,9 @@ class MissionsNotifier extends StateNotifier<MissionsState> {
             // Mission IS running - sync to it instead of clearing
             final activeMission = event.data['active_mission'] as String? ??
                 event.data['mission'] as String?;
-            errorMsg = 'A mission is already active${activeMission != null ? " ($activeMission)" : ""}';
+            errorMsg = activeMission != null
+                ? _l.missionsErrAlreadyActiveNamed(activeMission)
+                : _l.missionsErrAlreadyActive;
 
             // If we know which mission is active, sync to it
             if (activeMission != null) {
@@ -519,7 +525,9 @@ class MissionsNotifier extends StateNotifier<MissionsState> {
             }
           } else {
             // Use human-readable message from robot if available, else failure_reason
-            errorMsg = event.data['message'] as String? ?? failureReason ?? 'Mission failed to start';
+            errorMsg = event.data['message'] as String? ??
+                failureReason ??
+                _l.missionsErrStartFailed;
           }
 
           state = state.copyWith(
@@ -603,7 +611,9 @@ class MissionsNotifier extends StateNotifier<MissionsState> {
       case 'mission_error':
         _startVerificationTimer?.cancel();
         final missionId = event.data['mission_id'] as String? ?? event.data['id'] as String? ?? '';
-        final errorMsg = event.data['error'] as String? ?? event.data['message'] as String? ?? 'Mission failed to start';
+        final errorMsg = event.data['error'] as String? ??
+            event.data['message'] as String? ??
+            _l.missionsErrStartFailed;
         print('Missions: failed event - mission=$missionId, error=$errorMsg');
 
         // Clear optimistic state and show error
@@ -713,7 +723,8 @@ class MissionsNotifier extends StateNotifier<MissionsState> {
     if (state.hasActiveMission && state.activeMissionId != missionId) {
       print('Missions: Cannot start $missionId - ${state.activeMissionId} already active');
       state = state.copyWith(
-        error: 'Stop current mission first (${state.activeMission?.name ?? state.activeMissionId})',
+        error: _l.missionsErrStopFirst(
+            state.activeMission?.name ?? state.activeMissionId ?? ''),
       );
       return;
     }
@@ -768,7 +779,7 @@ class MissionsNotifier extends StateNotifier<MissionsState> {
           state = state.copyWith(
             clearActiveMission: true,
             clearProgress: true,
-            error: 'Mission failed to start on robot',
+            error: _l.missionsErrStartFailedRobot,
           );
           _updateMissionInList(missionId, isActive: false);
         }

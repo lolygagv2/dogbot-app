@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../../data/models/spec_records.dart';
+import '../../../l10n/l10n.dart';
 import '../../theme/app_theme.dart';
 
 /// Chain REC confirmation surface: "the robot wrote your recording, here it
@@ -52,10 +53,8 @@ class VideoSavedSheet extends StatelessWidget {
 
   void _notWiredYet(BuildContext context) {
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text(
-          'Available once the robot ships recording download (Chain REC)',
-        ),
+      SnackBar(
+        content: Text(context.l10n.videoSavedNotWired),
       ),
     );
   }
@@ -63,6 +62,7 @@ class VideoSavedSheet extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final robotPath = '/data/${asset.relPath}';
+    final l = context.l10n;
     return SafeArea(
       child: Padding(
         padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
@@ -71,10 +71,10 @@ class VideoSavedSheet extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             if (sampleData)
-              const Center(
+              Center(
                 child: Text(
-                  'SAMPLE DATA — not live',
-                  style: TextStyle(
+                  l.videoSavedSampleData,
+                  style: const TextStyle(
                     color: Colors.amber,
                     fontSize: 11,
                     fontWeight: FontWeight.bold,
@@ -83,20 +83,20 @@ class VideoSavedSheet extends StatelessWidget {
                 ),
               ),
             const SizedBox(height: 8),
-            const Row(
+            Row(
               children: [
-                Icon(Icons.check_circle, color: AppTheme.accent, size: 28),
-                SizedBox(width: 10),
+                const Icon(Icons.check_circle, color: AppTheme.accent, size: 28),
+                const SizedBox(width: 10),
                 Text(
-                  'Video saved',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+                  l.videoSavedTitle,
+                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
                 ),
               ],
             ),
             const SizedBox(height: 12),
-            const Text(
-              'SAVED ON ROBOT AT',
-              style: TextStyle(
+            Text(
+              l.videoSavedOnRobotAt,
+              style: const TextStyle(
                 color: AppTheme.textTertiary,
                 fontSize: 10,
                 fontWeight: FontWeight.bold,
@@ -109,7 +109,7 @@ class VideoSavedSheet extends StatelessWidget {
                 await Clipboard.setData(ClipboardData(text: robotPath));
                 if (context.mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Path copied')),
+                    SnackBar(content: Text(l.videoSavedPathCopied)),
                   );
                 }
               },
@@ -132,7 +132,7 @@ class VideoSavedSheet extends StatelessWidget {
                 if (asset.width != null && asset.height != null)
                   _chip('${asset.width}×${asset.height}'),
                 if (asset.codec != null) _chip(asset.codec!.toUpperCase()),
-                _chip('retention: ${asset.retentionClass}'),
+                _chip(l.videoSavedRetention(asset.retentionClass)),
               ],
             ),
             const SizedBox(height: 20),
@@ -142,7 +142,7 @@ class VideoSavedSheet extends StatelessWidget {
                   child: OutlinedButton.icon(
                     onPressed: () => _notWiredYet(context),
                     icon: const Icon(Icons.download, size: 18),
-                    label: const Text('Save to Phone'),
+                    label: Text(l.videoSavedSaveToPhone),
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -150,7 +150,7 @@ class VideoSavedSheet extends StatelessWidget {
                   child: OutlinedButton.icon(
                     onPressed: () => _notWiredYet(context),
                     icon: const Icon(Icons.share, size: 18),
-                    label: const Text('Share'),
+                    label: Text(l.videoSavedShare),
                   ),
                 ),
               ],
