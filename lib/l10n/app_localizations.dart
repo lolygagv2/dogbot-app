@@ -6704,12 +6704,6 @@ abstract class AppLocalizations {
   /// **'Revoke failed'**
   String get aiErrRevokeFailed;
 
-  /// No description provided for @aiErrKillSwitchFailed.
-  ///
-  /// In en, this message translates to:
-  /// **'Couldn\'t change AI access'**
-  String get aiErrKillSwitchFailed;
-
   /// No description provided for @notifMissionDraft.
   ///
   /// In en, this message translates to:
@@ -6871,24 +6865,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Copy URL'**
   String get aiCopyUrl;
-
-  /// No description provided for @aiKillSwitch.
-  ///
-  /// In en, this message translates to:
-  /// **'Allow AI access'**
-  String get aiKillSwitch;
-
-  /// No description provided for @aiKillSwitchOn.
-  ///
-  /// In en, this message translates to:
-  /// **'Assistants can read summaries and propose missions'**
-  String get aiKillSwitchOn;
-
-  /// No description provided for @aiKillSwitchOff.
-  ///
-  /// In en, this message translates to:
-  /// **'KILL SWITCH ON — every assistant is refused'**
-  String get aiKillSwitchOff;
 
   /// No description provided for @aiAssistantsHeader.
   ///
@@ -7127,13 +7103,13 @@ abstract class AppLocalizations {
   /// No description provided for @soundsCatalogFromRobot.
   ///
   /// In en, this message translates to:
-  /// **'Catalog reported by the robot'**
+  /// **'Sound library from the server'**
   String get soundsCatalogFromRobot;
 
   /// No description provided for @soundsCatalogDefault.
   ///
   /// In en, this message translates to:
-  /// **'Default catalog (robot didn\'t report one)'**
+  /// **'Default library (server didn\'t answer)'**
   String get soundsCatalogDefault;
 
   /// No description provided for @soundGroupGreeting.
@@ -7205,7 +7181,7 @@ abstract class AppLocalizations {
   /// No description provided for @songUploadFormats.
   ///
   /// In en, this message translates to:
-  /// **'MP3, WAV or OGG · up to 20 MB'**
+  /// **'MP3 or WAV · up to 5 MB'**
   String get songUploadFormats;
 
   /// No description provided for @songUploadUploading.
@@ -7229,7 +7205,7 @@ abstract class AppLocalizations {
   /// No description provided for @songUploadTooLarge.
   ///
   /// In en, this message translates to:
-  /// **'File is over 20 MB'**
+  /// **'File is over 5 MB'**
   String get songUploadTooLarge;
 
   /// No description provided for @songUploadNoDog.
@@ -7297,6 +7273,138 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Guardian not running'**
   String get demoSgIdle;
+
+  /// No description provided for @aiErrNoDog.
+  ///
+  /// In en, this message translates to:
+  /// **'Select a dog first'**
+  String get aiErrNoDog;
+
+  /// No description provided for @aiErrRevokeAllFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t disconnect assistants'**
+  String get aiErrRevokeAllFailed;
+
+  /// No description provided for @aiDisconnectAll.
+  ///
+  /// In en, this message translates to:
+  /// **'Disconnect all assistants'**
+  String get aiDisconnectAll;
+
+  /// No description provided for @aiDisconnectAllSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Kill switch: every assistant loses access now and must be re-authorized'**
+  String get aiDisconnectAllSubtitle;
+
+  /// No description provided for @aiDisconnectAllConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Disconnect every assistant? They lose access immediately and have to be connected again.'**
+  String get aiDisconnectAllConfirm;
+
+  /// No description provided for @aiDisconnectAllDone.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} tokens revoked'**
+  String aiDisconnectAllDone(int count);
+
+  /// No description provided for @draftActorVoiceAgent.
+  ///
+  /// In en, this message translates to:
+  /// **'WIM-Z voice agent'**
+  String get draftActorVoiceAgent;
+
+  /// No description provided for @draftTriggerDeparture.
+  ///
+  /// In en, this message translates to:
+  /// **'Starts after you leave'**
+  String get draftTriggerDeparture;
+
+  /// No description provided for @draftTriggerSchedule.
+  ///
+  /// In en, this message translates to:
+  /// **'Daily at {time}'**
+  String draftTriggerSchedule(String time);
+
+  /// No description provided for @draftTriggerManual.
+  ///
+  /// In en, this message translates to:
+  /// **'Started manually'**
+  String get draftTriggerManual;
+
+  /// No description provided for @draftDurationReward.
+  ///
+  /// In en, this message translates to:
+  /// **'{minutes} min · {treats} treats'**
+  String draftDurationReward(int minutes, int treats);
+
+  /// No description provided for @todayStatSettle.
+  ///
+  /// In en, this message translates to:
+  /// **'Settle'**
+  String get todayStatSettle;
+
+  /// No description provided for @todayStatPacing.
+  ///
+  /// In en, this message translates to:
+  /// **'Pacing'**
+  String get todayStatPacing;
+
+  /// No description provided for @todayStatMusic.
+  ///
+  /// In en, this message translates to:
+  /// **'Music'**
+  String get todayStatMusic;
+
+  /// No description provided for @todayStatAlone.
+  ///
+  /// In en, this message translates to:
+  /// **'Alone'**
+  String get todayStatAlone;
+
+  /// No description provided for @todayStatMissions.
+  ///
+  /// In en, this message translates to:
+  /// **'Missions'**
+  String get todayStatMissions;
+
+  /// No description provided for @todayEpisodes.
+  ///
+  /// In en, this message translates to:
+  /// **'Top bark episodes'**
+  String get todayEpisodes;
+
+  /// No description provided for @todayEpisodeLine.
+  ///
+  /// In en, this message translates to:
+  /// **'{barks} barks · {duration}'**
+  String todayEpisodeLine(int barks, String duration);
+
+  /// No description provided for @todayEpisodeSettled.
+  ///
+  /// In en, this message translates to:
+  /// **'settled in {duration}'**
+  String todayEpisodeSettled(String duration);
+
+  /// No description provided for @todayCardEmptyRelay.
+  ///
+  /// In en, this message translates to:
+  /// **'No events on the relay yet today — counts from this phone'**
+  String get todayCardEmptyRelay;
+
+  /// No description provided for @soundsFormats.
+  ///
+  /// In en, this message translates to:
+  /// **'MP3 or WAV · up to 5 MB'**
+  String get soundsFormats;
+
+  /// No description provided for @soundGroupSong.
+  ///
+  /// In en, this message translates to:
+  /// **'Songs'**
+  String get soundGroupSong;
 }
 
 class _AppLocalizationsDelegate

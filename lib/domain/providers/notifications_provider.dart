@@ -311,9 +311,8 @@ class NotificationsNotifier extends StateNotifier<List<NotificationEvent>> {
             id: 'draft-${draft.id}',
             type: NotificationEventType.missionDraft,
             timestamp: eventTime,
-            title: draft.proposedBy != null
-                ? _l.notifMissionDraftFrom(draft.proposedBy!)
-                : _l.notifMissionDraft,
+            title: _l.notifMissionDraftFrom(
+                _ref.read(missionDraftsProvider.notifier).proposerName(draft)),
             subtitle: draft.title,
             dogId: draft.dogId,
             metadata: {'draft_id': draft.id},
@@ -539,6 +538,33 @@ class NotificationsNotifier extends StateNotifier<List<NotificationEvent>> {
   /// - [NotificationChannel.inApp]: append to in-app feed only.
   /// - [NotificationChannel.inAppAndPush]: in-app feed + OS push (when
   ///   backgrounded and global notifications are enabled).
+  /// Feed tile for a draft hydrated from `GET …/missions/drafts` (relay
+  /// brief 2026-11-06 §5) — the relay does not replay `mission_draft`
+  /// frames, so a draft that arrived while the app was closed would
+  /// otherwise have nowhere to be approved. Idempotent by id; never pushes.
+  void ensureDraftNotification(MissionDraft draft, {required String title}) {
+    final id = 'draft-${draft.id}';
+    if (state.any((n) => n.id == id)) return;
+    final settings = _ref.read(settingsProvider);
+    if (settings.channelFor(NotificationEventType.missionDraft) ==
+        NotificationChannel.off) {
+      return;
+    }
+    final event = NotificationEvent(
+      id: id,
+      type: NotificationEventType.missionDraft,
+      timestamp: draft.createdAt ?? draft.receivedAt,
+      title: title,
+      subtitle: draft.title,
+      dogId: draft.dogId,
+      metadata: {'draft_id': draft.id},
+      isRead: draft.status != null && draft.status != 'pending',
+    );
+    state = [event, ...state]
+      ..sort((a, b) => b.timestamp.compareTo(a.timestamp));
+    if (state.length > 100) state = state.take(100).toList();
+  }
+
   void addNotification(NotificationEvent notification) {
     final settings = _ref.read(settingsProvider);
     final channel = settings.channelFor(notification.type);
@@ -782,9 +808,8 @@ class NotificationsNotifier extends StateNotifier<List<NotificationEvent>> {
               status: (payload['status'] ?? event['status'])?.toString(),
             );
         mapped = NotificationEventType.missionDraft;
-        title = draft.proposedBy != null
-            ? _l.notifMissionDraftFrom(draft.proposedBy!)
-            : _l.notifMissionDraft;
+        title = _l.notifMissionDraftFrom(
+            _ref.read(missionDraftsProvider.notifier).proposerName(draft));
         subtitle = draft.title;
         return NotificationEvent(
           id: 'draft-${draft.id}',

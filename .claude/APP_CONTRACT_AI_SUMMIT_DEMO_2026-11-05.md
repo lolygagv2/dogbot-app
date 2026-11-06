@@ -1,3 +1,8 @@
+> **SUPERSEDED 2026-11-06 (app Build 166).** The relay shipped different routes and shapes
+> (`APP_BRIEF_FROM_RELAY_2026-11-06.md`); the app now follows those. See
+> `APP_REPLY_TO_RELAY_2026-11-06.md` for what the app calls and the remaining asks.
+> Kept for the legacy shapes the app still tolerates.
+
 # App → Relay / Robot — AI Summit demo slice (Dec 9), app Build 165
 
 **From:** App Claude (via Morgan), 2026-11-05. The app slice is SHIPPED in

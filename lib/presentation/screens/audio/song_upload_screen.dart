@@ -6,7 +6,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/network/websocket_client.dart';
+import '../../../core/utils/conn_trace.dart';
 import '../../../data/datasources/robot_api.dart';
+import '../../../data/datasources/sounds_api.dart';
+import '../../../data/models/sound_catalog.dart';
 import '../../../domain/providers/auth_provider.dart';
 import '../../../domain/providers/device_provider.dart';
 import '../../../domain/providers/dog_profiles_provider.dart';
@@ -25,7 +28,16 @@ class SongUploadScreen extends ConsumerStatefulWidget {
 }
 
 class _SongUploadScreenState extends ConsumerState<SongUploadScreen> {
-  static const _maxBytes = 20 * 1024 * 1024;
+  // Relay sound library: wav/mp3 ≤ 5 MB (dog_settings.py MAX_SOUND_BYTES).
+  static const _maxBytes = SoundsApi.maxBytes;
+
+  /// "my_calm_song.mp3" → "My calm song"
+  static String _labelFromFilename(String name) {
+    final stem = name.contains('.') ? name.substring(0, name.lastIndexOf('.')) : name;
+    final words = stem.replaceAll(RegExp(r'[_\-]+'), ' ').trim();
+    if (words.isEmpty) return stem;
+    return words[0].toUpperCase() + words.substring(1);
+  }
 
   bool _attested = false;
   bool _uploading = false;
@@ -38,7 +50,7 @@ class _SongUploadScreenState extends ConsumerState<SongUploadScreen> {
     final l = context.l10n;
     final result = await FilePicker.platform.pickFiles(
       type: FileType.custom,
-      allowedExtensions: const ['mp3', 'wav', 'ogg'],
+      allowedExtensions: SoundsApi.allowedExtensions,
       withData: false,
     );
     if (result == null || result.files.isEmpty) return;
@@ -71,19 +83,42 @@ class _SongUploadScreenState extends ConsumerState<SongUploadScreen> {
     String? error;
     final isLocal = ref.read(settingsProvider).localModeEnabled;
     final token = isLocal ? null : ref.read(authTokenProvider);
+    void onProgress(int sent, int total) {
+      if (total > 0 && mounted) setState(() => _progress = sent / total);
+    }
+
     if (token != null) {
-      error = await ref.read(robotApiProvider).uploadMusic(
+      // Relay 2026-11-06: songs are sounds of kind "song" in the dog's sound
+      // library (music_plan.track and play_music reference them by id), so
+      // upload there — the relay, the assistants and the robot all see it.
+      // Fall back to the legacy music library if the route isn't deployed.
+      final slot = SoundSlot(
+        id: soundIdFromFilename(file.name),
+        group: SoundGroup.song,
+        kind: SoundKind.song,
+      );
+      error = await ref.read(soundsApiProvider).replace(
             token: token,
+            dogId: selectedDog.id,
+            slot: slot,
             filePath: file.path!,
             filename: file.name,
-            dogId: selectedDog.id,
-            deviceId: ref.read(deviceIdProvider),
-            onProgress: (sent, total) {
-              if (total > 0 && mounted) {
-                setState(() => _progress = sent / total);
-              }
-            },
+            label: _labelFromFilename(file.name),
+            onProgress: onProgress,
           );
+      if (error == 'HTTP 404') {
+        connTrace('song-upload', 'sounds route 404 → legacy /api/music/upload');
+        error = await ref.read(robotApiProvider).uploadMusic(
+              token: token,
+              filePath: file.path!,
+              filename: file.name,
+              dogId: selectedDog.id,
+              deviceId: ref.read(deviceIdProvider),
+              onProgress: onProgress,
+            );
+      } else if (error == null) {
+        connTrace('song-upload', 'uploaded ${slot.id} to dog ${selectedDog.id}');
+      }
     } else if (isLocal) {
       // Robot-direct path: the local WS accepts base64 song uploads.
       try {

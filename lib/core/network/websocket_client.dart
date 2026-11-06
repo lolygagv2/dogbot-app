@@ -534,6 +534,25 @@ class WebSocketClient {
           // whole type is transient (unlike sg_summary, which has a real
           // feed variant).
           msgType == 'dog_weekly_summary' ||
+          // AI Summit slice (relay brief 2026-11-06): mission_draft,
+          // agent_transcript and command_result are sent straight to the
+          // user's app sessions (send_to_user_apps — no seq, no replay
+          // buffer) today; the relay's generic `event` frame mirrors what
+          // activity_event already carries; replay_* are demo tooling;
+          // settings_updated / sound_updated are robot-bound but harmless.
+          // None of these may touch the feed watermark if the relay ever
+          // stamps them with a seq. [[transient-event-watermark-gate]]
+          msgType == 'mission_draft' ||
+          msgType == 'mission_draft_status' ||
+          msgType == 'agent_transcript' ||
+          msgType == 'agent_message' ||
+          msgType == 'ai_connection_changed' ||
+          msgType == 'command_result' ||
+          msgType == 'event' ||
+          msgType == 'replay_jump' ||
+          msgType == 'replay_reset' ||
+          msgType == 'settings_updated' ||
+          msgType == 'sound_updated' ||
           (msgType == 'sg_summary' && json['action'] == 'status_pull');
       if (isControllerMsg) {
         // Build 129: prove on-device that controller_* reaches the socket and

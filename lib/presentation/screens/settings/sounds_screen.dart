@@ -2,6 +2,7 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../data/datasources/sounds_api.dart';
 import '../../../data/models/sound_catalog.dart';
 import '../../../domain/providers/sounds_provider.dart';
 import '../../../l10n/l10n.dart';
@@ -17,7 +18,8 @@ class SoundsScreen extends ConsumerStatefulWidget {
 }
 
 class _SoundsScreenState extends ConsumerState<SoundsScreen> {
-  static const _maxBytes = 10 * 1024 * 1024;
+  // Relay: wav/mp3 ≤ 5 MB (dog_settings.py MAX_SOUND_BYTES).
+  static const _maxBytes = SoundsApi.maxBytes;
 
   @override
   void initState() {
@@ -42,19 +44,19 @@ class _SoundsScreenState extends ConsumerState<SoundsScreen> {
     final l = context.l10n;
     final result = await FilePicker.platform.pickFiles(
       type: FileType.custom,
-      allowedExtensions: const ['mp3', 'wav', 'ogg', 'm4a'],
+      allowedExtensions: SoundsApi.allowedExtensions,
       withData: false,
     );
     if (result == null || result.files.isEmpty) return;
     final file = result.files.single;
     if (file.path == null) return;
     if (file.size > _maxBytes) {
-      _snack(l.soundsReplaceFailed(l.uploadErrTooLarge), error: true);
+      _snack(l.soundsReplaceFailed(l.soundsFormats), error: true);
       return;
     }
     final err = await ref
         .read(soundsProvider.notifier)
-        .replace(slot.id, file.path!, file.name);
+        .replace(slot, file.path!, file.name);
     if (err == null) {
       _snack(l.soundsReplaced(slot.id));
     } else {
@@ -64,7 +66,7 @@ class _SoundsScreenState extends ConsumerState<SoundsScreen> {
 
   Future<void> _restore(SoundSlot slot) async {
     final l = context.l10n;
-    final err = await ref.read(soundsProvider.notifier).resetOne(slot.id);
+    final err = await ref.read(soundsProvider.notifier).resetOne(slot);
     if (err == null) {
       _snack(l.settingsResetSoundsDone);
     } else {
@@ -84,6 +86,7 @@ class _SoundsScreenState extends ConsumerState<SoundsScreen> {
       (SoundGroup.alert, l.soundGroupAlert),
       (SoundGroup.sgLevel, l.soundGroupSgLevel),
       (SoundGroup.music, l.soundGroupMusic),
+      (SoundGroup.song, l.soundGroupSong),
     ];
 
     return Scaffold(
@@ -104,7 +107,7 @@ class _SoundsScreenState extends ConsumerState<SoundsScreen> {
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
             child: Text(
-              state.fromRobot ? l.soundsCatalogFromRobot : l.soundsCatalogDefault,
+              state.fromServer ? l.soundsCatalogFromRobot : l.soundsCatalogDefault,
               style: const TextStyle(fontSize: 11, color: AppTheme.textTertiary),
             ),
           ),
@@ -139,7 +142,11 @@ class _SoundsScreenState extends ConsumerState<SoundsScreen> {
                         progress: state.progress,
                         disabled: state.busyId != null || state.resettingAll,
                         onReplace: () => _replace(slot),
-                        onRestore: slot.custom ? () => _restore(slot) : null,
+                        // Per-sound restore exists on the robot only; the
+                        // relay resets the whole library (Settings button).
+                        onRestore: slot.custom && state.canRestoreOne
+                            ? () => _restore(slot)
+                            : null,
                       ),
                   ],
               ],

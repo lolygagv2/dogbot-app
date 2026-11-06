@@ -89,24 +89,45 @@ class ApiEndpoints {
   static const String wifiConnect = '/system/wifi/connect';
   static const String networkStatus = '/system/network-status';
 
-  // ---- AI Summit demo slice (contract APP_CONTRACT_AI_SUMMIT_DEMO_2026-11-05) ----
+  // ---- AI Summit demo slice — relay paths per APP_BRIEF_FROM_RELAY_2026-11-06
+  // (B166 aligned the B165 guesses to the shipped relay routers). Everything
+  // below is dog-scoped; the relay checks owner/caretaker access on dog_id.
 
-  /// Per-dog daily summary ("Today card"). 404 = no rows for that day.
-  static String dailySummary(String dogId, String isoDate) =>
-      '/summary/$dogId/$isoDate';
+  /// Per-dog daily roll-up ("Today card"). [date] = YYYY-MM-DD | today |
+  /// yesterday (resolved in the dog's timezone). Never 404s: an empty day
+  /// comes back with event_count 0.
+  static String dailySummary(String dogId, String date) =>
+      '/summary/$dogId/$date';
 
-  /// Connected AI: connector URL + connected assistants (+ kill switch state)
-  static const String aiConnections = '/api/ai/connections';
-  static String aiConnectionRevoke(String id) => '/api/ai/connections/$id';
-  static const String aiKillSwitch = '/api/ai/kill-switch';
-  static const String aiAudit = '/api/ai/audit';
-  static String aiDraftDecision(String draftId) =>
-      '/api/ai/drafts/$draftId/decision';
+  /// Last known robot status + treats_today/treat_cap + quiet_hours.
+  static String dogStatus(String dogId) => '/api/dogs/$dogId/status';
 
-  /// Sound catalog (advanced settings): list / replace one / factory reset
-  static const String sounds = '/api/sounds';
-  static String soundReplace(String soundId) => '/api/sounds/$soundId';
-  static const String soundsReset = '/api/sounds/reset';
+  /// Connected AI (relay router ai.py). Assistants are per user; dog_id is
+  /// for routing/access only.
+  static String aiConnectors(String dogId) => '/api/dogs/$dogId/ai/connectors';
+  static String aiConnectorRevoke(String dogId, String clientId) =>
+      '/api/dogs/$dogId/ai/connectors/$clientId/revoke';
+  static String aiRevokeAll(String dogId) => '/api/dogs/$dogId/ai/revoke_all';
+  static String aiAudit(String dogId) => '/api/dogs/$dogId/ai/audit';
+
+  /// Mission drafts (relay router mission_drafts.py): list + owner decision.
+  static String missionDrafts(String dogId) =>
+      '/api/dogs/$dogId/missions/drafts';
+  static String missionDraft(String dogId, String draftId) =>
+      '/api/dogs/$dogId/missions/drafts/$draftId';
+
+  /// Sound library (relay router dog_settings.py): metadata / replace one
+  /// (multipart `file`, ?label=&kind=sound|song) / reset ALL to builtins.
+  static String dogSounds(String dogId) => '/api/dogs/$dogId/sounds';
+  static String dogSoundReplace(String dogId, String soundId) =>
+      '/api/dogs/$dogId/sounds/$soundId';
+  static String dogSoundsReset(String dogId) => '/api/dogs/$dogId/sounds/reset';
+  static String soundFile(String dogId, String soundId) =>
+      '/api/sounds/file/$dogId/$soundId';
+
+  /// Still attached to an event (404 none, 410 expired).
+  static String eventPhoto(String dogId, String eventId) =>
+      '/api/dogs/$dogId/events/$eventId/photo';
 }
 
 /// LED pattern names

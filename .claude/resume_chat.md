@@ -1,5 +1,36 @@
 # WIM-Z Resume Chat Log
 
+## Session: 2026-11-06 — Build 166 (align AI Summit slice to the shipped relay)
+**Goal:** Re-point B165's guessed contract at the relay routes that actually shipped
+(`APP_BRIEF_FROM_RELAY_2026-11-06.md`, verified against `wimzrelay/app/routers/`)
+**Status:** App slice complete, analyzer clean (no new errors), 93 tests green;
+relay deploy still pending (Morgan, Lightsail). Reply brief:
+`.claude/APP_REPLY_TO_RELAY_2026-11-06.md`
+
+### What changed
+| Area | B165 (guess) | B166 (relay) |
+|---|---|---|
+| Today card | `/summary/{dog}/{date}` `stats{}` | same path with `today` token; parses `counts/totals/time_to_settle/top_episodes`; `event_count 0` → phone counts |
+| Connected AI | `/api/ai/connections`, kill-switch toggle | `/api/dogs/{dog}/ai/connectors` + `…/revoke` + `…/revoke_all` ("Disconnect all") + `…/audit` (`client_name/tool/outcome/result_summary`) |
+| Drafts | `POST /api/ai/drafts/{id}/decision`, flat WS payload | `GET …/missions/drafts?status=all` hydrate on launch/dog switch (feed tile synthesised), `PUT …/missions/drafts/{id}`; nested `draft{}` + `actor` + `warnings` |
+| Sounds | `/api/sounds?device_id` | `/api/dogs/{dog}/sounds[/{id}|/reset]`, server catalog wins, 5 MB wav/mp3, no per-id reset in cloud; robot-local `/sounds/{group}/{stem}/…` |
+| Song upload | `/api/music/upload` | `…/sounds/song_<slug>?kind=song` first, 404 → legacy music upload |
+| WS | — | watermark carve-out for mission_draft/agent_transcript/command_result/event/replay_*/settings_updated/sound_updated |
+
+### New / rewritten files
+- `lib/core/utils/relay_error.dart` (uniform `{detail:{code}}` → message)
+- models `daily_summary.dart`, `ai_connection.dart`, `sound_catalog.dart` rewritten (legacy shapes still parse)
+- datasources `summary_api`, `ai_connect_api`, `sounds_api`; providers `daily_summary`, `ai_connect`, `mission_drafts`, `sounds`
+- `notifications_provider.ensureDraftNotification` (idempotent tile from the relay list)
+- l10n: +22 keys, −4 kill-switch keys (en + ko)
+
+### Open (not app-blocking)
+- iOS push image needs a Notification Service Extension (Morgan's call)
+- Next-round candidates: relay settings screen (quiet_hours/treat_schedule/sg_sensitivity/music_plan), phone voice agent (`POST /agent/utterance`), mark departure/arrival
+- Device check: Connected AI with real connector, draft approve, song upload → shows under Sounds as kind song
+
+---
+
 ## Session: 2026-11-05 — Build 165 (AI Summit demo slice)
 **Goal:** Dec 9 AI Summit demo features — one screen each, no new nav levels
 **Status:** App slice complete, analyzer clean, tests green; relay/robot slices

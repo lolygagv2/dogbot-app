@@ -11,8 +11,9 @@ class DailySummaryState {
   final DailySummary? summary;
   final bool loading;
 
-  /// Server has no rows for today (404). Not an error — the card falls back
-  /// to counts derived from the local activity feed.
+  /// Server has nothing for today (404 path, or a relay roll-up with zero
+  /// events). Not an error — the card falls back to counts derived from the
+  /// local activity feed.
   final bool notFound;
   final String? error;
 
@@ -59,21 +60,31 @@ class DailySummaryNotifier extends StateNotifier<DailySummaryState> {
     load();
   }
 
-  Future<void> load({DateTime? date}) async {
+  /// [refresh] asks the relay to recompute the roll-up (?refresh=1).
+  Future<void> load({DateTime? date, bool refresh = false}) async {
     if (state.loading) return;
     state = state.copyWith(loading: true, clearError: true);
-    final isoDate = isoDateLocal(date ?? DateTime.now());
-    // Local mode has no JWT; the robot serves the path unauthenticated.
+    // Local mode has no JWT; the robot serves the path unauthenticated and
+    // needs a concrete date. The relay resolves `today` in the dog's
+    // timezone, which beats guessing from the phone's clock.
     final isLocal = _ref.read(settingsProvider).localModeEnabled;
     final token = isLocal ? null : _ref.read(authProvider).token;
-    final result = await _ref
-        .read(summaryApiProvider)
-        .getDaily(dogId: _dogId, isoDate: isoDate, token: token);
+    final dateArg = (date != null || isLocal)
+        ? isoDateLocal(date ?? DateTime.now())
+        : 'today';
+    final result = await _ref.read(summaryApiProvider).getDaily(
+          dogId: _dogId,
+          date: dateArg,
+          token: token,
+          refresh: refresh,
+        );
     if (!mounted) return;
-    if (result.summary != null) {
-      state = DailySummaryState(summary: result.summary);
-    } else if (result.notFound) {
-      state = DailySummaryState(summary: state.summary, notFound: true);
+    final s = result.summary;
+    if (s != null && !s.isEmpty) {
+      state = DailySummaryState(summary: s);
+    } else if (s != null || result.notFound) {
+      // Relay answered but has no events for the day → local counts.
+      state = DailySummaryState(summary: null, notFound: true);
     } else {
       connTrace('summary-load', 'dog=$_dogId error=${result.error}');
       state = DailySummaryState(summary: state.summary, error: result.error);

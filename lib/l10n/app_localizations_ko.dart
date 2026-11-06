@@ -3659,9 +3659,6 @@ class AppLocalizationsKo extends AppLocalizations {
   String get aiErrRevokeFailed => '연결 해제 실패';
 
   @override
-  String get aiErrKillSwitchFailed => 'AI 접근 설정을 변경하지 못했습니다';
-
-  @override
   String get notifMissionDraft => '미션 승인 요청';
 
   @override
@@ -3745,15 +3742,6 @@ class AppLocalizationsKo extends AppLocalizations {
 
   @override
   String get aiCopyUrl => 'URL 복사';
-
-  @override
-  String get aiKillSwitch => 'AI 접근 허용';
-
-  @override
-  String get aiKillSwitchOn => '어시스턴트가 요약을 읽고 미션을 제안할 수 있음';
-
-  @override
-  String get aiKillSwitchOff => '긴급 차단 켜짐 — 모든 어시스턴트 차단';
 
   @override
   String get aiAssistantsHeader => '연결된 어시스턴트';
@@ -3892,10 +3880,10 @@ class AppLocalizationsKo extends AppLocalizations {
   String get soundsRestoreOne => '기본 사운드 복원';
 
   @override
-  String get soundsCatalogFromRobot => '로봇이 보고한 카탈로그';
+  String get soundsCatalogFromRobot => '서버에서 가져온 사운드 목록';
 
   @override
-  String get soundsCatalogDefault => '기본 카탈로그 (로봇 미보고)';
+  String get soundsCatalogDefault => '기본 목록 (서버 응답 없음)';
 
   @override
   String get soundGroupGreeting => '인사';
@@ -3931,7 +3919,7 @@ class AppLocalizationsKo extends AppLocalizations {
   String get songUploadChoose => '노래 선택';
 
   @override
-  String get songUploadFormats => 'MP3, WAV, OGG · 최대 20MB';
+  String get songUploadFormats => 'MP3 또는 WAV · 최대 5MB';
 
   @override
   String songUploadUploading(String name) {
@@ -3949,7 +3937,7 @@ class AppLocalizationsKo extends AppLocalizations {
   }
 
   @override
-  String get songUploadTooLarge => '파일이 20MB를 초과합니다';
+  String get songUploadTooLarge => '파일이 5MB를 초과합니다';
 
   @override
   String get songUploadNoDog => '먼저 반려견을 선택하세요';
@@ -3983,4 +3971,82 @@ class AppLocalizationsKo extends AppLocalizations {
 
   @override
   String get demoSgIdle => '가디언 미실행';
+
+  @override
+  String get aiErrNoDog => '먼저 강아지를 선택하세요';
+
+  @override
+  String get aiErrRevokeAllFailed => '어시스턴트 연결을 해제하지 못했습니다';
+
+  @override
+  String get aiDisconnectAll => '모든 어시스턴트 연결 해제';
+
+  @override
+  String get aiDisconnectAllSubtitle =>
+      '긴급 차단: 모든 어시스턴트의 접근이 즉시 끊기며 다시 연결해야 합니다';
+
+  @override
+  String get aiDisconnectAllConfirm =>
+      '모든 어시스턴트의 연결을 해제할까요? 즉시 접근이 끊기며 다시 연결해야 합니다.';
+
+  @override
+  String aiDisconnectAllDone(int count) {
+    return '토큰 $count개 취소됨';
+  }
+
+  @override
+  String get draftActorVoiceAgent => 'WIM-Z 음성 에이전트';
+
+  @override
+  String get draftTriggerDeparture => '외출 후 시작';
+
+  @override
+  String draftTriggerSchedule(String time) {
+    return '매일 $time';
+  }
+
+  @override
+  String get draftTriggerManual => '수동 시작';
+
+  @override
+  String draftDurationReward(int minutes, int treats) {
+    return '$minutes분 · 간식 $treats개';
+  }
+
+  @override
+  String get todayStatSettle => '진정';
+
+  @override
+  String get todayStatPacing => '서성임';
+
+  @override
+  String get todayStatMusic => '음악';
+
+  @override
+  String get todayStatAlone => '혼자';
+
+  @override
+  String get todayStatMissions => '미션';
+
+  @override
+  String get todayEpisodes => '주요 짖음 에피소드';
+
+  @override
+  String todayEpisodeLine(int barks, String duration) {
+    return '짖음 $barks회 · $duration';
+  }
+
+  @override
+  String todayEpisodeSettled(String duration) {
+    return '$duration 만에 진정';
+  }
+
+  @override
+  String get todayCardEmptyRelay => '오늘 릴레이에 기록된 이벤트가 없습니다 — 이 휴대폰의 집계';
+
+  @override
+  String get soundsFormats => 'MP3 또는 WAV · 최대 5MB';
+
+  @override
+  String get soundGroupSong => '노래';
 }

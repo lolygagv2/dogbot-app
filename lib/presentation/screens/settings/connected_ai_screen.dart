@@ -61,6 +61,36 @@ class _ConnectedAiScreenState extends ConsumerState<ConnectedAiScreen> {
     }
   }
 
+  Future<void> _confirmRevokeAll() async {
+    final l = context.l10n;
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(l.aiDisconnectAll),
+        content: Text(l.aiDisconnectAllConfirm),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(ctx, false), child: Text(l.cancel)),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: Text(l.aiDisconnectAll,
+                style: const TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
+    if (ok != true) return;
+    final n = await ref.read(aiConnectProvider.notifier).revokeAll();
+    if (!mounted || n == null) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(l.aiDisconnectAllDone(n)),
+        behavior: SnackBarBehavior.floating,
+        duration: const Duration(seconds: 3),
+      ),
+    );
+  }
+
   void _openGuide(AiProvider p, String? url) {
     showModalBottomSheet(
       context: context,
@@ -103,10 +133,10 @@ class _ConnectedAiScreenState extends ConsumerState<ConnectedAiScreen> {
                     onCopy: _copyUrl,
                   ),
                   const SizedBox(height: 8),
-                  _KillSwitchTile(
-                    enabled: state.enabled,
-                    onChanged: (v) =>
-                        ref.read(aiConnectProvider.notifier).setEnabled(v),
+                  _DisconnectAllTile(
+                    count: state.assistants.length,
+                    busy: state.revokingAll,
+                    onPressed: _confirmRevokeAll,
                   ),
                   if (state.error != null)
                     Padding(
@@ -240,44 +270,47 @@ class _ConnectorUrlRow extends StatelessWidget {
   }
 }
 
-class _KillSwitchTile extends StatelessWidget {
-  final bool enabled;
-  final ValueChanged<bool> onChanged;
-  const _KillSwitchTile({required this.enabled, required this.onChanged});
+/// The relay's kill switch is `POST …/ai/revoke_all`: every assistant's
+/// tokens are revoked at once (one-way; they must re-authorize).
+class _DisconnectAllTile extends StatelessWidget {
+  final int count;
+  final bool busy;
+  final VoidCallback onPressed;
+  const _DisconnectAllTile(
+      {required this.count, required this.busy, required this.onPressed});
 
   @override
   Widget build(BuildContext context) {
     final l = context.l10n;
+    final enabled = count > 0 && !busy;
     return Container(
       decoration: BoxDecoration(
-        color: enabled ? AppTheme.surface : AppTheme.error.withOpacity(0.12),
+        color: AppTheme.surface,
         borderRadius: BorderRadius.circular(10),
         border: Border.all(
-          color: enabled
-              ? AppTheme.glassBorder
-              : AppTheme.error.withOpacity(0.7),
+          color: enabled ? AppTheme.error.withOpacity(0.6) : AppTheme.glassBorder,
         ),
       ),
-      child: SwitchListTile(
+      child: ListTile(
         dense: true,
         contentPadding: const EdgeInsets.symmetric(horizontal: 12),
-        secondary: Icon(
-          enabled ? Icons.power_settings_new : Icons.block,
-          color: enabled ? AppTheme.accent : AppTheme.error,
-        ),
-        title: Text(l.aiKillSwitch,
+        leading: Icon(Icons.block,
+            color: enabled ? AppTheme.error : AppTheme.textTertiary),
+        title: Text(l.aiDisconnectAll,
             style: const TextStyle(fontWeight: FontWeight.w600)),
         subtitle: Text(
-          enabled ? l.aiKillSwitchOn : l.aiKillSwitchOff,
-          style: TextStyle(
-            fontSize: 11,
-            color: enabled ? AppTheme.textTertiary : AppTheme.error,
-            fontWeight: enabled ? FontWeight.normal : FontWeight.w600,
-          ),
+          l.aiDisconnectAllSubtitle,
+          style: const TextStyle(fontSize: 11, color: AppTheme.textTertiary),
         ),
-        value: enabled,
-        activeColor: AppTheme.accent,
-        onChanged: onChanged,
+        trailing: busy
+            ? const SizedBox(
+                width: 18,
+                height: 18,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              )
+            : const Icon(Icons.chevron_right, color: AppTheme.textTertiary),
+        enabled: enabled,
+        onTap: enabled ? onPressed : null,
       ),
     );
   }

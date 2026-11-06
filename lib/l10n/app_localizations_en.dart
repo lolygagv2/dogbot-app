@@ -3791,9 +3791,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get aiErrRevokeFailed => 'Revoke failed';
 
   @override
-  String get aiErrKillSwitchFailed => 'Couldn\'t change AI access';
-
-  @override
   String get notifMissionDraft => 'Mission approval';
 
   @override
@@ -3878,16 +3875,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get aiCopyUrl => 'Copy URL';
-
-  @override
-  String get aiKillSwitch => 'Allow AI access';
-
-  @override
-  String get aiKillSwitchOn =>
-      'Assistants can read summaries and propose missions';
-
-  @override
-  String get aiKillSwitchOff => 'KILL SWITCH ON — every assistant is refused';
 
   @override
   String get aiAssistantsHeader => 'Connected assistants';
@@ -4033,11 +4020,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get soundsRestoreOne => 'Restore factory sound';
 
   @override
-  String get soundsCatalogFromRobot => 'Catalog reported by the robot';
+  String get soundsCatalogFromRobot => 'Sound library from the server';
 
   @override
-  String get soundsCatalogDefault =>
-      'Default catalog (robot didn\'t report one)';
+  String get soundsCatalogDefault => 'Default library (server didn\'t answer)';
 
   @override
   String get soundGroupGreeting => 'Greeting';
@@ -4075,7 +4061,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get songUploadChoose => 'Choose song';
 
   @override
-  String get songUploadFormats => 'MP3, WAV or OGG · up to 20 MB';
+  String get songUploadFormats => 'MP3 or WAV · up to 5 MB';
 
   @override
   String songUploadUploading(String name) {
@@ -4093,7 +4079,7 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get songUploadTooLarge => 'File is over 20 MB';
+  String get songUploadTooLarge => 'File is over 5 MB';
 
   @override
   String get songUploadNoDog => 'Select a dog first';
@@ -4128,4 +4114,83 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get demoSgIdle => 'Guardian not running';
+
+  @override
+  String get aiErrNoDog => 'Select a dog first';
+
+  @override
+  String get aiErrRevokeAllFailed => 'Couldn\'t disconnect assistants';
+
+  @override
+  String get aiDisconnectAll => 'Disconnect all assistants';
+
+  @override
+  String get aiDisconnectAllSubtitle =>
+      'Kill switch: every assistant loses access now and must be re-authorized';
+
+  @override
+  String get aiDisconnectAllConfirm =>
+      'Disconnect every assistant? They lose access immediately and have to be connected again.';
+
+  @override
+  String aiDisconnectAllDone(int count) {
+    return '$count tokens revoked';
+  }
+
+  @override
+  String get draftActorVoiceAgent => 'WIM-Z voice agent';
+
+  @override
+  String get draftTriggerDeparture => 'Starts after you leave';
+
+  @override
+  String draftTriggerSchedule(String time) {
+    return 'Daily at $time';
+  }
+
+  @override
+  String get draftTriggerManual => 'Started manually';
+
+  @override
+  String draftDurationReward(int minutes, int treats) {
+    return '$minutes min · $treats treats';
+  }
+
+  @override
+  String get todayStatSettle => 'Settle';
+
+  @override
+  String get todayStatPacing => 'Pacing';
+
+  @override
+  String get todayStatMusic => 'Music';
+
+  @override
+  String get todayStatAlone => 'Alone';
+
+  @override
+  String get todayStatMissions => 'Missions';
+
+  @override
+  String get todayEpisodes => 'Top bark episodes';
+
+  @override
+  String todayEpisodeLine(int barks, String duration) {
+    return '$barks barks · $duration';
+  }
+
+  @override
+  String todayEpisodeSettled(String duration) {
+    return 'settled in $duration';
+  }
+
+  @override
+  String get todayCardEmptyRelay =>
+      'No events on the relay yet today — counts from this phone';
+
+  @override
+  String get soundsFormats => 'MP3 or WAV · up to 5 MB';
+
+  @override
+  String get soundGroupSong => 'Songs';
 }

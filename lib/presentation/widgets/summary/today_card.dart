@@ -6,13 +6,15 @@ import '../../../data/models/ai_connection.dart';
 import '../../../data/models/daily_summary.dart';
 import '../../../domain/providers/daily_summary_provider.dart';
 import '../../../domain/providers/dog_profiles_provider.dart';
+import '../../../domain/providers/settings_provider.dart';
 import '../../theme/app_theme.dart';
 import '../../../l10n/l10n.dart';
 
-/// "Today" card — GET /summary/{dog}/{date}. Renders fully with stats only
-/// (no headline, no AI plan); when the server has no row for today it falls
-/// back to counts derived from this phone's activity feed so the card is
-/// never blank. [compact] trims highlights for the demo view.
+/// "Today" card — relay roll-up GET /summary/{dog}/today (brief 2026-11-06
+/// §1). Renders from counts/totals alone; episodes, headline and an AI plan
+/// appear only when the server sends them. When the relay has no events
+/// for the day it falls back to counts derived from this phone's activity
+/// feed so the card is never blank. [compact] = demo view (one stat row).
 class TodayCard extends ConsumerWidget {
   final String dogId;
   final String? dogName;
@@ -29,6 +31,7 @@ class TodayCard extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final state = ref.watch(dailySummaryProvider(dogId));
     final local = ref.watch(dogDailySummaryProvider(dogId));
+    final isLocalMode = ref.watch(settingsProvider).localModeEnabled;
     final l = context.l10n;
     final s = state.summary;
     final usingLocal = s == null;
@@ -43,6 +46,11 @@ class TodayCard extends ConsumerWidget {
         );
     final locale = Localizations.localeOf(context).toString();
     final dateLabel = DateFormat.MMMEd(locale).format(DateTime.now());
+    final hasRelayTotals = s != null &&
+        (stats.pacingSeconds > 0 ||
+            stats.musicSeconds > 0 ||
+            stats.aloneSeconds > 0 ||
+            stats.missionRuns > 0);
 
     return Container(
       padding: const EdgeInsets.all(12),
@@ -89,8 +97,9 @@ class TodayCard extends ConsumerWidget {
                       constraints: const BoxConstraints(),
                       icon: const Icon(Icons.refresh,
                           size: 18, color: AppTheme.primary),
-                      onPressed: () =>
-                          ref.read(dailySummaryProvider(dogId).notifier).load(),
+                      onPressed: () => ref
+                          .read(dailySummaryProvider(dogId).notifier)
+                          .load(refresh: true),
                     ),
             ],
           ),
@@ -111,25 +120,65 @@ class TodayCard extends ConsumerWidget {
           Row(
             children: [
               _Stat(l.todayStatBarks, '${stats.barks}', Colors.orange),
-              _Stat(l.todayStatTreats, '${stats.treats}', AppTheme.accent),
               _Stat(
-                l.todayStatCoaching,
-                stats.coachingAttempts > 0
-                    ? '${stats.coachingCompleted}/${stats.coachingAttempts}'
-                    : '${stats.sits}',
-                AppTheme.primary,
+                l.todayStatTreats,
+                stats.treatCap != null
+                    ? '${stats.treats}/${stats.treatCap}'
+                    : '${stats.treats}',
+                AppTheme.accent,
               ),
-              if (s != null && stats.quietMinutes > 0)
-                _Stat(l.todayStatQuiet, _fmtMinutes(stats.quietMinutes),
-                    Colors.purple)
+              _Stat(l.todayStatGuardian, '${stats.guardianInterventions}',
+                  Colors.purple),
+              if (stats.settleMedianS != null)
+                _Stat(l.todayStatSettle, _fmtSeconds(stats.settleMedianS!),
+                    AppTheme.primary)
+              else if (s != null && stats.quietMinutes > 0)
+                _Stat(l.todayStatQuiet, _fmtSeconds(stats.quietMinutes * 60),
+                    AppTheme.primary)
               else
-                _Stat(l.todayStatGuardian, '${stats.guardianInterventions}',
-                    Colors.purple),
+                _Stat(
+                  l.todayStatCoaching,
+                  stats.coachingAttempts > 0
+                      ? '${stats.coachingCompleted}/${stats.coachingAttempts}'
+                      : '${stats.sits}',
+                  AppTheme.primary,
+                ),
             ],
           ),
+          if (!compact && hasRelayTotals) ...[
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                _Stat(l.todayStatPacing, _fmtSeconds(stats.pacingSeconds),
+                    AppTheme.textSecondary, small: true),
+                _Stat(l.todayStatMusic, _fmtSeconds(stats.musicSeconds),
+                    AppTheme.textSecondary, small: true),
+                _Stat(l.todayStatAlone, _fmtSeconds(stats.aloneSeconds),
+                    AppTheme.textSecondary, small: true),
+                _Stat(
+                  l.todayStatMissions,
+                  stats.missionRuns > 0
+                      ? '${stats.missionsSuccess}/${stats.missionRuns}'
+                      : '0',
+                  AppTheme.textSecondary,
+                  small: true,
+                ),
+              ],
+            ),
+          ],
           if (s?.plan != null) ...[
             const SizedBox(height: 10),
             _PlanBlock(plan: s!.plan!, compact: compact),
+          ],
+          if (!compact && s != null && s.episodes.isNotEmpty) ...[
+            const SizedBox(height: 10),
+            Text(
+              l.todayEpisodes.toUpperCase(),
+              style: const TextStyle(
+                  fontSize: 10, letterSpacing: 0.5, color: AppTheme.textTertiary),
+            ),
+            const SizedBox(height: 4),
+            for (final e in s.episodes.take(3)) _EpisodeRow(e, locale),
           ],
           if (!compact && s != null && s.highlights.isNotEmpty) ...[
             const SizedBox(height: 10),
@@ -172,7 +221,11 @@ class TodayCard extends ConsumerWidget {
             Text(
               state.error != null
                   ? l.todayCardError
-                  : (state.loading ? l.loading : l.todayCardLocalCounts),
+                  : state.loading
+                      ? l.loading
+                      : (state.notFound && !isLocalMode)
+                          ? l.todayCardEmptyRelay
+                          : l.todayCardLocalCounts,
               style: TextStyle(
                 fontSize: 11,
                 color: state.error != null
@@ -186,7 +239,10 @@ class TodayCard extends ConsumerWidget {
     );
   }
 
-  static String _fmtMinutes(int m) {
+  /// 45 → "45s", 310 → "5m", 4000 → "1h 6m"
+  static String _fmtSeconds(int s) {
+    if (s < 60) return '${s}s';
+    final m = s ~/ 60;
     if (m < 60) return '${m}m';
     final h = m ~/ 60, r = m % 60;
     return r == 0 ? '${h}h' : '${h}h ${r}m';
@@ -196,6 +252,60 @@ class TodayCard extends ConsumerWidget {
     final inst = h.instant;
     if (inst != null) return DateFormat.jm(locale).format(inst.toLocal());
     return h.time ?? '';
+  }
+}
+
+class _EpisodeRow extends StatelessWidget {
+  final DailyEpisode e;
+  final String locale;
+  const _EpisodeRow(this.e, this.locale);
+
+  static Color _severityColor(String? s) => switch (s) {
+        'high' => AppTheme.error,
+        'med' || 'medium' => Colors.orange,
+        _ => AppTheme.textTertiary,
+      };
+
+  @override
+  Widget build(BuildContext context) {
+    final l = context.l10n;
+    final time = e.ts != null ? DateFormat.jm(locale).format(e.ts!.toLocal()) : '';
+    final settled = e.settleS != null
+        ? ' · ${l.todayEpisodeSettled(TodayCard._fmtSeconds(e.settleS!))}'
+        : '';
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 2),
+      child: Row(
+        children: [
+          Container(
+            width: 6,
+            height: 6,
+            margin: const EdgeInsets.only(right: 8),
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: _severityColor(e.severity),
+            ),
+          ),
+          if (time.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.only(right: 8),
+              child: Text(time,
+                  style: const TextStyle(
+                      fontSize: 12, color: AppTheme.textTertiary)),
+            ),
+          Expanded(
+            child: Text(
+              '${l.todayEpisodeLine(e.barkCount, TodayCard._fmtSeconds(e.durationS))}$settled',
+              style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+          if (e.imageUrl != null)
+            const Icon(Icons.photo_outlined, size: 14, color: AppTheme.textTertiary),
+        ],
+      ),
+    );
   }
 }
 
@@ -261,7 +371,8 @@ class _Stat extends StatelessWidget {
   final String label;
   final String value;
   final Color color;
-  const _Stat(this.label, this.value, this.color);
+  final bool small;
+  const _Stat(this.label, this.value, this.color, {this.small = false});
 
   @override
   Widget build(BuildContext context) {
@@ -271,7 +382,7 @@ class _Stat extends StatelessWidget {
           Text(
             value,
             style: TextStyle(
-              fontSize: 17,
+              fontSize: small ? 13 : 17,
               fontWeight: FontWeight.bold,
               color: color,
             ),

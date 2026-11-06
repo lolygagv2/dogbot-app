@@ -8,9 +8,11 @@ import '../../data/datasources/ai_connect_api.dart';
 import '../../data/models/ai_connection.dart';
 import '../../l10n/l10n.dart';
 import 'auth_provider.dart';
+import 'dog_profiles_provider.dart';
 import 'l10n_provider.dart';
 
-/// Connected AI screen state: connector URL, assistants, kill switch, audit.
+/// Connected AI screen state: connector URL, assistants, audit, and the
+/// "disconnect all" action (relay `revoke_all` — its kill switch).
 final aiConnectProvider =
     StateNotifierProvider<AiConnectNotifier, AiConnectionsState>(
         (ref) => AiConnectNotifier(ref));
@@ -21,15 +23,33 @@ class AiConnectNotifier extends StateNotifier<AiConnectionsState> {
   AppLocalizations get _l => _ref.read(l10nProvider);
 
   AiConnectNotifier(this._ref) : super(const AiConnectionsState()) {
-    // Relay broadcasts when an assistant connects / is revoked elsewhere.
+    // Optional relay broadcast when an assistant connects / is revoked
+    // elsewhere (not in the 2026-11-06 brief; harmless if never sent).
     _sub = _ref
         .read(websocketClientProvider)
         .eventStream
         .where((e) => e.type == 'ai_connection_changed')
         .listen((_) => load());
+    // Relay routes are dog-scoped: reload when the selected dog changes.
+    _ref.listen<String?>(
+      selectedDogProvider.select((d) => d?.id),
+      (prev, next) {
+        if (prev != next && next != null && state.dogId != null) load();
+      },
+    );
   }
 
   String? get _token => _ref.read(authProvider).token;
+  String? get _dogId => _ref.read(selectedDogProvider)?.id;
+
+  /// client_name for a connector client_id, when the list is loaded.
+  String? nameForClient(String? clientId) {
+    if (clientId == null) return null;
+    for (final a in state.assistants) {
+      if (a.id == clientId) return a.name;
+    }
+    return null;
+  }
 
   Future<void> load() async {
     final token = _token;
@@ -37,16 +57,21 @@ class AiConnectNotifier extends StateNotifier<AiConnectionsState> {
       state = state.copyWith(loading: false, error: _l.aiErrSignedOut);
       return;
     }
-    state = state.copyWith(loading: true, clearError: true);
+    final dogId = _dogId;
+    if (dogId == null) {
+      state = state.copyWith(loading: false, error: _l.aiErrNoDog);
+      return;
+    }
+    state = state.copyWith(loading: true, clearError: true, dogId: dogId);
     final api = _ref.read(aiConnectApiProvider);
     try {
-      final conn = await api.getConnections(token);
-      final audit = await api.getAudit(token);
+      final conn = await api.getConnectors(token, dogId);
+      final audit = await api.getAudit(token, dogId);
       if (!mounted) return;
       final list = conn['assistants'] ?? conn['connections'] ?? const [];
       state = AiConnectionsState(
+        dogId: dogId,
         connectorUrl: (conn['connector_url'] ?? conn['url'])?.toString(),
-        enabled: conn['enabled'] != false && conn['kill_switch'] != true,
         assistants: [
           if (list is List)
             for (final a in list)
@@ -54,10 +79,11 @@ class AiConnectNotifier extends StateNotifier<AiConnectionsState> {
         ],
         audit: audit,
       );
-      connTrace('ai-connect', 'loaded ${state.assistants.length} assistants, enabled=${state.enabled}');
+      connTrace('ai-connect',
+          'dog=$dogId ${state.assistants.length} assistants, ${audit.length} audit rows');
     } on AiConnectUnsupported {
       if (!mounted) return;
-      state = const AiConnectionsState(unsupported: true);
+      state = AiConnectionsState(unsupported: true, dogId: dogId);
       connTrace('ai-connect', 'relay slice not deployed (404)');
     } catch (e) {
       if (!mounted) return;
@@ -66,35 +92,42 @@ class AiConnectNotifier extends StateNotifier<AiConnectionsState> {
     }
   }
 
-  Future<bool> revoke(String id) async {
+  Future<bool> revoke(String clientId) async {
     final token = _token;
-    if (token == null) return false;
+    final dogId = state.dogId ?? _dogId;
+    if (token == null || dogId == null) return false;
     final before = state.assistants;
     // Optimistic remove; restore on failure.
     state = state.copyWith(
-        assistants: before.where((a) => a.id != id).toList(), clearError: true);
-    final ok = await _ref.read(aiConnectApiProvider).revoke(token, id);
+        assistants: before.where((a) => a.id != clientId).toList(),
+        clearError: true);
+    final ok =
+        await _ref.read(aiConnectApiProvider).revoke(token, dogId, clientId);
     if (!mounted) return ok;
     if (!ok) {
       state = state.copyWith(assistants: before, error: _l.aiErrRevokeFailed);
+    } else {
+      connTrace('ai-connect', 'revoked $clientId');
     }
     return ok;
   }
 
-  /// Kill switch: enabled=false refuses every assistant at the relay.
-  Future<bool> setEnabled(bool enabled) async {
+  /// Relay kill switch: revoke every assistant's tokens at once. Returns the
+  /// number of tokens revoked, or null on failure.
+  Future<int?> revokeAll() async {
     final token = _token;
-    if (token == null) return false;
-    final before = state.enabled;
-    state = state.copyWith(enabled: enabled, clearError: true);
-    final ok = await _ref.read(aiConnectApiProvider).setEnabled(token, enabled);
-    if (!mounted) return ok;
-    if (!ok) {
-      state = state.copyWith(enabled: before, error: _l.aiErrKillSwitchFailed);
+    final dogId = state.dogId ?? _dogId;
+    if (token == null || dogId == null) return null;
+    state = state.copyWith(revokingAll: true, clearError: true);
+    final n = await _ref.read(aiConnectApiProvider).revokeAll(token, dogId);
+    if (!mounted) return n;
+    if (n == null) {
+      state = state.copyWith(revokingAll: false, error: _l.aiErrRevokeAllFailed);
     } else {
-      connTrace('ai-connect', 'kill switch ${enabled ? 'released' : 'ENGAGED'}');
+      state = state.copyWith(revokingAll: false, assistants: const []);
+      connTrace('ai-connect', 'REVOKED ALL ($n tokens)');
     }
-    return ok;
+    return n;
   }
 
   @override
