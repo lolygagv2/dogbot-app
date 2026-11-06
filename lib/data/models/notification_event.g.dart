@@ -19,6 +19,8 @@ _$NotificationEventImpl _$$NotificationEventImplFromJson(
       videoClipId: json['videoClipId'] as String?,
       metadata: json['metadata'] as Map<String, dynamic>?,
       isRead: json['isRead'] as bool? ?? false,
+      imageUrl: json['imageUrl'] as String?,
+      clipUrl: json['clipUrl'] as String?,
     );
 
 Map<String, dynamic> _$$NotificationEventImplToJson(
@@ -34,6 +36,8 @@ Map<String, dynamic> _$$NotificationEventImplToJson(
       'videoClipId': instance.videoClipId,
       'metadata': instance.metadata,
       'isRead': instance.isRead,
+      'imageUrl': instance.imageUrl,
+      'clipUrl': instance.clipUrl,
     };
 
 const _$NotificationEventTypeEnumMap = {
@@ -53,4 +57,5 @@ const _$NotificationEventTypeEnumMap = {
   NotificationEventType.coachReward: 'coach_reward',
   NotificationEventType.panicAlert: 'panic_alert',
   NotificationEventType.sgSummary: 'sg_summary',
+  NotificationEventType.missionDraft: 'mission_draft',
 };

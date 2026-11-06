@@ -493,6 +493,8 @@ extension NotificationEventTypeL10n on NotificationEventType {
         return l.modelNotifTitlePanicAlert;
       case NotificationEventType.sgSummary:
         return l.modelNotifTitleSgSummary;
+      case NotificationEventType.missionDraft:
+        return l.modelNotifTitleMissionDraft;
     }
   }
 }

@@ -20,6 +20,7 @@ class SettingsKeys {
   static const notificationsEnabled = 'notifications_enabled';
   static const notificationChannels = 'notification_channels_v1';
   static const videoQualityMode = 'video_quality_mode';
+  static const advancedModeEnabled = 'advanced_mode_enabled';
 }
 
 /// Per-event-type destination for a notification:
@@ -43,6 +44,8 @@ const Map<NotificationEventType, NotificationChannel> _defaultChannels = {
   // is the "check on your dog" moment (robot 137a5e8)
   NotificationEventType.panicAlert: NotificationChannel.inAppAndPush,
   NotificationEventType.sgSummary: NotificationChannel.inAppAndPush,
+  // An assistant is waiting on the owner — always push
+  NotificationEventType.missionDraft: NotificationChannel.inAppAndPush,
   // Medium-signal: in-app feed only by default (chatty if pushed)
   NotificationEventType.bark: NotificationChannel.inApp,
   NotificationEventType.missionFailed: NotificationChannel.inApp,
@@ -94,6 +97,10 @@ class AppSettings {
   /// controller pick the tier; the others pin it. Persisted app-wide.
   final VideoQualityMode videoQualityMode;
 
+  /// Advanced mode — unlocks the per-sound replace list (Settings → Sounds).
+  /// Regular settings only expose "Reset sounds to factory default".
+  final bool advancedModeEnabled;
+
   const AppSettings({
     this.motorTrimRight = 0.0,
     this.cameraTrackingEnabled = false,
@@ -106,6 +113,7 @@ class AppSettings {
     this.notificationsEnabled = true,
     this.notificationChannels = const {},
     this.videoQualityMode = VideoQualityMode.auto,
+    this.advancedModeEnabled = false,
   });
 
   /// Resolve the channel for an event type, applying defaults for missing keys.
@@ -124,6 +132,7 @@ class AppSettings {
     bool? notificationsEnabled,
     Map<NotificationEventType, NotificationChannel>? notificationChannels,
     VideoQualityMode? videoQualityMode,
+    bool? advancedModeEnabled,
   }) {
     return AppSettings(
       motorTrimRight: motorTrimRight ?? this.motorTrimRight,
@@ -137,6 +146,7 @@ class AppSettings {
       notificationsEnabled: notificationsEnabled ?? this.notificationsEnabled,
       notificationChannels: notificationChannels ?? this.notificationChannels,
       videoQualityMode: videoQualityMode ?? this.videoQualityMode,
+      advancedModeEnabled: advancedModeEnabled ?? this.advancedModeEnabled,
     );
   }
 }
@@ -176,6 +186,8 @@ class SettingsNotifier extends StateNotifier<AppSettings> {
     final notificationsEnabled = _prefs?.getBool(SettingsKeys.notificationsEnabled) ?? true;
     final videoQualityMode = VideoQualityMode.fromName(
         _prefs?.getString(SettingsKeys.videoQualityMode));
+    final advancedMode =
+        _prefs?.getBool(SettingsKeys.advancedModeEnabled) ?? false;
 
     // Channels persisted as JSON map of {eventTypeName: channelName}.
     final channelsJson = _prefs?.getString(SettingsKeys.notificationChannels);
@@ -211,7 +223,15 @@ class SettingsNotifier extends StateNotifier<AppSettings> {
       notificationsEnabled: notificationsEnabled,
       notificationChannels: channels,
       videoQualityMode: videoQualityMode,
+      advancedModeEnabled: advancedMode,
     );
+  }
+
+  /// Advanced mode toggle (Settings → Advanced).
+  Future<void> setAdvancedModeEnabled(bool enabled) async {
+    state = state.copyWith(advancedModeEnabled: enabled);
+    await _prefs?.setBool(SettingsKeys.advancedModeEnabled, enabled);
+    print('Settings: Advanced mode ${enabled ? "ON" : "OFF"}');
   }
 
   /// Set motor trim for right motor

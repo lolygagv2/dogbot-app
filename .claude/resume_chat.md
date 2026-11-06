@@ -1,5 +1,36 @@
 # WIM-Z Resume Chat Log
 
+## Session: 2026-11-05 — Build 165 (AI Summit demo slice)
+**Goal:** Dec 9 AI Summit demo features — one screen each, no new nav levels
+**Status:** App slice complete, analyzer clean, tests green; relay/robot slices
+pending (contract: `.claude/APP_CONTRACT_AI_SUMMIT_DEMO_2026-11-05.md`)
+
+### Shipped (app side)
+| # | Feature | Where | Backend needed |
+|---|---------|-------|----------------|
+| 1 | Today card (`GET /summary/{dog}/{date}`) | Dog profile (replaces local-only `_TodaySummary`), Demo view | relay/robot endpoint; 404 → falls back to feed-derived counts |
+| 2 | Connected AI: connector URL + copy, assistants w/ scopes + revoke, kill switch, audit log, 4 setup guides (bottom sheets) | Settings → Connected AI (`/settings/connected-ai`, cloud only) | `/api/ai/*` (404 → "not available on this server") |
+| 3 | Notifications: still/clip thumbnails + full-screen viewer (video_player), image on lock-screen push; mission draft Approve/Decline inline in feed | Activity → Events | WS `mission_draft`, `image_url`/`clip_url` on events, `POST /api/ai/drafts/{id}/decision` |
+| 4 | Song upload (PD attestation, HTTP in cloud / WS base64 in local) | Settings → Audio → Upload song (`/song-upload`) | existing `/api/music/upload` |
+| 5 | Advanced mode toggle; Advanced → All sounds (replace-from-phone, restore one); regular: Reset sounds to factory default w/ confirm | Settings → Advanced / Audio (`/settings/sounds`) | `/api/sounds*` |
+| 6 | Demo view (Today · SG summary · agent transcript; row in landscape, column in portrait, only transcript scrolls) | Settings → Demo (`/demo-view`) | WS `agent_transcript` |
+
+### New files
+- models: `daily_summary.dart`, `ai_connection.dart`, `sound_catalog.dart`
+- datasources: `summary_api.dart`, `ai_connect_api.dart`, `sounds_api.dart`
+- providers: `daily_summary_provider`, `ai_connect_provider`, `mission_drafts_provider`, `agent_transcript_provider`, `sounds_provider`
+- widgets: `summary/today_card.dart`, `notifications/attachment_thumb.dart`, `notifications/draft_action_row.dart`
+- screens: `settings/connected_ai_screen.dart`, `settings/sounds_screen.dart`, `audio/song_upload_screen.dart`, `demo/demo_view_screen.dart`
+- test: `test/data/models/ai_summit_models_test.dart`
+
+### Notes
+- `NotificationEventType.missionDraft` appended (never reorder); default channel inAppAndPush.
+- `NotificationEvent` gained `imageUrl`/`clipUrl`; `attachmentBaseUrl` tracks `DioClient.setBaseUrl` for relative media paths.
+- `video_player ^2.9.2` added (first in-app clip playback) — needs a device build check on iOS/Android.
+- Stray untracked `wimz-app-theme/` dir at repo root breaks bare `flutter analyze`; use `flutter analyze lib test`.
+
+---
+
 ## Session: 2026-09-01 (evening) — Builds 156–159 + data refactor closed
 **Goal:** SG intelligence rendering, data refactor review cycle, cross-repo sync
 **Status:** ✅ All shipped; app at B159 on main, Codemagic trigger pending (Morgan)

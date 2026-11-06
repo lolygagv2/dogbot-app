@@ -31,6 +31,12 @@ mixin _$NotificationEvent {
   Map<String, dynamic>? get metadata => throw _privateConstructorUsedError;
   bool get isRead => throw _privateConstructorUsedError;
 
+  /// Optional still (snapshot) attached by the robot/relay — absolute URL.
+  String? get imageUrl => throw _privateConstructorUsedError;
+
+  /// Optional short clip attached by the robot/relay — absolute URL.
+  String? get clipUrl => throw _privateConstructorUsedError;
+
   /// Serializes this NotificationEvent to a JSON map.
   Map<String, dynamic> toJson() => throw _privateConstructorUsedError;
 
@@ -57,7 +63,9 @@ abstract class $NotificationEventCopyWith<$Res> {
       String? missionId,
       String? videoClipId,
       Map<String, dynamic>? metadata,
-      bool isRead});
+      bool isRead,
+      String? imageUrl,
+      String? clipUrl});
 }
 
 /// @nodoc
@@ -85,6 +93,8 @@ class _$NotificationEventCopyWithImpl<$Res, $Val extends NotificationEvent>
     Object? videoClipId = freezed,
     Object? metadata = freezed,
     Object? isRead = null,
+    Object? imageUrl = freezed,
+    Object? clipUrl = freezed,
   }) {
     return _then(_value.copyWith(
       id: null == id
@@ -127,6 +137,14 @@ class _$NotificationEventCopyWithImpl<$Res, $Val extends NotificationEvent>
           ? _value.isRead
           : isRead // ignore: cast_nullable_to_non_nullable
               as bool,
+      imageUrl: freezed == imageUrl
+          ? _value.imageUrl
+          : imageUrl // ignore: cast_nullable_to_non_nullable
+              as String?,
+      clipUrl: freezed == clipUrl
+          ? _value.clipUrl
+          : clipUrl // ignore: cast_nullable_to_non_nullable
+              as String?,
     ) as $Val);
   }
 }
@@ -149,7 +167,9 @@ abstract class _$$NotificationEventImplCopyWith<$Res>
       String? missionId,
       String? videoClipId,
       Map<String, dynamic>? metadata,
-      bool isRead});
+      bool isRead,
+      String? imageUrl,
+      String? clipUrl});
 }
 
 /// @nodoc
@@ -175,6 +195,8 @@ class __$$NotificationEventImplCopyWithImpl<$Res>
     Object? videoClipId = freezed,
     Object? metadata = freezed,
     Object? isRead = null,
+    Object? imageUrl = freezed,
+    Object? clipUrl = freezed,
   }) {
     return _then(_$NotificationEventImpl(
       id: null == id
@@ -217,6 +239,14 @@ class __$$NotificationEventImplCopyWithImpl<$Res>
           ? _value.isRead
           : isRead // ignore: cast_nullable_to_non_nullable
               as bool,
+      imageUrl: freezed == imageUrl
+          ? _value.imageUrl
+          : imageUrl // ignore: cast_nullable_to_non_nullable
+              as String?,
+      clipUrl: freezed == clipUrl
+          ? _value.clipUrl
+          : clipUrl // ignore: cast_nullable_to_non_nullable
+              as String?,
     ));
   }
 }
@@ -234,7 +264,9 @@ class _$NotificationEventImpl implements _NotificationEvent {
       this.missionId,
       this.videoClipId,
       final Map<String, dynamic>? metadata,
-      this.isRead = false})
+      this.isRead = false,
+      this.imageUrl,
+      this.clipUrl})
       : _metadata = metadata;
 
   factory _$NotificationEventImpl.fromJson(Map<String, dynamic> json) =>
@@ -270,9 +302,17 @@ class _$NotificationEventImpl implements _NotificationEvent {
   @JsonKey()
   final bool isRead;
 
+  /// Optional still (snapshot) attached by the robot/relay — absolute URL.
+  @override
+  final String? imageUrl;
+
+  /// Optional short clip attached by the robot/relay — absolute URL.
+  @override
+  final String? clipUrl;
+
   @override
   String toString() {
-    return 'NotificationEvent(id: $id, type: $type, timestamp: $timestamp, title: $title, subtitle: $subtitle, dogId: $dogId, missionId: $missionId, videoClipId: $videoClipId, metadata: $metadata, isRead: $isRead)';
+    return 'NotificationEvent(id: $id, type: $type, timestamp: $timestamp, title: $title, subtitle: $subtitle, dogId: $dogId, missionId: $missionId, videoClipId: $videoClipId, metadata: $metadata, isRead: $isRead, imageUrl: $imageUrl, clipUrl: $clipUrl)';
   }
 
   @override
@@ -293,7 +333,10 @@ class _$NotificationEventImpl implements _NotificationEvent {
             (identical(other.videoClipId, videoClipId) ||
                 other.videoClipId == videoClipId) &&
             const DeepCollectionEquality().equals(other._metadata, _metadata) &&
-            (identical(other.isRead, isRead) || other.isRead == isRead));
+            (identical(other.isRead, isRead) || other.isRead == isRead) &&
+            (identical(other.imageUrl, imageUrl) ||
+                other.imageUrl == imageUrl) &&
+            (identical(other.clipUrl, clipUrl) || other.clipUrl == clipUrl));
   }
 
   @JsonKey(includeFromJson: false, includeToJson: false)
@@ -309,7 +352,9 @@ class _$NotificationEventImpl implements _NotificationEvent {
       missionId,
       videoClipId,
       const DeepCollectionEquality().hash(_metadata),
-      isRead);
+      isRead,
+      imageUrl,
+      clipUrl);
 
   /// Create a copy of NotificationEvent
   /// with the given fields replaced by the non-null parameter values.
@@ -339,7 +384,9 @@ abstract class _NotificationEvent implements NotificationEvent {
       final String? missionId,
       final String? videoClipId,
       final Map<String, dynamic>? metadata,
-      final bool isRead}) = _$NotificationEventImpl;
+      final bool isRead,
+      final String? imageUrl,
+      final String? clipUrl}) = _$NotificationEventImpl;
 
   factory _NotificationEvent.fromJson(Map<String, dynamic> json) =
       _$NotificationEventImpl.fromJson;
@@ -364,6 +411,14 @@ abstract class _NotificationEvent implements NotificationEvent {
   Map<String, dynamic>? get metadata;
   @override
   bool get isRead;
+
+  /// Optional still (snapshot) attached by the robot/relay — absolute URL.
+  @override
+  String? get imageUrl;
+
+  /// Optional short clip attached by the robot/relay — absolute URL.
+  @override
+  String? get clipUrl;
 
   /// Create a copy of NotificationEvent
   /// with the given fields replaced by the non-null parameter values.

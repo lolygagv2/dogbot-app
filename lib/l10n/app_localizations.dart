@@ -6655,6 +6655,648 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Build patience and self-control'**
   String get catalogProgramCalmDogDesc;
+
+  /// No description provided for @aiAssistantFallback.
+  ///
+  /// In en, this message translates to:
+  /// **'Assistant'**
+  String get aiAssistantFallback;
+
+  /// No description provided for @draftTranscriptProposed.
+  ///
+  /// In en, this message translates to:
+  /// **'Proposed mission: {title}'**
+  String draftTranscriptProposed(String title);
+
+  /// No description provided for @draftTranscriptYou.
+  ///
+  /// In en, this message translates to:
+  /// **'You'**
+  String get draftTranscriptYou;
+
+  /// No description provided for @draftTranscriptApproved.
+  ///
+  /// In en, this message translates to:
+  /// **'Approved \"{title}\"'**
+  String draftTranscriptApproved(String title);
+
+  /// No description provided for @draftTranscriptDeclined.
+  ///
+  /// In en, this message translates to:
+  /// **'Declined \"{title}\"'**
+  String draftTranscriptDeclined(String title);
+
+  /// No description provided for @aiErrSignedOut.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign in to manage connected assistants'**
+  String get aiErrSignedOut;
+
+  /// No description provided for @aiErrLoadFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t load connected assistants'**
+  String get aiErrLoadFailed;
+
+  /// No description provided for @aiErrRevokeFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Revoke failed'**
+  String get aiErrRevokeFailed;
+
+  /// No description provided for @aiErrKillSwitchFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t change AI access'**
+  String get aiErrKillSwitchFailed;
+
+  /// No description provided for @notifMissionDraft.
+  ///
+  /// In en, this message translates to:
+  /// **'Mission approval'**
+  String get notifMissionDraft;
+
+  /// No description provided for @notifMissionDraftFrom.
+  ///
+  /// In en, this message translates to:
+  /// **'{name} proposed a mission'**
+  String notifMissionDraftFrom(String name);
+
+  /// No description provided for @notifPrefsMissionDraft.
+  ///
+  /// In en, this message translates to:
+  /// **'Mission approval requests'**
+  String get notifPrefsMissionDraft;
+
+  /// No description provided for @modelNotifTitleMissionDraft.
+  ///
+  /// In en, this message translates to:
+  /// **'Mission Approval'**
+  String get modelNotifTitleMissionDraft;
+
+  /// No description provided for @draftApprove.
+  ///
+  /// In en, this message translates to:
+  /// **'Approve'**
+  String get draftApprove;
+
+  /// No description provided for @draftDecline.
+  ///
+  /// In en, this message translates to:
+  /// **'Decline'**
+  String get draftDecline;
+
+  /// No description provided for @draftStatusApproved.
+  ///
+  /// In en, this message translates to:
+  /// **'Approved'**
+  String get draftStatusApproved;
+
+  /// No description provided for @draftStatusDeclined.
+  ///
+  /// In en, this message translates to:
+  /// **'Declined'**
+  String get draftStatusDeclined;
+
+  /// No description provided for @draftStatusExpired.
+  ///
+  /// In en, this message translates to:
+  /// **'Expired'**
+  String get draftStatusExpired;
+
+  /// No description provided for @attachmentOpenFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t load media'**
+  String get attachmentOpenFailed;
+
+  /// No description provided for @todayCardTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Today'**
+  String get todayCardTitle;
+
+  /// No description provided for @todayCardLocalCounts.
+  ///
+  /// In en, this message translates to:
+  /// **'Counts from this phone\'s activity feed'**
+  String get todayCardLocalCounts;
+
+  /// No description provided for @todayCardError.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t reach the summary service'**
+  String get todayCardError;
+
+  /// No description provided for @todayStatBarks.
+  ///
+  /// In en, this message translates to:
+  /// **'Barks'**
+  String get todayStatBarks;
+
+  /// No description provided for @todayStatTreats.
+  ///
+  /// In en, this message translates to:
+  /// **'Treats'**
+  String get todayStatTreats;
+
+  /// No description provided for @todayStatCoaching.
+  ///
+  /// In en, this message translates to:
+  /// **'Coaching'**
+  String get todayStatCoaching;
+
+  /// No description provided for @todayStatQuiet.
+  ///
+  /// In en, this message translates to:
+  /// **'Quiet'**
+  String get todayStatQuiet;
+
+  /// No description provided for @todayStatGuardian.
+  ///
+  /// In en, this message translates to:
+  /// **'Guardian'**
+  String get todayStatGuardian;
+
+  /// No description provided for @todayPlanTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Plan'**
+  String get todayPlanTitle;
+
+  /// No description provided for @todayPlanBy.
+  ///
+  /// In en, this message translates to:
+  /// **'Plan by {source}'**
+  String todayPlanBy(String source);
+
+  /// No description provided for @todayHighlights.
+  ///
+  /// In en, this message translates to:
+  /// **'Highlights'**
+  String get todayHighlights;
+
+  /// No description provided for @connectedAiTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Connected AI'**
+  String get connectedAiTitle;
+
+  /// No description provided for @connectedAiSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Assistants, connector URL, kill switch, audit log'**
+  String get connectedAiSubtitle;
+
+  /// No description provided for @aiConnectorUrl.
+  ///
+  /// In en, this message translates to:
+  /// **'Connector URL'**
+  String get aiConnectorUrl;
+
+  /// No description provided for @aiConnectorUrlCopied.
+  ///
+  /// In en, this message translates to:
+  /// **'Connector URL copied'**
+  String get aiConnectorUrlCopied;
+
+  /// No description provided for @aiConnectorUrlMissing.
+  ///
+  /// In en, this message translates to:
+  /// **'Not issued yet'**
+  String get aiConnectorUrlMissing;
+
+  /// No description provided for @aiCopyUrl.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy URL'**
+  String get aiCopyUrl;
+
+  /// No description provided for @aiKillSwitch.
+  ///
+  /// In en, this message translates to:
+  /// **'Allow AI access'**
+  String get aiKillSwitch;
+
+  /// No description provided for @aiKillSwitchOn.
+  ///
+  /// In en, this message translates to:
+  /// **'Assistants can read summaries and propose missions'**
+  String get aiKillSwitchOn;
+
+  /// No description provided for @aiKillSwitchOff.
+  ///
+  /// In en, this message translates to:
+  /// **'KILL SWITCH ON — every assistant is refused'**
+  String get aiKillSwitchOff;
+
+  /// No description provided for @aiAssistantsHeader.
+  ///
+  /// In en, this message translates to:
+  /// **'Connected assistants'**
+  String get aiAssistantsHeader;
+
+  /// No description provided for @aiNoAssistants.
+  ///
+  /// In en, this message translates to:
+  /// **'No assistant connected yet'**
+  String get aiNoAssistants;
+
+  /// No description provided for @aiRevoke.
+  ///
+  /// In en, this message translates to:
+  /// **'Revoke'**
+  String get aiRevoke;
+
+  /// No description provided for @aiRevokeConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Revoke {name}? It loses access immediately.'**
+  String aiRevokeConfirm(String name);
+
+  /// No description provided for @aiLastUsed.
+  ///
+  /// In en, this message translates to:
+  /// **'Last used {when}'**
+  String aiLastUsed(String when);
+
+  /// No description provided for @aiNeverUsed.
+  ///
+  /// In en, this message translates to:
+  /// **'Never used'**
+  String get aiNeverUsed;
+
+  /// No description provided for @aiScopesNone.
+  ///
+  /// In en, this message translates to:
+  /// **'no scopes'**
+  String get aiScopesNone;
+
+  /// No description provided for @aiAuditHeader.
+  ///
+  /// In en, this message translates to:
+  /// **'Audit log'**
+  String get aiAuditHeader;
+
+  /// No description provided for @aiAuditEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No activity yet'**
+  String get aiAuditEmpty;
+
+  /// No description provided for @aiSetupGuides.
+  ///
+  /// In en, this message translates to:
+  /// **'Setup guides'**
+  String get aiSetupGuides;
+
+  /// No description provided for @aiUnsupported.
+  ///
+  /// In en, this message translates to:
+  /// **'Connected AI isn\'t available on this server yet'**
+  String get aiUnsupported;
+
+  /// No description provided for @aiGuideTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Connect {name}'**
+  String aiGuideTitle(String name);
+
+  /// No description provided for @aiGuideStep1.
+  ///
+  /// In en, this message translates to:
+  /// **'Open {name} and go to Settings → Connectors (or Tools).'**
+  String aiGuideStep1(String name);
+
+  /// No description provided for @aiGuideStep2.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose Add custom connector / MCP server.'**
+  String get aiGuideStep2;
+
+  /// No description provided for @aiGuideStep3.
+  ///
+  /// In en, this message translates to:
+  /// **'Paste the WIM-Z connector URL below.'**
+  String get aiGuideStep3;
+
+  /// No description provided for @aiGuideStep4.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign in with your WIM-Z account and allow the scopes you want.'**
+  String get aiGuideStep4;
+
+  /// No description provided for @aiGuideStep5.
+  ///
+  /// In en, this message translates to:
+  /// **'Ask {name}: \"How was my dog today?\" It appears in the list once connected.'**
+  String aiGuideStep5(String name);
+
+  /// No description provided for @aiGuideNoteChatgpt.
+  ///
+  /// In en, this message translates to:
+  /// **'ChatGPT: turn on Developer mode under Settings → Connectors → Advanced first.'**
+  String get aiGuideNoteChatgpt;
+
+  /// No description provided for @aiGuideNoteClaude.
+  ///
+  /// In en, this message translates to:
+  /// **'Claude: Settings → Connectors → Add custom connector (claude.ai, Pro/Max/Team).'**
+  String get aiGuideNoteClaude;
+
+  /// No description provided for @aiGuideNoteGrok.
+  ///
+  /// In en, this message translates to:
+  /// **'Grok: Settings → Connectors → Add MCP server (grok.com).'**
+  String get aiGuideNoteGrok;
+
+  /// No description provided for @aiGuideNotePerplexity.
+  ///
+  /// In en, this message translates to:
+  /// **'Perplexity: Settings → Connectors → Add connector (Pro/Max).'**
+  String get aiGuideNotePerplexity;
+
+  /// No description provided for @settingsSectionAdvanced.
+  ///
+  /// In en, this message translates to:
+  /// **'Advanced'**
+  String get settingsSectionAdvanced;
+
+  /// No description provided for @settingsAdvancedMode.
+  ///
+  /// In en, this message translates to:
+  /// **'Advanced mode'**
+  String get settingsAdvancedMode;
+
+  /// No description provided for @settingsAdvancedModeSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Show every sound id with replace-from-phone'**
+  String get settingsAdvancedModeSubtitle;
+
+  /// No description provided for @settingsSoundsAll.
+  ///
+  /// In en, this message translates to:
+  /// **'All sounds'**
+  String get settingsSoundsAll;
+
+  /// No description provided for @settingsSoundsAllSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Replace any robot sound from this phone'**
+  String get settingsSoundsAllSubtitle;
+
+  /// No description provided for @settingsResetSounds.
+  ///
+  /// In en, this message translates to:
+  /// **'Reset sounds to factory default'**
+  String get settingsResetSounds;
+
+  /// No description provided for @settingsResetSoundsSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Restores every greeting, cue, alert and music sound'**
+  String get settingsResetSoundsSubtitle;
+
+  /// No description provided for @settingsResetSoundsConfirmTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Reset all sounds?'**
+  String get settingsResetSoundsConfirmTitle;
+
+  /// No description provided for @settingsResetSoundsConfirmBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Every custom sound on the robot is replaced by the factory file. This can\'t be undone.'**
+  String get settingsResetSoundsConfirmBody;
+
+  /// No description provided for @settingsResetSoundsDone.
+  ///
+  /// In en, this message translates to:
+  /// **'Sounds reset to factory default'**
+  String get settingsResetSoundsDone;
+
+  /// No description provided for @settingsResetSoundsFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Reset failed: {error}'**
+  String settingsResetSoundsFailed(String error);
+
+  /// No description provided for @soundsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Sounds'**
+  String get soundsTitle;
+
+  /// No description provided for @soundsReplace.
+  ///
+  /// In en, this message translates to:
+  /// **'Replace'**
+  String get soundsReplace;
+
+  /// No description provided for @soundsFactory.
+  ///
+  /// In en, this message translates to:
+  /// **'Factory'**
+  String get soundsFactory;
+
+  /// No description provided for @soundsCustom.
+  ///
+  /// In en, this message translates to:
+  /// **'Custom'**
+  String get soundsCustom;
+
+  /// No description provided for @soundsReplaced.
+  ///
+  /// In en, this message translates to:
+  /// **'Replaced {id}'**
+  String soundsReplaced(String id);
+
+  /// No description provided for @soundsReplaceFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Replace failed: {error}'**
+  String soundsReplaceFailed(String error);
+
+  /// No description provided for @soundsRestoreOne.
+  ///
+  /// In en, this message translates to:
+  /// **'Restore factory sound'**
+  String get soundsRestoreOne;
+
+  /// No description provided for @soundsCatalogFromRobot.
+  ///
+  /// In en, this message translates to:
+  /// **'Catalog reported by the robot'**
+  String get soundsCatalogFromRobot;
+
+  /// No description provided for @soundsCatalogDefault.
+  ///
+  /// In en, this message translates to:
+  /// **'Default catalog (robot didn\'t report one)'**
+  String get soundsCatalogDefault;
+
+  /// No description provided for @soundGroupGreeting.
+  ///
+  /// In en, this message translates to:
+  /// **'Greeting'**
+  String get soundGroupGreeting;
+
+  /// No description provided for @soundGroupTreat.
+  ///
+  /// In en, this message translates to:
+  /// **'Treat'**
+  String get soundGroupTreat;
+
+  /// No description provided for @soundGroupCue.
+  ///
+  /// In en, this message translates to:
+  /// **'Cues'**
+  String get soundGroupCue;
+
+  /// No description provided for @soundGroupAlert.
+  ///
+  /// In en, this message translates to:
+  /// **'Alerts'**
+  String get soundGroupAlert;
+
+  /// No description provided for @soundGroupSgLevel.
+  ///
+  /// In en, this message translates to:
+  /// **'Silent Guardian levels'**
+  String get soundGroupSgLevel;
+
+  /// No description provided for @soundGroupMusic.
+  ///
+  /// In en, this message translates to:
+  /// **'Music classes'**
+  String get soundGroupMusic;
+
+  /// No description provided for @songUploadTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Upload song'**
+  String get songUploadTitle;
+
+  /// No description provided for @settingsSongUploadSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Send a public-domain recording to the robot'**
+  String get settingsSongUploadSubtitle;
+
+  /// No description provided for @songUploadPdNotice.
+  ///
+  /// In en, this message translates to:
+  /// **'Only upload recordings you have the right to use — public domain or your own.'**
+  String get songUploadPdNotice;
+
+  /// No description provided for @songUploadPdCheckbox.
+  ///
+  /// In en, this message translates to:
+  /// **'This recording is public domain or mine'**
+  String get songUploadPdCheckbox;
+
+  /// No description provided for @songUploadChoose.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose song'**
+  String get songUploadChoose;
+
+  /// No description provided for @songUploadFormats.
+  ///
+  /// In en, this message translates to:
+  /// **'MP3, WAV or OGG · up to 20 MB'**
+  String get songUploadFormats;
+
+  /// No description provided for @songUploadUploading.
+  ///
+  /// In en, this message translates to:
+  /// **'Uploading {name}…'**
+  String songUploadUploading(String name);
+
+  /// No description provided for @songUploadDone.
+  ///
+  /// In en, this message translates to:
+  /// **'Uploaded {name}'**
+  String songUploadDone(String name);
+
+  /// No description provided for @songUploadFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Upload failed: {error}'**
+  String songUploadFailed(String error);
+
+  /// No description provided for @songUploadTooLarge.
+  ///
+  /// In en, this message translates to:
+  /// **'File is over 20 MB'**
+  String get songUploadTooLarge;
+
+  /// No description provided for @songUploadNoDog.
+  ///
+  /// In en, this message translates to:
+  /// **'Select a dog first'**
+  String get songUploadNoDog;
+
+  /// No description provided for @songUploadNotSignedIn.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign in to upload'**
+  String get songUploadNotSignedIn;
+
+  /// No description provided for @songUploadPlayHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Play it from the Music button on Home.'**
+  String get songUploadPlayHint;
+
+  /// No description provided for @settingsSectionDemo.
+  ///
+  /// In en, this message translates to:
+  /// **'Demo'**
+  String get settingsSectionDemo;
+
+  /// No description provided for @demoViewTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Demo view'**
+  String get demoViewTitle;
+
+  /// No description provided for @demoViewSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Screen-mirror layout: today, guardian, agent transcript'**
+  String get demoViewSubtitle;
+
+  /// No description provided for @demoPanelGuardian.
+  ///
+  /// In en, this message translates to:
+  /// **'Silent Guardian'**
+  String get demoPanelGuardian;
+
+  /// No description provided for @demoPanelTranscript.
+  ///
+  /// In en, this message translates to:
+  /// **'Agent transcript'**
+  String get demoPanelTranscript;
+
+  /// No description provided for @demoTranscriptEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'Waiting for an assistant…'**
+  String get demoTranscriptEmpty;
+
+  /// No description provided for @demoNoDog.
+  ///
+  /// In en, this message translates to:
+  /// **'Select a dog on Home first'**
+  String get demoNoDog;
+
+  /// No description provided for @demoSgIdle.
+  ///
+  /// In en, this message translates to:
+  /// **'Guardian not running'**
+  String get demoSgIdle;
 }
 
 class _AppLocalizationsDelegate

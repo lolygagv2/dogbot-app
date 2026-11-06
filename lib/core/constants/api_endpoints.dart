@@ -88,6 +88,25 @@ class ApiEndpoints {
   static const String wifiScan = '/system/wifi/scan';
   static const String wifiConnect = '/system/wifi/connect';
   static const String networkStatus = '/system/network-status';
+
+  // ---- AI Summit demo slice (contract APP_CONTRACT_AI_SUMMIT_DEMO_2026-11-05) ----
+
+  /// Per-dog daily summary ("Today card"). 404 = no rows for that day.
+  static String dailySummary(String dogId, String isoDate) =>
+      '/summary/$dogId/$isoDate';
+
+  /// Connected AI: connector URL + connected assistants (+ kill switch state)
+  static const String aiConnections = '/api/ai/connections';
+  static String aiConnectionRevoke(String id) => '/api/ai/connections/$id';
+  static const String aiKillSwitch = '/api/ai/kill-switch';
+  static const String aiAudit = '/api/ai/audit';
+  static String aiDraftDecision(String draftId) =>
+      '/api/ai/drafts/$draftId/decision';
+
+  /// Sound catalog (advanced settings): list / replace one / factory reset
+  static const String sounds = '/api/sounds';
+  static String soundReplace(String soundId) => '/api/sounds/$soundId';
+  static const String soundsReset = '/api/sounds/reset';
 }
 
 /// LED pattern names

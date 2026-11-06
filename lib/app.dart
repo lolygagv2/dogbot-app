@@ -36,6 +36,10 @@ import 'presentation/screens/settings/settings_screen.dart';
 import 'presentation/screens/settings/device_pairing_screen.dart';
 import 'presentation/screens/settings/controller_pairing_screen.dart';
 import 'presentation/screens/settings/connection_diagnostics_screen.dart';
+import 'presentation/screens/settings/connected_ai_screen.dart';
+import 'presentation/screens/settings/sounds_screen.dart';
+import 'presentation/screens/audio/song_upload_screen.dart';
+import 'presentation/screens/demo/demo_view_screen.dart';
 import 'presentation/screens/dev/ui_previews.dart';
 import 'presentation/screens/settings/notification_preferences_screen.dart';
 import 'presentation/screens/notifications/notifications_screen.dart';
@@ -270,10 +274,32 @@ GoRouter _buildRouter(WidgetRef ref, Listenable refreshListenable) => GoRouter(
                 path: 'ui-previews',
                 builder: (context, state) => const UiPreviewHubScreen(),
               ),
+              // AI Summit demo slice (2026-11-05): leaf screens under
+              // Settings — no new navigation levels.
+              GoRoute(
+                path: 'connected-ai',
+                builder: (context, state) => const ConnectedAiScreen(),
+              ),
+              GoRoute(
+                path: 'sounds',
+                builder: (context, state) => const SoundsScreen(),
+              ),
             ],
           ),
         ]),
       ],
+    ),
+
+    // Song upload (phone → robot), full screen
+    GoRoute(
+      path: '/song-upload',
+      builder: (context, state) => const SongUploadScreen(),
+    ),
+
+    // Demo view (screen-mirror layout), full screen, no bottom nav
+    GoRoute(
+      path: '/demo-view',
+      builder: (context, state) => const DemoViewScreen(),
     ),
 
     // Drive screen (full screen, no bottom nav)

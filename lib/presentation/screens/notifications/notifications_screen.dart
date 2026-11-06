@@ -8,6 +8,8 @@ import '../../../domain/providers/dog_profiles_provider.dart';
 import '../../../domain/providers/notifications_provider.dart';
 import '../../../l10n/l10n.dart';
 import '../../theme/app_theme.dart';
+import '../../widgets/notifications/attachment_thumb.dart';
+import '../../widgets/notifications/draft_action_row.dart';
 import 'activity_dashboard.dart';
 
 /// Activity screen with Dashboard and Events tabs
@@ -126,6 +128,7 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen>
           NotificationEventType.missionStarted,
           NotificationEventType.missionCompleted,
           NotificationEventType.missionFailed,
+          NotificationEventType.missionDraft,
         },
       'alerts' => {
           NotificationEventType.lowBattery,
@@ -380,9 +383,21 @@ class _NotificationTile extends StatelessWidget {
                         ),
                       ),
                     ],
+                    // Mission approval: Approve / Decline inline
+                    if (event.type == NotificationEventType.missionDraft &&
+                        event.metadata?['draft_id'] != null)
+                      DraftActionRow(
+                          draftId: event.metadata!['draft_id'].toString()),
                   ],
                 ),
               ),
+
+              // Still / clip attached by the robot or relay
+              if (event.imageUrl != null || event.clipUrl != null) ...[
+                const SizedBox(width: 8),
+                AttachmentThumb(
+                    imageUrl: event.imageUrl, clipUrl: event.clipUrl),
+              ],
 
               // Unread indicator
               if (!event.isRead) ...[
@@ -421,6 +436,7 @@ class _NotificationTile extends StatelessWidget {
       NotificationEventType.coachReward => Icons.school,
       NotificationEventType.panicAlert => Icons.crisis_alert,
       NotificationEventType.sgSummary => Icons.shield_outlined,
+      NotificationEventType.missionDraft => Icons.fact_check_outlined,
     };
   }
 
@@ -442,6 +458,7 @@ class _NotificationTile extends StatelessWidget {
       NotificationEventType.coachReward => Colors.orange,
       NotificationEventType.panicAlert => AppTheme.error,
       NotificationEventType.sgSummary => Colors.purple,
+      NotificationEventType.missionDraft => AppTheme.secondary,
     };
   }
 

@@ -11,6 +11,7 @@ import '../../../domain/providers/locale_provider.dart';
 import '../../../domain/providers/ota_update_provider.dart';
 import '../../../domain/providers/paired_devices_provider.dart';
 import '../../../domain/providers/settings_provider.dart';
+import '../../../domain/providers/sounds_provider.dart';
 import '../../../domain/providers/push_to_talk_provider.dart';
 import '../../../data/models/telemetry.dart';
 import '../../../domain/providers/telemetry_provider.dart';
@@ -167,7 +168,37 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
 
           _SectionHeader(l.settingsSectionAudio),
           const _BackgroundAudioTile(),
+          ListTile(
+            leading: const Icon(Icons.library_music),
+            title: Text(l.songUploadTitle),
+            subtitle: Text(l.settingsSongUploadSubtitle),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => context.push('/song-upload'),
+          ),
+          const _ResetSoundsTile(),
+          if (settings.advancedModeEnabled)
+            ListTile(
+              leading: const Icon(Icons.graphic_eq, color: AppTheme.secondary),
+              title: Text(l.settingsSoundsAll),
+              subtitle: Text(l.settingsSoundsAllSubtitle),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () => context.push('/settings/sounds'),
+            ),
           const Divider(),
+
+          // Connected AI (ChatGPT / Claude / Grok / Perplexity via the relay
+          // connector) — cloud only; local-AP has no relay.
+          if (!isLocalMode) ...[
+            _SectionHeader(l.connectedAiTitle),
+            ListTile(
+              leading: const Icon(Icons.hub_outlined, color: AppTheme.secondary),
+              title: Text(l.connectedAiTitle),
+              subtitle: Text(l.connectedAiSubtitle),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () => context.push('/settings/connected-ai'),
+            ),
+            const Divider(),
+          ],
 
           _SectionHeader(l.settingsSectionNotifications),
           const _NotificationsTile(),
@@ -192,6 +223,35 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             subtitle: Text(l.settingsVoiceCommandsSubtitle),
             trailing: const Icon(Icons.chevron_right),
             onTap: () => context.push('/voice-setup'),
+          ),
+          const Divider(),
+
+          _SectionHeader(l.settingsSectionDemo),
+          ListTile(
+            leading: const Icon(Icons.cast, color: AppTheme.primary),
+            title: Text(l.demoViewTitle),
+            subtitle: Text(l.demoViewSubtitle),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => context.push('/demo-view'),
+          ),
+          const Divider(),
+
+          _SectionHeader(l.settingsSectionAdvanced),
+          SwitchListTile(
+            secondary: Icon(
+              Icons.science_outlined,
+              color: settings.advancedModeEnabled
+                  ? AppTheme.secondary
+                  : AppTheme.textTertiary,
+            ),
+            title: Text(l.settingsAdvancedMode),
+            subtitle: Text(
+              l.settingsAdvancedModeSubtitle,
+              style: const TextStyle(fontSize: 12),
+            ),
+            value: settings.advancedModeEnabled,
+            onChanged: (v) =>
+                ref.read(settingsProvider.notifier).setAdvancedModeEnabled(v),
           ),
           const Divider(),
 
@@ -849,6 +909,66 @@ class _NotificationsTile extends ConsumerWidget {
               GoRouter.of(context).go('/settings/notifications'),
         ),
       ],
+    );
+  }
+}
+
+/// Regular-settings sound control: one button, factory reset with confirm.
+class _ResetSoundsTile extends ConsumerWidget {
+  const _ResetSoundsTile();
+
+  Future<void> _confirm(BuildContext context, WidgetRef ref) async {
+    final l = context.l10n;
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(ctx.l10n.settingsResetSoundsConfirmTitle),
+        content: Text(ctx.l10n.settingsResetSoundsConfirmBody),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text(ctx.l10n.cancel),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: Text(ctx.l10n.settingsResetSounds,
+                style: const TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
+    if (ok != true || !context.mounted) return;
+    final err = await ref.read(soundsProvider.notifier).resetAll();
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(err == null
+            ? l.settingsResetSoundsDone
+            : l.settingsResetSoundsFailed(err)),
+        backgroundColor: err == null ? Colors.green : Colors.red,
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final resetting = ref.watch(soundsProvider.select((s) => s.resettingAll));
+    final l = context.l10n;
+    return ListTile(
+      leading: resetting
+          ? const SizedBox(
+              width: 24,
+              height: 24,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            )
+          : const Icon(Icons.settings_backup_restore),
+      title: Text(l.settingsResetSounds),
+      subtitle: Text(
+        l.settingsResetSoundsSubtitle,
+        style: const TextStyle(fontSize: 12),
+      ),
+      onTap: resetting ? null : () => _confirm(context, ref),
     );
   }
 }

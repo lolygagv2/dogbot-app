@@ -2238,5 +2238,224 @@
   "catalogProgramObedience101": "Obedience 101",
   "catalogProgramObedience101Desc": "Core commands every dog should know",
   "catalogProgramCalmDog": "Calm Dog",
-  "catalogProgramCalmDogDesc": "Build patience and self-control"
+  "catalogProgramCalmDogDesc": "Build patience and self-control",
+  "aiAssistantFallback": "Assistant",
+  "draftTranscriptProposed": "Proposed mission: {title}",
+  "@draftTranscriptProposed": {
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "draftTranscriptYou": "You",
+  "draftTranscriptApproved": "Approved \"{title}\"",
+  "@draftTranscriptApproved": {
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "draftTranscriptDeclined": "Declined \"{title}\"",
+  "@draftTranscriptDeclined": {
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "aiErrSignedOut": "Sign in to manage connected assistants",
+  "aiErrLoadFailed": "Couldn't load connected assistants",
+  "aiErrRevokeFailed": "Revoke failed",
+  "aiErrKillSwitchFailed": "Couldn't change AI access",
+  "notifMissionDraft": "Mission approval",
+  "notifMissionDraftFrom": "{name} proposed a mission",
+  "@notifMissionDraftFrom": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "notifPrefsMissionDraft": "Mission approval requests",
+  "modelNotifTitleMissionDraft": "Mission Approval",
+  "draftApprove": "Approve",
+  "draftDecline": "Decline",
+  "draftStatusApproved": "Approved",
+  "draftStatusDeclined": "Declined",
+  "draftStatusExpired": "Expired",
+  "attachmentOpenFailed": "Couldn't load media",
+  "todayCardTitle": "Today",
+  "todayCardLocalCounts": "Counts from this phone's activity feed",
+  "todayCardError": "Couldn't reach the summary service",
+  "todayStatBarks": "Barks",
+  "todayStatTreats": "Treats",
+  "todayStatCoaching": "Coaching",
+  "todayStatQuiet": "Quiet",
+  "todayStatGuardian": "Guardian",
+  "todayPlanTitle": "Plan",
+  "todayPlanBy": "Plan by {source}",
+  "@todayPlanBy": {
+    "placeholders": {
+      "source": {
+        "type": "String"
+      }
+    }
+  },
+  "todayHighlights": "Highlights",
+  "connectedAiTitle": "Connected AI",
+  "connectedAiSubtitle": "Assistants, connector URL, kill switch, audit log",
+  "aiConnectorUrl": "Connector URL",
+  "aiConnectorUrlCopied": "Connector URL copied",
+  "aiConnectorUrlMissing": "Not issued yet",
+  "aiCopyUrl": "Copy URL",
+  "aiKillSwitch": "Allow AI access",
+  "aiKillSwitchOn": "Assistants can read summaries and propose missions",
+  "aiKillSwitchOff": "KILL SWITCH ON — every assistant is refused",
+  "aiAssistantsHeader": "Connected assistants",
+  "aiNoAssistants": "No assistant connected yet",
+  "aiRevoke": "Revoke",
+  "aiRevokeConfirm": "Revoke {name}? It loses access immediately.",
+  "@aiRevokeConfirm": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "aiLastUsed": "Last used {when}",
+  "@aiLastUsed": {
+    "placeholders": {
+      "when": {
+        "type": "String"
+      }
+    }
+  },
+  "aiNeverUsed": "Never used",
+  "aiScopesNone": "no scopes",
+  "aiAuditHeader": "Audit log",
+  "aiAuditEmpty": "No activity yet",
+  "aiSetupGuides": "Setup guides",
+  "aiUnsupported": "Connected AI isn't available on this server yet",
+  "aiGuideTitle": "Connect {name}",
+  "@aiGuideTitle": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "aiGuideStep1": "Open {name} and go to Settings → Connectors (or Tools).",
+  "@aiGuideStep1": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "aiGuideStep2": "Choose Add custom connector / MCP server.",
+  "aiGuideStep3": "Paste the WIM-Z connector URL below.",
+  "aiGuideStep4": "Sign in with your WIM-Z account and allow the scopes you want.",
+  "aiGuideStep5": "Ask {name}: \"How was my dog today?\" It appears in the list once connected.",
+  "@aiGuideStep5": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "aiGuideNoteChatgpt": "ChatGPT: turn on Developer mode under Settings → Connectors → Advanced first.",
+  "aiGuideNoteClaude": "Claude: Settings → Connectors → Add custom connector (claude.ai, Pro/Max/Team).",
+  "aiGuideNoteGrok": "Grok: Settings → Connectors → Add MCP server (grok.com).",
+  "aiGuideNotePerplexity": "Perplexity: Settings → Connectors → Add connector (Pro/Max).",
+  "settingsSectionAdvanced": "Advanced",
+  "settingsAdvancedMode": "Advanced mode",
+  "settingsAdvancedModeSubtitle": "Show every sound id with replace-from-phone",
+  "settingsSoundsAll": "All sounds",
+  "settingsSoundsAllSubtitle": "Replace any robot sound from this phone",
+  "settingsResetSounds": "Reset sounds to factory default",
+  "settingsResetSoundsSubtitle": "Restores every greeting, cue, alert and music sound",
+  "settingsResetSoundsConfirmTitle": "Reset all sounds?",
+  "settingsResetSoundsConfirmBody": "Every custom sound on the robot is replaced by the factory file. This can't be undone.",
+  "settingsResetSoundsDone": "Sounds reset to factory default",
+  "settingsResetSoundsFailed": "Reset failed: {error}",
+  "@settingsResetSoundsFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "soundsTitle": "Sounds",
+  "soundsReplace": "Replace",
+  "soundsFactory": "Factory",
+  "soundsCustom": "Custom",
+  "soundsReplaced": "Replaced {id}",
+  "@soundsReplaced": {
+    "placeholders": {
+      "id": {
+        "type": "String"
+      }
+    }
+  },
+  "soundsReplaceFailed": "Replace failed: {error}",
+  "@soundsReplaceFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "soundsRestoreOne": "Restore factory sound",
+  "soundsCatalogFromRobot": "Catalog reported by the robot",
+  "soundsCatalogDefault": "Default catalog (robot didn't report one)",
+  "soundGroupGreeting": "Greeting",
+  "soundGroupTreat": "Treat",
+  "soundGroupCue": "Cues",
+  "soundGroupAlert": "Alerts",
+  "soundGroupSgLevel": "Silent Guardian levels",
+  "soundGroupMusic": "Music classes",
+  "songUploadTitle": "Upload song",
+  "settingsSongUploadSubtitle": "Send a public-domain recording to the robot",
+  "songUploadPdNotice": "Only upload recordings you have the right to use — public domain or your own.",
+  "songUploadPdCheckbox": "This recording is public domain or mine",
+  "songUploadChoose": "Choose song",
+  "songUploadFormats": "MP3, WAV or OGG · up to 20 MB",
+  "songUploadUploading": "Uploading {name}…",
+  "@songUploadUploading": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "songUploadDone": "Uploaded {name}",
+  "@songUploadDone": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "songUploadFailed": "Upload failed: {error}",
+  "@songUploadFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "songUploadTooLarge": "File is over 20 MB",
+  "songUploadNoDog": "Select a dog first",
+  "songUploadNotSignedIn": "Sign in to upload",
+  "songUploadPlayHint": "Play it from the Music button on Home.",
+  "settingsSectionDemo": "Demo",
+  "demoViewTitle": "Demo view",
+  "demoViewSubtitle": "Screen-mirror layout: today, guardian, agent transcript",
+  "demoPanelGuardian": "Silent Guardian",
+  "demoPanelTranscript": "Agent transcript",
+  "demoTranscriptEmpty": "Waiting for an assistant…",
+  "demoNoDog": "Select a dog on Home first",
+  "demoSgIdle": "Guardian not running"
 }

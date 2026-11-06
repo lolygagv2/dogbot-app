@@ -3627,4 +3627,360 @@ class AppLocalizationsKo extends AppLocalizations {
 
   @override
   String get catalogProgramCalmDogDesc => '인내심과 자제력 기르기';
+
+  @override
+  String get aiAssistantFallback => '어시스턴트';
+
+  @override
+  String draftTranscriptProposed(String title) {
+    return '미션 제안: $title';
+  }
+
+  @override
+  String get draftTranscriptYou => '나';
+
+  @override
+  String draftTranscriptApproved(String title) {
+    return '\"$title\" 승인함';
+  }
+
+  @override
+  String draftTranscriptDeclined(String title) {
+    return '\"$title\" 거절함';
+  }
+
+  @override
+  String get aiErrSignedOut => '연결된 어시스턴트를 관리하려면 로그인하세요';
+
+  @override
+  String get aiErrLoadFailed => '연결된 어시스턴트를 불러오지 못했습니다';
+
+  @override
+  String get aiErrRevokeFailed => '연결 해제 실패';
+
+  @override
+  String get aiErrKillSwitchFailed => 'AI 접근 설정을 변경하지 못했습니다';
+
+  @override
+  String get notifMissionDraft => '미션 승인 요청';
+
+  @override
+  String notifMissionDraftFrom(String name) {
+    return '$name이(가) 미션을 제안했습니다';
+  }
+
+  @override
+  String get notifPrefsMissionDraft => '미션 승인 요청';
+
+  @override
+  String get modelNotifTitleMissionDraft => '미션 승인';
+
+  @override
+  String get draftApprove => '승인';
+
+  @override
+  String get draftDecline => '거절';
+
+  @override
+  String get draftStatusApproved => '승인됨';
+
+  @override
+  String get draftStatusDeclined => '거절됨';
+
+  @override
+  String get draftStatusExpired => '만료됨';
+
+  @override
+  String get attachmentOpenFailed => '미디어를 불러오지 못했습니다';
+
+  @override
+  String get todayCardTitle => '오늘';
+
+  @override
+  String get todayCardLocalCounts => '이 휴대폰의 활동 기록 기준';
+
+  @override
+  String get todayCardError => '요약 서비스에 연결할 수 없습니다';
+
+  @override
+  String get todayStatBarks => '짖음';
+
+  @override
+  String get todayStatTreats => '간식';
+
+  @override
+  String get todayStatCoaching => '코칭';
+
+  @override
+  String get todayStatQuiet => '조용';
+
+  @override
+  String get todayStatGuardian => '가디언';
+
+  @override
+  String get todayPlanTitle => '계획';
+
+  @override
+  String todayPlanBy(String source) {
+    return '$source 계획';
+  }
+
+  @override
+  String get todayHighlights => '하이라이트';
+
+  @override
+  String get connectedAiTitle => '연결된 AI';
+
+  @override
+  String get connectedAiSubtitle => '어시스턴트, 커넥터 URL, 긴급 차단, 감사 로그';
+
+  @override
+  String get aiConnectorUrl => '커넥터 URL';
+
+  @override
+  String get aiConnectorUrlCopied => '커넥터 URL 복사됨';
+
+  @override
+  String get aiConnectorUrlMissing => '아직 발급되지 않음';
+
+  @override
+  String get aiCopyUrl => 'URL 복사';
+
+  @override
+  String get aiKillSwitch => 'AI 접근 허용';
+
+  @override
+  String get aiKillSwitchOn => '어시스턴트가 요약을 읽고 미션을 제안할 수 있음';
+
+  @override
+  String get aiKillSwitchOff => '긴급 차단 켜짐 — 모든 어시스턴트 차단';
+
+  @override
+  String get aiAssistantsHeader => '연결된 어시스턴트';
+
+  @override
+  String get aiNoAssistants => '연결된 어시스턴트가 없습니다';
+
+  @override
+  String get aiRevoke => '해제';
+
+  @override
+  String aiRevokeConfirm(String name) {
+    return '$name 연결을 해제할까요? 즉시 접근이 차단됩니다.';
+  }
+
+  @override
+  String aiLastUsed(String when) {
+    return '마지막 사용 $when';
+  }
+
+  @override
+  String get aiNeverUsed => '사용 기록 없음';
+
+  @override
+  String get aiScopesNone => '권한 없음';
+
+  @override
+  String get aiAuditHeader => '감사 로그';
+
+  @override
+  String get aiAuditEmpty => '활동 없음';
+
+  @override
+  String get aiSetupGuides => '설정 안내';
+
+  @override
+  String get aiUnsupported => '이 서버에서는 아직 연결된 AI를 사용할 수 없습니다';
+
+  @override
+  String aiGuideTitle(String name) {
+    return '$name 연결';
+  }
+
+  @override
+  String aiGuideStep1(String name) {
+    return '$name을(를) 열고 설정 → 커넥터(또는 도구)로 이동합니다.';
+  }
+
+  @override
+  String get aiGuideStep2 => '사용자 지정 커넥터 / MCP 서버 추가를 선택합니다.';
+
+  @override
+  String get aiGuideStep3 => '아래 WIM-Z 커넥터 URL을 붙여넣습니다.';
+
+  @override
+  String get aiGuideStep4 => 'WIM-Z 계정으로 로그인하고 원하는 권한을 허용합니다.';
+
+  @override
+  String aiGuideStep5(String name) {
+    return '$name에게 \"오늘 우리 개는 어땠어?\"라고 물어보세요. 연결되면 목록에 표시됩니다.';
+  }
+
+  @override
+  String get aiGuideNoteChatgpt => 'ChatGPT: 먼저 설정 → 커넥터 → 고급에서 개발자 모드를 켜세요.';
+
+  @override
+  String get aiGuideNoteClaude =>
+      'Claude: 설정 → 커넥터 → 사용자 지정 커넥터 추가 (claude.ai, Pro/Max/Team).';
+
+  @override
+  String get aiGuideNoteGrok => 'Grok: 설정 → 커넥터 → MCP 서버 추가 (grok.com).';
+
+  @override
+  String get aiGuideNotePerplexity =>
+      'Perplexity: 설정 → 커넥터 → 커넥터 추가 (Pro/Max).';
+
+  @override
+  String get settingsSectionAdvanced => '고급';
+
+  @override
+  String get settingsAdvancedMode => '고급 모드';
+
+  @override
+  String get settingsAdvancedModeSubtitle => '모든 사운드 ID와 휴대폰에서 교체 기능 표시';
+
+  @override
+  String get settingsSoundsAll => '모든 사운드';
+
+  @override
+  String get settingsSoundsAllSubtitle => '휴대폰에서 로봇 사운드 교체';
+
+  @override
+  String get settingsResetSounds => '사운드를 공장 초기값으로 재설정';
+
+  @override
+  String get settingsResetSoundsSubtitle => '모든 인사, 신호, 알림, 음악 사운드를 복원합니다';
+
+  @override
+  String get settingsResetSoundsConfirmTitle => '모든 사운드를 재설정할까요?';
+
+  @override
+  String get settingsResetSoundsConfirmBody =>
+      '로봇의 모든 사용자 지정 사운드가 공장 파일로 교체됩니다. 되돌릴 수 없습니다.';
+
+  @override
+  String get settingsResetSoundsDone => '사운드가 공장 초기값으로 재설정되었습니다';
+
+  @override
+  String settingsResetSoundsFailed(String error) {
+    return '재설정 실패: $error';
+  }
+
+  @override
+  String get soundsTitle => '사운드';
+
+  @override
+  String get soundsReplace => '교체';
+
+  @override
+  String get soundsFactory => '기본';
+
+  @override
+  String get soundsCustom => '사용자';
+
+  @override
+  String soundsReplaced(String id) {
+    return '$id 교체됨';
+  }
+
+  @override
+  String soundsReplaceFailed(String error) {
+    return '교체 실패: $error';
+  }
+
+  @override
+  String get soundsRestoreOne => '기본 사운드 복원';
+
+  @override
+  String get soundsCatalogFromRobot => '로봇이 보고한 카탈로그';
+
+  @override
+  String get soundsCatalogDefault => '기본 카탈로그 (로봇 미보고)';
+
+  @override
+  String get soundGroupGreeting => '인사';
+
+  @override
+  String get soundGroupTreat => '간식';
+
+  @override
+  String get soundGroupCue => '신호';
+
+  @override
+  String get soundGroupAlert => '알림';
+
+  @override
+  String get soundGroupSgLevel => '사일런트 가디언 단계';
+
+  @override
+  String get soundGroupMusic => '음악 클래스';
+
+  @override
+  String get songUploadTitle => '노래 업로드';
+
+  @override
+  String get settingsSongUploadSubtitle => '퍼블릭 도메인 녹음을 로봇으로 전송';
+
+  @override
+  String get songUploadPdNotice => '사용 권한이 있는 녹음(퍼블릭 도메인 또는 직접 만든 것)만 업로드하세요.';
+
+  @override
+  String get songUploadPdCheckbox => '이 녹음은 퍼블릭 도메인이거나 내 것입니다';
+
+  @override
+  String get songUploadChoose => '노래 선택';
+
+  @override
+  String get songUploadFormats => 'MP3, WAV, OGG · 최대 20MB';
+
+  @override
+  String songUploadUploading(String name) {
+    return '$name 업로드 중…';
+  }
+
+  @override
+  String songUploadDone(String name) {
+    return '$name 업로드 완료';
+  }
+
+  @override
+  String songUploadFailed(String error) {
+    return '업로드 실패: $error';
+  }
+
+  @override
+  String get songUploadTooLarge => '파일이 20MB를 초과합니다';
+
+  @override
+  String get songUploadNoDog => '먼저 반려견을 선택하세요';
+
+  @override
+  String get songUploadNotSignedIn => '업로드하려면 로그인하세요';
+
+  @override
+  String get songUploadPlayHint => '홈의 음악 버튼에서 재생할 수 있습니다.';
+
+  @override
+  String get settingsSectionDemo => '데모';
+
+  @override
+  String get demoViewTitle => '데모 화면';
+
+  @override
+  String get demoViewSubtitle => '화면 미러링용: 오늘, 가디언, 에이전트 대화';
+
+  @override
+  String get demoPanelGuardian => '사일런트 가디언';
+
+  @override
+  String get demoPanelTranscript => '에이전트 대화';
+
+  @override
+  String get demoTranscriptEmpty => '어시스턴트를 기다리는 중…';
+
+  @override
+  String get demoNoDog => '먼저 홈에서 반려견을 선택하세요';
+
+  @override
+  String get demoSgIdle => '가디언 미실행';
 }

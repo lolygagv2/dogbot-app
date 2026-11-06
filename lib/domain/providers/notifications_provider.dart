@@ -9,12 +9,14 @@ import '../../core/utils/time_utils.dart';
 import '../../core/services/local_connection_service.dart';
 import '../../core/services/notification_service.dart';
 import '../../data/datasources/robot_api.dart';
+import '../../data/models/ai_connection.dart';
 import '../../data/models/notification_event.dart';
 import '../../l10n/l10n.dart';
 import 'auth_provider.dart';
 import 'connection_provider.dart';
 import 'dog_profiles_provider.dart';
 import 'l10n_provider.dart';
+import 'mission_drafts_provider.dart';
 import 'missions_provider.dart';
 import 'settings_provider.dart';
 
@@ -300,6 +302,25 @@ class NotificationsNotifier extends StateNotifier<List<NotificationEvent>> {
         );
         break;
 
+      // AI Summit slice: an assistant drafted a mission — the feed entry
+      // carries Approve/Decline; status lives in missionDraftsProvider.
+      case 'mission_draft':
+        final draft = MissionDraft.fromEvent(event.data);
+        if (draft != null) {
+          notification = NotificationEvent(
+            id: 'draft-${draft.id}',
+            type: NotificationEventType.missionDraft,
+            timestamp: eventTime,
+            title: draft.proposedBy != null
+                ? _l.notifMissionDraftFrom(draft.proposedBy!)
+                : _l.notifMissionDraft,
+            subtitle: draft.title,
+            dogId: draft.dogId,
+            metadata: {'draft_id': draft.id},
+          );
+        }
+        break;
+
       case 'battery':
         final level = (event.data['level'] as num?)?.toDouble() ?? 100;
         if (level < 20) {
@@ -315,6 +336,15 @@ class NotificationsNotifier extends StateNotifier<List<NotificationEvent>> {
     }
 
     if (notification != null) {
+      // Attach a still / clip when the payload carries one (any event type).
+      final img = attachmentImageUrl(event.data);
+      final clip = attachmentClipUrl(event.data);
+      if (img != null || clip != null) {
+        notification = notification.copyWith(
+          imageUrl: notification.imageUrl ?? img,
+          clipUrl: notification.clipUrl ?? clip,
+        );
+      }
       addNotification(notification);
     }
   }
@@ -498,6 +528,7 @@ class NotificationsNotifier extends StateNotifier<List<NotificationEvent>> {
       NotificationEventType.coachReward => _l.notifCoachReward,
       NotificationEventType.panicAlert => _l.notifPanicAlert,
       NotificationEventType.sgSummary => _l.notifGuardianSummary,
+      NotificationEventType.missionDraft => _l.notifMissionDraft,
     };
   }
 
@@ -743,6 +774,29 @@ class NotificationsNotifier extends StateNotifier<List<NotificationEvent>> {
         if (!success) mapped = NotificationEventType.missionFailed;
         subtitle = payload['mission_id'] as String?;
         break;
+      case 'mission_draft':
+        final draft = MissionDraft.fromEvent(payload);
+        if (draft == null) return null;
+        _ref.read(missionDraftsProvider.notifier).registerFromHistory(
+              draft,
+              status: (payload['status'] ?? event['status'])?.toString(),
+            );
+        mapped = NotificationEventType.missionDraft;
+        title = draft.proposedBy != null
+            ? _l.notifMissionDraftFrom(draft.proposedBy!)
+            : _l.notifMissionDraft;
+        subtitle = draft.title;
+        return NotificationEvent(
+          id: 'draft-${draft.id}',
+          type: mapped,
+          timestamp: timestamp,
+          title: title,
+          subtitle: subtitle,
+          dogId: dogId ?? draft.dogId,
+          metadata: {'draft_id': draft.id, ...payload},
+          imageUrl: attachmentImageUrl(payload),
+          clipUrl: attachmentClipUrl(payload),
+        );
       case 'behavior_flag':
         final behavior = (payload['behavior'] as String? ?? '').toLowerCase();
         mapped = switch (behavior) {
@@ -770,6 +824,8 @@ class NotificationsNotifier extends StateNotifier<List<NotificationEvent>> {
       dogId: dogId,
       missionId: payload['mission_id'] as String?,
       metadata: payload,
+      imageUrl: attachmentImageUrl(event) ?? attachmentImageUrl(payload),
+      clipUrl: attachmentClipUrl(event) ?? attachmentClipUrl(payload),
     );
   }
 

@@ -26,6 +26,9 @@ enum NotificationEventType {
   // enabled_types and stored channel prefs)
   panicAlert, // panic_alert started/ended — distress episodes
   sgSummary, // sg_summary level4_escalation + guardian-stopped session summary
+  // AI Summit demo slice (2026-11-05): an assistant drafted a mission and
+  // wants the owner's approve/decline (metadata.draft_id → missionDraftsProvider)
+  missionDraft,
 }
 
 /// A notification event from the robot
@@ -42,6 +45,10 @@ class NotificationEvent with _$NotificationEvent {
     String? videoClipId,
     Map<String, dynamic>? metadata,
     @Default(false) bool isRead,
+    /// Optional still (snapshot) attached by the robot/relay — absolute URL.
+    String? imageUrl,
+    /// Optional short clip attached by the robot/relay — absolute URL.
+    String? clipUrl,
   }) = _NotificationEvent;
 
   factory NotificationEvent.fromJson(Map<String, dynamic> json) =>
@@ -66,9 +73,51 @@ class NotificationEvent with _$NotificationEvent {
       videoClipId: data['video_clip_id'] as String?,
       metadata: data['metadata'] as Map<String, dynamic>?,
       isRead: data['is_read'] as bool? ?? false,
+      imageUrl: attachmentImageUrl(data),
+      clipUrl: attachmentClipUrl(data),
     );
   }
 }
+
+/// Base URL used to absolutize relative attachment paths ("/media/x.jpg").
+/// Set by DioClient.setBaseUrl; falls back to the production API host.
+String attachmentBaseUrl = 'https://api.wimzai.com';
+
+String? _absolutize(dynamic raw) {
+  final s = raw?.toString();
+  if (s == null || s.isEmpty) return null;
+  if (s.startsWith('http://') || s.startsWith('https://')) return s;
+  final base = attachmentBaseUrl.endsWith('/')
+      ? attachmentBaseUrl.substring(0, attachmentBaseUrl.length - 1)
+      : attachmentBaseUrl;
+  return s.startsWith('/') ? '$base$s' : '$base/$s';
+}
+
+/// Dig an attachment URL out of an event payload. The robot/relay may put it
+/// at the top level or nested under data/payload/media; the key names vary
+/// by event source, so accept the common spellings.
+String? _digAttachment(Map<String, dynamic> data, List<String> keys) {
+  String? pick(Map m) {
+    for (final k in keys) {
+      final v = _absolutize(m[k]);
+      if (v != null) return v;
+    }
+    return null;
+  }
+
+  var url = pick(data);
+  for (final nest in const ['data', 'payload', 'media', 'attachment']) {
+    if (url != null) break;
+    if (data[nest] is Map) url = pick(data[nest] as Map);
+  }
+  return url;
+}
+
+String? attachmentImageUrl(Map<String, dynamic> data) => _digAttachment(data,
+    const ['image_url', 'snapshot_url', 'still_url', 'photo_url', 'thumbnail_url']);
+
+String? attachmentClipUrl(Map<String, dynamic> data) => _digAttachment(
+    data, const ['clip_url', 'video_url', 'mp4_url']);
 
 String _snakeToCamel(String snake) {
   final parts = snake.split('_');
@@ -111,5 +160,7 @@ String _getDefaultTitle(NotificationEventType type) {
       return 'Panic Alert';
     case NotificationEventType.sgSummary:
       return 'Guardian Summary';
+    case NotificationEventType.missionDraft:
+      return 'Mission Approval';
   }
 }

@@ -3759,4 +3759,373 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get catalogProgramCalmDogDesc => 'Build patience and self-control';
+
+  @override
+  String get aiAssistantFallback => 'Assistant';
+
+  @override
+  String draftTranscriptProposed(String title) {
+    return 'Proposed mission: $title';
+  }
+
+  @override
+  String get draftTranscriptYou => 'You';
+
+  @override
+  String draftTranscriptApproved(String title) {
+    return 'Approved \"$title\"';
+  }
+
+  @override
+  String draftTranscriptDeclined(String title) {
+    return 'Declined \"$title\"';
+  }
+
+  @override
+  String get aiErrSignedOut => 'Sign in to manage connected assistants';
+
+  @override
+  String get aiErrLoadFailed => 'Couldn\'t load connected assistants';
+
+  @override
+  String get aiErrRevokeFailed => 'Revoke failed';
+
+  @override
+  String get aiErrKillSwitchFailed => 'Couldn\'t change AI access';
+
+  @override
+  String get notifMissionDraft => 'Mission approval';
+
+  @override
+  String notifMissionDraftFrom(String name) {
+    return '$name proposed a mission';
+  }
+
+  @override
+  String get notifPrefsMissionDraft => 'Mission approval requests';
+
+  @override
+  String get modelNotifTitleMissionDraft => 'Mission Approval';
+
+  @override
+  String get draftApprove => 'Approve';
+
+  @override
+  String get draftDecline => 'Decline';
+
+  @override
+  String get draftStatusApproved => 'Approved';
+
+  @override
+  String get draftStatusDeclined => 'Declined';
+
+  @override
+  String get draftStatusExpired => 'Expired';
+
+  @override
+  String get attachmentOpenFailed => 'Couldn\'t load media';
+
+  @override
+  String get todayCardTitle => 'Today';
+
+  @override
+  String get todayCardLocalCounts => 'Counts from this phone\'s activity feed';
+
+  @override
+  String get todayCardError => 'Couldn\'t reach the summary service';
+
+  @override
+  String get todayStatBarks => 'Barks';
+
+  @override
+  String get todayStatTreats => 'Treats';
+
+  @override
+  String get todayStatCoaching => 'Coaching';
+
+  @override
+  String get todayStatQuiet => 'Quiet';
+
+  @override
+  String get todayStatGuardian => 'Guardian';
+
+  @override
+  String get todayPlanTitle => 'Plan';
+
+  @override
+  String todayPlanBy(String source) {
+    return 'Plan by $source';
+  }
+
+  @override
+  String get todayHighlights => 'Highlights';
+
+  @override
+  String get connectedAiTitle => 'Connected AI';
+
+  @override
+  String get connectedAiSubtitle =>
+      'Assistants, connector URL, kill switch, audit log';
+
+  @override
+  String get aiConnectorUrl => 'Connector URL';
+
+  @override
+  String get aiConnectorUrlCopied => 'Connector URL copied';
+
+  @override
+  String get aiConnectorUrlMissing => 'Not issued yet';
+
+  @override
+  String get aiCopyUrl => 'Copy URL';
+
+  @override
+  String get aiKillSwitch => 'Allow AI access';
+
+  @override
+  String get aiKillSwitchOn =>
+      'Assistants can read summaries and propose missions';
+
+  @override
+  String get aiKillSwitchOff => 'KILL SWITCH ON — every assistant is refused';
+
+  @override
+  String get aiAssistantsHeader => 'Connected assistants';
+
+  @override
+  String get aiNoAssistants => 'No assistant connected yet';
+
+  @override
+  String get aiRevoke => 'Revoke';
+
+  @override
+  String aiRevokeConfirm(String name) {
+    return 'Revoke $name? It loses access immediately.';
+  }
+
+  @override
+  String aiLastUsed(String when) {
+    return 'Last used $when';
+  }
+
+  @override
+  String get aiNeverUsed => 'Never used';
+
+  @override
+  String get aiScopesNone => 'no scopes';
+
+  @override
+  String get aiAuditHeader => 'Audit log';
+
+  @override
+  String get aiAuditEmpty => 'No activity yet';
+
+  @override
+  String get aiSetupGuides => 'Setup guides';
+
+  @override
+  String get aiUnsupported =>
+      'Connected AI isn\'t available on this server yet';
+
+  @override
+  String aiGuideTitle(String name) {
+    return 'Connect $name';
+  }
+
+  @override
+  String aiGuideStep1(String name) {
+    return 'Open $name and go to Settings → Connectors (or Tools).';
+  }
+
+  @override
+  String get aiGuideStep2 => 'Choose Add custom connector / MCP server.';
+
+  @override
+  String get aiGuideStep3 => 'Paste the WIM-Z connector URL below.';
+
+  @override
+  String get aiGuideStep4 =>
+      'Sign in with your WIM-Z account and allow the scopes you want.';
+
+  @override
+  String aiGuideStep5(String name) {
+    return 'Ask $name: \"How was my dog today?\" It appears in the list once connected.';
+  }
+
+  @override
+  String get aiGuideNoteChatgpt =>
+      'ChatGPT: turn on Developer mode under Settings → Connectors → Advanced first.';
+
+  @override
+  String get aiGuideNoteClaude =>
+      'Claude: Settings → Connectors → Add custom connector (claude.ai, Pro/Max/Team).';
+
+  @override
+  String get aiGuideNoteGrok =>
+      'Grok: Settings → Connectors → Add MCP server (grok.com).';
+
+  @override
+  String get aiGuideNotePerplexity =>
+      'Perplexity: Settings → Connectors → Add connector (Pro/Max).';
+
+  @override
+  String get settingsSectionAdvanced => 'Advanced';
+
+  @override
+  String get settingsAdvancedMode => 'Advanced mode';
+
+  @override
+  String get settingsAdvancedModeSubtitle =>
+      'Show every sound id with replace-from-phone';
+
+  @override
+  String get settingsSoundsAll => 'All sounds';
+
+  @override
+  String get settingsSoundsAllSubtitle =>
+      'Replace any robot sound from this phone';
+
+  @override
+  String get settingsResetSounds => 'Reset sounds to factory default';
+
+  @override
+  String get settingsResetSoundsSubtitle =>
+      'Restores every greeting, cue, alert and music sound';
+
+  @override
+  String get settingsResetSoundsConfirmTitle => 'Reset all sounds?';
+
+  @override
+  String get settingsResetSoundsConfirmBody =>
+      'Every custom sound on the robot is replaced by the factory file. This can\'t be undone.';
+
+  @override
+  String get settingsResetSoundsDone => 'Sounds reset to factory default';
+
+  @override
+  String settingsResetSoundsFailed(String error) {
+    return 'Reset failed: $error';
+  }
+
+  @override
+  String get soundsTitle => 'Sounds';
+
+  @override
+  String get soundsReplace => 'Replace';
+
+  @override
+  String get soundsFactory => 'Factory';
+
+  @override
+  String get soundsCustom => 'Custom';
+
+  @override
+  String soundsReplaced(String id) {
+    return 'Replaced $id';
+  }
+
+  @override
+  String soundsReplaceFailed(String error) {
+    return 'Replace failed: $error';
+  }
+
+  @override
+  String get soundsRestoreOne => 'Restore factory sound';
+
+  @override
+  String get soundsCatalogFromRobot => 'Catalog reported by the robot';
+
+  @override
+  String get soundsCatalogDefault =>
+      'Default catalog (robot didn\'t report one)';
+
+  @override
+  String get soundGroupGreeting => 'Greeting';
+
+  @override
+  String get soundGroupTreat => 'Treat';
+
+  @override
+  String get soundGroupCue => 'Cues';
+
+  @override
+  String get soundGroupAlert => 'Alerts';
+
+  @override
+  String get soundGroupSgLevel => 'Silent Guardian levels';
+
+  @override
+  String get soundGroupMusic => 'Music classes';
+
+  @override
+  String get songUploadTitle => 'Upload song';
+
+  @override
+  String get settingsSongUploadSubtitle =>
+      'Send a public-domain recording to the robot';
+
+  @override
+  String get songUploadPdNotice =>
+      'Only upload recordings you have the right to use — public domain or your own.';
+
+  @override
+  String get songUploadPdCheckbox => 'This recording is public domain or mine';
+
+  @override
+  String get songUploadChoose => 'Choose song';
+
+  @override
+  String get songUploadFormats => 'MP3, WAV or OGG · up to 20 MB';
+
+  @override
+  String songUploadUploading(String name) {
+    return 'Uploading $name…';
+  }
+
+  @override
+  String songUploadDone(String name) {
+    return 'Uploaded $name';
+  }
+
+  @override
+  String songUploadFailed(String error) {
+    return 'Upload failed: $error';
+  }
+
+  @override
+  String get songUploadTooLarge => 'File is over 20 MB';
+
+  @override
+  String get songUploadNoDog => 'Select a dog first';
+
+  @override
+  String get songUploadNotSignedIn => 'Sign in to upload';
+
+  @override
+  String get songUploadPlayHint => 'Play it from the Music button on Home.';
+
+  @override
+  String get settingsSectionDemo => 'Demo';
+
+  @override
+  String get demoViewTitle => 'Demo view';
+
+  @override
+  String get demoViewSubtitle =>
+      'Screen-mirror layout: today, guardian, agent transcript';
+
+  @override
+  String get demoPanelGuardian => 'Silent Guardian';
+
+  @override
+  String get demoPanelTranscript => 'Agent transcript';
+
+  @override
+  String get demoTranscriptEmpty => 'Waiting for an assistant…';
+
+  @override
+  String get demoNoDog => 'Select a dog on Home first';
+
+  @override
+  String get demoSgIdle => 'Guardian not running';
 }

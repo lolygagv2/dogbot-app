@@ -12,6 +12,7 @@ import '../../../domain/providers/notifications_provider.dart';
 import '../../../l10n/l10n.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/dog_profile/weekly_summary_card.dart';
+import '../../widgets/summary/today_card.dart';
 
 /// Dog profile screen - central hub for a dog's info, stats, and quick actions
 class DogProfileScreen extends ConsumerWidget {
@@ -32,8 +33,6 @@ class DogProfileScreen extends ConsumerWidget {
         body: Center(child: Text(context.l10n.dogProfileNotFound)),
       );
     }
-
-    final summary = ref.watch(dogDailySummaryProvider(profile.id));
 
     return Scaffold(
       appBar: AppBar(
@@ -59,8 +58,9 @@ class DogProfileScreen extends ConsumerWidget {
             _LaunchMissionButton(profile: profile),
             const SizedBox(height: 24),
 
-            // Today's summary stats
-            _TodaySummary(summary: summary),
+            // Today card — GET /summary/{dog}/{date}; falls back to the
+            // feed-derived counts (the old _TodaySummary numbers) on 404.
+            TodayCard(dogId: profile.id, dogName: profile.name),
             const SizedBox(height: 24),
 
             // Metrics dashboard
@@ -292,70 +292,6 @@ class _LaunchMissionButton extends ConsumerWidget {
           ),
         ),
       ),
-    );
-  }
-}
-
-/// Today's summary stats cards
-class _TodaySummary extends StatelessWidget {
-  final DogDailySummary summary;
-
-  const _TodaySummary({required this.summary});
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          context.l10n.dogProfileTodaySummary,
-          style: TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.w600,
-            color: AppTheme.textPrimary,
-          ),
-        ),
-        const SizedBox(height: 12),
-        Row(
-          children: [
-            Expanded(
-              child: _StatCard(
-                value: summary.treatCount.toString(),
-                label: context.l10n.dogProfileStatTreats,
-                icon: Icons.cookie,
-                color: AppTheme.accent,
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: _StatCard(
-                value: summary.sitCount.toString(),
-                label: context.l10n.dogProfileStatSits,
-                icon: Icons.pets,
-                color: AppTheme.primary,
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: _StatCard(
-                value: summary.barkCount.toString(),
-                label: context.l10n.dogProfileStatBarks,
-                icon: Icons.volume_up,
-                color: Colors.orange,
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: _StatCard(
-                value: '${(summary.goalProgress * 100).toInt()}%',
-                label: context.l10n.dogProfileStatGoal,
-                icon: Icons.flag,
-                color: AppTheme.secondary,
-              ),
-            ),
-          ],
-        ),
-      ],
     );
   }
 }

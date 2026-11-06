@@ -1,6 +1,7 @@
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../data/models/notification_event.dart' show attachmentBaseUrl;
 import '../config/environment.dart';
 import '../constants/app_constants.dart';
 
@@ -38,6 +39,8 @@ class DioClient {
   /// Update base URL when connecting to a different server
   static void setBaseUrl(String baseUrl) {
     instance.options.baseUrl = baseUrl;
+    // Relative media URLs on events resolve against the active API host.
+    attachmentBaseUrl = baseUrl;
   }
 }
 

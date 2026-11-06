@@ -19,6 +19,7 @@ class NotificationPreferencesScreen extends ConsumerWidget {
 
     // Order types so the most actionable ones appear first.
     const ordered = <NotificationEventType>[
+      NotificationEventType.missionDraft,
       NotificationEventType.treatDispensed,
       NotificationEventType.coachReward,
       NotificationEventType.missionCompleted,
@@ -140,6 +141,8 @@ class _ChannelRow extends StatelessWidget {
         return l.notifPrefsPanicAlert;
       case NotificationEventType.sgSummary:
         return l.notifPrefsSgSummary;
+      case NotificationEventType.missionDraft:
+        return l.notifPrefsMissionDraft;
     }
   }
 
@@ -173,6 +176,8 @@ class _ChannelRow extends StatelessWidget {
         return Icons.crisis_alert;
       case NotificationEventType.sgSummary:
         return Icons.shield_outlined;
+      case NotificationEventType.missionDraft:
+        return Icons.fact_check_outlined;
     }
   }
 
