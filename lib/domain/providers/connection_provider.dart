@@ -15,6 +15,7 @@ import '../../data/datasources/robot_api.dart';
 import 'auth_provider.dart';
 import 'device_provider.dart';
 import 'notifications_provider.dart';
+import 'photo_provider.dart';
 import '../../l10n/l10n.dart';
 import 'l10n_provider.dart';
 
@@ -578,6 +579,8 @@ class ConnectionNotifier extends StateNotifier<ConnectionState> {
     // single history source now, so the SG feed updates from this too.
     // Self-skips in local mode / when no token is available.
     _ref.read(notificationsProvider.notifier).hydrateFromRelay();
+    // Relay brief 2026-11-07: catch up on assistant-taken robot photos.
+    _ref.read(photoProvider.notifier).syncRelayPhotos(reason: 'resume');
 
     // Don't attempt relay reconnect if WebSocket is already connected
     // (e.g., local mode has its own active connection)

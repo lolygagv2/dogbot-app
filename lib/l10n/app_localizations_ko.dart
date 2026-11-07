@@ -4142,4 +4142,12 @@ class AppLocalizationsKo extends AppLocalizations {
   String quietHoursErrSave(String error) {
     return '방해 금지 시간을 저장하지 못했습니다: $error';
   }
+
+  @override
+  String get galleryAssistantPhoto => 'WIM-Z 어시스턴트가 촬영';
+
+  @override
+  String galleryAssistantPhotoFor(String dogName) {
+    return 'WIM-Z 어시스턴트가 촬영 · $dogName';
+  }
 }

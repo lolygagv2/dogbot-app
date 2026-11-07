@@ -2400,5 +2400,8 @@
   "quietHoursHint": "알림, 음악, 음성 에이전트가 조용히 유지됩니다. 어시스턴트는 이 시간을 넓히기만 할 수 있습니다.",
   "quietHoursUnsupported": "이 서버에서는 아직 사용할 수 없습니다",
   "quietHoursErrSave": "방해 금지 시간을 저장하지 못했습니다: {error}",
-  "@quietHoursErrSave": {"placeholders": {"error": {"type": "String"}}}
+  "@quietHoursErrSave": {"placeholders": {"error": {"type": "String"}}},
+  "galleryAssistantPhoto": "WIM-Z 어시스턴트가 촬영",
+  "galleryAssistantPhotoFor": "WIM-Z 어시스턴트가 촬영 · {dogName}",
+  "@galleryAssistantPhotoFor": {"placeholders": {"dogName": {"type": "String"}}}
 }

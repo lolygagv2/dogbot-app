@@ -7573,6 +7573,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Couldn\'t save quiet hours: {error}'**
   String quietHoursErrSave(String error);
+
+  /// No description provided for @galleryAssistantPhoto.
+  ///
+  /// In en, this message translates to:
+  /// **'Taken by WIM-Z assistant'**
+  String get galleryAssistantPhoto;
+
+  /// No description provided for @galleryAssistantPhotoFor.
+  ///
+  /// In en, this message translates to:
+  /// **'Taken by WIM-Z assistant · {dogName}'**
+  String galleryAssistantPhotoFor(String dogName);
 }
 
 class _AppLocalizationsDelegate

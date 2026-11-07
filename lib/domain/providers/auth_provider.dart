@@ -11,6 +11,7 @@ import 'connection_provider.dart';
 import 'dog_profiles_provider.dart';
 import 'missions_provider.dart';
 import 'notifications_provider.dart';
+import 'photo_provider.dart';
 import 'settings_provider.dart';
 import 'voice_commands_provider.dart';
 import '../../l10n/l10n.dart';
@@ -263,6 +264,15 @@ class AuthNotifier extends StateNotifier<AuthState> {
       await _ref.read(notificationsProvider.notifier).hydrateFromRelay();
     } catch (e) {
       print('Auth: hydrate activity on $scenario failed: $e');
+    }
+    // Relay brief 2026-11-07: pull robot photos taken by the assistant while
+    // the app was closed. Reading the provider here also instantiates it, so
+    // the live command_result listener is armed from login onward — not only
+    // once the user opens the camera or the gallery.
+    try {
+      await _ref.read(photoProvider.notifier).syncRelayPhotos(reason: scenario);
+    } catch (e) {
+      print('Auth: relay photo catch-up on $scenario failed: $e');
     }
   }
 

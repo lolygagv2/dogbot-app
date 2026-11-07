@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -6,15 +7,50 @@ import 'package:intl/intl.dart';
 import 'package:share_plus/share_plus.dart';
 
 import '../../../data/services/photo_service.dart';
+import '../../../domain/providers/dog_profiles_provider.dart';
 import '../../../domain/providers/photo_provider.dart';
 import '../../../l10n/l10n.dart';
 
 /// Photo gallery screen showing all captured photos
-class PhotoGalleryScreen extends ConsumerWidget {
+class PhotoGalleryScreen extends ConsumerStatefulWidget {
   const PhotoGalleryScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<PhotoGalleryScreen> createState() => _PhotoGalleryScreenState();
+}
+
+class _PhotoGalleryScreenState extends ConsumerState<PhotoGalleryScreen> {
+  /// Relay brief 2026-11-07 §3: refresh relay photos while the screen is open
+  /// so a photo asked for via the assistant shows up without a manual pull.
+  static const Duration _relayRefreshInterval = Duration(seconds: 20);
+  Timer? _relayRefresh;
+
+  @override
+  void initState() {
+    super.initState();
+    // §2: catch-up when the Photos screen is opened.
+    Future.microtask(
+        () => ref.read(photoProvider.notifier).syncRelayPhotos(reason: 'gallery'));
+    _relayRefresh = Timer.periodic(_relayRefreshInterval, (_) {
+      if (!mounted) return;
+      ref.read(photoProvider.notifier).syncRelayPhotos(reason: 'gallery-tick');
+    });
+  }
+
+  @override
+  void dispose() {
+    _relayRefresh?.cancel();
+    super.dispose();
+  }
+
+  Future<void> _refresh() async {
+    final n = ref.read(photoProvider.notifier);
+    await n.loadPhotos();
+    await n.syncRelayPhotos(reason: 'gallery-refresh');
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final photoState = ref.watch(photoProvider);
     final photos = photoState.photos;
 
@@ -22,12 +58,11 @@ class PhotoGalleryScreen extends ConsumerWidget {
       appBar: AppBar(
         title: Text(context.l10n.galleryTitle),
         actions: [
-          if (photos.isNotEmpty)
-            IconButton(
-              icon: const Icon(Icons.refresh),
-              onPressed: () => ref.read(photoProvider.notifier).loadPhotos(),
-              tooltip: context.l10n.galleryRefresh,
-            ),
+          IconButton(
+            icon: const Icon(Icons.refresh),
+            onPressed: _refresh,
+            tooltip: context.l10n.galleryRefresh,
+          ),
         ],
       ),
       body: photos.isEmpty
@@ -130,6 +165,26 @@ class _PhotoThumbnail extends StatelessWidget {
                 );
               },
             ),
+            if (photo.isAssistantPhoto)
+              Positioned(
+                top: 4,
+                right: 4,
+                child: Tooltip(
+                  message: context.l10n.galleryAssistantPhoto,
+                  child: Container(
+                    padding: const EdgeInsets.all(3),
+                    decoration: BoxDecoration(
+                      color: Colors.black.withOpacity(0.55),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(
+                      Icons.auto_awesome,
+                      size: 12,
+                      color: Theme.of(context).colorScheme.primary,
+                    ),
+                  ),
+                ),
+              ),
             // Gradient overlay at bottom
             Positioned(
               bottom: 0,
@@ -184,14 +239,38 @@ class _PhotoViewerScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final dogId = photo.dogId;
+    final dogName =
+        dogId == null ? null : ref.watch(dogProfileProvider(dogId))?.name;
+    final subtitle = photo.isAssistantPhoto
+        ? (dogName != null && dogName.isNotEmpty
+            ? context.l10n.galleryAssistantPhotoFor(dogName)
+            : context.l10n.galleryAssistantPhoto)
+        : null;
     return Scaffold(
       backgroundColor: Colors.black,
       appBar: AppBar(
         backgroundColor: Colors.black,
         foregroundColor: Colors.white,
-        title: Text(
-          '${photo.formattedDate(context)} ${photo.formattedTime(context)}',
-          style: const TextStyle(fontSize: 14),
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              '${photo.formattedDate(context)} ${photo.formattedTime(context)}',
+              style: const TextStyle(fontSize: 14),
+            ),
+            if (subtitle != null)
+              Text(
+                subtitle,
+                style: TextStyle(
+                  fontSize: 11,
+                  color: Theme.of(context).colorScheme.primary,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+          ],
         ),
         actions: [
           // Share button

@@ -2512,5 +2512,8 @@
   "quietHoursHint": "Pushes, music and the voice agent stay quiet. Assistants can only widen this window.",
   "quietHoursUnsupported": "Not available on this server yet",
   "quietHoursErrSave": "Couldn't save quiet hours: {error}",
-  "@quietHoursErrSave": {"placeholders": {"error": {"type": "String"}}}
+  "@quietHoursErrSave": {"placeholders": {"error": {"type": "String"}}},
+  "galleryAssistantPhoto": "Taken by WIM-Z assistant",
+  "galleryAssistantPhotoFor": "Taken by WIM-Z assistant · {dogName}",
+  "@galleryAssistantPhotoFor": {"placeholders": {"dogName": {"type": "String"}}}
 }

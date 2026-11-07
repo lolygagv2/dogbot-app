@@ -136,6 +136,12 @@ class ApiEndpoints {
   static const String agentUtterance = '/agent/utterance';
 
   /// Still attached to an event (404 none, 410 expired).
+  /// Relay brief 2026-11-07: robot photos taken by the voice agent / Claude
+  /// connectors / POST /command are recorded per dog (kept 7 days).
+  static String dogPhotos(String dogId) => '/api/dogs/$dogId/photos';
+  static String dogMedia(String dogId, String filename) =>
+      '/api/dogs/$dogId/media/$filename';
+
   static String eventPhoto(String dogId, String eventId) =>
       '/api/dogs/$dogId/events/$eventId/photo';
 }

@@ -4289,4 +4289,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String quietHoursErrSave(String error) {
     return 'Couldn\'t save quiet hours: $error';
   }
+
+  @override
+  String get galleryAssistantPhoto => 'Taken by WIM-Z assistant';
+
+  @override
+  String galleryAssistantPhotoFor(String dogName) {
+    return 'Taken by WIM-Z assistant · $dogName';
+  }
 }
