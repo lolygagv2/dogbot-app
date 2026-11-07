@@ -51,8 +51,9 @@ Architecture: Mobile App (this repo) → Server (intermediary) → Robot (Pi 5)
             spec_stub_data.dart    🆕 Build 135 — SAMPLE rows for UI previews ONLY (never feed live providers)
          📂 datasources/
             robot_api.dart         REST API client for WIM-Z
+            dog_photos_api.dart    🆕 Build 172 — GET /api/dogs/{dog}/photos + JWT media download (relay-recorded robot photos)
          📂 services/
-            photo_service.dart     Photo capture → gallery save
+            photo_service.dart     Photo capture → gallery save; Build 172: relay_photos.json sidecar (relay id → file/dog/captured_at, tombstones) + saveRelayPhoto()
             video_service.dart     Video capture → gallery save (Build 59)
 
       📂 domain/                   # Business logic

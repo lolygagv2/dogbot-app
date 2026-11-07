@@ -1,5 +1,40 @@
 # WIM-Z Resume Chat Log
 
+## Session: 2026-11-07 — Build 172 (relay-recorded robot photos in the gallery)
+**Goal:** Relay brief 2026-11-07 "robot photos in the Photos gallery": photos the voice agent /
+Claude connectors / POST /command ask the robot for were lost when the app was closed. Relay now
+records them per dog (7-day retention), app must save live + catch up.
+**Status:** App slice shipped (commit `bf48d85`, NOT pushed). Analyzer clean, 100 tests green
+(the 1 failing `test/widget_test.dart` is the stock template, pre-existing). Device pass pending.
+
+- `data/datasources/dog_photos_api.dart` (new): `list(token, dogId, since)` → newest-first rows
+  `{id, dog_id, photo_url, is_profile_photo, captured_at}`; `download(token, url)` with JWT,
+  bytes. 404 = expired (`gone`), 403 = not ours (`forbidden`) — both skipped, never retried.
+- `data/services/photo_service.dart`: `CapturedPhoto.relayId/dogId/isAssistantPhoto`
+  (`photo_cmd_` prefix). Sidecar `wimz_photos/relay_photos.json` = relay id → {filename, dogId,
+  capturedAt, deleted}. `hasRelayPhoto` (dedupe key for BOTH live + catch-up),
+  `newestRelayCaptureFor(dog)` (= `since`), `saveRelayPhoto()` names the file after the id,
+  stamps mtime with captured_at (getPhotos sorts by mtime), copies to phone gallery (Gal).
+  `deletePhoto` tombstones the row so catch-up never resurrects a user-deleted photo.
+- `domain/providers/photo_provider.dart`: listens on `eventStream` for
+  `command_result{command: take_photo, gallery_photo_id: non-null}` → GET
+  `/api/dogs/{dog_id}/media/{last path segment of result.image_url}`. `syncRelayPhotos()` per dog
+  in `dogProfilesProvider`, single-flight + coalesced re-run; skips profile photos and non-relative
+  URLs (optional per brief); stops on 404 of the list route (relay not deployed).
+  Called from: provider init, `auth._hydrateAllFromRelay` (also ARMS the live listener from
+  login — provider is lazy otherwise), `connection.onAppResumed`, gallery open/refresh, 20 s tick
+  while gallery open. All traces under `relay-photo*` in Connection Diagnostics.
+- Gallery: `auto_awesome` badge on assistant thumbnails; viewer subtitle "Taken by WIM-Z
+  assistant · {dog}"; refresh button always visible. Strings galleryAssistantPhoto(For) en+ko.
+- Open question for relay: is `command_result.timestamp` the capture time? App uses it (else
+  `ts_server`) for the live save; catch-up uses `captured_at`. Dedupe is by id so a mismatch is
+  harmless, but the per-dog `since` watermark is derived from whichever we stored.
+
+**Next:** push (bump already in commit), device pass per the brief's 3 tests (open-app live
+save, closed-app catch-up incl. the waiting `photo_cmd_686da7ef-…` for Bezik, no duplicates).
+
+---
+
 ## Session: 2026-11-07 — Build 171 ("AI voice" on Home)
 **Goal:** Morgan couldn't find the voice-command-with-reply feature: B169 put it on the dog
 profile; the Home "Talk" button is the old 5-s sound bite for the dog (hidden in Silent Guardian).
