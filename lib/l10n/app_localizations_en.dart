@@ -4214,14 +4214,14 @@ class AppLocalizationsEn extends AppLocalizations {
   String get dogNameYourDog => 'Name your dog';
 
   @override
-  String get talkCardTitle => 'Talk to WIM-Z';
+  String get talkCardTitle => 'AI voice';
 
   @override
-  String get talkHold => 'Hold to talk';
+  String get talkHold => 'Hold to talk to WIM-Z';
 
   @override
   String get talkHint =>
-      'Hold the mic: ask about today, or ask WIM-Z for a treat or a photo.';
+      'Hold the mic and speak a command or a question — WIM-Z answers out loud.';
 
   @override
   String talkRecording(String seconds) {

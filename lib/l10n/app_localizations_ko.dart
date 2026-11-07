@@ -4069,13 +4069,13 @@ class AppLocalizationsKo extends AppLocalizations {
   String get dogNameYourDog => '강아지 이름 지어주기';
 
   @override
-  String get talkCardTitle => 'WIM-Z와 대화';
+  String get talkCardTitle => 'AI 음성';
 
   @override
-  String get talkHold => '길게 눌러 말하기';
+  String get talkHold => '길게 눌러 WIM-Z에게 말하기';
 
   @override
-  String get talkHint => '마이크를 길게 누르세요: 오늘 하루를 묻거나 간식, 사진을 요청해 보세요.';
+  String get talkHint => '마이크를 길게 누르고 명령이나 질문을 말하세요 — WIM-Z가 소리로 답합니다.';
 
   @override
   String talkRecording(String seconds) {

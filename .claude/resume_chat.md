@@ -1,5 +1,20 @@
 # WIM-Z Resume Chat Log
 
+## Session: 2026-11-07 — Build 171 ("AI voice" on Home)
+**Goal:** Morgan couldn't find the voice-command-with-reply feature: B169 put it on the dog
+profile; the Home "Talk" button is the old 5-s sound bite for the dog (hidden in Silent Guardian).
+**Status:** Shipped + pushed. Feature renamed **"AI voice"** (Morgan's name).
+
+- `widgets/controls/ask_wimz.dart`: shared `HoldToTalkButton` (circle, or labelled pill with
+  `label:`) + `AskWimzBanner` (status / last exchange, lingers 15 s after a reply, collapsed idle).
+- Home mode row: "AI voice" pill between the mode segments and DRIVE — visible in every mode.
+  Banner directly under the mode row. Dog-profile card now reuses the shared button.
+- `AgentTalkState.replyAt` added. Strings: talkCardTitle "AI voice", talkHold, talkHint (en+ko).
+- Terminology to keep straight: **Talk** (quick actions) = your voice played for the dog;
+  **AI voice** = command/question to the agent, robot answers back.
+
+---
+
 ## Session: 2026-11-07 — Builds 169–170 (voice agent hold-to-talk, quiet hours)
 **Goal:** Two quick notes from Morgan: hold-to-talk on the dog profile (relay voice agent) and a
 Quiet hours row in Settings (relay shared setting).

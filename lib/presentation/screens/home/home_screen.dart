@@ -18,6 +18,7 @@ import '../../widgets/video/audio_mute_toggle.dart';
 import '../../widgets/status/battery_indicator.dart';
 import '../../widgets/status/connection_badge.dart';
 import '../../widgets/status/treat_counter_indicator.dart';
+import '../../widgets/controls/ask_wimz.dart';
 import '../../widgets/controls/quick_actions.dart';
 import '../../widgets/guardian/event_feed.dart';
 import '../../widgets/mission/mission_progress_overlay.dart';
@@ -134,6 +135,8 @@ class HomeScreen extends ConsumerWidget {
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                 child: const _ModeAndDriveRow(),
               ),
+              // AI voice status / last exchange (collapsed when idle)
+              const AskWimzBanner(),
 
               // Controls area (below mode row)
               if (ref.watch(modeStateProvider).currentMode == RobotMode.silentGuardian)
@@ -476,7 +479,13 @@ class _ModeAndDriveRow extends ConsumerWidget {
             ),
           ),
         ),
-        const SizedBox(width: 10),
+        const SizedBox(width: 8),
+        // "AI voice": hold to speak a command to WIM-Z; the robot answers
+        // back (relay voice agent). Lives here so it's reachable in EVERY
+        // mode — the quick-actions Talk button below is the 5-s sound bite
+        // for the dog and disappears in Silent Guardian.
+        HoldToTalkButton(size: 42, label: context.l10n.talkCardTitle),
+        const SizedBox(width: 8),
         // Drive button (compact)
         SizedBox(
           height: 42,

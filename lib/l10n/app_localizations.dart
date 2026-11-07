@@ -7445,19 +7445,19 @@ abstract class AppLocalizations {
   /// No description provided for @talkCardTitle.
   ///
   /// In en, this message translates to:
-  /// **'Talk to WIM-Z'**
+  /// **'AI voice'**
   String get talkCardTitle;
 
   /// No description provided for @talkHold.
   ///
   /// In en, this message translates to:
-  /// **'Hold to talk'**
+  /// **'Hold to talk to WIM-Z'**
   String get talkHold;
 
   /// No description provided for @talkHint.
   ///
   /// In en, this message translates to:
-  /// **'Hold the mic: ask about today, or ask WIM-Z for a treat or a photo.'**
+  /// **'Hold the mic and speak a command or a question — WIM-Z answers out loud.'**
   String get talkHint;
 
   /// No description provided for @talkRecording.

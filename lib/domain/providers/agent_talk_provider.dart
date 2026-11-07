@@ -34,6 +34,9 @@ class AgentTalkState {
   /// Relay has no voice-agent route (404) — hide the button's promise.
   final bool unsupported;
 
+  /// When the last reply arrived (Home banner lingers briefly after it).
+  final DateTime? replyAt;
+
   const AgentTalkState({
     this.phase = AgentTalkPhase.idle,
     this.elapsedMs = 0,
@@ -43,6 +46,7 @@ class AgentTalkState {
     this.toolsUsed = const [],
     this.error,
     this.unsupported = false,
+    this.replyAt,
   });
 
   bool get isRecording => phase == AgentTalkPhase.recording;
@@ -58,6 +62,7 @@ class AgentTalkState {
     String? error,
     bool clearError = false,
     bool? unsupported,
+    DateTime? replyAt,
   }) =>
       AgentTalkState(
         phase: phase ?? this.phase,
@@ -68,6 +73,7 @@ class AgentTalkState {
         toolsUsed: toolsUsed ?? this.toolsUsed,
         error: clearError ? null : (error ?? this.error),
         unsupported: unsupported ?? this.unsupported,
+        replyAt: replyAt ?? this.replyAt,
       );
 }
 
@@ -207,6 +213,7 @@ class AgentTalkNotifier extends StateNotifier<AgentTalkState> {
       toolsUsed: reply.toolsUsed,
       phase: AgentTalkPhase.idle,
       clearError: true,
+      replyAt: DateTime.now(),
     );
 
     final url = _absolutize(reply.audioUrl);
