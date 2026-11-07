@@ -220,7 +220,12 @@ class _ScheduleCard extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final dog = ref.watch(dogProfileProvider(schedule.dogId));
-    final isActive = schedule.enabled && isGlobalEnabled;
+    // §3: a row the robot says will not fire is greyed out like a paused one.
+    final isActive =
+        schedule.enabled && isGlobalEnabled && !schedule.willNotFire;
+    final duration =
+        schedule.isModeMission ? schedule.localizedDuration(context.l10n) : null;
+    final nextRun = schedule.localizedNextRun(context.l10n);
 
     return Dismissible(
       key: Key(schedule.id),
@@ -260,7 +265,11 @@ class _ScheduleCard extends ConsumerWidget {
       child: Card(
         margin: const EdgeInsets.only(bottom: 12),
         child: InkWell(
-          onTap: () => context.push('/scheduler/${schedule.id}'),
+          // Assistant-made entries (and mode entries) have no editable
+          // mission/stages in the legacy editor; delete is via swipe.
+          onTap: schedule.isFromAssistant || schedule.isModeMission
+              ? null
+              : () => context.push('/scheduler/${schedule.id}'),
           borderRadius: BorderRadius.circular(12),
           child: Padding(
             padding: const EdgeInsets.all(16),
@@ -355,16 +364,22 @@ class _ScheduleCard extends ConsumerWidget {
                             color: AppTheme.textTertiary,
                           ),
                           const SizedBox(width: 4),
-                          Text(
-                            schedule.localizedDescription(context.l10n),
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: AppTheme.textTertiary,
+                          Expanded(
+                            child: Text(
+                              duration == null
+                                  ? schedule.localizedDescription(context.l10n)
+                                  : '${schedule.localizedDescription(context.l10n)} · $duration',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: AppTheme.textTertiary,
+                              ),
                             ),
                           ),
                         ],
                       ),
-                      if (schedule.nextRunDisplay != null) ...[
+                      if (nextRun != null) ...[
                         const SizedBox(height: 2),
                         Row(
                           children: [
@@ -375,10 +390,34 @@ class _ScheduleCard extends ConsumerWidget {
                             ),
                             const SizedBox(width: 4),
                             Text(
-                              context.l10n.schedulerNextRun(schedule.nextRunDisplay!),
+                              context.l10n.schedulerNextRun(nextRun),
                               style: TextStyle(
                                 fontSize: 12,
                                 color: isActive ? AppTheme.accent : AppTheme.textTertiary,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ] else if (schedule.willNotFire) ...[
+                        const SizedBox(height: 2),
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Icon(
+                              Icons.info_outline,
+                              size: 14,
+                              color: AppTheme.textTertiary,
+                            ),
+                            const SizedBox(width: 4),
+                            Expanded(
+                              child: Text(
+                                schedule.reason!,
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  color: AppTheme.textTertiary,
+                                ),
                               ),
                             ),
                           ],

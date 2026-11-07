@@ -30,6 +30,11 @@ _$MissionScheduleImpl _$$MissionScheduleImplFromJson(
           : DateTime.parse(json['updated_at'] as String),
       missionType: json['mission_type'] as String?,
       source: json['source'] as String?,
+      kind: json['kind'] as String?,
+      missionId: json['mission_id'] as String?,
+      durationS: (json['duration_s'] as num?)?.toInt(),
+      nextFireAt: json['next_fire_at'] as String?,
+      reason: json['reason'] as String?,
     );
 
 Map<String, dynamic> _$$MissionScheduleImplToJson(
@@ -49,6 +54,11 @@ Map<String, dynamic> _$$MissionScheduleImplToJson(
       'updated_at': instance.updatedAt?.toIso8601String(),
       'mission_type': instance.missionType,
       'source': instance.source,
+      'kind': instance.kind,
+      'mission_id': instance.missionId,
+      'duration_s': instance.durationS,
+      'next_fire_at': instance.nextFireAt,
+      'reason': instance.reason,
     };
 
 const _$ScheduleTypeEnumMap = {

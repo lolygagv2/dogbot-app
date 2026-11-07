@@ -70,6 +70,24 @@ mixin _$MissionSchedule {
   String? get missionType => throw _privateConstructorUsedError;
   String? get source => throw _privateConstructorUsedError;
 
+  /// "mode" for Silent Guardian / Coach entries, else a training mission.
+  String? get kind => throw _privateConstructorUsedError;
+
+  /// Relay's mission id (`m_…`) behind this robot schedule row.
+  @JsonKey(name: 'mission_id')
+  String? get missionId => throw _privateConstructorUsedError;
+
+  /// How long a mode entry keeps the robot in that mode (up to 12 h).
+  @JsonKey(name: 'duration_s')
+  int? get durationS => throw _privateConstructorUsedError;
+
+  /// Robot's next fire time (ISO-8601 with offset). Null = will not fire.
+  @JsonKey(name: 'next_fire_at')
+  String? get nextFireAt => throw _privateConstructorUsedError;
+
+  /// Why it will not fire ("disabled", "no mission program for type 'spin'").
+  String? get reason => throw _privateConstructorUsedError;
+
   /// Serializes this MissionSchedule to a JSON map.
   Map<String, dynamic> toJson() => throw _privateConstructorUsedError;
 
@@ -100,7 +118,12 @@ abstract class $MissionScheduleCopyWith<$Res> {
       @JsonKey(name: 'created_at') DateTime? createdAt,
       @JsonKey(name: 'updated_at') DateTime? updatedAt,
       @JsonKey(name: 'mission_type') String? missionType,
-      String? source});
+      String? source,
+      String? kind,
+      @JsonKey(name: 'mission_id') String? missionId,
+      @JsonKey(name: 'duration_s') int? durationS,
+      @JsonKey(name: 'next_fire_at') String? nextFireAt,
+      String? reason});
 }
 
 /// @nodoc
@@ -132,6 +155,11 @@ class _$MissionScheduleCopyWithImpl<$Res, $Val extends MissionSchedule>
     Object? updatedAt = freezed,
     Object? missionType = freezed,
     Object? source = freezed,
+    Object? kind = freezed,
+    Object? missionId = freezed,
+    Object? durationS = freezed,
+    Object? nextFireAt = freezed,
+    Object? reason = freezed,
   }) {
     return _then(_value.copyWith(
       id: null == id
@@ -190,6 +218,26 @@ class _$MissionScheduleCopyWithImpl<$Res, $Val extends MissionSchedule>
           ? _value.source
           : source // ignore: cast_nullable_to_non_nullable
               as String?,
+      kind: freezed == kind
+          ? _value.kind
+          : kind // ignore: cast_nullable_to_non_nullable
+              as String?,
+      missionId: freezed == missionId
+          ? _value.missionId
+          : missionId // ignore: cast_nullable_to_non_nullable
+              as String?,
+      durationS: freezed == durationS
+          ? _value.durationS
+          : durationS // ignore: cast_nullable_to_non_nullable
+              as int?,
+      nextFireAt: freezed == nextFireAt
+          ? _value.nextFireAt
+          : nextFireAt // ignore: cast_nullable_to_non_nullable
+              as String?,
+      reason: freezed == reason
+          ? _value.reason
+          : reason // ignore: cast_nullable_to_non_nullable
+              as String?,
     ) as $Val);
   }
 }
@@ -216,7 +264,12 @@ abstract class _$$MissionScheduleImplCopyWith<$Res>
       @JsonKey(name: 'created_at') DateTime? createdAt,
       @JsonKey(name: 'updated_at') DateTime? updatedAt,
       @JsonKey(name: 'mission_type') String? missionType,
-      String? source});
+      String? source,
+      String? kind,
+      @JsonKey(name: 'mission_id') String? missionId,
+      @JsonKey(name: 'duration_s') int? durationS,
+      @JsonKey(name: 'next_fire_at') String? nextFireAt,
+      String? reason});
 }
 
 /// @nodoc
@@ -246,6 +299,11 @@ class __$$MissionScheduleImplCopyWithImpl<$Res>
     Object? updatedAt = freezed,
     Object? missionType = freezed,
     Object? source = freezed,
+    Object? kind = freezed,
+    Object? missionId = freezed,
+    Object? durationS = freezed,
+    Object? nextFireAt = freezed,
+    Object? reason = freezed,
   }) {
     return _then(_$MissionScheduleImpl(
       id: null == id
@@ -304,6 +362,26 @@ class __$$MissionScheduleImplCopyWithImpl<$Res>
           ? _value.source
           : source // ignore: cast_nullable_to_non_nullable
               as String?,
+      kind: freezed == kind
+          ? _value.kind
+          : kind // ignore: cast_nullable_to_non_nullable
+              as String?,
+      missionId: freezed == missionId
+          ? _value.missionId
+          : missionId // ignore: cast_nullable_to_non_nullable
+              as String?,
+      durationS: freezed == durationS
+          ? _value.durationS
+          : durationS // ignore: cast_nullable_to_non_nullable
+              as int?,
+      nextFireAt: freezed == nextFireAt
+          ? _value.nextFireAt
+          : nextFireAt // ignore: cast_nullable_to_non_nullable
+              as String?,
+      reason: freezed == reason
+          ? _value.reason
+          : reason // ignore: cast_nullable_to_non_nullable
+              as String?,
     ));
   }
 }
@@ -325,7 +403,12 @@ class _$MissionScheduleImpl extends _MissionSchedule {
       @JsonKey(name: 'created_at') this.createdAt,
       @JsonKey(name: 'updated_at') this.updatedAt,
       @JsonKey(name: 'mission_type') this.missionType,
-      this.source})
+      this.source,
+      this.kind,
+      @JsonKey(name: 'mission_id') this.missionId,
+      @JsonKey(name: 'duration_s') this.durationS,
+      @JsonKey(name: 'next_fire_at') this.nextFireAt,
+      this.reason})
       : _daysOfWeek = daysOfWeek,
         super._();
 
@@ -405,9 +488,32 @@ class _$MissionScheduleImpl extends _MissionSchedule {
   @override
   final String? source;
 
+  /// "mode" for Silent Guardian / Coach entries, else a training mission.
+  @override
+  final String? kind;
+
+  /// Relay's mission id (`m_…`) behind this robot schedule row.
+  @override
+  @JsonKey(name: 'mission_id')
+  final String? missionId;
+
+  /// How long a mode entry keeps the robot in that mode (up to 12 h).
+  @override
+  @JsonKey(name: 'duration_s')
+  final int? durationS;
+
+  /// Robot's next fire time (ISO-8601 with offset). Null = will not fire.
+  @override
+  @JsonKey(name: 'next_fire_at')
+  final String? nextFireAt;
+
+  /// Why it will not fire ("disabled", "no mission program for type 'spin'").
+  @override
+  final String? reason;
+
   @override
   String toString() {
-    return 'MissionSchedule(id: $id, missionName: $missionName, dogId: $dogId, name: $name, type: $type, startTime: $startTime, endTime: $endTime, daysOfWeek: $daysOfWeek, enabled: $enabled, cooldownHours: $cooldownHours, createdAt: $createdAt, updatedAt: $updatedAt, missionType: $missionType, source: $source)';
+    return 'MissionSchedule(id: $id, missionName: $missionName, dogId: $dogId, name: $name, type: $type, startTime: $startTime, endTime: $endTime, daysOfWeek: $daysOfWeek, enabled: $enabled, cooldownHours: $cooldownHours, createdAt: $createdAt, updatedAt: $updatedAt, missionType: $missionType, source: $source, kind: $kind, missionId: $missionId, durationS: $durationS, nextFireAt: $nextFireAt, reason: $reason)';
   }
 
   @override
@@ -435,27 +541,41 @@ class _$MissionScheduleImpl extends _MissionSchedule {
                 other.updatedAt == updatedAt) &&
             (identical(other.missionType, missionType) ||
                 other.missionType == missionType) &&
-            (identical(other.source, source) || other.source == source));
+            (identical(other.source, source) || other.source == source) &&
+            (identical(other.kind, kind) || other.kind == kind) &&
+            (identical(other.missionId, missionId) ||
+                other.missionId == missionId) &&
+            (identical(other.durationS, durationS) ||
+                other.durationS == durationS) &&
+            (identical(other.nextFireAt, nextFireAt) ||
+                other.nextFireAt == nextFireAt) &&
+            (identical(other.reason, reason) || other.reason == reason));
   }
 
   @JsonKey(includeFromJson: false, includeToJson: false)
   @override
-  int get hashCode => Object.hash(
-      runtimeType,
-      id,
-      missionName,
-      dogId,
-      name,
-      type,
-      startTime,
-      endTime,
-      const DeepCollectionEquality().hash(_daysOfWeek),
-      enabled,
-      cooldownHours,
-      createdAt,
-      updatedAt,
-      missionType,
-      source);
+  int get hashCode => Object.hashAll([
+        runtimeType,
+        id,
+        missionName,
+        dogId,
+        name,
+        type,
+        startTime,
+        endTime,
+        const DeepCollectionEquality().hash(_daysOfWeek),
+        enabled,
+        cooldownHours,
+        createdAt,
+        updatedAt,
+        missionType,
+        source,
+        kind,
+        missionId,
+        durationS,
+        nextFireAt,
+        reason
+      ]);
 
   /// Create a copy of MissionSchedule
   /// with the given fields replaced by the non-null parameter values.
@@ -489,7 +609,12 @@ abstract class _MissionSchedule extends MissionSchedule {
       @JsonKey(name: 'created_at') final DateTime? createdAt,
       @JsonKey(name: 'updated_at') final DateTime? updatedAt,
       @JsonKey(name: 'mission_type') final String? missionType,
-      final String? source}) = _$MissionScheduleImpl;
+      final String? source,
+      final String? kind,
+      @JsonKey(name: 'mission_id') final String? missionId,
+      @JsonKey(name: 'duration_s') final int? durationS,
+      @JsonKey(name: 'next_fire_at') final String? nextFireAt,
+      final String? reason}) = _$MissionScheduleImpl;
   const _MissionSchedule._() : super._();
 
   factory _MissionSchedule.fromJson(Map<String, dynamic> json) =
@@ -558,6 +683,29 @@ abstract class _MissionSchedule extends MissionSchedule {
   String? get missionType;
   @override
   String? get source;
+
+  /// "mode" for Silent Guardian / Coach entries, else a training mission.
+  @override
+  String? get kind;
+
+  /// Relay's mission id (`m_…`) behind this robot schedule row.
+  @override
+  @JsonKey(name: 'mission_id')
+  String? get missionId;
+
+  /// How long a mode entry keeps the robot in that mode (up to 12 h).
+  @override
+  @JsonKey(name: 'duration_s')
+  int? get durationS;
+
+  /// Robot's next fire time (ISO-8601 with offset). Null = will not fire.
+  @override
+  @JsonKey(name: 'next_fire_at')
+  String? get nextFireAt;
+
+  /// Why it will not fire ("disabled", "no mission program for type 'spin'").
+  @override
+  String? get reason;
 
   /// Create a copy of MissionSchedule
   /// with the given fields replaced by the non-null parameter values.

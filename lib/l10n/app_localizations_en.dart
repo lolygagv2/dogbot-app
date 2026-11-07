@@ -4306,4 +4306,34 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get schedulerByAssistant => 'Scheduled by WIM-Z assistant';
+
+  @override
+  String schedulerNextToday(String time) {
+    return 'today $time';
+  }
+
+  @override
+  String schedulerNextTomorrow(String time) {
+    return 'tomorrow $time';
+  }
+
+  @override
+  String schedulerNextOn(String day, String time) {
+    return '$day $time';
+  }
+
+  @override
+  String schedulerDurationMinutes(int minutes) {
+    return '$minutes min';
+  }
+
+  @override
+  String schedulerDurationHours(int hours) {
+    return '$hours h';
+  }
+
+  @override
+  String schedulerDurationHoursMinutes(int hours, int minutes) {
+    return '$hours h $minutes min';
+  }
 }

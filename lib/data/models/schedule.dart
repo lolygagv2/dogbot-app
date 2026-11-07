@@ -83,11 +83,35 @@ class MissionSchedule with _$MissionSchedule {
     /// silent_guardian / coach) and `source: "relay_settings"`.
     @JsonKey(name: 'mission_type') String? missionType,
     String? source,
+    /// "mode" for Silent Guardian / Coach entries, else a training mission.
+    String? kind,
+    /// Relay's mission id (`m_…`) behind this robot schedule row.
+    @JsonKey(name: 'mission_id') String? missionId,
+    /// How long a mode entry keeps the robot in that mode (up to 12 h).
+    @JsonKey(name: 'duration_s') int? durationS,
+    /// Robot's next fire time (ISO-8601 with offset). Null = will not fire.
+    @JsonKey(name: 'next_fire_at') String? nextFireAt,
+    /// Why it will not fire ("disabled", "no mission program for type 'spin'").
+    String? reason,
   }) = _MissionSchedule;
 
   /// silent_guardian / coach: the "mission" puts the robot in a mode.
   bool get isModeMission =>
-      missionType == 'silent_guardian' || missionType == 'coach';
+      kind == 'mode' ||
+      missionType == 'silent_guardian' ||
+      missionType == 'coach';
+
+  /// Parsed [nextFireAt] in the phone's local time, or null.
+  DateTime? get nextFireAtLocal {
+    final raw = nextFireAt;
+    if (raw == null || raw.isEmpty) return null;
+    return DateTime.tryParse(raw)?.toLocal();
+  }
+
+  /// Relay brief 2026-11-07 §3: no next run and the robot gave a reason —
+  /// render greyed out with that reason.
+  bool get willNotFire =>
+      nextFireAtLocal == null && (reason?.isNotEmpty ?? false);
 
   /// Scheduled by Claude / the voice agent through the relay.
   bool get isFromAssistant => source == 'relay_settings';
@@ -133,6 +157,11 @@ class MissionSchedule with _$MissionSchedule {
       updatedAt: DateTime.tryParse(j['updated_at']?.toString() ?? ''),
       missionType: missionType,
       source: j['source']?.toString(),
+      kind: j['kind']?.toString(),
+      missionId: j['mission_id']?.toString(),
+      durationS: (j['duration_s'] as num?)?.toInt(),
+      nextFireAt: j['next_fire_at']?.toString(),
+      reason: j['reason']?.toString(),
     );
   }
 

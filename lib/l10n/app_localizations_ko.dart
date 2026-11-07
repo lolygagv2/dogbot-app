@@ -4159,4 +4159,34 @@ class AppLocalizationsKo extends AppLocalizations {
 
   @override
   String get schedulerByAssistant => 'WIM-Z 어시스턴트가 예약함';
+
+  @override
+  String schedulerNextToday(String time) {
+    return '오늘 $time';
+  }
+
+  @override
+  String schedulerNextTomorrow(String time) {
+    return '내일 $time';
+  }
+
+  @override
+  String schedulerNextOn(String day, String time) {
+    return '$day $time';
+  }
+
+  @override
+  String schedulerDurationMinutes(int minutes) {
+    return '$minutes분';
+  }
+
+  @override
+  String schedulerDurationHours(int hours) {
+    return '$hours시간';
+  }
+
+  @override
+  String schedulerDurationHoursMinutes(int hours, int minutes) {
+    return '$hours시간 $minutes분';
+  }
 }

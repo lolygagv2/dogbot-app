@@ -645,6 +645,35 @@ extension MissionScheduleL10n on MissionSchedule {
     return missionIdDisplayName(l, missionType ?? missionName);
   }
 
+  /// "30 min" / "2 h" / "1 h 30 min" for a mode entry's duration_s.
+  String? localizedDuration(AppLocalizations l) {
+    final secs = durationS;
+    if (secs == null || secs <= 0) return null;
+    final mins = (secs / 60).round();
+    final h = mins ~/ 60, m = mins % 60;
+    if (h == 0) return l.schedulerDurationMinutes(m);
+    if (m == 0) return l.schedulerDurationHours(h);
+    return l.schedulerDurationHoursMinutes(h, m);
+  }
+
+  /// Relay brief 2026-11-07 §3: "today 3:00 AM" / "tomorrow 3:00 AM" /
+  /// "Mon 3:00 AM" from the robot's next_fire_at. Null when it won't fire.
+  String? localizedNextRun(AppLocalizations l, {DateTime? now}) {
+    final at = nextFireAtLocal;
+    if (at == null) return null;
+    final n = now ?? DateTime.now();
+    final time = DateFormat.jm(l.localeName).format(at);
+    final today = DateTime(n.year, n.month, n.day);
+    final day = DateTime(at.year, at.month, at.day);
+    final diff = day.difference(today).inDays;
+    if (diff == 0) return l.schedulerNextToday(time);
+    if (diff == 1) return l.schedulerNextTomorrow(time);
+    final dayLabel = diff < 7
+        ? DateFormat.E(l.localeName).format(at)
+        : DateFormat.MMMd(l.localeName).format(at);
+    return l.schedulerNextOn(dayLabel, time);
+  }
+
   /// Locale-aware start time (e.g. "9:00 AM" / "오전 9:00").
   String localizedTime(AppLocalizations l) {
     final t = DateTime(2000, 1, 1, hour, minute);

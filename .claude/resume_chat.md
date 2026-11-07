@@ -19,7 +19,12 @@ relay_settings entries into its list. No app consumer of the `missions` setting 
 instead of re-adding; in-flight guard = one delete per tap. Reply:
 `.claude/APP_REPLY_TO_RELAY_2026-11-07_schedules.md`. Tests 100 green (+1 stock template fail).
 
-**Next:** device pass — B172 photo tests, B173 icon, B174: reconnect connector, agent
+**B175 (relay brief #2 "schedule list (AI-made schedules)"):** `kind`/`mission_id`/`duration_s`/
+`next_fire_at`/`reason` on MissionSchedule; mode rows show duration; "Next: today/tomorrow/Mon
+3:00 AM" from next_fire_at; null + reason → greyed with reason; mode/assistant rows don't open
+the legacy editor; `GET /missions` call removed (404); drafts REST hydrate removed (§8).
+
+**Next:** device pass — B172 photo tests, B173 icon, B174/B175: reconnect connector, agent
 `schedule_mission` for Bezik while Scheduler open → card appears (live or on refresh), swipe-delete
 once → gone and stays gone; `cancel_mission` from the agent → card disappears on refresh.
 

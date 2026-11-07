@@ -5,10 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 
 import '../../core/network/websocket_client.dart';
-import '../../core/services/local_connection_service.dart';
-import '../../data/datasources/robot_api.dart';
 import '../../data/models/mission.dart';
-import 'auth_provider.dart';
 import 'dog_profiles_provider.dart';
 import '../../l10n/l10n.dart';
 import 'l10n_provider.dart';
@@ -368,60 +365,15 @@ class MissionsNotifier extends StateNotifier<MissionsState> {
     _loadMissions();
   }
 
-  /// Load missions from server with offline fallback.
-  /// Skips API call in local mode (no relay) or when not authenticated.
+  /// Load the mission catalog. Relay brief 2026-11-07 §7: `GET /missions`
+  /// no longer exists on the relay (404 — 11 calls in two days), and
+  /// schedules come from the robot's get_schedules. The catalog shown in the
+  /// Missions screen and the schedule editor is the cached/predefined one.
   Future<void> _loadMissions() async {
     if (_isLoading) return;
     _isLoading = true;
-
-    // Skip relay API call in local mode — use predefined/cached missions
-    final isLocal = _ref.read(localConnectionProvider).isConnected;
-    if (isLocal) {
-      print('Missions: Local mode — using predefined/cached missions');
-      await _loadCachedMissions();
-      _isLoading = false;
-      return;
-    }
-
-    final token = _ref.read(authTokenProvider);
-    if (token == null) {
-      // Not logged in — use predefined/cached missions
-      await _loadCachedMissions();
-      _isLoading = false;
-      return;
-    }
-
-    try {
-      final api = _ref.read(robotApiProvider);
-      final missions = await api.getMissions(token);
-
-      if (missions.isNotEmpty) {
-        state = state.copyWith(missions: missions);
-        // Cache for offline use
-        await _cacheMissions(missions);
-        print('Missions: Loaded ${missions.length} from server');
-      } else {
-        // Server returned empty, try cache
-        await _loadCachedMissions();
-      }
-    } catch (e) {
-      print('Missions: Failed to load from server: $e');
-      // Fallback to cache
-      await _loadCachedMissions();
-    }
-
+    await _loadCachedMissions();
     _isLoading = false;
-  }
-
-  /// Cache missions for offline fallback
-  Future<void> _cacheMissions(List<Mission> missions) async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      final json = jsonEncode(missions.map((m) => m.toJson()).toList());
-      await prefs.setString(_missionsCacheKey, json);
-    } catch (e) {
-      print('Missions: Failed to cache: $e');
-    }
   }
 
   /// Load missions from local cache

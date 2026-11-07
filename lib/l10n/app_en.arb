@@ -2518,5 +2518,17 @@
   "@galleryAssistantPhotoFor": {"placeholders": {"dogName": {"type": "String"}}},
   "schedulerModeSilentGuardian": "Silent Guardian",
   "schedulerModeCoach": "Coach mode",
-  "schedulerByAssistant": "Scheduled by WIM-Z assistant"
+  "schedulerByAssistant": "Scheduled by WIM-Z assistant",
+  "schedulerNextToday": "today {time}",
+  "@schedulerNextToday": {"placeholders": {"time": {"type": "String"}}},
+  "schedulerNextTomorrow": "tomorrow {time}",
+  "@schedulerNextTomorrow": {"placeholders": {"time": {"type": "String"}}},
+  "schedulerNextOn": "{day} {time}",
+  "@schedulerNextOn": {"placeholders": {"day": {"type": "String"}, "time": {"type": "String"}}},
+  "schedulerDurationMinutes": "{minutes} min",
+  "@schedulerDurationMinutes": {"placeholders": {"minutes": {"type": "int"}}},
+  "schedulerDurationHours": "{hours} h",
+  "@schedulerDurationHours": {"placeholders": {"hours": {"type": "int"}}},
+  "schedulerDurationHoursMinutes": "{hours} h {minutes} min",
+  "@schedulerDurationHoursMinutes": {"placeholders": {"hours": {"type": "int"}, "minutes": {"type": "int"}}}
 }

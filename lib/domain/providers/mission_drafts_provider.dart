@@ -85,14 +85,10 @@ class MissionDraftsNotifier extends StateNotifier<List<MissionDraftEntry>> {
           break;
       }
     });
-    _ref.listen<String?>(
-      selectedDogProvider.select((d) => d?.id),
-      (prev, next) {
-        if (next != null && prev != next) refresh();
-      },
-    );
-    // Hydrate once the provider is first used (async; never throws).
-    Future.microtask(refresh);
+    // Relay brief 2026-11-07 §8: the draft/approval flow is gone — AI
+    // schedules apply right away and show up via get_schedules. No REST
+    // hydrate of /missions/drafts any more; the WS listener above stays so
+    // any legacy tile still resolves its status.
   }
 
   static DraftStatus _statusFromWire(String? s) => switch (s) {

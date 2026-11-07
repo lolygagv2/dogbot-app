@@ -2406,5 +2406,17 @@
   "@galleryAssistantPhotoFor": {"placeholders": {"dogName": {"type": "String"}}},
   "schedulerModeSilentGuardian": "사일런트 가디언",
   "schedulerModeCoach": "코치 모드",
-  "schedulerByAssistant": "WIM-Z 어시스턴트가 예약함"
+  "schedulerByAssistant": "WIM-Z 어시스턴트가 예약함",
+  "schedulerNextToday": "오늘 {time}",
+  "@schedulerNextToday": {"placeholders": {"time": {"type": "String"}}},
+  "schedulerNextTomorrow": "내일 {time}",
+  "@schedulerNextTomorrow": {"placeholders": {"time": {"type": "String"}}},
+  "schedulerNextOn": "{day} {time}",
+  "@schedulerNextOn": {"placeholders": {"day": {"type": "String"}, "time": {"type": "String"}}},
+  "schedulerDurationMinutes": "{minutes}분",
+  "@schedulerDurationMinutes": {"placeholders": {"minutes": {"type": "int"}}},
+  "schedulerDurationHours": "{hours}시간",
+  "@schedulerDurationHours": {"placeholders": {"hours": {"type": "int"}}},
+  "schedulerDurationHoursMinutes": "{hours}시간 {minutes}분",
+  "@schedulerDurationHoursMinutes": {"placeholders": {"hours": {"type": "int"}, "minutes": {"type": "int"}}}
 }

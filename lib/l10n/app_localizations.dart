@@ -7603,6 +7603,42 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Scheduled by WIM-Z assistant'**
   String get schedulerByAssistant;
+
+  /// No description provided for @schedulerNextToday.
+  ///
+  /// In en, this message translates to:
+  /// **'today {time}'**
+  String schedulerNextToday(String time);
+
+  /// No description provided for @schedulerNextTomorrow.
+  ///
+  /// In en, this message translates to:
+  /// **'tomorrow {time}'**
+  String schedulerNextTomorrow(String time);
+
+  /// No description provided for @schedulerNextOn.
+  ///
+  /// In en, this message translates to:
+  /// **'{day} {time}'**
+  String schedulerNextOn(String day, String time);
+
+  /// No description provided for @schedulerDurationMinutes.
+  ///
+  /// In en, this message translates to:
+  /// **'{minutes} min'**
+  String schedulerDurationMinutes(int minutes);
+
+  /// No description provided for @schedulerDurationHours.
+  ///
+  /// In en, this message translates to:
+  /// **'{hours} h'**
+  String schedulerDurationHours(int hours);
+
+  /// No description provided for @schedulerDurationHoursMinutes.
+  ///
+  /// In en, this message translates to:
+  /// **'{hours} h {minutes} min'**
+  String schedulerDurationHoursMinutes(int hours, int minutes);
 }
 
 class _AppLocalizationsDelegate
