@@ -4064,4 +4064,7 @@ class AppLocalizationsKo extends AppLocalizations {
 
   @override
   String get robotCardManage => '관리';
+
+  @override
+  String get dogNameYourDog => '강아지 이름 지어주기';
 }

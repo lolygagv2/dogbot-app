@@ -1,5 +1,20 @@
 # WIM-Z Resume Chat Log
 
+## Session: 2026-11-07 — Build 168 (relay: owners, robots and dogs independent)
+**Goal:** Apply the relay change brief (robots pair to the owner and serve every dog;
+`PUT /api/user/devices/{id}/dogs` retired → 410; `robot_online` = any robot; placeholder dog).
+**Status:** Shipped B168. Items 1–3 needed no app change (no assignment screen, no call to the
+retired route, dog status endpoint unused). Item 4 implemented.
+
+- `DogProfile.isPlaceholder` (freezed regen) parsed from `is_placeholder` / `isPlaceholder`.
+- "Name your dog" prompt: button on the dog profile header, subtitle on the dogs list tile and
+  the home dog picker (→ edit screen). l10n `dogNameYourDog` en + ko.
+- `updateProfile` renames via `PUT /api/dogs/{id}` (new `RobotApi.updateDog`), POST-upsert
+  fallback when the relay lacks the route; the placeholder flag clears locally on rename.
+- Memory: robots-dogs-independent.
+
+---
+
 ## Session: 2026-11-06 (later) — Build 167 (pairing optional, robot card on profile)
 **Goal:** Product rule relayed by Morgan: pairing is optional; show "No robot paired" as a
 state on the profile with a Pair button; never require a dog to finish robot setup.

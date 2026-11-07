@@ -138,6 +138,21 @@ class _DogHeader extends StatelessWidget {
             color: AppTheme.textSecondary,
           ),
         ),
+        // Relay 2026-11-07: placeholder dog created when a robot was paired
+        // before any dog existed — prompt for a real name (same id/history).
+        if (profile.isPlaceholder) ...[
+          const SizedBox(height: 10),
+          FilledButton.icon(
+            style: FilledButton.styleFrom(
+              backgroundColor: AppTheme.primary,
+              foregroundColor: Colors.black,
+              visualDensity: VisualDensity.compact,
+            ),
+            onPressed: () => context.push('/dog/${profile.id}/edit'),
+            icon: const Icon(Icons.drive_file_rename_outline, size: 18),
+            label: Text(context.l10n.dogNameYourDog),
+          ),
+        ],
       ],
     );
   }
@@ -888,10 +903,17 @@ class _DogListTile extends StatelessWidget {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      _buildSubtitle(context),
+                      profile.isPlaceholder
+                          ? context.l10n.dogNameYourDog
+                          : _buildSubtitle(context),
                       style: TextStyle(
                         fontSize: 13,
-                        color: AppTheme.textSecondary,
+                        color: profile.isPlaceholder
+                            ? AppTheme.primary
+                            : AppTheme.textSecondary,
+                        fontWeight: profile.isPlaceholder
+                            ? FontWeight.w600
+                            : FontWeight.normal,
                       ),
                     ),
                   ],

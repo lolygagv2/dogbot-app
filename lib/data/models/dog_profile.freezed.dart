@@ -42,7 +42,11 @@ mixin _$DogProfile {
       throw _privateConstructorUsedError; // Build 104: per-dog treats dispensed per reward event. 1 by default;
 // big dogs may need 2-3 to feel rewarded. Clamped to 1-5 in the UI +
 // again in dispense logic.
-  int get treatsPerReward => throw _privateConstructorUsedError;
+  int get treatsPerReward =>
+      throw _privateConstructorUsedError; // Relay 2026-11-07: when an owner with no dogs pairs a robot, the relay
+// creates a dog named after it ("Robot 05's dog") flagged
+// isPlaceholder. The app shows "Name your dog"; renaming keeps the id.
+  bool get isPlaceholder => throw _privateConstructorUsedError;
 
   /// Serializes this DogProfile to a JSON map.
   Map<String, dynamic> toJson() => throw _privateConstructorUsedError;
@@ -76,7 +80,8 @@ abstract class $DogProfileCopyWith<$Res> {
       DateTime? createdAt,
       DateTime? updatedAt,
       int photoVersion,
-      int treatsPerReward});
+      int treatsPerReward,
+      bool isPlaceholder});
 }
 
 /// @nodoc
@@ -110,6 +115,7 @@ class _$DogProfileCopyWithImpl<$Res, $Val extends DogProfile>
     Object? updatedAt = freezed,
     Object? photoVersion = null,
     Object? treatsPerReward = null,
+    Object? isPlaceholder = null,
   }) {
     return _then(_value.copyWith(
       id: null == id
@@ -176,6 +182,10 @@ class _$DogProfileCopyWithImpl<$Res, $Val extends DogProfile>
           ? _value.treatsPerReward
           : treatsPerReward // ignore: cast_nullable_to_non_nullable
               as int,
+      isPlaceholder: null == isPlaceholder
+          ? _value.isPlaceholder
+          : isPlaceholder // ignore: cast_nullable_to_non_nullable
+              as bool,
     ) as $Val);
   }
 }
@@ -204,7 +214,8 @@ abstract class _$$DogProfileImplCopyWith<$Res>
       DateTime? createdAt,
       DateTime? updatedAt,
       int photoVersion,
-      int treatsPerReward});
+      int treatsPerReward,
+      bool isPlaceholder});
 }
 
 /// @nodoc
@@ -236,6 +247,7 @@ class __$$DogProfileImplCopyWithImpl<$Res>
     Object? updatedAt = freezed,
     Object? photoVersion = null,
     Object? treatsPerReward = null,
+    Object? isPlaceholder = null,
   }) {
     return _then(_$DogProfileImpl(
       id: null == id
@@ -302,6 +314,10 @@ class __$$DogProfileImplCopyWithImpl<$Res>
           ? _value.treatsPerReward
           : treatsPerReward // ignore: cast_nullable_to_non_nullable
               as int,
+      isPlaceholder: null == isPlaceholder
+          ? _value.isPlaceholder
+          : isPlaceholder // ignore: cast_nullable_to_non_nullable
+              as bool,
     ));
   }
 }
@@ -325,7 +341,8 @@ class _$DogProfileImpl implements _DogProfile {
       this.createdAt,
       this.updatedAt,
       this.photoVersion = 0,
-      this.treatsPerReward = 1})
+      this.treatsPerReward = 1,
+      this.isPlaceholder = false})
       : _goals = goals;
 
   factory _$DogProfileImpl.fromJson(Map<String, dynamic> json) =>
@@ -380,10 +397,16 @@ class _$DogProfileImpl implements _DogProfile {
   @override
   @JsonKey()
   final int treatsPerReward;
+// Relay 2026-11-07: when an owner with no dogs pairs a robot, the relay
+// creates a dog named after it ("Robot 05's dog") flagged
+// isPlaceholder. The app shows "Name your dog"; renaming keeps the id.
+  @override
+  @JsonKey()
+  final bool isPlaceholder;
 
   @override
   String toString() {
-    return 'DogProfile(id: $id, name: $name, breed: $breed, photoUrl: $photoUrl, localPhotoPath: $localPhotoPath, birthDate: $birthDate, weight: $weight, notes: $notes, color: $color, arucoMarkerId: $arucoMarkerId, goals: $goals, lastMissionId: $lastMissionId, createdAt: $createdAt, updatedAt: $updatedAt, photoVersion: $photoVersion, treatsPerReward: $treatsPerReward)';
+    return 'DogProfile(id: $id, name: $name, breed: $breed, photoUrl: $photoUrl, localPhotoPath: $localPhotoPath, birthDate: $birthDate, weight: $weight, notes: $notes, color: $color, arucoMarkerId: $arucoMarkerId, goals: $goals, lastMissionId: $lastMissionId, createdAt: $createdAt, updatedAt: $updatedAt, photoVersion: $photoVersion, treatsPerReward: $treatsPerReward, isPlaceholder: $isPlaceholder)';
   }
 
   @override
@@ -415,7 +438,9 @@ class _$DogProfileImpl implements _DogProfile {
             (identical(other.photoVersion, photoVersion) ||
                 other.photoVersion == photoVersion) &&
             (identical(other.treatsPerReward, treatsPerReward) ||
-                other.treatsPerReward == treatsPerReward));
+                other.treatsPerReward == treatsPerReward) &&
+            (identical(other.isPlaceholder, isPlaceholder) ||
+                other.isPlaceholder == isPlaceholder));
   }
 
   @JsonKey(includeFromJson: false, includeToJson: false)
@@ -437,7 +462,8 @@ class _$DogProfileImpl implements _DogProfile {
       createdAt,
       updatedAt,
       photoVersion,
-      treatsPerReward);
+      treatsPerReward,
+      isPlaceholder);
 
   /// Create a copy of DogProfile
   /// with the given fields replaced by the non-null parameter values.
@@ -472,7 +498,8 @@ abstract class _DogProfile implements DogProfile {
       final DateTime? createdAt,
       final DateTime? updatedAt,
       final int photoVersion,
-      final int treatsPerReward}) = _$DogProfileImpl;
+      final int treatsPerReward,
+      final bool isPlaceholder}) = _$DogProfileImpl;
 
   factory _DogProfile.fromJson(Map<String, dynamic> json) =
       _$DogProfileImpl.fromJson;
@@ -514,7 +541,11 @@ abstract class _DogProfile implements DogProfile {
 // big dogs may need 2-3 to feel rewarded. Clamped to 1-5 in the UI +
 // again in dispense logic.
   @override
-  int get treatsPerReward;
+  int get treatsPerReward; // Relay 2026-11-07: when an owner with no dogs pairs a robot, the relay
+// creates a dog named after it ("Robot 05's dog") flagged
+// isPlaceholder. The app shows "Name your dog"; renaming keeps the id.
+  @override
+  bool get isPlaceholder;
 
   /// Create a copy of DogProfile
   /// with the given fields replaced by the non-null parameter values.

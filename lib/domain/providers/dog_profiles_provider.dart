@@ -454,24 +454,35 @@ class DogProfilesNotifier extends StateNotifier<List<DogProfile>> {
 
   /// Update an existing dog profile
   Future<void> updateProfile(DogProfile profile) async {
+    // Relay 2026-11-07: a placeholder dog ("Robot 05's dog") becomes a real
+    // one the moment the owner gives it a name — same id, same history.
+    final before = state.where((p) => p.id == profile.id).firstOrNull;
+    final renamed = before != null && before.name != profile.name;
     // A1: bump updatedAt on every mutation
-    final stamped = profile.copyWith(updatedAt: DateTime.now().toUtc());
+    final stamped = profile.copyWith(
+      updatedAt: DateTime.now().toUtc(),
+      isPlaceholder: profile.isPlaceholder && !renamed,
+    );
     state = state.map((p) {
       if (p.id == stamped.id) return stamped;
       return p;
     }).toList();
     await _saveProfiles();
 
-    // Sync update to relay (skip in local mode — no relay API)
+    // Sync update to relay (skip in local mode — no relay API). PUT keeps
+    // the id (relay 2026-11-07); older relays without the route get the
+    // POST upsert as before.
     final isLocal = _ref.read(localConnectionProvider).isConnected;
     final token = _ref.read(authProvider).token;
     if (!isLocal && token != null) {
       try {
         final api = _ref.read(robotApiProvider);
-        await api.createDog(stamped.toJson(), token);
-        print('DogProfiles: Relay update sync sent for "${stamped.name}"');
+        final put = await api.updateDog(stamped.id, stamped.toJson(), token);
+        if (put == null) await api.createDog(stamped.toJson(), token);
+        connTrace('dogprofiles-update',
+            '"${stamped.name}" via ${put == null ? 'POST upsert' : 'PUT'}${renamed && before.isPlaceholder ? ' (placeholder named)' : ''}');
       } catch (e) {
-        print('DogProfiles: Relay update sync error: $e');
+        connTrace('dogprofiles-update-error', '$e');
       }
     }
 

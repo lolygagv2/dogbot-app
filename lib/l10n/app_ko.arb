@@ -2373,5 +2373,6 @@
   "robotCardNonePaired": "페어링된 로봇 없음",
   "robotCardNoneBody": "페어링은 선택 사항입니다 — 준비되면 언제든 로봇을 페어링하세요.",
   "robotCardPair": "로봇 페어링",
-  "robotCardManage": "관리"
+  "robotCardManage": "관리",
+  "dogNameYourDog": "강아지 이름 지어주기"
 }

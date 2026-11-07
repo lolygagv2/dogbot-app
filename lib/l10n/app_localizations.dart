@@ -7435,6 +7435,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Manage'**
   String get robotCardManage;
+
+  /// No description provided for @dogNameYourDog.
+  ///
+  /// In en, this message translates to:
+  /// **'Name your dog'**
+  String get dogNameYourDog;
 }
 
 class _AppLocalizationsDelegate

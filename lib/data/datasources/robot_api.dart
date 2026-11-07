@@ -66,6 +66,29 @@ class RobotApi {
     }
   }
 
+  /// Relay 2026-11-07: rename/edit an existing dog in place — keeps its id
+  /// and history (the way a placeholder dog gets its real name). Returns
+  /// null when the relay has no PUT route (callers fall back to the upsert).
+  Future<bool?> updateDog(
+      String dogId, Map<String, dynamic> profileJson, String token) async {
+    try {
+      final response = await _dio.put(
+        '${ApiEndpoints.dogs}/$dogId',
+        data: profileJson,
+        options: Options(headers: {'Authorization': 'Bearer $token'}),
+      );
+      return response.statusCode == 200 || response.statusCode == 204;
+    } on DioException catch (e) {
+      final code = e.response?.statusCode;
+      if (code == 404 || code == 405) return null;
+      connTrace('dog-update-error', 'status=$code ${e.message}');
+      return false;
+    } catch (e) {
+      connTrace('dog-update-error', '$e');
+      return false;
+    }
+  }
+
   /// A1: Fetch the authenticated user's dog profiles from the relay.
   /// Used to hydrate the app on a fresh install / new device.
   /// Returns an empty list on any error so callers can fall back to local cache.

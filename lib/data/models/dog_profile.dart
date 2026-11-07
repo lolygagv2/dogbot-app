@@ -50,6 +50,10 @@ class DogProfile with _$DogProfile {
     // big dogs may need 2-3 to feel rewarded. Clamped to 1-5 in the UI +
     // again in dispense logic.
     @Default(1) int treatsPerReward,
+    // Relay 2026-11-07: when an owner with no dogs pairs a robot, the relay
+    // creates a dog named after it ("Robot 05's dog") flagged
+    // isPlaceholder. The app shows "Name your dog"; renaming keeps the id.
+    @Default(false) bool isPlaceholder,
   }) = _DogProfile;
 
   factory DogProfile.fromJson(Map<String, dynamic> json) =>
@@ -90,6 +94,7 @@ class DogProfile with _$DogProfile {
       treatsPerReward:
           ((data['treats_per_reward'] as int?) ?? (data['treatsPerReward'] as int?) ?? 1)
               .clamp(1, 5),
+      isPlaceholder: data['is_placeholder'] == true || data['isPlaceholder'] == true,
     );
   }
 }

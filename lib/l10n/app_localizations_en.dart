@@ -4209,4 +4209,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get robotCardManage => 'Manage';
+
+  @override
+  String get dogNameYourDog => 'Name your dog';
 }

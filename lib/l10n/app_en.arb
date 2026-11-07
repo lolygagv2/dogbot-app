@@ -2485,5 +2485,6 @@
   "robotCardNonePaired": "No robot paired",
   "robotCardNoneBody": "Pairing is optional — pair a robot whenever you're ready.",
   "robotCardPair": "Pair a robot",
-  "robotCardManage": "Manage"
+  "robotCardManage": "Manage",
+  "dogNameYourDog": "Name your dog"
 }

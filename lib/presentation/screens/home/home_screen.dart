@@ -644,11 +644,14 @@ class _DogSelector extends ConsumerWidget {
             ...dogs.map((dog) => ListTile(
                   leading: _DogAvatar(profile: dog, size: 44),
                   title: Text(dog.name),
-                  subtitle: dog.breed != null && dog.breed!.isNotEmpty
-                      ? Text(dog.breed!)
-                      : dog.color != DogColor.mixed
-                          ? Text(dog.color.localizedLabel(context.l10n))
-                          : null,
+                  subtitle: dog.isPlaceholder
+                      ? Text(context.l10n.dogNameYourDog,
+                          style: const TextStyle(color: AppTheme.primary))
+                      : dog.breed != null && dog.breed!.isNotEmpty
+                          ? Text(dog.breed!)
+                          : dog.color != DogColor.mixed
+                              ? Text(dog.color.localizedLabel(context.l10n))
+                              : null,
                   trailing: current?.id == dog.id
                       ? Icon(Icons.check, color: AppTheme.primary)
                       : null,
