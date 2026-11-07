@@ -2392,5 +2392,13 @@
   "@talkErrFailed": {"placeholders": {"error": {"type": "String"}}},
   "talkRefused": "WIM-Z가 거절했습니다: {reason}",
   "@talkRefused": {"placeholders": {"reason": {"type": "String"}}},
-  "talkUnsupported": "이 서버에서는 음성 에이전트를 아직 사용할 수 없습니다"
+  "talkUnsupported": "이 서버에서는 음성 에이전트를 아직 사용할 수 없습니다",
+  "quietHoursTitle": "방해 금지 시간",
+  "quietHoursOff": "꺼짐",
+  "quietHoursStart": "시작",
+  "quietHoursEnd": "종료",
+  "quietHoursHint": "알림, 음악, 음성 에이전트가 조용히 유지됩니다. 어시스턴트는 이 시간을 넓히기만 할 수 있습니다.",
+  "quietHoursUnsupported": "이 서버에서는 아직 사용할 수 없습니다",
+  "quietHoursErrSave": "방해 금지 시간을 저장하지 못했습니다: {error}",
+  "@quietHoursErrSave": {"placeholders": {"error": {"type": "String"}}}
 }

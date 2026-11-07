@@ -4118,4 +4118,28 @@ class AppLocalizationsKo extends AppLocalizations {
 
   @override
   String get talkUnsupported => '이 서버에서는 음성 에이전트를 아직 사용할 수 없습니다';
+
+  @override
+  String get quietHoursTitle => '방해 금지 시간';
+
+  @override
+  String get quietHoursOff => '꺼짐';
+
+  @override
+  String get quietHoursStart => '시작';
+
+  @override
+  String get quietHoursEnd => '종료';
+
+  @override
+  String get quietHoursHint =>
+      '알림, 음악, 음성 에이전트가 조용히 유지됩니다. 어시스턴트는 이 시간을 넓히기만 할 수 있습니다.';
+
+  @override
+  String get quietHoursUnsupported => '이 서버에서는 아직 사용할 수 없습니다';
+
+  @override
+  String quietHoursErrSave(String error) {
+    return '방해 금지 시간을 저장하지 못했습니다: $error';
+  }
 }

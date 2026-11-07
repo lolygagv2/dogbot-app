@@ -16,7 +16,8 @@
 - [x] **B166 (2026-11-06):** re-pointed at the shipped relay routes (dog-scoped `/api/dogs/{dog}/ai/*`, `…/missions/drafts`, `…/sounds`, `/summary/{dog}/today` roll-up shape); kill switch = `revoke_all`; drafts hydrated from the relay list; songs uploaded as sounds of kind `song`; robot-local `/sounds/{group}/{stem}` wired. Reply brief `.claude/APP_REPLY_TO_RELAY_2026-11-06.md`
 - [ ] Relay deploy (Morgan, Lightsail) → device pass: Today card numbers, Connected AI list with a real connector, draft Approve → mission appears in `missions` setting, song upload visible under Sounds
 - [ ] iOS lock-screen image on pushes needs a Notification Service Extension (Xcode target + Codemagic signing) — decision pending
-- [ ] Next round candidates: relay settings screen (quiet_hours / treat_schedule / sg_sensitivity / music_plan), phone-side voice agent (`POST /agent/utterance`), "I'm leaving / I'm back" (departure/arrival)
+- [x] **B167–B170 (2026-11-07):** pairing optional + robot card on profile (B167); placeholder dog "Name your dog" + PUT rename (B168); hold-to-talk voice agent on the dog profile (B169); Quiet hours row in Settings via `/settings/quiet_hours` (B170)
+- [ ] Next round candidates: treat_schedule / sg_sensitivity / music_plan rows (reuse `DogSettingsApi`), "I'm leaving / I'm back" (departure/arrival)
 
 ### OTA robot software updates — app-triggered, safe rollback (added 2026-08-07, DESIGN phase)
 - [x] Contract draft written: `.claude/OTA_UPDATE_CONTRACT_2026-08-07.md` — app/relay/robot slices, bootstrap plan, acceptance tests

@@ -7,12 +7,14 @@ import '../../../domain/providers/auth_provider.dart';
 import '../../../domain/providers/connection_mode_provider.dart';
 import '../../../domain/providers/connection_provider.dart';
 import '../../../domain/providers/device_provider.dart';
+import '../../../domain/providers/dog_profiles_provider.dart';
 import '../../../domain/providers/locale_provider.dart';
 import '../../../domain/providers/ota_update_provider.dart';
 import '../../../domain/providers/paired_devices_provider.dart';
 import '../../../domain/providers/settings_provider.dart';
 import '../../../domain/providers/sounds_provider.dart';
 import '../../../domain/providers/push_to_talk_provider.dart';
+import '../../../domain/providers/quiet_hours_provider.dart';
 import '../../../data/models/telemetry.dart';
 import '../../../domain/providers/telemetry_provider.dart';
 import '../../../domain/providers/video_quality_provider.dart';
@@ -205,6 +207,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           const Divider(),
 
           _SectionHeader(l.settingsSectionSilentGuardian),
+          // Relay-shared quiet hours for the selected dog (brief §2). One
+          // row; start/end pickers unfold beneath it when on. Cloud only.
+          if (!isLocalMode) const _QuietHoursTile(),
           const InterventionLevelSection(),
           const Divider(),
 
@@ -370,6 +375,128 @@ class _LanguageTile extends ConsumerWidget {
         style: TextStyle(color: AppTheme.textTertiary, fontSize: 12),
       ),
       onTap: () => _pick(context, ref),
+    );
+  }
+}
+
+/// "Quiet hours" — GET/PUT /api/dogs/{dog}/settings/quiet_hours
+/// ({enabled, start, end}). Subtitle "Off" when disabled; when on, Start and
+/// End time pickers appear beneath the toggle. No new screen.
+class _QuietHoursTile extends ConsumerStatefulWidget {
+  const _QuietHoursTile();
+
+  @override
+  ConsumerState<_QuietHoursTile> createState() => _QuietHoursTileState();
+}
+
+class _QuietHoursTileState extends ConsumerState<_QuietHoursTile> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final s = ref.read(quietHoursProvider);
+      if (!s.loaded && !s.loading && !s.unsupported) {
+        ref.read(quietHoursProvider.notifier).load();
+      }
+    });
+  }
+
+  Future<void> _pick(bool isStart) async {
+    final s = ref.read(quietHoursProvider);
+    final picked = await showTimePicker(
+      context: context,
+      initialTime: isStart ? s.value.startTime : s.value.endTime,
+      helpText: isStart ? context.l10n.quietHoursStart : context.l10n.quietHoursEnd,
+    );
+    if (picked == null || !mounted) return;
+    final n = ref.read(quietHoursProvider.notifier);
+    await (isStart ? n.setStart(picked) : n.setEnd(picked));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l = context.l10n;
+    final s = ref.watch(quietHoursProvider);
+    final hasDog = ref.watch(selectedDogProvider) != null;
+    final ml = MaterialLocalizations.of(context);
+    final v = s.value;
+
+    if (s.unsupported || !hasDog) {
+      return ListTile(
+        leading: const Icon(Icons.bedtime_outlined, color: AppTheme.textTertiary),
+        title: Text(l.quietHoursTitle),
+        subtitle: Text(
+          hasDog ? l.quietHoursUnsupported : l.aiErrNoDog,
+          style: TextStyle(color: AppTheme.textTertiary, fontSize: 12),
+        ),
+        enabled: false,
+      );
+    }
+
+    final String subtitle;
+    if (s.error != null) {
+      subtitle = s.error!;
+    } else if (s.loading && !s.loaded) {
+      subtitle = l.loading;
+    } else if (!v.enabled) {
+      subtitle = l.quietHoursOff;
+    } else {
+      subtitle =
+          '${ml.formatTimeOfDay(v.startTime)} – ${ml.formatTimeOfDay(v.endTime)}';
+    }
+
+    return Column(
+      children: [
+        SwitchListTile(
+          secondary: Icon(
+            v.enabled ? Icons.bedtime : Icons.bedtime_outlined,
+            color: v.enabled ? AppTheme.primary : AppTheme.textTertiary,
+          ),
+          title: Text(l.quietHoursTitle),
+          subtitle: Text(
+            subtitle,
+            style: TextStyle(
+              color: s.error != null ? AppTheme.warning : AppTheme.textTertiary,
+              fontSize: 12,
+            ),
+          ),
+          value: v.enabled,
+          activeColor: AppTheme.primary,
+          onChanged: (s.loaded && !s.saving)
+              ? (on) => ref.read(quietHoursProvider.notifier).setEnabled(on)
+              : null,
+        ),
+        if (v.enabled && s.loaded) ...[
+          ListTile(
+            dense: true,
+            contentPadding: const EdgeInsets.only(left: 72, right: 16),
+            title: Text(l.quietHoursStart),
+            trailing: Text(
+              ml.formatTimeOfDay(v.startTime),
+              style: const TextStyle(color: AppTheme.primary, fontSize: 15),
+            ),
+            onTap: s.saving ? null : () => _pick(true),
+          ),
+          ListTile(
+            dense: true,
+            contentPadding: const EdgeInsets.only(left: 72, right: 16),
+            title: Text(l.quietHoursEnd),
+            trailing: Text(
+              ml.formatTimeOfDay(v.endTime),
+              style: const TextStyle(color: AppTheme.primary, fontSize: 15),
+            ),
+            onTap: s.saving ? null : () => _pick(false),
+          ),
+          Padding(
+            padding: const EdgeInsets.only(left: 72, right: 16, bottom: 8),
+            child: Text(
+              l.quietHoursHint,
+              style: TextStyle(color: AppTheme.textTertiary, fontSize: 11),
+            ),
+          ),
+        ],
+      ],
     );
   }
 }

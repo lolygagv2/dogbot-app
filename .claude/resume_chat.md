@@ -1,5 +1,30 @@
 # WIM-Z Resume Chat Log
 
+## Session: 2026-11-07 — Builds 169–170 (voice agent hold-to-talk, quiet hours)
+**Goal:** Two quick notes from Morgan: hold-to-talk on the dog profile (relay voice agent) and a
+Quiet hours row in Settings (relay shared setting).
+**Status:** Both shipped; analyzer clean, 100 tests green. Relay deploy still pending.
+
+### B169 — Talk to WIM-Z (dog profile)
+- `TalkToWimzCard` under the robot card: pointer-down/up hold button, 16 kHz mono WAV, auto-stop
+  30 s, `POST /agent/utterance` (multipart `file` + `dog_id`, JWT). text_in/text_out → agent
+  transcript (dedupe vs the relay's `agent_transcript` echo, same side + text within 20 s) and
+  inline last exchange + refused tools. Reply mp3 → robot `play_sound {url, clip_id, kind: tts}`
+  when the robot is online, else `audioplayers` on the phone. 404 → unsupported caption; local-AP
+  → "needs the cloud connection".
+- New: `data/datasources/agent_api.dart`, `domain/providers/agent_talk_provider.dart`,
+  `widgets/dog_profile/talk_to_wimz_card.dart`; l10n +15.
+
+### B170 — Quiet hours (Settings → Silent Guardian, cloud only)
+- `_QuietHoursTile`: SwitchListTile ("Off" when disabled, "22:00 – 07:00" when on) + Start/End
+  time pickers beneath when on. `GET/PUT /api/dogs/{dog}/settings/quiet_hours` with
+  `expected_version`; 409 → reload + retry once. Reloads on dog switch. No new screen.
+- New: `data/datasources/dog_settings_api.dart` (generic settings row GET/PUT — reuse for
+  treat_schedule / sg_sensitivity / music_plan), `domain/providers/quiet_hours_provider.dart`;
+  l10n +7; tests +7.
+
+---
+
 ## Session: 2026-11-07 — Build 168 (relay: owners, robots and dogs independent)
 **Goal:** Apply the relay change brief (robots pair to the owner and serve every dog;
 `PUT /api/user/devices/{id}/dogs` retired → 410; `robot_online` = any robot; placeholder dog).

@@ -4265,4 +4265,28 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get talkUnsupported =>
       'The voice agent isn\'t available on this server yet';
+
+  @override
+  String get quietHoursTitle => 'Quiet hours';
+
+  @override
+  String get quietHoursOff => 'Off';
+
+  @override
+  String get quietHoursStart => 'Start';
+
+  @override
+  String get quietHoursEnd => 'End';
+
+  @override
+  String get quietHoursHint =>
+      'Pushes, music and the voice agent stay quiet. Assistants can only widen this window.';
+
+  @override
+  String get quietHoursUnsupported => 'Not available on this server yet';
+
+  @override
+  String quietHoursErrSave(String error) {
+    return 'Couldn\'t save quiet hours: $error';
+  }
 }

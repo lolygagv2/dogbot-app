@@ -2504,5 +2504,13 @@
   "@talkErrFailed": {"placeholders": {"error": {"type": "String"}}},
   "talkRefused": "WIM-Z declined: {reason}",
   "@talkRefused": {"placeholders": {"reason": {"type": "String"}}},
-  "talkUnsupported": "The voice agent isn't available on this server yet"
+  "talkUnsupported": "The voice agent isn't available on this server yet",
+  "quietHoursTitle": "Quiet hours",
+  "quietHoursOff": "Off",
+  "quietHoursStart": "Start",
+  "quietHoursEnd": "End",
+  "quietHoursHint": "Pushes, music and the voice agent stay quiet. Assistants can only widen this window.",
+  "quietHoursUnsupported": "Not available on this server yet",
+  "quietHoursErrSave": "Couldn't save quiet hours: {error}",
+  "@quietHoursErrSave": {"placeholders": {"error": {"type": "String"}}}
 }

@@ -7531,6 +7531,48 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'The voice agent isn\'t available on this server yet'**
   String get talkUnsupported;
+
+  /// No description provided for @quietHoursTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Quiet hours'**
+  String get quietHoursTitle;
+
+  /// No description provided for @quietHoursOff.
+  ///
+  /// In en, this message translates to:
+  /// **'Off'**
+  String get quietHoursOff;
+
+  /// No description provided for @quietHoursStart.
+  ///
+  /// In en, this message translates to:
+  /// **'Start'**
+  String get quietHoursStart;
+
+  /// No description provided for @quietHoursEnd.
+  ///
+  /// In en, this message translates to:
+  /// **'End'**
+  String get quietHoursEnd;
+
+  /// No description provided for @quietHoursHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Pushes, music and the voice agent stay quiet. Assistants can only widen this window.'**
+  String get quietHoursHint;
+
+  /// No description provided for @quietHoursUnsupported.
+  ///
+  /// In en, this message translates to:
+  /// **'Not available on this server yet'**
+  String get quietHoursUnsupported;
+
+  /// No description provided for @quietHoursErrSave.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t save quiet hours: {error}'**
+  String quietHoursErrSave(String error);
 }
 
 class _AppLocalizationsDelegate

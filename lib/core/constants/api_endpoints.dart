@@ -102,6 +102,12 @@ class ApiEndpoints {
   /// Last known robot status + treats_today/treat_cap + quiet_hours.
   static String dogStatus(String dogId) => '/api/dogs/$dogId/status';
 
+  /// Shared per-dog settings (brief §2): GET/PUT one key → the row
+  /// {key, value, version, updated_at, updated_by}; PUT body
+  /// {value, expected_version?} (409 version_mismatch).
+  static String dogSetting(String dogId, String key) =>
+      '/api/dogs/$dogId/settings/$key';
+
   /// Connected AI (relay router ai.py). Assistants are per user; dog_id is
   /// for routing/access only.
   static String aiConnectors(String dogId) => '/api/dogs/$dogId/ai/connectors';
