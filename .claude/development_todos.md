@@ -14,7 +14,8 @@
 ### AI Summit demo (Dec 9) — app aligned to relay CONTRACT v2 (B166, 2026-11-06)
 - [x] **B165 (2026-11-05):** six one-screen features built against the app's draft contract
 - [x] **B166 (2026-11-06):** re-pointed at the shipped relay routes (dog-scoped `/api/dogs/{dog}/ai/*`, `…/missions/drafts`, `…/sounds`, `/summary/{dog}/today` roll-up shape); kill switch = `revoke_all`; drafts hydrated from the relay list; songs uploaded as sounds of kind `song`; robot-local `/sounds/{group}/{stem}` wired. Reply brief `.claude/APP_REPLY_TO_RELAY_2026-11-06.md`
-- [ ] Relay deploy (Morgan, Lightsail) → device pass: Today card numbers, Connected AI list with a real connector, draft Approve → mission appears in `missions` setting, song upload visible under Sounds
+- [x] Relay deployed (Morgan confirmed 2026-11-07); app B170 pushed `93930f7`
+- [ ] Device pass: Today card numbers, Connected AI list with a real connector, draft Approve → mission appears in `missions` setting, song upload visible under Sounds
 - [ ] iOS lock-screen image on pushes needs a Notification Service Extension (Xcode target + Codemagic signing) — decision pending
 - [x] **B167–B170 (2026-11-07):** pairing optional + robot card on profile (B167); placeholder dog "Name your dog" + PUT rename (B168); hold-to-talk voice agent on the dog profile (B169); Quiet hours row in Settings via `/settings/quiet_hours` (B170)
 - [ ] Next round candidates: treat_schedule / sg_sensitivity / music_plan rows (reuse `DogSettingsApi`), "I'm leaving / I'm back" (departure/arrival)

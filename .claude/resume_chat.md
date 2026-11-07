@@ -3,7 +3,8 @@
 ## Session: 2026-11-07 — Builds 169–170 (voice agent hold-to-talk, quiet hours)
 **Goal:** Two quick notes from Morgan: hold-to-talk on the dog profile (relay voice agent) and a
 Quiet hours row in Settings (relay shared setting).
-**Status:** Both shipped; analyzer clean, 100 tests green. Relay deploy still pending.
+**Status:** Both shipped; analyzer clean, 100 tests green. B166–B170 pushed `853e4e3..93930f7`;
+Morgan confirmed the relay is deployed → next session starts with the on-device pass.
 
 ### B169 — Talk to WIM-Z (dog profile)
 - `TalkToWimzCard` under the robot card: pointer-down/up hold button, 16 kHz mono WAV, auto-stop
