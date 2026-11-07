@@ -11,6 +11,7 @@ import '../../../domain/providers/missions_provider.dart';
 import '../../../domain/providers/notifications_provider.dart';
 import '../../../l10n/l10n.dart';
 import '../../theme/app_theme.dart';
+import '../../widgets/dog_profile/robot_status_card.dart';
 import '../../widgets/dog_profile/weekly_summary_card.dart';
 import '../../widgets/summary/today_card.dart';
 
@@ -52,6 +53,11 @@ class DogProfileScreen extends ConsumerWidget {
           children: [
             // Dog header with photo
             _DogHeader(profile: profile),
+            const SizedBox(height: 16),
+
+            // Robot state (2026-11-06: pairing is optional — "No robot
+            // paired" is a normal state here, with a Pair button).
+            const RobotStatusCard(),
             const SizedBox(height: 24),
 
             // Launch last mission button

@@ -4193,4 +4193,20 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get soundGroupSong => 'Songs';
+
+  @override
+  String get robotCardLocal => 'Connected directly to the robot';
+
+  @override
+  String get robotCardNonePaired => 'No robot paired';
+
+  @override
+  String get robotCardNoneBody =>
+      'Pairing is optional — pair a robot whenever you\'re ready.';
+
+  @override
+  String get robotCardPair => 'Pair a robot';
+
+  @override
+  String get robotCardManage => 'Manage';
 }

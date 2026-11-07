@@ -2480,5 +2480,10 @@
   "@todayEpisodeSettled": {"placeholders": {"duration": {"type": "String"}}},
   "todayCardEmptyRelay": "No events on the relay yet today — counts from this phone",
   "soundsFormats": "MP3 or WAV · up to 5 MB",
-  "soundGroupSong": "Songs"
+  "soundGroupSong": "Songs",
+  "robotCardLocal": "Connected directly to the robot",
+  "robotCardNonePaired": "No robot paired",
+  "robotCardNoneBody": "Pairing is optional — pair a robot whenever you're ready.",
+  "robotCardPair": "Pair a robot",
+  "robotCardManage": "Manage"
 }

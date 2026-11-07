@@ -7405,6 +7405,36 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Songs'**
   String get soundGroupSong;
+
+  /// No description provided for @robotCardLocal.
+  ///
+  /// In en, this message translates to:
+  /// **'Connected directly to the robot'**
+  String get robotCardLocal;
+
+  /// No description provided for @robotCardNonePaired.
+  ///
+  /// In en, this message translates to:
+  /// **'No robot paired'**
+  String get robotCardNonePaired;
+
+  /// No description provided for @robotCardNoneBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Pairing is optional — pair a robot whenever you\'re ready.'**
+  String get robotCardNoneBody;
+
+  /// No description provided for @robotCardPair.
+  ///
+  /// In en, this message translates to:
+  /// **'Pair a robot'**
+  String get robotCardPair;
+
+  /// No description provided for @robotCardManage.
+  ///
+  /// In en, this message translates to:
+  /// **'Manage'**
+  String get robotCardManage;
 }
 
 class _AppLocalizationsDelegate

@@ -4049,4 +4049,19 @@ class AppLocalizationsKo extends AppLocalizations {
 
   @override
   String get soundGroupSong => '노래';
+
+  @override
+  String get robotCardLocal => '로봇에 직접 연결됨';
+
+  @override
+  String get robotCardNonePaired => '페어링된 로봇 없음';
+
+  @override
+  String get robotCardNoneBody => '페어링은 선택 사항입니다 — 준비되면 언제든 로봇을 페어링하세요.';
+
+  @override
+  String get robotCardPair => '로봇 페어링';
+
+  @override
+  String get robotCardManage => '관리';
 }

@@ -2368,5 +2368,10 @@
   "@todayEpisodeSettled": {"placeholders": {"duration": {"type": "String"}}},
   "todayCardEmptyRelay": "오늘 릴레이에 기록된 이벤트가 없습니다 — 이 휴대폰의 집계",
   "soundsFormats": "MP3 또는 WAV · 최대 5MB",
-  "soundGroupSong": "노래"
+  "soundGroupSong": "노래",
+  "robotCardLocal": "로봇에 직접 연결됨",
+  "robotCardNonePaired": "페어링된 로봇 없음",
+  "robotCardNoneBody": "페어링은 선택 사항입니다 — 준비되면 언제든 로봇을 페어링하세요.",
+  "robotCardPair": "로봇 페어링",
+  "robotCardManage": "관리"
 }

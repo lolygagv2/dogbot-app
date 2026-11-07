@@ -1,5 +1,18 @@
 # WIM-Z Resume Chat Log
 
+## Session: 2026-11-06 (later) — Build 167 (pairing optional, robot card on profile)
+**Goal:** Product rule relayed by Morgan: pairing is optional; show "No robot paired" as a
+state on the profile with a Pair button; never require a dog to finish robot setup.
+**Status:** Shipped B167. Audit found no hard gates (login → /home, pairing screen needs no
+dog, add-dog needs no robot); the gap was that the dog profile had no robot state at all.
+
+- New `widgets/dog_profile/robot_status_card.dart` on the dog profile: local-AP → "Connected
+  directly"; paired → name + online/offline + Manage; none → "No robot paired" + Pair button
+  (→ /device-pairing). Loads the paired list on first show (cloud only).
+- l10n +5 keys (robotCard*) en + ko. Memory: pairing-optional-no-dog-required.
+
+---
+
 ## Session: 2026-11-06 — Build 166 (align AI Summit slice to the shipped relay)
 **Goal:** Re-point B165's guessed contract at the relay routes that actually shipped
 (`APP_BRIEF_FROM_RELAY_2026-11-06.md`, verified against `wimzrelay/app/routers/`)
