@@ -631,6 +631,20 @@ String dayOfWeekShortLabel(AppLocalizations l, String day) {
 }
 
 extension MissionScheduleL10n on MissionSchedule {
+  /// Card title (relay brief 2026-11-07 §1): a mode mission shows its name,
+  /// falling back to "Silent Guardian" / "Coach mode" — never "SIT"; a
+  /// training mission shows its name or the catalog label for its id.
+  String localizedTitle(AppLocalizations l) {
+    if (isModeMission) {
+      if (name.isNotEmpty) return name;
+      return missionType == 'coach'
+          ? l.schedulerModeCoach
+          : l.schedulerModeSilentGuardian;
+    }
+    if (name.isNotEmpty) return name;
+    return missionIdDisplayName(l, missionType ?? missionName);
+  }
+
   /// Locale-aware start time (e.g. "9:00 AM" / "오전 9:00").
   String localizedTime(AppLocalizations l) {
     final t = DateTime(2000, 1, 1, hour, minute);

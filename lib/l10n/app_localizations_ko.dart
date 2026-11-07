@@ -4150,4 +4150,13 @@ class AppLocalizationsKo extends AppLocalizations {
   String galleryAssistantPhotoFor(String dogName) {
     return 'WIM-Z 어시스턴트가 촬영 · $dogName';
   }
+
+  @override
+  String get schedulerModeSilentGuardian => '사일런트 가디언';
+
+  @override
+  String get schedulerModeCoach => '코치 모드';
+
+  @override
+  String get schedulerByAssistant => 'WIM-Z 어시스턴트가 예약함';
 }

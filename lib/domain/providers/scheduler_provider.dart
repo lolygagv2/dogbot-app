@@ -5,6 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uuid/uuid.dart';
 
 import '../../core/network/websocket_client.dart';
+import '../../core/utils/conn_trace.dart';
 import '../../data/models/schedule.dart';
 import '../../l10n/l10n.dart';
 import 'l10n_provider.dart';
@@ -45,6 +46,8 @@ class SchedulerNotifier extends StateNotifier<SchedulerState> {
 
   // Track pending operations for timeout handling
   final Map<String, Completer<bool>> _pendingOperations = {};
+  // Ids with a delete_schedule already sent and not yet answered.
+  final Set<String> _deletesInFlight = {};
   static const _operationTimeout = Duration(seconds: 10);
 
   SchedulerNotifier(this._ref) : super(const SchedulerState()) {
@@ -96,16 +99,27 @@ class SchedulerNotifier extends StateNotifier<SchedulerState> {
   void _handleSchedulesList(Map<String, dynamic> data) {
     print('Scheduler: Received schedules_list');
     final schedulesJson = data['schedules'] as List? ?? [];
-    final schedules = schedulesJson
-        .map((s) => MissionSchedule.fromJson(s as Map<String, dynamic>))
-        .toList();
+    // Relay brief 2026-11-07 §3: the robot's list is the truth — redraw from
+    // it, never merge. Parse leniently so one odd row can't drop the list.
+    final schedules = <MissionSchedule>[];
+    for (final raw in schedulesJson) {
+      if (raw is! Map) continue;
+      final parsed = MissionSchedule.tryParse(raw.cast<String, dynamic>());
+      if (parsed == null) {
+        connTrace('schedule-parse-skip', '${raw.keys}');
+        continue;
+      }
+      schedules.add(parsed);
+    }
 
+    // Note: refresh() already cleared the error when it was issued; don't
+    // clear again here or a delete failure reported meanwhile would vanish.
     state = state.copyWith(
       schedules: schedules,
       isLoading: false,
-      clearError: true,
     );
-    print('Scheduler: Loaded ${schedules.length} schedules from robot');
+    connTrace('schedules-list',
+        '${schedules.length} rows (relay_settings=${schedules.where((s) => s.isFromAssistant).length})');
   }
 
   void _handleScheduleCreated(Map<String, dynamic> data) {
@@ -150,18 +164,15 @@ class SchedulerNotifier extends StateNotifier<SchedulerState> {
       _completePendingOperation(firstPendingId, true);
     }
 
-    // Update state with schedule data (try multiple structures)
-    if (data.containsKey('schedule') && data['schedule'] is Map) {
-      final schedule = MissionSchedule.fromJson(data['schedule'] as Map<String, dynamic>);
+    // Update state with schedule data (nested `schedule` map, or flat)
+    final raw = data['schedule'] is Map
+        ? (data['schedule'] as Map).cast<String, dynamic>()
+        : data;
+    final schedule = MissionSchedule.tryParse(raw);
+    if (schedule != null) {
       _addOrUpdateSchedule(schedule);
-    } else if (scheduleId != null) {
-      // Robot sent flat data, try to parse it directly
-      try {
-        final schedule = MissionSchedule.fromJson(data);
-        _addOrUpdateSchedule(schedule);
-      } catch (e) {
-        print('Scheduler: Could not parse schedule from flat data: $e');
-      }
+    } else {
+      connTrace('schedule-created-unparsed', '${data.keys}');
     }
   }
 
@@ -184,24 +195,43 @@ class SchedulerNotifier extends StateNotifier<SchedulerState> {
 
     _completePendingOperation(scheduleId, true);
 
-    if (data.containsKey('schedule')) {
-      final schedule = MissionSchedule.fromJson(data['schedule'] as Map<String, dynamic>);
-      state = state.copyWith(
-        schedules: state.schedules.map((s) => s.id == schedule.id ? schedule : s).toList(),
-      );
+    if (data['schedule'] is Map) {
+      final schedule =
+          MissionSchedule.tryParse((data['schedule'] as Map).cast<String, dynamic>());
+      if (schedule != null) {
+        state = state.copyWith(
+          schedules: state.schedules.map((s) => s.id == schedule.id ? schedule : s).toList(),
+        );
+      }
     }
   }
 
   void _handleScheduleDeleted(Map<String, dynamic> data) {
-    final scheduleId = data['schedule_id'] as String?;
-    print('Scheduler: schedule_deleted event, id=$scheduleId');
+    final scheduleId = (data['schedule_id'] ?? data['id'])?.toString();
+    final success = data['success'] is bool ? data['success'] as bool : true;
+    final error = data['error']?.toString() ?? '';
+    // Relay brief 2026-11-07 §2: success:false + "not found" means the robot
+    // already dropped it — that IS a successful delete from the user's view.
+    final alreadyGone =
+        !success && error.toLowerCase().contains('not found');
+    final ok = success || alreadyGone;
+    connTrace('schedule-deleted',
+        'id=$scheduleId success=$success alreadyGone=$alreadyGone err=$error');
 
-    _completePendingOperation(scheduleId, true);
+    _completePendingOperation(scheduleId, ok);
 
-    if (scheduleId != null) {
+    if (scheduleId != null && ok) {
       state = state.copyWith(
         schedules: state.schedules.where((s) => s.id != scheduleId).toList(),
+        clearError: true,
       );
+    }
+    // §3: after ANY schedule_deleted, redraw from the robot's list so the
+    // app never keeps an entry the robot no longer has.
+    refresh();
+    if (!ok) {
+      state = state.copyWith(
+          error: error.isNotEmpty ? error : _l.schedErrDeleteFailed);
     }
   }
 
@@ -230,11 +260,14 @@ class SchedulerNotifier extends StateNotifier<SchedulerState> {
     }
   }
 
-  /// Refresh schedules from robot
+  /// Refresh schedules from robot (coalesced: one get_schedules while a
+  /// reply is outstanding).
   Future<void> refresh() async {
+    if (state.isLoading) return;
     state = state.copyWith(isLoading: true, clearError: true);
 
     final ws = _ref.read(websocketClientProvider);
+    connTrace('schedules-refresh', 'get_schedules');
     ws.sendGetSchedules();
 
     // Timeout after 10 seconds
@@ -417,12 +450,21 @@ class SchedulerNotifier extends StateNotifier<SchedulerState> {
     return updateSchedule(schedule.copyWith(enabled: !schedule.enabled));
   }
 
-  /// Delete a schedule
+  /// Delete a schedule.
+  /// Relay brief 2026-11-07: exactly ONE delete_schedule per tap (a second
+  /// call for the same id while one is in flight is a no-op), and on
+  /// failure / timeout the entry is NOT re-added optimistically — the list
+  /// is redrawn from the robot's `schedules_list` instead (§3).
   Future<bool> deleteSchedule(String scheduleId) async {
-    final oldSchedule = state.schedules.firstWhere(
-      (s) => s.id == scheduleId,
-      orElse: () => throw Exception('Schedule not found'),
-    );
+    if (_deletesInFlight.contains(scheduleId)) {
+      connTrace('schedule-delete-dup', 'id=$scheduleId ignored (in flight)');
+      return false;
+    }
+    if (!state.schedules.any((s) => s.id == scheduleId)) {
+      connTrace('schedule-delete-skip', 'id=$scheduleId not in list');
+      return true;
+    }
+    _deletesInFlight.add(scheduleId);
 
     // Optimistic update
     state = state.copyWith(
@@ -430,46 +472,44 @@ class SchedulerNotifier extends StateNotifier<SchedulerState> {
       clearError: true,
     );
 
-    // Send WebSocket command to robot
-    final ws = _ref.read(websocketClientProvider);
-    ws.sendDeleteSchedule(scheduleId);
-
-    // Wait for response with timeout
     final completer = Completer<bool>();
     _pendingOperations[scheduleId] = completer;
+
+    // Send WebSocket command to robot (once)
+    final ws = _ref.read(websocketClientProvider);
+    connTrace('schedule-delete-send', 'id=$scheduleId');
+    ws.sendDeleteSchedule(scheduleId);
 
     try {
       final success = await completer.future.timeout(
         _operationTimeout,
         onTimeout: () {
-          print('Scheduler: Delete timeout for $scheduleId');
+          connTrace('schedule-delete-timeout', 'id=$scheduleId');
           _pendingOperations.remove(scheduleId);
           return false;
         },
       );
-
       if (!success) {
-        // Revert
-        state = state.copyWith(
-          schedules: [...state.schedules, oldSchedule],
-          error: state.error ?? _l.schedErrDeleteFailed,
-        );
+        refresh(); // robot's list decides what comes back
+        if (state.error == null) {
+          state = state.copyWith(error: _l.schedErrDeleteFailed);
+        }
       }
-
       return success;
     } catch (e) {
-      print('Scheduler: Delete error: $e');
-      state = state.copyWith(
-        schedules: [...state.schedules, oldSchedule],
-        error: _l.schedErrDeleteFailed,
-      );
+      connTrace('schedule-delete-error', 'id=$scheduleId $e');
+      refresh();
+      state = state.copyWith(error: _l.schedErrDeleteFailed);
       return false;
+    } finally {
+      _deletesInFlight.remove(scheduleId);
     }
   }
 
   /// Clear state (used on logout)
   void clearState() {
     _pendingOperations.clear();
+    _deletesInFlight.clear();
     state = const SchedulerState();
   }
 

@@ -1,5 +1,30 @@
 # WIM-Z Resume Chat Log
 
+## Session: 2026-11-07 (later) — Builds 173–174 (Halloween icon; schedule list fixes)
+**B173:** new app icon from `assets/icons/app_icon.png` regenerated for all 46 iOS/mac/watchOS
+files referenced by Contents.json + 5 Android mipmaps via new `tool/regen_icons.dart`
+(`dart run tool/regen_icons.dart`; never flutter_launcher_icons for iOS). Pushed.
+
+**Scheduler investigation:** the live Lightsail relay (now also on GitHub, commits d3ec35e /
+78ddeb0) schedules agent missions DIRECTLY into the dog's `missions` setting, pushes
+`settings_updated` to the robot only, and confirms via a `schedule_sync` command_result. The
+draft/approve flow is gone (live MCP has no `draft_mission`; claude.ai connector tool list was
+stale — reconnect to refresh). The app's Scheduler screen only renders the robot's
+`schedules_list` / `schedule_*` frames, so agent schedules appear only because the robot mirrors
+relay_settings entries into its list. No app consumer of the `missions` setting exists.
+
+**B174 (relay brief "schedule list fixes"):** `MissionSchedule.tryParse` lenient parser +
+`missionType`/`source` fields; title = mission/mode label (dog on 2nd line), assistant marker;
+`schedule_deleted success:false "not found"` = deleted; refresh after any deleted / failed delete
+instead of re-adding; in-flight guard = one delete per tap. Reply:
+`.claude/APP_REPLY_TO_RELAY_2026-11-07_schedules.md`. Tests 100 green (+1 stock template fail).
+
+**Next:** device pass — B172 photo tests, B173 icon, B174: reconnect connector, agent
+`schedule_mission` for Bezik while Scheduler open → card appears (live or on refresh), swipe-delete
+once → gone and stays gone; `cancel_mission` from the agent → card disappears on refresh.
+
+---
+
 ## Session: 2026-11-07 — Build 172 (relay-recorded robot photos in the gallery)
 **Goal:** Relay brief 2026-11-07 "robot photos in the Photos gallery": photos the voice agent /
 Claude connectors / POST /command ask the robot for were lost when the app was closed. Relay now

@@ -2403,5 +2403,8 @@
   "@quietHoursErrSave": {"placeholders": {"error": {"type": "String"}}},
   "galleryAssistantPhoto": "WIM-Z 어시스턴트가 촬영",
   "galleryAssistantPhotoFor": "WIM-Z 어시스턴트가 촬영 · {dogName}",
-  "@galleryAssistantPhotoFor": {"placeholders": {"dogName": {"type": "String"}}}
+  "@galleryAssistantPhotoFor": {"placeholders": {"dogName": {"type": "String"}}},
+  "schedulerModeSilentGuardian": "사일런트 가디언",
+  "schedulerModeCoach": "코치 모드",
+  "schedulerByAssistant": "WIM-Z 어시스턴트가 예약함"
 }

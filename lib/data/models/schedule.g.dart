@@ -28,6 +28,8 @@ _$MissionScheduleImpl _$$MissionScheduleImplFromJson(
       updatedAt: json['updated_at'] == null
           ? null
           : DateTime.parse(json['updated_at'] as String),
+      missionType: json['mission_type'] as String?,
+      source: json['source'] as String?,
     );
 
 Map<String, dynamic> _$$MissionScheduleImplToJson(
@@ -45,6 +47,8 @@ Map<String, dynamic> _$$MissionScheduleImplToJson(
       'cooldown_hours': instance.cooldownHours,
       'created_at': instance.createdAt?.toIso8601String(),
       'updated_at': instance.updatedAt?.toIso8601String(),
+      'mission_type': instance.missionType,
+      'source': instance.source,
     };
 
 const _$ScheduleTypeEnumMap = {

@@ -290,9 +290,13 @@ class _ScheduleCard extends ConsumerWidget {
                     children: [
                       Row(
                         children: [
+                          // Relay brief 2026-11-07 §1: the title is the
+                          // mission/mode label, never the dog's name.
                           Expanded(
                             child: Text(
-                              dog?.name ?? context.l10n.schedulerUnknownDog,
+                              schedule.localizedTitle(context.l10n),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
                               style: TextStyle(
                                 fontWeight: FontWeight.w600,
                                 color: isActive
@@ -301,6 +305,18 @@ class _ScheduleCard extends ConsumerWidget {
                               ),
                             ),
                           ),
+                          if (schedule.isFromAssistant)
+                            Padding(
+                              padding: const EdgeInsets.only(right: 6),
+                              child: Tooltip(
+                                message: context.l10n.schedulerByAssistant,
+                                child: Icon(Icons.auto_awesome,
+                                    size: 14,
+                                    color: isActive
+                                        ? AppTheme.accent
+                                        : AppTheme.textTertiary),
+                              ),
+                            ),
                           if (!schedule.enabled)
                             Container(
                               padding: const EdgeInsets.symmetric(
@@ -324,7 +340,7 @@ class _ScheduleCard extends ConsumerWidget {
                       ),
                       const SizedBox(height: 2),
                       Text(
-                        missionIdDisplayName(context.l10n, schedule.missionName),
+                        dog?.name ?? context.l10n.schedulerUnknownDog,
                         style: TextStyle(
                           fontSize: 13,
                           color: isActive ? AppTheme.primary : AppTheme.textTertiary,

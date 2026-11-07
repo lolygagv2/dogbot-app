@@ -7585,6 +7585,24 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Taken by WIM-Z assistant · {dogName}'**
   String galleryAssistantPhotoFor(String dogName);
+
+  /// No description provided for @schedulerModeSilentGuardian.
+  ///
+  /// In en, this message translates to:
+  /// **'Silent Guardian'**
+  String get schedulerModeSilentGuardian;
+
+  /// No description provided for @schedulerModeCoach.
+  ///
+  /// In en, this message translates to:
+  /// **'Coach mode'**
+  String get schedulerModeCoach;
+
+  /// No description provided for @schedulerByAssistant.
+  ///
+  /// In en, this message translates to:
+  /// **'Scheduled by WIM-Z assistant'**
+  String get schedulerByAssistant;
 }
 
 class _AppLocalizationsDelegate

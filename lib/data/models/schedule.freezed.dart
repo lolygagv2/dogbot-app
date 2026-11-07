@@ -63,6 +63,13 @@ mixin _$MissionSchedule {
   @JsonKey(name: 'updated_at')
   DateTime? get updatedAt => throw _privateConstructorUsedError;
 
+  /// Relay brief 2026-11-07: entries the robot mirrors from the relay's
+  /// `missions` setting carry `mission_type` (training type, or a mode:
+  /// silent_guardian / coach) and `source: "relay_settings"`.
+  @JsonKey(name: 'mission_type')
+  String? get missionType => throw _privateConstructorUsedError;
+  String? get source => throw _privateConstructorUsedError;
+
   /// Serializes this MissionSchedule to a JSON map.
   Map<String, dynamic> toJson() => throw _privateConstructorUsedError;
 
@@ -91,7 +98,9 @@ abstract class $MissionScheduleCopyWith<$Res> {
       bool enabled,
       @JsonKey(name: 'cooldown_hours') int cooldownHours,
       @JsonKey(name: 'created_at') DateTime? createdAt,
-      @JsonKey(name: 'updated_at') DateTime? updatedAt});
+      @JsonKey(name: 'updated_at') DateTime? updatedAt,
+      @JsonKey(name: 'mission_type') String? missionType,
+      String? source});
 }
 
 /// @nodoc
@@ -121,6 +130,8 @@ class _$MissionScheduleCopyWithImpl<$Res, $Val extends MissionSchedule>
     Object? cooldownHours = null,
     Object? createdAt = freezed,
     Object? updatedAt = freezed,
+    Object? missionType = freezed,
+    Object? source = freezed,
   }) {
     return _then(_value.copyWith(
       id: null == id
@@ -171,6 +182,14 @@ class _$MissionScheduleCopyWithImpl<$Res, $Val extends MissionSchedule>
           ? _value.updatedAt
           : updatedAt // ignore: cast_nullable_to_non_nullable
               as DateTime?,
+      missionType: freezed == missionType
+          ? _value.missionType
+          : missionType // ignore: cast_nullable_to_non_nullable
+              as String?,
+      source: freezed == source
+          ? _value.source
+          : source // ignore: cast_nullable_to_non_nullable
+              as String?,
     ) as $Val);
   }
 }
@@ -195,7 +214,9 @@ abstract class _$$MissionScheduleImplCopyWith<$Res>
       bool enabled,
       @JsonKey(name: 'cooldown_hours') int cooldownHours,
       @JsonKey(name: 'created_at') DateTime? createdAt,
-      @JsonKey(name: 'updated_at') DateTime? updatedAt});
+      @JsonKey(name: 'updated_at') DateTime? updatedAt,
+      @JsonKey(name: 'mission_type') String? missionType,
+      String? source});
 }
 
 /// @nodoc
@@ -223,6 +244,8 @@ class __$$MissionScheduleImplCopyWithImpl<$Res>
     Object? cooldownHours = null,
     Object? createdAt = freezed,
     Object? updatedAt = freezed,
+    Object? missionType = freezed,
+    Object? source = freezed,
   }) {
     return _then(_$MissionScheduleImpl(
       id: null == id
@@ -273,6 +296,14 @@ class __$$MissionScheduleImplCopyWithImpl<$Res>
           ? _value.updatedAt
           : updatedAt // ignore: cast_nullable_to_non_nullable
               as DateTime?,
+      missionType: freezed == missionType
+          ? _value.missionType
+          : missionType // ignore: cast_nullable_to_non_nullable
+              as String?,
+      source: freezed == source
+          ? _value.source
+          : source // ignore: cast_nullable_to_non_nullable
+              as String?,
     ));
   }
 }
@@ -292,7 +323,9 @@ class _$MissionScheduleImpl extends _MissionSchedule {
       this.enabled = true,
       @JsonKey(name: 'cooldown_hours') this.cooldownHours = 24,
       @JsonKey(name: 'created_at') this.createdAt,
-      @JsonKey(name: 'updated_at') this.updatedAt})
+      @JsonKey(name: 'updated_at') this.updatedAt,
+      @JsonKey(name: 'mission_type') this.missionType,
+      this.source})
       : _daysOfWeek = daysOfWeek,
         super._();
 
@@ -363,9 +396,18 @@ class _$MissionScheduleImpl extends _MissionSchedule {
   @JsonKey(name: 'updated_at')
   final DateTime? updatedAt;
 
+  /// Relay brief 2026-11-07: entries the robot mirrors from the relay's
+  /// `missions` setting carry `mission_type` (training type, or a mode:
+  /// silent_guardian / coach) and `source: "relay_settings"`.
+  @override
+  @JsonKey(name: 'mission_type')
+  final String? missionType;
+  @override
+  final String? source;
+
   @override
   String toString() {
-    return 'MissionSchedule(id: $id, missionName: $missionName, dogId: $dogId, name: $name, type: $type, startTime: $startTime, endTime: $endTime, daysOfWeek: $daysOfWeek, enabled: $enabled, cooldownHours: $cooldownHours, createdAt: $createdAt, updatedAt: $updatedAt)';
+    return 'MissionSchedule(id: $id, missionName: $missionName, dogId: $dogId, name: $name, type: $type, startTime: $startTime, endTime: $endTime, daysOfWeek: $daysOfWeek, enabled: $enabled, cooldownHours: $cooldownHours, createdAt: $createdAt, updatedAt: $updatedAt, missionType: $missionType, source: $source)';
   }
 
   @override
@@ -390,7 +432,10 @@ class _$MissionScheduleImpl extends _MissionSchedule {
             (identical(other.createdAt, createdAt) ||
                 other.createdAt == createdAt) &&
             (identical(other.updatedAt, updatedAt) ||
-                other.updatedAt == updatedAt));
+                other.updatedAt == updatedAt) &&
+            (identical(other.missionType, missionType) ||
+                other.missionType == missionType) &&
+            (identical(other.source, source) || other.source == source));
   }
 
   @JsonKey(includeFromJson: false, includeToJson: false)
@@ -408,7 +453,9 @@ class _$MissionScheduleImpl extends _MissionSchedule {
       enabled,
       cooldownHours,
       createdAt,
-      updatedAt);
+      updatedAt,
+      missionType,
+      source);
 
   /// Create a copy of MissionSchedule
   /// with the given fields replaced by the non-null parameter values.
@@ -429,19 +476,20 @@ class _$MissionScheduleImpl extends _MissionSchedule {
 
 abstract class _MissionSchedule extends MissionSchedule {
   const factory _MissionSchedule(
-          {@JsonKey(name: 'schedule_id') required final String id,
-          @JsonKey(name: 'mission_name') required final String missionName,
-          @JsonKey(name: 'dog_id') required final String dogId,
-          final String name,
-          required final ScheduleType type,
-          @JsonKey(name: 'start_time') required final String startTime,
-          @JsonKey(name: 'end_time') required final String endTime,
-          @JsonKey(name: 'days_of_week') final List<String> daysOfWeek,
-          final bool enabled,
-          @JsonKey(name: 'cooldown_hours') final int cooldownHours,
-          @JsonKey(name: 'created_at') final DateTime? createdAt,
-          @JsonKey(name: 'updated_at') final DateTime? updatedAt}) =
-      _$MissionScheduleImpl;
+      {@JsonKey(name: 'schedule_id') required final String id,
+      @JsonKey(name: 'mission_name') required final String missionName,
+      @JsonKey(name: 'dog_id') required final String dogId,
+      final String name,
+      required final ScheduleType type,
+      @JsonKey(name: 'start_time') required final String startTime,
+      @JsonKey(name: 'end_time') required final String endTime,
+      @JsonKey(name: 'days_of_week') final List<String> daysOfWeek,
+      final bool enabled,
+      @JsonKey(name: 'cooldown_hours') final int cooldownHours,
+      @JsonKey(name: 'created_at') final DateTime? createdAt,
+      @JsonKey(name: 'updated_at') final DateTime? updatedAt,
+      @JsonKey(name: 'mission_type') final String? missionType,
+      final String? source}) = _$MissionScheduleImpl;
   const _MissionSchedule._() : super._();
 
   factory _MissionSchedule.fromJson(Map<String, dynamic> json) =
@@ -501,6 +549,15 @@ abstract class _MissionSchedule extends MissionSchedule {
   @override
   @JsonKey(name: 'updated_at')
   DateTime? get updatedAt;
+
+  /// Relay brief 2026-11-07: entries the robot mirrors from the relay's
+  /// `missions` setting carry `mission_type` (training type, or a mode:
+  /// silent_guardian / coach) and `source: "relay_settings"`.
+  @override
+  @JsonKey(name: 'mission_type')
+  String? get missionType;
+  @override
+  String? get source;
 
   /// Create a copy of MissionSchedule
   /// with the given fields replaced by the non-null parameter values.

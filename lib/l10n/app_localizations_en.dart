@@ -4297,4 +4297,13 @@ class AppLocalizationsEn extends AppLocalizations {
   String galleryAssistantPhotoFor(String dogName) {
     return 'Taken by WIM-Z assistant · $dogName';
   }
+
+  @override
+  String get schedulerModeSilentGuardian => 'Silent Guardian';
+
+  @override
+  String get schedulerModeCoach => 'Coach mode';
+
+  @override
+  String get schedulerByAssistant => 'Scheduled by WIM-Z assistant';
 }

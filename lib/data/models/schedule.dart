@@ -78,7 +78,102 @@ class MissionSchedule with _$MissionSchedule {
     /// Server-provided timestamps
     @JsonKey(name: 'created_at') DateTime? createdAt,
     @JsonKey(name: 'updated_at') DateTime? updatedAt,
+    /// Relay brief 2026-11-07: entries the robot mirrors from the relay's
+    /// `missions` setting carry `mission_type` (training type, or a mode:
+    /// silent_guardian / coach) and `source: "relay_settings"`.
+    @JsonKey(name: 'mission_type') String? missionType,
+    String? source,
   }) = _MissionSchedule;
+
+  /// silent_guardian / coach: the "mission" puts the robot in a mode.
+  bool get isModeMission =>
+      missionType == 'silent_guardian' || missionType == 'coach';
+
+  /// Scheduled by Claude / the voice agent through the relay.
+  bool get isFromAssistant => source == 'relay_settings';
+
+  /// Lenient parser for robot `schedules_list` / `schedule_created` rows.
+  /// Relay-settings entries don't carry every legacy field (`mission_name`,
+  /// `end_time`, long day names), and a single strict-cast failure used to
+  /// throw inside the WS listener and drop the WHOLE list — the stale-cache
+  /// bug in the 2026-11-07 brief. Returns null only when there is no id.
+  static MissionSchedule? tryParse(Map<String, dynamic> j) {
+    final id = (j['schedule_id'] ?? j['id'])?.toString();
+    if (id == null || id.isEmpty) return null;
+    final missionType = j['mission_type']?.toString();
+    final name = j['name']?.toString() ?? '';
+    final missionName =
+        (j['mission_name'] ?? missionType ?? (name.isNotEmpty ? name : null))
+                ?.toString() ??
+            'mission';
+    final start = _hhmm(j['start_time'] ?? j['time']) ?? '00:00';
+    final end = _hhmm(j['end_time']) ?? _plusHours(start, 4);
+    final days = _dayNames(j['days_of_week'] ?? j['days']);
+    final rawType = j['type']?.toString();
+    final type = switch (rawType) {
+      'once' => ScheduleType.once,
+      'weekly' => ScheduleType.weekly,
+      'daily' => ScheduleType.daily,
+      _ => (days.isNotEmpty && days.length < 7)
+          ? ScheduleType.weekly
+          : ScheduleType.daily,
+    };
+    return MissionSchedule(
+      id: id,
+      missionName: missionName,
+      dogId: j['dog_id']?.toString() ?? '',
+      name: name,
+      type: type,
+      startTime: start,
+      endTime: end,
+      daysOfWeek: days,
+      enabled: j['enabled'] is bool ? j['enabled'] as bool : true,
+      cooldownHours: (j['cooldown_hours'] as num?)?.toInt() ?? 24,
+      createdAt: DateTime.tryParse(j['created_at']?.toString() ?? ''),
+      updatedAt: DateTime.tryParse(j['updated_at']?.toString() ?? ''),
+      missionType: missionType,
+      source: j['source']?.toString(),
+    );
+  }
+
+  static String? _hhmm(dynamic v) {
+    if (v == null) return null;
+    final m = RegExp(r'^(\d{1,2}):(\d{2})').firstMatch(v.toString());
+    if (m == null) return null;
+    final h = int.parse(m.group(1)!), min = int.parse(m.group(2)!);
+    if (h > 23 || min > 59) return null;
+    return timeFromHourMinute(h, min);
+  }
+
+  static String _plusHours(String hhmm, int hours) {
+    final parts = hhmm.split(':');
+    final h = int.tryParse(parts[0]) ?? 0;
+    return timeFromHourMinute((h + hours) % 24, int.tryParse(parts[1]) ?? 0);
+  }
+
+  /// Accepts long ("monday"), short ("mon") or int (0=Sun) day forms.
+  static List<String> _dayNames(dynamic v) {
+    if (v is! List) return const [];
+    const short = {
+      'sun': DayOfWeek.sunday, 'mon': DayOfWeek.monday, 'tue': DayOfWeek.tuesday,
+      'wed': DayOfWeek.wednesday, 'thu': DayOfWeek.thursday,
+      'fri': DayOfWeek.friday, 'sat': DayOfWeek.saturday,
+    };
+    final out = <String>[];
+    for (final d in v) {
+      String? name;
+      if (d is int) {
+        name = DayOfWeek.fromInt(d);
+      } else {
+        final s = d.toString().toLowerCase();
+        name = DayOfWeek.all.contains(s)
+            ? s
+            : short[s.length >= 3 ? s.substring(0, 3) : s];
+      }
+      if (name != null && !out.contains(name)) out.add(name);
+    }
+    return out;
+  }
 
   factory MissionSchedule.fromJson(Map<String, dynamic> json) =>
       _$MissionScheduleFromJson(json);
