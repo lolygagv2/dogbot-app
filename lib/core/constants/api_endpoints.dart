@@ -125,6 +125,10 @@ class ApiEndpoints {
   static String soundFile(String dogId, String soundId) =>
       '/api/sounds/file/$dogId/$soundId';
 
+  /// Voice agent from the phone: multipart `file` (wav ≤ 30 s / 5 MB) +
+  /// `dog_id` → {text_in, text_out, audio_url, clip_id, …} (brief §6).
+  static const String agentUtterance = '/agent/utterance';
+
   /// Still attached to an event (404 none, 410 expired).
   static String eventPhoto(String dogId, String eventId) =>
       '/api/dogs/$dogId/events/$eventId/photo';

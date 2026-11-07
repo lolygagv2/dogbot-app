@@ -28,8 +28,17 @@ class AgentTranscriptNotifier extends StateNotifier<List<AgentTranscriptLine>> {
     });
   }
 
-  /// Oldest first; the view scrolls to the end.
+  /// Oldest first; the view scrolls to the end. A line the app appended
+  /// itself (phone hold-to-talk) also arrives from the relay as an
+  /// `agent_transcript` frame — drop the second copy (same role + text
+  /// within 20 s).
   void append(AgentTranscriptLine line) {
+    final cutoff = line.ts.subtract(const Duration(seconds: 20));
+    final dup = state.any((e) =>
+        e.text == line.text &&
+        _sameSide(e.role, line.role) &&
+        e.ts.isAfter(cutoff));
+    if (dup) return;
     final next = [...state, line];
     state = next.length > _cap ? next.sublist(next.length - _cap) : next;
   }
@@ -42,6 +51,10 @@ class AgentTranscriptNotifier extends StateNotifier<List<AgentTranscriptLine>> {
       text: text,
     ));
   }
+
+  /// user == user; everything else (agent / assistant / tool) is one side.
+  static bool _sameSide(String a, String b) =>
+      (a == 'user') == (b == 'user');
 
   void clear() => state = const [];
 

@@ -4212,4 +4212,57 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get dogNameYourDog => 'Name your dog';
+
+  @override
+  String get talkCardTitle => 'Talk to WIM-Z';
+
+  @override
+  String get talkHold => 'Hold to talk';
+
+  @override
+  String get talkHint =>
+      'Hold the mic: ask about today, or ask WIM-Z for a treat or a photo.';
+
+  @override
+  String talkRecording(String seconds) {
+    return 'Listening… ${seconds}s';
+  }
+
+  @override
+  String get talkSending => 'Thinking…';
+
+  @override
+  String get talkPlayingRobot => 'WIM-Z is answering on the robot';
+
+  @override
+  String get talkPlayingPhone => 'Robot offline — answering on this phone';
+
+  @override
+  String get talkYou => 'You';
+
+  @override
+  String get talkTooShort => 'Hold a little longer';
+
+  @override
+  String get talkErrMic => 'Microphone permission is needed';
+
+  @override
+  String get talkErrSignedOut => 'Sign in to talk to WIM-Z';
+
+  @override
+  String get talkErrLocal => 'Talk to WIM-Z needs the cloud connection';
+
+  @override
+  String talkErrFailed(String error) {
+    return 'Couldn\'t reach WIM-Z: $error';
+  }
+
+  @override
+  String talkRefused(String reason) {
+    return 'WIM-Z declined: $reason';
+  }
+
+  @override
+  String get talkUnsupported =>
+      'The voice agent isn\'t available on this server yet';
 }

@@ -4067,4 +4067,55 @@ class AppLocalizationsKo extends AppLocalizations {
 
   @override
   String get dogNameYourDog => '강아지 이름 지어주기';
+
+  @override
+  String get talkCardTitle => 'WIM-Z와 대화';
+
+  @override
+  String get talkHold => '길게 눌러 말하기';
+
+  @override
+  String get talkHint => '마이크를 길게 누르세요: 오늘 하루를 묻거나 간식, 사진을 요청해 보세요.';
+
+  @override
+  String talkRecording(String seconds) {
+    return '듣는 중… $seconds초';
+  }
+
+  @override
+  String get talkSending => '생각 중…';
+
+  @override
+  String get talkPlayingRobot => '로봇에서 WIM-Z가 답하고 있어요';
+
+  @override
+  String get talkPlayingPhone => '로봇 오프라인 — 이 휴대폰에서 답합니다';
+
+  @override
+  String get talkYou => '나';
+
+  @override
+  String get talkTooShort => '조금 더 길게 눌러주세요';
+
+  @override
+  String get talkErrMic => '마이크 권한이 필요합니다';
+
+  @override
+  String get talkErrSignedOut => 'WIM-Z와 대화하려면 로그인하세요';
+
+  @override
+  String get talkErrLocal => 'WIM-Z와 대화는 클라우드 연결이 필요합니다';
+
+  @override
+  String talkErrFailed(String error) {
+    return 'WIM-Z에 연결할 수 없습니다: $error';
+  }
+
+  @override
+  String talkRefused(String reason) {
+    return 'WIM-Z가 거절했습니다: $reason';
+  }
+
+  @override
+  String get talkUnsupported => '이 서버에서는 음성 에이전트를 아직 사용할 수 없습니다';
 }

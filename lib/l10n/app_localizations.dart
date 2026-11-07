@@ -7441,6 +7441,96 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Name your dog'**
   String get dogNameYourDog;
+
+  /// No description provided for @talkCardTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Talk to WIM-Z'**
+  String get talkCardTitle;
+
+  /// No description provided for @talkHold.
+  ///
+  /// In en, this message translates to:
+  /// **'Hold to talk'**
+  String get talkHold;
+
+  /// No description provided for @talkHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Hold the mic: ask about today, or ask WIM-Z for a treat or a photo.'**
+  String get talkHint;
+
+  /// No description provided for @talkRecording.
+  ///
+  /// In en, this message translates to:
+  /// **'Listening… {seconds}s'**
+  String talkRecording(String seconds);
+
+  /// No description provided for @talkSending.
+  ///
+  /// In en, this message translates to:
+  /// **'Thinking…'**
+  String get talkSending;
+
+  /// No description provided for @talkPlayingRobot.
+  ///
+  /// In en, this message translates to:
+  /// **'WIM-Z is answering on the robot'**
+  String get talkPlayingRobot;
+
+  /// No description provided for @talkPlayingPhone.
+  ///
+  /// In en, this message translates to:
+  /// **'Robot offline — answering on this phone'**
+  String get talkPlayingPhone;
+
+  /// No description provided for @talkYou.
+  ///
+  /// In en, this message translates to:
+  /// **'You'**
+  String get talkYou;
+
+  /// No description provided for @talkTooShort.
+  ///
+  /// In en, this message translates to:
+  /// **'Hold a little longer'**
+  String get talkTooShort;
+
+  /// No description provided for @talkErrMic.
+  ///
+  /// In en, this message translates to:
+  /// **'Microphone permission is needed'**
+  String get talkErrMic;
+
+  /// No description provided for @talkErrSignedOut.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign in to talk to WIM-Z'**
+  String get talkErrSignedOut;
+
+  /// No description provided for @talkErrLocal.
+  ///
+  /// In en, this message translates to:
+  /// **'Talk to WIM-Z needs the cloud connection'**
+  String get talkErrLocal;
+
+  /// No description provided for @talkErrFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t reach WIM-Z: {error}'**
+  String talkErrFailed(String error);
+
+  /// No description provided for @talkRefused.
+  ///
+  /// In en, this message translates to:
+  /// **'WIM-Z declined: {reason}'**
+  String talkRefused(String reason);
+
+  /// No description provided for @talkUnsupported.
+  ///
+  /// In en, this message translates to:
+  /// **'The voice agent isn\'t available on this server yet'**
+  String get talkUnsupported;
 }
 
 class _AppLocalizationsDelegate
