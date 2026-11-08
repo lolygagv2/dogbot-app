@@ -4336,4 +4336,54 @@ class AppLocalizationsEn extends AppLocalizations {
   String schedulerDurationHoursMinutes(int hours, int minutes) {
     return '$hours h $minutes min';
   }
+
+  @override
+  String get demoControlsTitle => 'Demo controls';
+
+  @override
+  String demoReplayActive(String value) {
+    return 'replay_active: $value';
+  }
+
+  @override
+  String demoVirtualClock(String time) {
+    return 'Virtual clock $time';
+  }
+
+  @override
+  String get demoLoadGoodDay => 'Load good day';
+
+  @override
+  String get demoLoadBadDay => 'Load bad day';
+
+  @override
+  String demoStartSpeed(int speed) {
+    return 'Start ($speed×)';
+  }
+
+  @override
+  String get demoPause => 'Pause';
+
+  @override
+  String demoJumpTo(String time) {
+    return 'Jump to $time';
+  }
+
+  @override
+  String get demoReset => 'Reset';
+
+  @override
+  String get demoReplayIdle => 'No replay loaded';
+
+  @override
+  String get demoReplayStatusLoaded => 'Loaded';
+
+  @override
+  String get demoReplayStatusRunning => 'Running';
+
+  @override
+  String get demoReplayStatusPaused => 'Paused';
+
+  @override
+  String get demoReplayStatusDone => 'Done';
 }

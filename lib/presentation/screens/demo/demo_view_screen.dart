@@ -8,11 +8,14 @@ import '../../../domain/providers/dog_profiles_provider.dart';
 import '../../../domain/providers/sg_summary_provider.dart';
 import '../../../l10n/l10n.dart';
 import '../../theme/app_theme.dart';
+import '../../widgets/demo/demo_controls_panel.dart';
 import '../../widgets/summary/today_card.dart';
 
 /// Demo view for screen mirroring: Today card · Silent Guardian summary ·
 /// live agent transcript. Three fixed panes (side by side in landscape,
 /// stacked in portrait); only the transcript scrolls, and it auto-follows.
+/// Admin accounts also get a replayer control strip along the bottom
+/// (B176, relay `/admin/replay`).
 class DemoViewScreen extends ConsumerStatefulWidget {
   const DemoViewScreen({super.key});
 
@@ -123,6 +126,8 @@ class _DemoViewScreenState extends ConsumerState<DemoViewScreen> {
                   },
                 ),
               ),
+              // Admin-only replayer controls (hidden for everyone else).
+              const DemoControlsPanel(),
             ],
           ),
         ),

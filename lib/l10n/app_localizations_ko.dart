@@ -4189,4 +4189,54 @@ class AppLocalizationsKo extends AppLocalizations {
   String schedulerDurationHoursMinutes(int hours, int minutes) {
     return '$hours시간 $minutes분';
   }
+
+  @override
+  String get demoControlsTitle => '데모 제어';
+
+  @override
+  String demoReplayActive(String value) {
+    return 'replay_active: $value';
+  }
+
+  @override
+  String demoVirtualClock(String time) {
+    return '가상 시계 $time';
+  }
+
+  @override
+  String get demoLoadGoodDay => '좋은 하루 불러오기';
+
+  @override
+  String get demoLoadBadDay => '나쁜 하루 불러오기';
+
+  @override
+  String demoStartSpeed(int speed) {
+    return '시작 ($speed배속)';
+  }
+
+  @override
+  String get demoPause => '일시정지';
+
+  @override
+  String demoJumpTo(String time) {
+    return '$time로 이동';
+  }
+
+  @override
+  String get demoReset => '초기화';
+
+  @override
+  String get demoReplayIdle => '불러온 리플레이 없음';
+
+  @override
+  String get demoReplayStatusLoaded => '불러옴';
+
+  @override
+  String get demoReplayStatusRunning => '실행 중';
+
+  @override
+  String get demoReplayStatusPaused => '일시정지됨';
+
+  @override
+  String get demoReplayStatusDone => '완료';
 }

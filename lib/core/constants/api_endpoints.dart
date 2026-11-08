@@ -128,6 +128,19 @@ class ApiEndpoints {
   static String dogSoundReplace(String dogId, String soundId) =>
       '/api/dogs/$dogId/sounds/$soundId';
   static String dogSoundsReset(String dogId) => '/api/dogs/$dogId/sounds/reset';
+
+  /// Demo replayer (relay router replay.py, admin JWT only — the relay
+  /// decides by email, 403 `admin_only` otherwise). GET the root for state
+  /// {status idle|loaded|running|paused|done, seed, name, dog_id, date,
+  /// timezone, speed, cursor, total, emitted, virtual_time, next_event}.
+  static const String adminReplay = '/admin/replay';
+  static const String adminReplaySeeds = '/admin/replay/seeds';
+  static const String adminReplayLoad = '/admin/replay/load'; // {seed, dog_id?, device_id?, date?}
+  static const String adminReplayStart = '/admin/replay/start'; // {speed?}
+  static const String adminReplayPause = '/admin/replay/pause';
+  static const String adminReplaySpeed = '/admin/replay/speed'; // {speed}
+  static const String adminReplayJump = '/admin/replay/jump'; // {to: "HH:MM"} | {offset_s}
+  static const String adminReplayReset = '/admin/replay/reset';
   static String soundFile(String dogId, String soundId) =>
       '/api/sounds/file/$dogId/$soundId';
 

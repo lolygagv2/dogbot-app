@@ -7639,6 +7639,90 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'{hours} h {minutes} min'**
   String schedulerDurationHoursMinutes(int hours, int minutes);
+
+  /// No description provided for @demoControlsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Demo controls'**
+  String get demoControlsTitle;
+
+  /// No description provided for @demoReplayActive.
+  ///
+  /// In en, this message translates to:
+  /// **'replay_active: {value}'**
+  String demoReplayActive(String value);
+
+  /// No description provided for @demoVirtualClock.
+  ///
+  /// In en, this message translates to:
+  /// **'Virtual clock {time}'**
+  String demoVirtualClock(String time);
+
+  /// No description provided for @demoLoadGoodDay.
+  ///
+  /// In en, this message translates to:
+  /// **'Load good day'**
+  String get demoLoadGoodDay;
+
+  /// No description provided for @demoLoadBadDay.
+  ///
+  /// In en, this message translates to:
+  /// **'Load bad day'**
+  String get demoLoadBadDay;
+
+  /// No description provided for @demoStartSpeed.
+  ///
+  /// In en, this message translates to:
+  /// **'Start ({speed}×)'**
+  String demoStartSpeed(int speed);
+
+  /// No description provided for @demoPause.
+  ///
+  /// In en, this message translates to:
+  /// **'Pause'**
+  String get demoPause;
+
+  /// No description provided for @demoJumpTo.
+  ///
+  /// In en, this message translates to:
+  /// **'Jump to {time}'**
+  String demoJumpTo(String time);
+
+  /// No description provided for @demoReset.
+  ///
+  /// In en, this message translates to:
+  /// **'Reset'**
+  String get demoReset;
+
+  /// No description provided for @demoReplayIdle.
+  ///
+  /// In en, this message translates to:
+  /// **'No replay loaded'**
+  String get demoReplayIdle;
+
+  /// No description provided for @demoReplayStatusLoaded.
+  ///
+  /// In en, this message translates to:
+  /// **'Loaded'**
+  String get demoReplayStatusLoaded;
+
+  /// No description provided for @demoReplayStatusRunning.
+  ///
+  /// In en, this message translates to:
+  /// **'Running'**
+  String get demoReplayStatusRunning;
+
+  /// No description provided for @demoReplayStatusPaused.
+  ///
+  /// In en, this message translates to:
+  /// **'Paused'**
+  String get demoReplayStatusPaused;
+
+  /// No description provided for @demoReplayStatusDone.
+  ///
+  /// In en, this message translates to:
+  /// **'Done'**
+  String get demoReplayStatusDone;
 }
 
 class _AppLocalizationsDelegate
