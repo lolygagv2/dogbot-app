@@ -29,7 +29,17 @@ green (stock `widget_test.dart` pre-existing fail). Device pass pending.
   (proposes robot refusal frame `{"type":"error","code":"treat_cap_reached","command":
   "dispense_treat","used","cap","resets_at"}`).
 
-**Next:** push B177; device pass — toggle/slider → one relay save per action; voice agent
+**Later same session — B178–B181, pushed (69b26c0..0507c95):**
+- B178: home mode bar → `_ModeRow`: "Mode: Idle ▾" chip (bottom sheet MODE: Idle / Silent Guardian /
+  Coach / Mission / Manual; Manual → /drive, Mission → /missions), red EXIT beside chip while
+  non-idle, AI voice button relabelled "AI", DRIVE button removed from the bar. Fixes overlap on
+  large phones. Strings homeModeChip / homeModeSheetTitle / homeAiShort.
+- B179: `MaterialApp.builder` clamps textScaler 1.0–`kMaxTextScale` (1.2), app.dart.
+- B180: treat-limit hint dog-neutral ("Applies to all your dogs") — relay: all dogs always match.
+- B181: Today card label "Treats · Unlimited" when relay `totals.treat_cap` null
+  (`DailyStats.isRelayRollup` distinguishes relay vs local summary).
+
+**Next:** device pass — toggle/slider → one relay save per action; voice agent
 "allow unlimited treats" → push → tap → Settings scrolled to tile, toggle OFF, "Changed by the
 voice assistant"; robot team to confirm refusal reply shape (then tighten `tryParse`).
 
