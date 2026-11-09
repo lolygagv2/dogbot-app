@@ -1,5 +1,39 @@
 # WIM-Z Resume Chat Log
 
+## Session: 2026-11-09 — Build 177 (relay-synced daily treat limit)
+**Goal:** Relay brief 2026-11-09 "Treat limit is now synced through the relay": the relay now
+reads the app's `mission_config` message and saves `treat_schedule` for every owned dog.
+**Status:** App slice committed (B177, NOT pushed). Analyzer clean for touched files, 111 tests
+green (stock `widget_test.dart` pre-existing fail). Device pass pending.
+
+- `settings_provider.dart`: `previewDailyLimitCount` (drag, label only) vs `setDailyLimitCount`
+  (release → persist + ONE `mission_config`); `applyRemoteDailyLimit` adopts the relay value
+  without sending; `dailyLimitPayload()` + CONTRACT comment; clamp `kDailyLimitMin/Max` 1–100;
+  `onDailyLimitSent` hook. Traces `treat-limit`.
+- `treat_schedule_provider.dart` (new): read-only GET `/api/dogs/{dog}/settings/treat_schedule`
+  (`TreatSchedule{daily_cap_enabled, daily_cap, max_per_hour, raw}`); loads on tile open, dog
+  change, 1.5 s after our send, on push; `changedElsewhere` from `updated_by`.
+- Settings tile: slider onChanged/onChangeEnd split; hint "Showing {dog}'s limit" / "Changed by
+  the voice assistant | a connected AI assistant | the robot" / local-only; `SettingsScreen(focus:)`
+  + `?focus=treat_limit` scrolls (stepwise, lazy ListView) + highlights the tile.
+- Push: `push_routes.dart` `pushRouteFor(data)`; `PushService` exposes onMessageOpenedApp /
+  onMessage / getInitialMessage; `PushSync` subscribes after init, sets
+  `pushNavigationTargetProvider`; app.dart consumes it 600 ms after auth settles (after splash's
+  go('/home')). kind `treat_limit_raised` → settings focus + re-read; others → `/activity`.
+- Treat refusals: `data/models/treat_refusal.dart` `TreatRefusal.tryParse(WsEvent)` lenient
+  (error frame / command_result success:false / type-as-code, case-insensitive, used/cap/resets_at);
+  `treatRefusalProvider` (control_provider) → MainShell snackbar via `treatRefusalMessage()` with
+  "Settings" action on cap. `relay_error.dart` + `treat_window_closed`, resets_at.
+- Finding for relay: "missions screen sent 26 mission_config" = slider drags; the only sender in
+  the app is the Settings tile. Reply: `.claude/APP_REPLY_TO_RELAY_2026-11-09_treat_limit.md`
+  (proposes robot refusal frame `{"type":"error","code":"treat_cap_reached","command":
+  "dispense_treat","used","cap","resets_at"}`).
+
+**Next:** push B177; device pass — toggle/slider → one relay save per action; voice agent
+"allow unlimited treats" → push → tap → Settings scrolled to tile, toggle OFF, "Changed by the
+voice assistant"; robot team to confirm refusal reply shape (then tighten `tryParse`).
+
+---
 ## Session: 2026-11-07 (later) — Builds 173–174 (Halloween icon; schedule list fixes)
 **B173:** new app icon from `assets/icons/app_icon.png` regenerated for all 46 iOS/mac/watchOS
 files referenced by Contents.json + 5 Android mipmaps via new `tool/regen_icons.dart`
