@@ -118,6 +118,11 @@ class DailyStats {
   final int barks; // bark_episode count
   final int treats;
   final int? treatCap;
+
+  /// True when the row came from the relay roll-up (`totals` present), so a
+  /// null [treatCap] means "no daily limit" rather than "unknown"
+  /// (relay brief 2026-11-09 §4).
+  final bool isRelayRollup;
   final int guardianInterventions; // counts.intervention
   final int settles;
   final int pacingCount;
@@ -147,6 +152,7 @@ class DailyStats {
     this.barks = 0,
     this.treats = 0,
     this.treatCap,
+    this.isRelayRollup = false,
     this.guardianInterventions = 0,
     this.settles = 0,
     this.pacingCount = 0,
@@ -190,6 +196,7 @@ class DailyStats {
       barks: _i(counts['bark_episode']),
       treats: _in(totals['treats']) ?? _i(counts['treat']),
       treatCap: _in(totals['treat_cap']),
+      isRelayRollup: true,
       guardianInterventions: _i(counts['intervention']),
       settles: _i(counts['settle']),
       pacingCount: _i(counts['pacing']),

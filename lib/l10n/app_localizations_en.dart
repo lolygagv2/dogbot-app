@@ -4445,4 +4445,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get homeAiShort => 'AI';
+
+  @override
+  String get todayStatTreatsUnlimited => 'Treats · Unlimited';
 }

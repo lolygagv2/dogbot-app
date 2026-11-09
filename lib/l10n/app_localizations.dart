@@ -7813,6 +7813,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'AI'**
   String get homeAiShort;
+
+  /// No description provided for @todayStatTreatsUnlimited.
+  ///
+  /// In en, this message translates to:
+  /// **'Treats · Unlimited'**
+  String get todayStatTreatsUnlimited;
 }
 
 class _AppLocalizationsDelegate

@@ -2456,5 +2456,6 @@
   "homeModeChip": "모드: {mode}",
   "@homeModeChip": {"placeholders": {"mode": {"type": "String"}}},
   "homeModeSheetTitle": "모드",
-  "homeAiShort": "AI"
+  "homeAiShort": "AI",
+  "todayStatTreatsUnlimited": "간식 · 무제한"
 }

@@ -2568,5 +2568,6 @@
   "homeModeChip": "Mode: {mode}",
   "@homeModeChip": {"placeholders": {"mode": {"type": "String"}}},
   "homeModeSheetTitle": "MODE",
-  "homeAiShort": "AI"
+  "homeAiShort": "AI",
+  "todayStatTreatsUnlimited": "Treats · Unlimited"
 }

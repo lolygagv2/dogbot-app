@@ -120,8 +120,13 @@ class TodayCard extends ConsumerWidget {
           Row(
             children: [
               _Stat(l.todayStatBarks, '${stats.barks}', Colors.orange),
+              // Relay brief 2026-11-09 §4: totals.treat_cap null = no daily
+              // limit → label says "Unlimited" (never 0 or blank). A locally
+              // built summary has no cap info, so it keeps the plain label.
               _Stat(
-                l.todayStatTreats,
+                stats.isRelayRollup && stats.treatCap == null
+                    ? l.todayStatTreatsUnlimited
+                    : l.todayStatTreats,
                 stats.treatCap != null
                     ? '${stats.treats}/${stats.treatCap}'
                     : '${stats.treats}',

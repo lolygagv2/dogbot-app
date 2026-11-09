@@ -4295,4 +4295,7 @@ class AppLocalizationsKo extends AppLocalizations {
 
   @override
   String get homeAiShort => 'AI';
+
+  @override
+  String get todayStatTreatsUnlimited => '간식 · 무제한';
 }
