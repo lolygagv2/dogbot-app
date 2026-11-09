@@ -904,6 +904,27 @@ class _WimzAppState extends ConsumerState<WimzApp> with WidgetsBindingObserver {
       locale: locale,
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
+      // Build 179: cap the system text scale. Many controls (mode bar,
+      // quick actions, HUD) have fixed heights sized for 1.0; a large-font
+      // or display-zoomed phone pushed labels past them and they overlapped.
+      // 1.0–kMaxTextScale keeps accessibility headroom without the overflow.
+      builder: (context, child) {
+        final mq = MediaQuery.of(context);
+        return MediaQuery(
+          data: mq.copyWith(
+            textScaler: mq.textScaler.clamp(
+              minScaleFactor: 1.0,
+              maxScaleFactor: kMaxTextScale,
+            ),
+          ),
+          child: child ?? const SizedBox.shrink(),
+        );
+      },
     );
   }
 }
+
+/// Upper bound for the system text scale applied app-wide (see the
+/// MaterialApp builder). Fixed-height controls are laid out for 1.0; 1.2
+/// still honours "larger text" settings without labels overlapping.
+const double kMaxTextScale = 1.2;
