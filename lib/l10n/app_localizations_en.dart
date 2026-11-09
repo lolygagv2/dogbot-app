@@ -4386,4 +4386,53 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get demoReplayStatusDone => 'Done';
+
+  @override
+  String settingsDailyLimitSharedHint(String dog) {
+    return 'Shared with the robot, Claude and the voice assistant. Showing $dog\'s limit.';
+  }
+
+  @override
+  String settingsDailyLimitChangedBy(String actor) {
+    return 'Changed by $actor';
+  }
+
+  @override
+  String get settingsDailyLimitLocalOnly =>
+      'Sent to the robot only (no relay in local mode)';
+
+  @override
+  String get settingsDailyLimitUnlimited => 'Unlimited';
+
+  @override
+  String get actorVoiceAssistant => 'the voice assistant';
+
+  @override
+  String get actorConnectedAi => 'a connected AI assistant';
+
+  @override
+  String get actorRobot => 'the robot';
+
+  @override
+  String treatRefusedCapReached(String counts) {
+    return 'Daily treat limit reached$counts. Resets at midnight.';
+  }
+
+  @override
+  String treatRefusedCapReachedAt(String counts, String time) {
+    return 'Daily treat limit reached$counts. Resets at $time.';
+  }
+
+  @override
+  String get treatRefusedRate =>
+      'Too many treats in a row — try again in a minute.';
+
+  @override
+  String get treatRefusedWindowClosed =>
+      'Treats are paused right now (outside the allowed treat window).';
+
+  @override
+  String treatRefusedGeneric(String reason) {
+    return 'Treat refused: $reason';
+  }
 }

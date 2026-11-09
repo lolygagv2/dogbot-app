@@ -4239,4 +4239,50 @@ class AppLocalizationsKo extends AppLocalizations {
 
   @override
   String get demoReplayStatusDone => '완료';
+
+  @override
+  String settingsDailyLimitSharedHint(String dog) {
+    return '로봇, Claude, 음성 비서와 공유됩니다. $dog의 제한을 표시 중.';
+  }
+
+  @override
+  String settingsDailyLimitChangedBy(String actor) {
+    return '$actor이(가) 변경함';
+  }
+
+  @override
+  String get settingsDailyLimitLocalOnly => '로봇에만 전송됨 (로컬 모드에서는 릴레이 없음)';
+
+  @override
+  String get settingsDailyLimitUnlimited => '무제한';
+
+  @override
+  String get actorVoiceAssistant => '음성 비서';
+
+  @override
+  String get actorConnectedAi => '연결된 AI 비서';
+
+  @override
+  String get actorRobot => '로봇';
+
+  @override
+  String treatRefusedCapReached(String counts) {
+    return '일일 간식 제한에 도달했습니다$counts. 자정에 초기화됩니다.';
+  }
+
+  @override
+  String treatRefusedCapReachedAt(String counts, String time) {
+    return '일일 간식 제한에 도달했습니다$counts. $time에 초기화됩니다.';
+  }
+
+  @override
+  String get treatRefusedRate => '간식을 너무 연속으로 줬어요 — 1분 후 다시 시도하세요.';
+
+  @override
+  String get treatRefusedWindowClosed => '지금은 간식이 일시 중지되어 있습니다 (허용 시간대 외).';
+
+  @override
+  String treatRefusedGeneric(String reason) {
+    return '간식 거부됨: $reason';
+  }
 }

@@ -51,6 +51,10 @@ import 'presentation/screens/voice/voice_setup_screen.dart';
 import 'presentation/screens/scheduler/scheduler_screen.dart';
 import 'presentation/screens/scheduler/schedule_edit_screen.dart';
 import 'presentation/theme/app_theme.dart';
+import 'core/services/push_routes.dart';
+import 'core/utils/conn_trace.dart';
+import 'data/models/treat_refusal.dart';
+import 'presentation/widgets/status/treat_refusal_message.dart';
 
 /// Navigation tab enum
 enum NavTab {
@@ -256,8 +260,12 @@ GoRouter _buildRouter(WidgetRef ref, Listenable refreshListenable) => GoRouter(
         StatefulShellBranch(routes: [
           GoRoute(
             path: '/settings',
-            pageBuilder: (context, state) => const NoTransitionPage(
-              child: SettingsScreen(),
+            // `?focus=treat_limit` (push "Treat limit raised", brief
+            // 2026-11-09 §5) scrolls to + highlights the Daily treat limit.
+            pageBuilder: (context, state) => NoTransitionPage(
+              child: SettingsScreen(
+                focus: state.uri.queryParameters['focus'],
+              ),
             ),
             routes: [
               GoRoute(
@@ -413,6 +421,33 @@ class MainShell extends ConsumerWidget {
             ),
           );
         }
+      });
+    });
+
+    // Robot refused a treat (daily cap / rate / window — brief 2026-11-09
+    // §7): say why, wherever the Treat button lives (home quick actions,
+    // drive screen).
+    ref.listen(treatRefusalProvider, (previous, next) {
+      next.whenData((r) {
+        if (!context.mounted) return;
+        connTrace('treat-refused',
+            '${r.code} used=${r.used} cap=${r.cap} resets=${r.resetsAt}');
+        ScaffoldMessenger.of(context).hideCurrentSnackBar();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(treatRefusalMessage(context, r)),
+            backgroundColor: Colors.orange.shade800,
+            behavior: SnackBarBehavior.floating,
+            duration: const Duration(seconds: 4),
+            action: r.code == TreatRefusal.capReached
+                ? SnackBarAction(
+                    label: context.l10n.settings,
+                    textColor: Colors.white,
+                    onPressed: () => context.go(kSettingsTreatLimitRoute),
+                  )
+                : null,
+          ),
+        );
       });
     });
 
@@ -680,6 +715,7 @@ class _WimzAppState extends ConsumerState<WimzApp> with WidgetsBindingObserver {
   ProviderSubscription<AuthState>? _authSub;
   ProviderSubscription<bool>? _localModeSub;
   ProviderSubscription<bool>? _demoModeSub;
+  ProviderSubscription<String?>? _pushTargetSub;
 
   @override
   void initState() {
@@ -690,8 +726,15 @@ class _WimzAppState extends ConsumerState<WimzApp> with WidgetsBindingObserver {
       if (prev?.isAuthenticated != next.isAuthenticated ||
           prev?.bootstrapping != next.bootstrapping) {
         _authRefresh.value++;
+        _consumePushTarget();
       }
     });
+    // Push tap → route (brief 2026-11-09 §5). Consumed only once auth has
+    // settled; the splash's own post-frame go('/home') would otherwise win.
+    _pushTargetSub = ref.listenManual<String?>(
+      pushNavigationTargetProvider,
+      (prev, next) => _consumePushTarget(),
+    );
     // Build 111: the redirect guard now also treats local-AP and demo mode as
     // "may access protected routes". Re-evaluate routing when EITHER toggles,
     // so exiting those modes (e.g. local→sign out) re-applies the guard. Keyed
@@ -748,12 +791,29 @@ class _WimzAppState extends ConsumerState<WimzApp> with WidgetsBindingObserver {
     };
   }
 
+  /// Navigate to the route a tapped push asked for, once the user is
+  /// signed in and bootstrapping is over. Delayed one beat so it lands
+  /// AFTER the splash's post-frame go('/home').
+  void _consumePushTarget() {
+    final target = ref.read(pushNavigationTargetProvider);
+    if (target == null) return;
+    final auth = ref.read(authProvider);
+    if (auth.bootstrapping || !auth.isAuthenticated) return;
+    ref.read(pushNavigationTargetProvider.notifier).state = null;
+    Future.delayed(const Duration(milliseconds: 600), () {
+      if (!mounted) return;
+      connTrace('push-nav', target);
+      _router.go(target);
+    });
+  }
+
   @override
   void dispose() {
     _backgroundTeardownTimer?.cancel();
     _authSub?.close();
     _localModeSub?.close();
     _demoModeSub?.close();
+    _pushTargetSub?.close();
     _authRefresh.dispose();
     DioClient.onUnauthorized = null;
     WidgetsBinding.instance.removeObserver(this);

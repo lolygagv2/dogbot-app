@@ -4,8 +4,14 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../core/network/websocket_client.dart';
+import '../../core/utils/conn_trace.dart';
 import '../../data/models/notification_event.dart';
 import 'video_quality_provider.dart';
+
+/// Daily treat limit bounds — the relay clamps `daily_limit` to 0–100
+/// (brief 2026-11-09 §1); the slider offers 5–100. 0 is never sent by the app.
+const int kDailyLimitMin = 1;
+const int kDailyLimitMax = 100;
 
 /// Keys for persisted settings
 class SettingsKeys {
@@ -216,7 +222,7 @@ class SettingsNotifier extends StateNotifier<AppSettings> {
       cameraTrackingEnabled: cameraTracking,
       backgroundAudioEnabled: backgroundAudio,
       dailyLimitEnabled: dailyLimitEnabled,
-      dailyLimitCount: dailyLimitCount.clamp(1, 200),
+      dailyLimitCount: dailyLimitCount.clamp(kDailyLimitMin, kDailyLimitMax),
       localModeEnabled: localModeEnabled,
       localModeIp: localModeIp,
       localModePort: localModePort,
@@ -271,30 +277,73 @@ class SettingsNotifier extends StateNotifier<AppSettings> {
     print('Settings: Background audio set to $enabled');
   }
 
-  /// Toggle daily treat limit on/off
+  /// Toggle daily treat limit on/off. One `mission_config` per toggle.
   Future<void> setDailyLimitEnabled(bool enabled) async {
     state = state.copyWith(dailyLimitEnabled: enabled);
     await _prefs?.setBool(SettingsKeys.dailyLimitEnabled, enabled);
     _sendDailyLimitToRobot();
   }
 
-  /// Set daily treat limit count
+  /// Slider drag: update the label/thumb only. Nothing is persisted or sent
+  /// — relay brief 2026-11-09 §2: one drag used to fire 6–8 `mission_config`
+  /// (one per 5-step increment), each of which the robot answered. Commit
+  /// with [setDailyLimitCount] from `Slider.onChangeEnd`.
+  void previewDailyLimitCount(int count) {
+    state = state.copyWith(
+        dailyLimitCount: count.clamp(kDailyLimitMin, kDailyLimitMax));
+  }
+
+  /// Set daily treat limit count — persist and send ONCE (slider release).
   Future<void> setDailyLimitCount(int count) async {
-    final clamped = count.clamp(1, 200);
+    final clamped = count.clamp(kDailyLimitMin, kDailyLimitMax);
     state = state.copyWith(dailyLimitCount: clamped);
     await _prefs?.setInt(SettingsKeys.dailyLimitCount, clamped);
     _sendDailyLimitToRobot();
   }
 
-  /// Send daily limit config to robot via mission_config command
+  /// Adopt the relay's shared `treat_schedule` value (selected dog) without
+  /// sending anything: Claude / the voice agent / the robot may have changed
+  /// the limit since the phone last saved it. [cap] null = unlimited (the
+  /// stored count is kept so toggling back on restores it).
+  Future<void> applyRemoteDailyLimit({required bool enabled, int? cap}) async {
+    final count = cap == null
+        ? state.dailyLimitCount
+        : cap.clamp(kDailyLimitMin, kDailyLimitMax);
+    if (state.dailyLimitEnabled == enabled && state.dailyLimitCount == count) {
+      return;
+    }
+    state = state.copyWith(dailyLimitEnabled: enabled, dailyLimitCount: count);
+    await _prefs?.setBool(SettingsKeys.dailyLimitEnabled, enabled);
+    await _prefs?.setInt(SettingsKeys.dailyLimitCount, count);
+    connTrace('treat-limit', 'adopted relay value enabled=$enabled cap=$cap');
+  }
+
+  /// Send daily limit config to robot via mission_config command.
+  ///
+  /// CONTRACT (relay brief 2026-11-09 §1): the relay reads THIS exact
+  /// message off the socket and saves it as `treat_schedule` for every dog
+  /// the user owns, so the robot, Claude and the voice agent share one
+  /// limit. Field names / message name must not change without telling the
+  /// relay side — the sync would silently stop. daily_limit_enabled:false
+  /// = unlimited (daily_limit is kept so toggling back on restores it).
   void _sendDailyLimitToRobot() {
     final ws = _ref.read(websocketClientProvider);
-    ws.sendCommand('mission_config', {
-      'daily_limit_enabled': state.dailyLimitEnabled,
-      'daily_limit': state.dailyLimitCount,
-    });
-    print('Settings: Daily limit ${state.dailyLimitEnabled ? "ON (${state.dailyLimitCount})" : "OFF"}');
+    ws.sendCommand('mission_config', dailyLimitPayload());
+    connTrace('treat-limit',
+        'sent mission_config ${state.dailyLimitEnabled ? "ON (${state.dailyLimitCount})" : "OFF (${state.dailyLimitCount})"}');
+    _onDailyLimitSent?.call();
   }
+
+  /// Hook for the relay-backed treat schedule provider: re-read the shared
+  /// value shortly after we send, so the UI shows what the relay saved.
+  void Function()? _onDailyLimitSent;
+  set onDailyLimitSent(void Function()? cb) => _onDailyLimitSent = cb;
+
+  /// The exact `mission_config` data payload (kept testable).
+  Map<String, dynamic> dailyLimitPayload() => {
+        'daily_limit_enabled': state.dailyLimitEnabled,
+        'daily_limit': state.dailyLimitCount,
+      };
 
   /// Set notifications enabled
   Future<void> setNotificationsEnabled(bool enabled) async {

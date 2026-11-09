@@ -2548,5 +2548,22 @@
   "demoReplayStatusLoaded": "Loaded",
   "demoReplayStatusRunning": "Running",
   "demoReplayStatusPaused": "Paused",
-  "demoReplayStatusDone": "Done"
+  "demoReplayStatusDone": "Done",
+  "settingsDailyLimitSharedHint": "Shared with the robot, Claude and the voice assistant. Showing {dog}'s limit.",
+  "@settingsDailyLimitSharedHint": {"placeholders": {"dog": {"type": "String"}}},
+  "settingsDailyLimitChangedBy": "Changed by {actor}",
+  "@settingsDailyLimitChangedBy": {"placeholders": {"actor": {"type": "String"}}},
+  "settingsDailyLimitLocalOnly": "Sent to the robot only (no relay in local mode)",
+  "settingsDailyLimitUnlimited": "Unlimited",
+  "actorVoiceAssistant": "the voice assistant",
+  "actorConnectedAi": "a connected AI assistant",
+  "actorRobot": "the robot",
+  "treatRefusedCapReached": "Daily treat limit reached{counts}. Resets at midnight.",
+  "@treatRefusedCapReached": {"placeholders": {"counts": {"type": "String"}}},
+  "treatRefusedCapReachedAt": "Daily treat limit reached{counts}. Resets at {time}.",
+  "@treatRefusedCapReachedAt": {"placeholders": {"counts": {"type": "String"}, "time": {"type": "String"}}},
+  "treatRefusedRate": "Too many treats in a row — try again in a minute.",
+  "treatRefusedWindowClosed": "Treats are paused right now (outside the allowed treat window).",
+  "treatRefusedGeneric": "Treat refused: {reason}",
+  "@treatRefusedGeneric": {"placeholders": {"reason": {"type": "String"}}}
 }

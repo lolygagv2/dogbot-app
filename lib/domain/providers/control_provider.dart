@@ -11,6 +11,7 @@ import 'connection_provider.dart';
 import 'dog_profiles_provider.dart';
 import 'settings_provider.dart';
 import 'webrtc_provider.dart';
+import '../../data/models/treat_refusal.dart';
 
 /// Motor control state
 class MotorState {
@@ -302,6 +303,18 @@ class ServoControlNotifier extends StateNotifier<ServoState> {
     super.dispose();
   }
 }
+
+/// Robot refusals of `dispense_treat` (treat_cap_reached / treat_rate /
+/// treat_window_closed — relay brief 2026-11-09 §7). The shell shows the
+/// reason as a snackbar wherever the Treat button was pressed.
+final treatRefusalProvider = StreamProvider<TreatRefusal>((ref) {
+  return ref
+      .read(websocketClientProvider)
+      .eventStream
+      .map(TreatRefusal.tryParse)
+      .where((r) => r != null)
+      .cast<TreatRefusal>();
+});
 
 /// Provider for treat dispenser actions with debouncing
 final treatControlProvider = Provider<TreatControl>((ref) {

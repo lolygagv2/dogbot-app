@@ -25,15 +25,26 @@ import '../../theme/app_theme.dart';
 import '../../widgets/night_mode/night_vision_settings_section.dart';
 import '../../widgets/status/local_ap_banner.dart';
 import '../../widgets/silent_guardian/intervention_level_section.dart';
+import '../../../core/services/push_routes.dart';
+import '../../../domain/providers/treat_schedule_provider.dart';
 
 class SettingsScreen extends ConsumerStatefulWidget {
-  const SettingsScreen({super.key});
+  /// `?focus=` query param: a tile to scroll into view and highlight.
+  /// `treat_limit` is used by the "Treat limit raised" push (brief
+  /// 2026-11-09 §5) and the treat-refused snackbar action.
+  final String? focus;
+
+  const SettingsScreen({super.key, this.focus});
 
   @override
   ConsumerState<SettingsScreen> createState() => _SettingsScreenState();
 }
 
 class _SettingsScreenState extends ConsumerState<SettingsScreen> {
+  final _scroll = ScrollController();
+  final _dailyLimitKey = GlobalKey();
+  bool _highlightDailyLimit = false;
+
   @override
   void initState() {
     super.initState();
@@ -43,7 +54,56 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       if (!isLocal) {
         ref.read(pairedDevicesProvider.notifier).loadDevices();
       }
+      _applyFocus();
     });
+  }
+
+  @override
+  void didUpdateWidget(covariant SettingsScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // The shell keeps this screen mounted; a push tap while it's already
+    // showing arrives as a new `focus` prop rather than a fresh initState.
+    if (widget.focus != oldWidget.focus && widget.focus != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => _applyFocus());
+    }
+  }
+
+  @override
+  void dispose() {
+    _scroll.dispose();
+    super.dispose();
+  }
+
+  void _applyFocus() {
+    if (!mounted || widget.focus != kSettingsFocusTreatLimit) return;
+    // The relay may have been changed by an assistant: re-read it now.
+    ref.read(treatScheduleProvider.notifier).load();
+    _revealDailyLimit();
+  }
+
+  /// ListView builds lazily, so the tile may have no context yet: scroll in
+  /// steps until it does, then ensureVisible + flash the highlight.
+  Future<void> _revealDailyLimit([int attempt = 0]) async {
+    if (!mounted) return;
+    final ctx = _dailyLimitKey.currentContext;
+    if (ctx != null) {
+      await Scrollable.ensureVisible(ctx,
+          alignment: 0.2, duration: const Duration(milliseconds: 350));
+      if (!mounted) return;
+      setState(() => _highlightDailyLimit = true);
+      await Future.delayed(const Duration(milliseconds: 2500));
+      if (mounted) setState(() => _highlightDailyLimit = false);
+      return;
+    }
+    if (attempt >= 12 || !_scroll.hasClients) return;
+    final pos = _scroll.position;
+    await _scroll.animateTo(
+      (pos.pixels + pos.viewportDimension * 0.8).clamp(0.0, pos.maxScrollExtent),
+      duration: const Duration(milliseconds: 120),
+      curve: Curves.easeOut,
+    );
+    WidgetsBinding.instance
+        .addPostFrameCallback((_) => _revealDailyLimit(attempt + 1));
   }
 
   Future<void> _confirmSignOut(BuildContext context) async {
@@ -91,6 +151,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     return Scaffold(
       appBar: AppBar(title: Text(l.settings)),
       body: ListView(
+        controller: _scroll,
         children: [
           // Connection Status
           _SectionHeader(l.settingsSectionConnection),
@@ -214,7 +275,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           const Divider(),
 
           _SectionHeader(l.settingsSectionTraining),
-          const _DailyLimitTile(),
+          _DailyLimitTile(key: _dailyLimitKey, highlighted: _highlightDailyLimit),
           ListTile(
             leading: const Icon(Icons.schedule),
             title: Text(l.settingsTrainingScheduler),
@@ -805,16 +866,68 @@ class _TreatsRemainingTile extends ConsumerWidget {
   }
 }
 
-/// Daily treat limit toggle with count slider
-class _DailyLimitTile extends ConsumerWidget {
-  const _DailyLimitTile();
+/// Daily treat limit toggle with count slider.
+///
+/// Relay brief 2026-11-09: the `mission_config` message this tile sends is
+/// read by the relay and saved for every owned dog, so the robot, Claude and
+/// the voice agent share one limit (§1). The slider sends ONCE, on release
+/// (§2). On open the shared value for the selected dog is loaded from
+/// `GET /api/dogs/{dog}/settings/treat_schedule` and shown instead of the
+/// phone's stale copy (§3) — an assistant may have raised it.
+class _DailyLimitTile extends ConsumerStatefulWidget {
+  final bool highlighted;
+  const _DailyLimitTile({super.key, this.highlighted = false});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final settings = ref.watch(settingsProvider);
-    final l = context.l10n;
+  ConsumerState<_DailyLimitTile> createState() => _DailyLimitTileState();
+}
 
-    return Column(
+class _DailyLimitTileState extends ConsumerState<_DailyLimitTile> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      if (ref.read(settingsProvider).localModeEnabled) return;
+      final s = ref.read(treatScheduleProvider);
+      if (!s.loading && !s.unsupported) {
+        ref.read(treatScheduleProvider.notifier).load();
+      }
+    });
+  }
+
+  String _actorLabel(AppLocalizations l, String? updatedBy) {
+    final by = (updatedBy ?? '').toLowerCase();
+    if (by.startsWith('agent') || by.contains('voice')) return l.actorVoiceAssistant;
+    if (by.startsWith('connector') || by.startsWith('ai')) return l.actorConnectedAi;
+    if (by.startsWith('robot') || by.startsWith('device')) return l.actorRobot;
+    return updatedBy ?? '?';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final settings = ref.watch(settingsProvider);
+    final remote = ref.watch(treatScheduleProvider);
+    final dog = ref.watch(selectedDogProvider);
+    final l = context.l10n;
+    final isLocal = settings.localModeEnabled;
+
+    final String hint;
+    if (isLocal) {
+      hint = l.settingsDailyLimitLocalOnly;
+    } else if (remote.error != null) {
+      hint = remote.error!;
+    } else if (remote.loading && !remote.loaded) {
+      hint = l.loading;
+    } else if (remote.loaded && remote.changedElsewhere) {
+      hint = l.settingsDailyLimitChangedBy(_actorLabel(l, remote.updatedBy));
+    } else if (dog != null) {
+      hint = l.settingsDailyLimitSharedHint(dog.name);
+    } else {
+      hint = '';
+    }
+
+    final tile = Column(
       children: [
         SwitchListTile(
           secondary: Icon(
@@ -841,21 +954,53 @@ class _DailyLimitTile extends ConsumerWidget {
                 const Text('5', style: TextStyle(fontSize: 12)),
                 Expanded(
                   child: Slider(
-                    value: settings.dailyLimitCount.toDouble(),
+                    value: settings.dailyLimitCount
+                        .clamp(5, kDailyLimitMax)
+                        .toDouble(),
                     min: 5,
-                    max: 100,
+                    max: kDailyLimitMax.toDouble(),
                     divisions: 19,
                     label: '${settings.dailyLimitCount}',
-                    onChanged: (value) {
-                      ref.read(settingsProvider.notifier).setDailyLimitCount(value.round());
-                    },
+                    // Drag: label only. Release: persist + ONE mission_config.
+                    onChanged: (value) => ref
+                        .read(settingsProvider.notifier)
+                        .previewDailyLimitCount(value.round()),
+                    onChangeEnd: (value) => ref
+                        .read(settingsProvider.notifier)
+                        .setDailyLimitCount(value.round()),
                   ),
                 ),
-                const Text('100', style: TextStyle(fontSize: 12)),
+                Text('$kDailyLimitMax', style: const TextStyle(fontSize: 12)),
               ],
             ),
           ),
+        if (hint.isNotEmpty)
+          Padding(
+            padding: const EdgeInsets.only(left: 72, right: 16, bottom: 8),
+            child: Text(
+              hint,
+              style: TextStyle(
+                color: remote.error != null
+                    ? AppTheme.warning
+                    : (remote.changedElsewhere && remote.loaded
+                        ? AppTheme.warning
+                        : AppTheme.textTertiary),
+                fontSize: 11,
+              ),
+            ),
+          ),
       ],
+    );
+
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 400),
+      decoration: BoxDecoration(
+        color: widget.highlighted
+            ? AppTheme.warning.withOpacity(0.15)
+            : Colors.transparent,
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: tile,
     );
   }
 }

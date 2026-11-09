@@ -7723,6 +7723,78 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Done'**
   String get demoReplayStatusDone;
+
+  /// No description provided for @settingsDailyLimitSharedHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Shared with the robot, Claude and the voice assistant. Showing {dog}\'s limit.'**
+  String settingsDailyLimitSharedHint(String dog);
+
+  /// No description provided for @settingsDailyLimitChangedBy.
+  ///
+  /// In en, this message translates to:
+  /// **'Changed by {actor}'**
+  String settingsDailyLimitChangedBy(String actor);
+
+  /// No description provided for @settingsDailyLimitLocalOnly.
+  ///
+  /// In en, this message translates to:
+  /// **'Sent to the robot only (no relay in local mode)'**
+  String get settingsDailyLimitLocalOnly;
+
+  /// No description provided for @settingsDailyLimitUnlimited.
+  ///
+  /// In en, this message translates to:
+  /// **'Unlimited'**
+  String get settingsDailyLimitUnlimited;
+
+  /// No description provided for @actorVoiceAssistant.
+  ///
+  /// In en, this message translates to:
+  /// **'the voice assistant'**
+  String get actorVoiceAssistant;
+
+  /// No description provided for @actorConnectedAi.
+  ///
+  /// In en, this message translates to:
+  /// **'a connected AI assistant'**
+  String get actorConnectedAi;
+
+  /// No description provided for @actorRobot.
+  ///
+  /// In en, this message translates to:
+  /// **'the robot'**
+  String get actorRobot;
+
+  /// No description provided for @treatRefusedCapReached.
+  ///
+  /// In en, this message translates to:
+  /// **'Daily treat limit reached{counts}. Resets at midnight.'**
+  String treatRefusedCapReached(String counts);
+
+  /// No description provided for @treatRefusedCapReachedAt.
+  ///
+  /// In en, this message translates to:
+  /// **'Daily treat limit reached{counts}. Resets at {time}.'**
+  String treatRefusedCapReachedAt(String counts, String time);
+
+  /// No description provided for @treatRefusedRate.
+  ///
+  /// In en, this message translates to:
+  /// **'Too many treats in a row — try again in a minute.'**
+  String get treatRefusedRate;
+
+  /// No description provided for @treatRefusedWindowClosed.
+  ///
+  /// In en, this message translates to:
+  /// **'Treats are paused right now (outside the allowed treat window).'**
+  String get treatRefusedWindowClosed;
+
+  /// No description provided for @treatRefusedGeneric.
+  ///
+  /// In en, this message translates to:
+  /// **'Treat refused: {reason}'**
+  String treatRefusedGeneric(String reason);
 }
 
 class _AppLocalizationsDelegate

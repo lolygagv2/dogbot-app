@@ -58,4 +58,26 @@ class PushService {
   /// Only subscribe after init() returned true.
   Stream<String> get tokenRefreshStream =>
       FirebaseMessaging.instance.onTokenRefresh;
+
+  /// The user tapped an OS notification while the app was in the background.
+  /// Only subscribe after init() returned true.
+  Stream<RemoteMessage> get onMessageOpenedApp =>
+      FirebaseMessaging.onMessageOpenedApp;
+
+  /// A push arrived while the app was in the foreground (the OS shows no
+  /// banner; the relay's WS event covers the in-app feed). Used to refresh
+  /// relay-owned state the push is about (e.g. the treat limit).
+  Stream<RemoteMessage> get onForegroundMessage => FirebaseMessaging.onMessage;
+
+  /// The notification that launched the app from a killed state, if any.
+  /// Null when unavailable or when the app was opened normally.
+  Future<RemoteMessage?> initialMessage() async {
+    if (!_initialized) return null;
+    try {
+      return await FirebaseMessaging.instance.getInitialMessage();
+    } catch (e) {
+      connTrace('push-initial-error', '$e');
+      return null;
+    }
+  }
 }

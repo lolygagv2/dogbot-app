@@ -1,14 +1,23 @@
 import 'dart:async';
 import 'dart:io' show Platform;
 
+import 'package:firebase_messaging/firebase_messaging.dart' show RemoteMessage;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../core/services/push_routes.dart';
 import '../../core/services/push_service.dart';
 import '../../core/utils/conn_trace.dart';
 import '../../data/datasources/robot_api.dart';
 import '../../data/models/notification_event.dart';
 import 'auth_provider.dart';
 import 'settings_provider.dart';
+import 'treat_schedule_provider.dart';
+
+/// Route a tapped push wants opened. Set by [PushSync] (background tap or
+/// cold-start launch), consumed by the app shell once the router is on an
+/// authenticated route (app.dart) — the splash's own `/home` navigation
+/// would otherwise race it.
+final pushNavigationTargetProvider = StateProvider<String?>((ref) => null);
 
 /// Push registration coordinator.
 ///
@@ -43,6 +52,9 @@ class PushSync {
   final Ref _ref;
   Timer? _debounce;
   StreamSubscription<String>? _refreshSub;
+  StreamSubscription<RemoteMessage>? _tapSub;
+  StreamSubscription<RemoteMessage>? _foregroundSub;
+  bool _initialMessageChecked = false;
   String? _registeredJwt;
   String? _registeredDeviceToken;
 
@@ -95,6 +107,14 @@ class PushSync {
       _registeredJwt = null; // force re-register with the fresh token
       unawaited(register());
     });
+    _tapSub ??= PushService.instance.onMessageOpenedApp.listen(_onTapped);
+    _foregroundSub ??=
+        PushService.instance.onForegroundMessage.listen(_onForeground);
+    if (!_initialMessageChecked) {
+      _initialMessageChecked = true;
+      final initial = await PushService.instance.initialMessage();
+      if (initial != null) _onTapped(initial);
+    }
 
     final enabled = _enabledTypes();
     final ok = await _ref.read(robotApiProvider).registerPushDevice(
@@ -121,8 +141,35 @@ class PushSync {
     });
   }
 
+  /// Background / cold-start tap: hand the route to the shell.
+  void _onTapped(RemoteMessage m) {
+    final route = pushRouteFor(m.data);
+    connTrace('push-tap', 'kind=${m.data['kind']} type=${m.data['type']} → $route');
+    if (route == null) return;
+    _ref.read(pushNavigationTargetProvider.notifier).state = route;
+    _refreshForPush(m.data);
+  }
+
+  /// Foreground arrival: no navigation, but refresh what the push is about.
+  void _onForeground(RemoteMessage m) {
+    connTrace('push-foreground', 'kind=${m.data['kind']} type=${m.data['type']}');
+    _refreshForPush(m.data);
+  }
+
+  void _refreshForPush(Map<String, dynamic> data) {
+    if (data['kind']?.toString() == kPushKindTreatLimitRaised) {
+      // Brief 2026-11-09 §5: an assistant raised the cap — re-read the
+      // relay value so Settings shows the toggle/slider as they now are.
+      _ref
+          .read(treatScheduleProvider.notifier)
+          .scheduleResync(after: const Duration(milliseconds: 300));
+    }
+  }
+
   void dispose() {
     _debounce?.cancel();
     _refreshSub?.cancel();
+    _tapSub?.cancel();
+    _foregroundSub?.cancel();
   }
 }
