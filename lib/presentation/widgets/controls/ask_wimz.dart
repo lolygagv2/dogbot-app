@@ -30,11 +30,12 @@ class HoldToTalkButton extends ConsumerWidget {
     final busy = s.isBusy;
     final disabled = isLocal || busy;
     final progress = (s.elapsedMs / AgentTalkNotifier.maxMs).clamp(0.0, 1.0);
-    final color = recording
-        ? AppTheme.error
-        : disabled
-            ? AppTheme.textTertiary
-            : AppTheme.primary;
+    // Ink/primary throughout (the Home row's one gold element is Treat);
+    // recording fills solid, with on-primary text/ring.
+    final cs = Theme.of(context).colorScheme;
+    final w = context.wimz;
+    final color = disabled ? w.inkDisabled : cs.primary;
+    final onFill = cs.onPrimary;
     final inner = size - 12;
 
     if (label != null) {
@@ -49,10 +50,9 @@ class HoldToTalkButton extends ConsumerWidget {
             height: size,
             padding: const EdgeInsets.symmetric(horizontal: 12),
             decoration: BoxDecoration(
-              color: recording ? color.withOpacity(0.85) : color.withOpacity(0.18),
+              color: recording ? color : w.surfaceRaised,
               borderRadius: BorderRadius.circular(10),
               border: Border.all(color: color, width: 1.5),
-              boxShadow: recording ? AppTheme.glowShadow(color, blur: 12) : null,
             ),
             child: Row(
               mainAxisSize: MainAxisSize.min,
@@ -68,7 +68,7 @@ class HoldToTalkButton extends ConsumerWidget {
                     width: 16,
                     height: 16,
                     child: CircularProgressIndicator(
-                        value: progress, strokeWidth: 2, color: Colors.white),
+                        value: progress, strokeWidth: 2, color: onFill),
                   )
                 else
                   Icon(Icons.record_voice_over, size: 18, color: color),
@@ -81,7 +81,7 @@ class HoldToTalkButton extends ConsumerWidget {
                     fontSize: 13,
                     fontWeight: FontWeight.bold,
                     letterSpacing: 1,
-                    color: recording ? Colors.white : color,
+                    color: recording ? onFill : color,
                   ),
                 ),
               ],
@@ -122,14 +122,12 @@ class HoldToTalkButton extends ConsumerWidget {
                   height: recording ? inner + 6 : inner,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    color: color.withOpacity(recording ? 0.35 : 0.18),
+                    color: recording ? color : w.surfaceRaised,
                     border: Border.all(color: color, width: 2),
-                    boxShadow:
-                        recording ? AppTheme.glowShadow(color, blur: 14) : null,
                   ),
                   child: Icon(
                     busy ? Icons.hourglass_top : Icons.record_voice_over,
-                    color: color,
+                    color: recording ? onFill : color,
                     size: size > 50 ? 26 : 18,
                   ),
                 ),
@@ -182,37 +180,40 @@ class _AskWimzBannerState extends ConsumerState<AskWimzBanner> {
     final show = s.phase != AgentTalkPhase.idle || s.error != null || recent;
     if (!show) return const SizedBox.shrink();
 
+    final w = context.wimz;
+    final isError = s.phase == AgentTalkPhase.idle && s.error != null;
     String status;
-    Color color = AppTheme.textTertiary;
+    Color color = w.inkMuted;
     switch (s.phase) {
       case AgentTalkPhase.recording:
         status = l.talkRecording((s.elapsedMs / 1000).toStringAsFixed(1));
-        color = AppTheme.error;
+        color = w.ink;
         break;
       case AgentTalkPhase.sending:
         status = l.talkSending;
-        color = AppTheme.primary;
+        color = w.ink;
         break;
       case AgentTalkPhase.playingRobot:
         status = l.talkPlayingRobot;
-        color = AppTheme.accent;
+        color = w.ink;
         break;
       case AgentTalkPhase.playingPhone:
         status = l.talkPlayingPhone;
-        color = AppTheme.accent;
+        color = w.ink;
         break;
       case AgentTalkPhase.idle:
         status = s.error ?? l.talkCardTitle;
-        if (s.error != null) color = AppTheme.warning;
+        // Genuine error: error colour + error icon + the message text.
+        if (isError) color = Theme.of(context).colorScheme.error;
     }
 
     return Container(
       margin: const EdgeInsets.fromLTRB(12, 0, 12, 6),
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
-        color: AppTheme.surfaceLight,
+        color: w.surfaceRaised,
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: color.withOpacity(0.5)),
+        border: Border.all(color: w.line),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -220,7 +221,8 @@ class _AskWimzBannerState extends ConsumerState<AskWimzBanner> {
         children: [
           Row(
             children: [
-              Icon(Icons.record_voice_over, size: 14, color: color),
+              Icon(isError ? Icons.error_outline : Icons.record_voice_over,
+                  size: 14, color: color),
               const SizedBox(width: 6),
               Expanded(
                 child: Text(status,
@@ -234,7 +236,7 @@ class _AskWimzBannerState extends ConsumerState<AskWimzBanner> {
             Padding(
               padding: const EdgeInsets.only(top: 4),
               child: Text('${l.talkYou}: ${s.textIn!}',
-                  style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary),
+                  style: TextStyle(fontSize: 12, color: w.inkMuted),
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis),
             ),
@@ -242,7 +244,7 @@ class _AskWimzBannerState extends ConsumerState<AskWimzBanner> {
             Padding(
               padding: const EdgeInsets.only(top: 2),
               child: Text('WIM-Z: ${s.textOut!}',
-                  style: const TextStyle(fontSize: 12, color: AppTheme.textPrimary),
+                  style: TextStyle(fontSize: 12, color: w.ink),
                   maxLines: 3,
                   overflow: TextOverflow.ellipsis),
             ),
@@ -251,7 +253,7 @@ class _AskWimzBannerState extends ConsumerState<AskWimzBanner> {
               Padding(
                 padding: const EdgeInsets.only(top: 2),
                 child: Text(l.talkRefused(r),
-                    style: const TextStyle(fontSize: 11, color: AppTheme.warning),
+                    style: TextStyle(fontSize: 11, color: w.inkMuted),
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis),
               ),

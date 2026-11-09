@@ -39,6 +39,37 @@ final _playlistLengthProvider = StateProvider<int>((ref) => 0);
 /// Robot 137a5e8: loop mode synced from audio_state — 'off' | 'one' | 'all'
 final _loopModeProvider = StateProvider<String>((ref) => 'off');
 
+/// Snackbar content with a leading status icon (success / warning / error
+/// are never colour alone). [onColor] is the snackbar's foreground.
+Widget _snackContent(IconData icon, Color onColor, String text) => Row(
+      children: [
+        Icon(icon, color: onColor, size: 20),
+        const SizedBox(width: 8),
+        Expanded(child: Text(text)),
+      ],
+    );
+
+/// Error snackbar: error fill, error icon + message.
+SnackBar _errorSnack(BuildContext context, String text,
+    {SnackBarBehavior? behavior}) {
+  final cs = Theme.of(context).colorScheme;
+  return SnackBar(
+    content: _snackContent(Icons.error_outline, cs.onError, text),
+    backgroundColor: cs.error,
+    behavior: behavior,
+  );
+}
+
+/// Success / warning snackbar: theme (inverse-surface) fill, icon + message.
+SnackBar _statusSnack(BuildContext context, IconData icon, String text,
+    {SnackBarBehavior? behavior}) {
+  final cs = Theme.of(context).colorScheme;
+  return SnackBar(
+    content: _snackContent(icon, cs.onInverseSurface, text),
+    behavior: behavior,
+  );
+}
+
 class QuickActions extends ConsumerStatefulWidget {
   const QuickActions({super.key});
 
@@ -112,20 +143,15 @@ class _QuickActionsState extends ConsumerState<QuickActions> {
       ScaffoldMessenger.of(context).hideCurrentSnackBar();
       if (success) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(l.quickActionsDeleted(filename)),
-            backgroundColor: Colors.green,
-            behavior: SnackBarBehavior.floating,
-          ),
+          _statusSnack(context, Icons.check_circle,
+              l.quickActionsDeleted(filename),
+              behavior: SnackBarBehavior.floating),
         );
       } else {
         final error = data['error'] as String? ?? l.unknownError;
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(l.quickActionsDeleteFailed(error)),
-            backgroundColor: Colors.red,
-            behavior: SnackBarBehavior.floating,
-          ),
+          _errorSnack(context, l.quickActionsDeleteFailed(error),
+              behavior: SnackBarBehavior.floating),
         );
       }
     }
@@ -149,20 +175,17 @@ class _QuickActionsState extends ConsumerState<QuickActions> {
       ScaffoldMessenger.of(context).hideCurrentSnackBar();
       if (success) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(l.quickActionsUploaded(
-                filename == 'file' ? l.quickActionsFileFallback : filename)),
-            backgroundColor: Colors.green,
-            behavior: SnackBarBehavior.floating,
-          ),
+          _statusSnack(
+              context,
+              Icons.check_circle,
+              l.quickActionsUploaded(
+                  filename == 'file' ? l.quickActionsFileFallback : filename),
+              behavior: SnackBarBehavior.floating),
         );
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(l.quickActionsUploadFailed(error ?? l.unknownError)),
-            backgroundColor: Colors.red,
-            behavior: SnackBarBehavior.floating,
-          ),
+          _errorSnack(context, l.quickActionsUploadFailed(error ?? l.unknownError),
+              behavior: SnackBarBehavior.floating),
         );
       }
     }
@@ -233,6 +256,9 @@ class _QuickActionsState extends ConsumerState<QuickActions> {
 
     final pttState = ref.watch(pushToTalkProvider);
     final l = context.l10n;
+    // Home screen's ONE gold element is the Treat action; every other
+    // action is ink.
+    final w = context.wimz;
 
     return Column(
       mainAxisSize: MainAxisSize.min,
@@ -250,7 +276,8 @@ class _QuickActionsState extends ConsumerState<QuickActions> {
               child: _ActionButton(
                 icon: Icons.pets,
                 label: l.quickActionsTreat,
-                color: AppTheme.accent,
+                color: w.ink,
+                gold: true,
                 onPressed: () => treatControl.dispense(),
               ),
             ),
@@ -259,14 +286,14 @@ class _QuickActionsState extends ConsumerState<QuickActions> {
             Container(
               width: 1,
               height: 44,
-              color: AppTheme.textTertiary.withOpacity(0.3),
+              color: w.line,
             ),
 
             Expanded(
               child: _ActionButton(
                 icon: Icons.thumb_up,
                 label: l.quickActionsGood,
-                color: Colors.green,
+                color: w.ink,
                 onPressed: () {
                   if (selectedDog == null) { _showNoDogError(context); return; }
                   if (!_canExecuteVoice(_lastGood)) return;
@@ -280,7 +307,7 @@ class _QuickActionsState extends ConsumerState<QuickActions> {
               child: _ActionButton(
                 icon: Icons.campaign,
                 label: l.quickActionsCallDog,
-                color: Colors.deepOrange,
+                color: w.ink,
                 onPressed: () {
                   if (selectedDog == null) { _showNoDogError(context); return; }
                   if (!_canExecuteVoice(_lastCallDog)) return;
@@ -301,7 +328,7 @@ class _QuickActionsState extends ConsumerState<QuickActions> {
               child: _ActionButton(
                 icon: Icons.restaurant,
                 label: l.quickActionsWant,
-                color: Colors.amber,
+                color: w.ink,
                 onPressed: () {
                   if (selectedDog == null) { _showNoDogError(context); return; }
                   if (!_canExecuteVoice(_lastWantTreat)) return;
@@ -315,7 +342,7 @@ class _QuickActionsState extends ConsumerState<QuickActions> {
               child: _ActionButton(
                 icon: Icons.block,
                 label: l.quickActionsNo,
-                color: Colors.red,
+                color: w.ink,
                 onPressed: () {
                   if (selectedDog == null) { _showNoDogError(context); return; }
                   if (!_canExecuteVoice(_lastNo)) return;
@@ -330,7 +357,7 @@ class _QuickActionsState extends ConsumerState<QuickActions> {
               child: _ActionButton(
                 icon: Icons.volume_off,
                 label: l.quickActionsQuiet,
-                color: Colors.purpleAccent,
+                color: w.ink,
                 onPressed: () {
                   if (selectedDog == null) { _showNoDogError(context); return; }
                   if (!_canExecuteVoice(_lastQuiet)) return;
@@ -344,7 +371,7 @@ class _QuickActionsState extends ConsumerState<QuickActions> {
               child: _ActionButton(
                 icon: Icons.airline_seat_recline_normal,
                 label: l.quickActionsSit,
-                color: Colors.lightBlue,
+                color: w.ink,
                 onPressed: () {
                   if (selectedDog == null) { _showNoDogError(context); return; }
                   if (!_canExecuteVoice(_lastSit)) return;
@@ -466,10 +493,7 @@ class _QuickActionsState extends ConsumerState<QuickActions> {
       if (!file.name.toLowerCase().endsWith('.mp3')) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(context.l10n.quickActionsSelectMp3),
-              backgroundColor: Colors.red,
-            ),
+            _errorSnack(context, context.l10n.quickActionsSelectMp3),
           );
         }
         return;
@@ -479,10 +503,7 @@ class _QuickActionsState extends ConsumerState<QuickActions> {
       if (file.path == null) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(context.l10n.quickActionsFileAccessFailed),
-              backgroundColor: Colors.red,
-            ),
+            _errorSnack(context, context.l10n.quickActionsFileAccessFailed),
           );
         }
         return;
@@ -493,10 +514,7 @@ class _QuickActionsState extends ConsumerState<QuickActions> {
         print('[UPLOAD] File too large: ${file.size} bytes > $_maxUploadSizeBytes');
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(context.l10n.quickActionsFileTooLarge),
-              backgroundColor: Colors.red,
-            ),
+            _errorSnack(context, context.l10n.quickActionsFileTooLarge),
           );
         }
         return;
@@ -507,10 +525,8 @@ class _QuickActionsState extends ConsumerState<QuickActions> {
       if (localConn.isConnected) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(context.l10n.quickActionsUploadLocalUnavailable),
-              backgroundColor: Colors.orange,
-            ),
+            _statusSnack(context, Icons.warning_amber_rounded,
+                context.l10n.quickActionsUploadLocalUnavailable),
           );
         }
         return;
@@ -523,10 +539,7 @@ class _QuickActionsState extends ConsumerState<QuickActions> {
       if (token == null) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(context.l10n.quickActionsNotAuthenticated),
-              backgroundColor: Colors.red,
-            ),
+            _errorSnack(context, context.l10n.quickActionsNotAuthenticated),
           );
         }
         return;
@@ -596,21 +609,16 @@ class _QuickActionsState extends ConsumerState<QuickActions> {
         // Success
         print('[UPLOAD] HTTP upload successful');
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(context.l10n.quickActionsUploaded(filename)),
-            backgroundColor: Colors.green,
-            behavior: SnackBarBehavior.floating,
-          ),
+          _statusSnack(context, Icons.check_circle,
+              context.l10n.quickActionsUploaded(filename),
+              behavior: SnackBarBehavior.floating),
         );
       } else {
         // Error
         print('[UPLOAD] HTTP upload failed: $error');
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(context.l10n.quickActionsUploadFailed(error)),
-            backgroundColor: Colors.red,
-            behavior: SnackBarBehavior.floating,
-          ),
+          _errorSnack(context, context.l10n.quickActionsUploadFailed(error),
+              behavior: SnackBarBehavior.floating),
         );
       }
     } on PlatformException catch (e) {
@@ -618,11 +626,10 @@ class _QuickActionsState extends ConsumerState<QuickActions> {
       if (mounted) {
         ScaffoldMessenger.of(context).hideCurrentSnackBar();
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(context.l10n
-                .quickActionsFilePickerFailed(e.message ?? e.code)),
-            backgroundColor: Colors.red,
-          ),
+          _errorSnack(
+              context,
+              context.l10n
+                  .quickActionsFilePickerFailed(e.message ?? e.code)),
         );
       }
     } catch (e, stackTrace) {
@@ -631,10 +638,7 @@ class _QuickActionsState extends ConsumerState<QuickActions> {
       if (mounted) {
         ScaffoldMessenger.of(context).hideCurrentSnackBar();
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(context.l10n.quickActionsUploadFailed('$e')),
-            backgroundColor: Colors.red,
-          ),
+          _errorSnack(context, context.l10n.quickActionsUploadFailed('$e')),
         );
       }
     }
@@ -643,11 +647,9 @@ class _QuickActionsState extends ConsumerState<QuickActions> {
   void _showNoDogError(BuildContext context) {
     ScaffoldMessenger.of(context).hideCurrentSnackBar();
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(context.l10n.quickActionsSelectDogFirst),
-        backgroundColor: Colors.orange,
-        behavior: SnackBarBehavior.floating,
-      ),
+      _statusSnack(context, Icons.warning_amber_rounded,
+          context.l10n.quickActionsSelectDogFirst,
+          behavior: SnackBarBehavior.floating),
     );
   }
 
@@ -683,8 +685,16 @@ class _QuickActionsState extends ConsumerState<QuickActions> {
                 ),
               );
             },
-            style: TextButton.styleFrom(foregroundColor: Colors.red),
-            child: Text(ctx.l10n.delete),
+            style: TextButton.styleFrom(
+                foregroundColor: Theme.of(ctx).colorScheme.error),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(Icons.delete_outline, size: 18),
+                const SizedBox(width: 4),
+                Text(ctx.l10n.delete),
+              ],
+            ),
           ),
         ],
       ),
@@ -735,6 +745,11 @@ class _PttActionButton extends ConsumerWidget {
     final remainingMs = PushToTalkNotifier.maxRecordingDurationMs - state.recordingDurationMs;
     final remainingSec = (remainingMs / 1000).ceil().clamp(0, 5);
 
+    // Ink action (not status): recording = ink tint + countdown, busy =
+    // sunken fill + disabled ink, idle = raised fill + ink.
+    final w = context.wimz;
+    final fg = isSending ? w.inkDisabled : w.ink;
+
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -748,16 +763,16 @@ class _PttActionButton extends ConsumerWidget {
           },
           child: Material(
             color: isRecording
-                ? Colors.red.withOpacity(0.3)
-                : (isBusy ? Colors.grey.withOpacity(0.1) : Colors.cyan.withOpacity(0.1)),
+                ? w.ink.withValues(alpha: 0.2)
+                : (isBusy ? w.surfaceSunken : w.surfaceRaised),
             shape: const CircleBorder(),
             child: Padding(
               padding: const EdgeInsets.all(12),
               child: isRecording
-                  ? Text('$remainingSec', style: const TextStyle(color: Colors.red, fontSize: 16, fontWeight: FontWeight.bold))
+                  ? Text('$remainingSec', style: TextStyle(color: w.ink, fontSize: 16, fontWeight: FontWeight.bold))
                   : Icon(
                       isSending ? Icons.upload : Icons.mic_none,
-                      color: isSending ? Colors.grey : Colors.cyan,
+                      color: fg,
                       size: 22,
                     ),
             ),
@@ -768,7 +783,7 @@ class _PttActionButton extends ConsumerWidget {
           isRecording ? context.l10n.pttRecording : context.l10n.pttTalk,
           style: TextStyle(
             fontSize: 10,
-            color: isRecording ? Colors.red : Colors.cyan,
+            color: w.ink,
             fontWeight: FontWeight.w500,
           ),
         ),
@@ -777,41 +792,48 @@ class _PttActionButton extends ConsumerWidget {
   }
 }
 
-/// Standard action button
+/// Standard action button. [gold] marks the screen's single gold element
+/// (brand-gold fill, ink-on-gold icon); everything else is a raised fill
+/// with [color] (ink) icon.
 class _ActionButton extends StatelessWidget {
   final IconData icon;
   final String label;
   final Color color;
+  final bool gold;
   final VoidCallback onPressed;
 
   const _ActionButton({
     required this.icon,
     required this.label,
     required this.color,
+    this.gold = false,
     required this.onPressed,
   });
 
   @override
   Widget build(BuildContext context) {
+    final w = context.wimz;
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
         Material(
-          color: color.withOpacity(0.1),
+          color: gold ? w.brandGold : w.surfaceRaised,
           shape: const CircleBorder(),
           child: InkWell(
             onTap: onPressed,
             customBorder: const CircleBorder(),
             child: Padding(
               padding: const EdgeInsets.all(12),
-              child: Icon(icon, color: color, size: 22),
+              child: Icon(icon, color: gold ? w.inkOnGold : color, size: 22),
             ),
           ),
         ),
         const SizedBox(height: 3),
         Text(
           label,
-          style: TextStyle(fontSize: 10, color: color, fontWeight: FontWeight.w500),
+          // The label sits on the page ground (not the gold disc), so it is
+          // ink in both themes.
+          style: TextStyle(fontSize: 10, color: gold ? w.ink : color, fontWeight: FontWeight.w500),
         ),
       ],
     );
@@ -832,12 +854,13 @@ class _LightingButton extends StatelessWidget {
   Widget build(BuildContext context) {
     final patterns = LedPatterns.lightingCycle;
     final isOff = patterns[currentIndex] == LedPatterns.off;
+    final w = context.wimz;
 
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
         Material(
-          color: Colors.orange.withOpacity(0.1),
+          color: w.surfaceRaised,
           shape: const CircleBorder(),
           child: InkWell(
             onTap: onPressed,
@@ -846,7 +869,7 @@ class _LightingButton extends StatelessWidget {
               padding: const EdgeInsets.all(16),
               child: Icon(
                 isOff ? Icons.lightbulb_outline : Icons.lightbulb,
-                color: Colors.orange,
+                color: w.ink,
                 size: 28,
               ),
             ),
@@ -855,9 +878,9 @@ class _LightingButton extends StatelessWidget {
         const SizedBox(height: 4),
         Text(
           context.l10n.quickActionsLighting,
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 11,
-            color: Colors.orange,
+            color: w.ink,
             fontWeight: FontWeight.w500,
           ),
         ),
@@ -873,9 +896,7 @@ class _LightingButton extends StatelessWidget {
               margin: const EdgeInsets.symmetric(horizontal: 1),
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: i == currentIndex
-                    ? Colors.orange
-                    : Colors.orange.withOpacity(0.3),
+                color: i == currentIndex ? w.ink : w.lineStrong,
               ),
             ),
           ),
@@ -897,11 +918,15 @@ class _BluLightButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // The blue mood LED is the LED-ring chip: signal (status) while ON —
+    // signal-glow fill, signal icon; ink-muted while off. The filled vs
+    // outlined bulb icon also carries the state.
+    final w = context.wimz;
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
         Material(
-          color: Colors.blue.withOpacity(isOn ? 0.3 : 0.1),
+          color: isOn ? w.signalGlow : w.surfaceRaised,
           shape: const CircleBorder(),
           child: InkWell(
             onTap: onPressed,
@@ -910,7 +935,7 @@ class _BluLightButton extends StatelessWidget {
               padding: const EdgeInsets.all(16),
               child: Icon(
                 isOn ? Icons.lightbulb : Icons.lightbulb_outline,
-                color: Colors.blue,
+                color: isOn ? w.signal : w.inkMuted,
                 size: 28,
               ),
             ),
@@ -919,9 +944,9 @@ class _BluLightButton extends StatelessWidget {
         const SizedBox(height: 4),
         Text(
           context.l10n.quickActionsBluLight,
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 11,
-            color: Colors.blue,
+            color: isOn ? w.signal : w.inkMuted,
             fontWeight: FontWeight.w500,
           ),
         ),
@@ -932,7 +957,7 @@ class _BluLightButton extends StatelessWidget {
           height: 6,
           decoration: BoxDecoration(
             shape: BoxShape.circle,
-            color: isOn ? Colors.blue : Colors.blue.withOpacity(0.3),
+            color: isOn ? w.signal : w.lineStrong,
           ),
         ),
       ],
@@ -960,7 +985,7 @@ class _VolumeSlider extends ConsumerWidget {
           Icon(
             level == 0 ? Icons.volume_off : Icons.volume_down,
             size: 14,
-            color: primary.withOpacity(0.7),
+            color: primary.withValues(alpha: 0.7),
           ),
           Expanded(
             child: SliderTheme(
@@ -970,7 +995,7 @@ class _VolumeSlider extends ConsumerWidget {
                 overlayShape:
                     const RoundSliderOverlayShape(overlayRadius: 12),
                 activeTrackColor: primary,
-                inactiveTrackColor: primary.withOpacity(0.2),
+                inactiveTrackColor: primary.withValues(alpha: 0.2),
                 thumbColor: primary,
               ),
               child: Slider(
@@ -994,12 +1019,12 @@ class _VolumeSlider extends ConsumerWidget {
                 ? CircularProgressIndicator(
                     strokeWidth: 1.6,
                     valueColor:
-                        AlwaysStoppedAnimation(primary.withOpacity(0.7)),
+                        AlwaysStoppedAnimation(primary.withValues(alpha: 0.7)),
                   )
                 : Icon(
                     Icons.volume_up,
                     size: 14,
-                    color: primary.withOpacity(0.7),
+                    color: primary.withValues(alpha: 0.7),
                   ),
           ),
         ],
@@ -1104,7 +1129,7 @@ class _MusicControlsWithVolume extends StatelessWidget {
 
               if (onUpload != null) ...[
                 const SizedBox(width: 8),
-                Container(width: 1, height: 20, color: Theme.of(context).colorScheme.primary.withOpacity(0.3)),
+                Container(width: 1, height: 20, color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.3)),
                 const SizedBox(width: 8),
                 // Upload button
                 _MusicButton(
@@ -1130,7 +1155,7 @@ class _MusicControlsWithVolume extends StatelessWidget {
                   displayName,
                   style: TextStyle(
                     fontSize: 10,
-                    color: Theme.of(context).colorScheme.primary.withOpacity(0.8),
+                    color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.8),
                   ),
                   overflow: TextOverflow.ellipsis,
                   maxLines: 1,
@@ -1140,7 +1165,7 @@ class _MusicControlsWithVolume extends StatelessWidget {
                   Icon(
                     Icons.more_vert,
                     size: 12,
-                    color: Theme.of(context).colorScheme.primary.withOpacity(0.5),
+                    color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.5),
                   ),
                 ],
               ],
@@ -1171,7 +1196,7 @@ class _MusicButton extends StatelessWidget {
     final color = Theme.of(context).colorScheme.primary;
 
     return Material(
-      color: isPrimary ? color.withOpacity(0.2) : Colors.transparent,
+      color: isPrimary ? color.withValues(alpha: 0.2) : Colors.transparent,
       borderRadius: BorderRadius.circular(20),
       child: InkWell(
         onTap: onPressed,

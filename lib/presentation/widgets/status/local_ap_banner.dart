@@ -10,7 +10,6 @@ import '../../../domain/providers/connection_provider.dart';
 import '../../../domain/providers/network_state_provider.dart';
 import '../../../domain/providers/settings_provider.dart';
 import '../../../l10n/l10n.dart';
-import '../../theme/app_theme.dart';
 
 // B163 (2026-09-04, Morgan): the home-screen "Robot may be on its own
 // hotspot — GO LOCAL" banner was removed. Nobody switches that way, and its
@@ -141,7 +140,9 @@ class _LocalModeSwitchTileState extends ConsumerState<LocalModeSwitchTile> {
   Widget build(BuildContext context) {
     final isConnected = ref.watch(connectionProvider).isRobotOnline;
     return ListTile(
-      leading: const Icon(Icons.wifi_tethering, color: AppTheme.primary),
+      // Theme list-tile icon colour (ink-muted), so the tile's enabled /
+      // disabled state greys it correctly.
+      leading: const Icon(Icons.wifi_tethering),
       title: Text(context.l10n.localApSwitchTitle),
       subtitle: Text(context.l10n.localApSwitchSubtitle),
       trailing: _requesting

@@ -36,6 +36,8 @@ class _RobotStatusCardState extends ConsumerState<RobotStatusCard> {
   @override
   Widget build(BuildContext context) {
     final l = context.l10n;
+    final w = context.wimz;
+    final cs = Theme.of(context).colorScheme;
     final isLocal = ref.watch(isLocalModeProvider);
     final paired = ref.watch(pairedDevicesProvider);
     final activeId = ref.watch(deviceIdProvider);
@@ -44,7 +46,7 @@ class _RobotStatusCardState extends ConsumerState<RobotStatusCard> {
     if (isLocal) {
       return _Card(
         icon: Icons.wifi_tethering,
-        iconColor: AppTheme.accent,
+        iconColor: w.signal,
         title: l.robotCardLocal,
         subtitle: l.homeLocalRobot,
       );
@@ -54,13 +56,13 @@ class _RobotStatusCardState extends ConsumerState<RobotStatusCard> {
     if (!hasRobot) {
       return _Card(
         icon: Icons.smart_toy_outlined,
-        iconColor: AppTheme.textTertiary,
+        iconColor: w.inkMuted,
         title: l.robotCardNonePaired,
         subtitle: paired.isLoading ? l.loading : l.robotCardNoneBody,
         trailing: FilledButton.icon(
           style: FilledButton.styleFrom(
-            backgroundColor: AppTheme.primary,
-            foregroundColor: Colors.black,
+            backgroundColor: cs.primary,
+            foregroundColor: cs.onPrimary,
             visualDensity: VisualDensity.compact,
           ),
           onPressed: () => context.push('/device-pairing'),
@@ -78,10 +80,10 @@ class _RobotStatusCardState extends ConsumerState<RobotStatusCard> {
         (match.isNotEmpty && match.first.isOnline);
     return _Card(
       icon: Icons.smart_toy,
-      iconColor: online ? AppTheme.accent : AppTheme.textTertiary,
+      iconColor: online ? w.signal : w.inkMuted,
       title: name,
       subtitle: online ? l.devicePairingOnline : l.devicePairingOffline,
-      subtitleColor: online ? AppTheme.accent : AppTheme.textTertiary,
+      subtitleColor: online ? w.signal : w.inkMuted,
       trailing: TextButton(
         onPressed: () => context.push('/device-pairing'),
         child: Text(l.robotCardManage),
@@ -109,12 +111,14 @@ class _Card extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final w = context.wimz;
+    final cs = Theme.of(context).colorScheme;
     return Container(
       padding: const EdgeInsets.fromLTRB(14, 10, 10, 10),
       decoration: BoxDecoration(
-        color: AppTheme.surfaceLight,
+        color: w.surfaceRaised,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppTheme.glassBorder),
+        border: Border.all(color: w.line),
       ),
       child: Row(
         children: [
@@ -126,9 +130,9 @@ class _Card extends StatelessWidget {
               children: [
                 Text(
                   title,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontWeight: FontWeight.w600,
-                    color: AppTheme.textPrimary,
+                    color: cs.onSurface,
                   ),
                   overflow: TextOverflow.ellipsis,
                 ),
@@ -136,7 +140,7 @@ class _Card extends StatelessWidget {
                   subtitle,
                   style: TextStyle(
                     fontSize: 12,
-                    color: subtitleColor ?? AppTheme.textTertiary,
+                    color: subtitleColor ?? w.inkMuted,
                   ),
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,

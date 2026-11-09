@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_mjpeg/flutter_mjpeg.dart';
 
 import '../../../l10n/l10n.dart';
+import '../../theme/app_theme.dart';
 
 class MjpegViewer extends StatelessWidget {
   final String streamUrl;
@@ -21,34 +22,38 @@ class MjpegViewer extends StatelessWidget {
       fit: fit,
       timeout: const Duration(seconds: 10),
       error: (context, error, stack) {
+        final onVideo = context.wimz.onVideo;
         return Center(
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const Icon(Icons.videocam_off, size: 48, color: Colors.white54),
+              Icon(Icons.videocam_off,
+                  size: 48, color: onVideo.withValues(alpha: 0.54)),
               const SizedBox(height: 8),
               Text(
                 context.l10n.mjpegUnavailable,
-                style: TextStyle(color: Colors.white.withOpacity(0.7)),
+                style: TextStyle(color: onVideo.withValues(alpha: 0.7)),
               ),
               const SizedBox(height: 4),
               Text(
                 streamUrl,
-                style: TextStyle(color: Colors.white.withOpacity(0.4), fontSize: 10),
+                style: TextStyle(
+                    color: onVideo.withValues(alpha: 0.4), fontSize: 10),
               ),
             ],
           ),
         );
       },
       loading: (context) {
+        final muted = context.wimz.onVideo.withValues(alpha: 0.54);
         return Center(
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const CircularProgressIndicator(color: Colors.white54),
+              CircularProgressIndicator(color: muted),
               const SizedBox(height: 8),
               Text(context.l10n.mjpegConnecting,
-                  style: const TextStyle(color: Colors.white54)),
+                  style: TextStyle(color: muted)),
             ],
           ),
         );

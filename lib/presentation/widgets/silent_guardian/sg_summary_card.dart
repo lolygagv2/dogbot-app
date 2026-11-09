@@ -12,25 +12,23 @@ import '../../theme/app_theme.dart';
 class SgSummaryCard extends ConsumerWidget {
   const SgSummaryCard({super.key});
 
-  static const _typeColors = AppTheme.barkTypeColors;
-
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final state = ref.watch(sgSummaryProvider);
     final s = state.summary;
     final l = context.l10n;
+    final w = context.wimz;
+    final cs = Theme.of(context).colorScheme;
 
     return Container(
       margin: const EdgeInsets.fromLTRB(12, 8, 12, 4),
       padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: AppTheme.surface,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: (s?.panicActive ?? false)
-              ? AppTheme.error.withOpacity(0.6)
-              : Colors.purple.withOpacity(0.4),
-        ),
+      // Panic active: error edge — the "Panic active" tag below carries the
+      // word + icon, so the edge colour never stands alone.
+      decoration: WimzTheme.cardDecoration(
+        context,
+        radius: 12,
+        borderColor: (s?.panicActive ?? false) ? cs.error : null,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -38,14 +36,14 @@ class SgSummaryCard extends ConsumerWidget {
         children: [
           Row(
             children: [
-              const Icon(Icons.shield_outlined, color: Colors.purple, size: 18),
+              Icon(Icons.shield_outlined, color: cs.onSurface, size: 18),
               const SizedBox(width: 6),
               Expanded(
                 child: Text(
                   l.sgSessionSummary,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontWeight: FontWeight.bold,
-                    color: AppTheme.textPrimary,
+                    color: cs.onSurface,
                   ),
                 ),
               ),
@@ -59,8 +57,7 @@ class SgSummaryCard extends ConsumerWidget {
                   : IconButton(
                       visualDensity: VisualDensity.compact,
                       padding: EdgeInsets.zero,
-                      icon: const Icon(Icons.refresh,
-                          size: 18, color: Colors.purple),
+                      icon: Icon(Icons.refresh, size: 18, color: cs.primary),
                       onPressed: () =>
                           ref.read(sgSummaryProvider.notifier).pull(),
                     ),
@@ -68,16 +65,25 @@ class SgSummaryCard extends ConsumerWidget {
           ),
           if (state.error != null) ...[
             const SizedBox(height: 4),
-            Text(
-              state.error!,
-              style: const TextStyle(color: AppTheme.warning, fontSize: 12),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Icon(Icons.warning_amber, size: 14, color: w.inkMuted),
+                const SizedBox(width: 4),
+                Expanded(
+                  child: Text(
+                    state.error!,
+                    style: TextStyle(color: w.inkMuted, fontSize: 12),
+                  ),
+                ),
+              ],
             ),
           ],
           if (s == null && state.error == null) ...[
             const SizedBox(height: 4),
             Text(
               l.sgTapRefresh,
-              style: const TextStyle(color: AppTheme.textTertiary, fontSize: 12),
+              style: TextStyle(color: w.inkMuted, fontSize: 12),
             ),
           ],
           if (s != null) ...[
@@ -85,18 +91,17 @@ class SgSummaryCard extends ConsumerWidget {
             if (s.headline != null)
               Text(
                 s.headline!,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 15,
                   fontWeight: FontWeight.w600,
-                  color: AppTheme.textPrimary,
+                  color: cs.onSurface,
                 ),
               ),
             if (s.currentAction != null) ...[
               const SizedBox(height: 2),
               Text(
                 s.currentAction!,
-                style:
-                    const TextStyle(color: AppTheme.textSecondary, fontSize: 12),
+                style: TextStyle(color: w.inkMuted, fontSize: 12),
               ),
             ],
             const SizedBox(height: 8),
@@ -105,9 +110,9 @@ class SgSummaryCard extends ConsumerWidget {
                 _Stat(l.sgStatBarks, '${s.totalBarks}'),
                 _Stat(l.sgStatTreats, '${s.treatsDispensed}'),
                 _Stat(l.sgStatInterventions, '${s.interventionsTriggered}'),
+                // The level number itself is the information; no hue.
                 if (s.escalationLevel != null)
-                  _Stat(l.sgStatLevel, '${s.escalationLevel}',
-                      color: s.escalationLevel! >= 4 ? AppTheme.error : null),
+                  _Stat(l.sgStatLevel, '${s.escalationLevel}'),
                 _TrendStat(trend: s.trend),
               ],
             ),
@@ -127,15 +132,14 @@ class SgSummaryCard extends ConsumerWidget {
                           width: 8,
                           height: 8,
                           decoration: BoxDecoration(
-                            color: _typeColors[e.key] ?? Colors.blueGrey,
+                            color: WimzStatus.barkType(context, e.key),
                             shape: BoxShape.circle,
                           ),
                         ),
                         const SizedBox(width: 4),
                         Text(
                           '${e.key} ${e.value.toStringAsFixed(0)}%',
-                          style: const TextStyle(
-                              fontSize: 11, color: AppTheme.textSecondary),
+                          style: TextStyle(fontSize: 11, color: w.inkMuted),
                         ),
                       ],
                     ),
@@ -149,10 +153,10 @@ class SgSummaryCard extends ConsumerWidget {
                   Expanded(
                     child: Text(
                       l.sgBarkTimeline,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 10,
                         letterSpacing: 0.5,
-                        color: AppTheme.textTertiary,
+                        color: w.inkMuted,
                       ),
                     ),
                   ),
@@ -162,8 +166,7 @@ class SgSummaryCard extends ConsumerWidget {
                         s.trendDetail!.recentRatePerMin.toStringAsFixed(1),
                         s.trendDetail!.sessionRatePerMin.toStringAsFixed(1),
                       ),
-                      style: const TextStyle(
-                          fontSize: 10, color: AppTheme.textSecondary),
+                      style: TextStyle(fontSize: 10, color: w.inkMuted),
                     ),
                 ],
               ),
@@ -175,11 +178,15 @@ class SgSummaryCard extends ConsumerWidget {
               Wrap(
                 spacing: 6,
                 children: [
-                  if (s.panicActive) _Tag(l.sgPanicActive, AppTheme.error),
+                  if (s.panicActive)
+                    _Tag(l.sgPanicActive, cs.error,
+                        icon: Icons.warning_amber),
                   if (!s.panicActive && s.panicEpisodes > 0)
-                    _Tag(l.sgPanicEpisodes(s.panicEpisodes), AppTheme.warning),
+                    _Tag(l.sgPanicEpisodes(s.panicEpisodes), w.inkMuted,
+                        icon: Icons.history),
                   if (s.aggressiveTag)
-                    _Tag(l.sgAggressiveBehavior, Colors.red),
+                    _Tag(l.sgAggressiveBehavior, cs.error,
+                        icon: Icons.report),
                 ],
               ),
             ],
@@ -240,16 +247,14 @@ class _BarkTimelineChart extends StatelessWidget {
                                 children: [
                                   // Stack top-down in reverse fixed order so
                                   // the first legend type sits on the baseline.
-                                  for (final type in SgSummaryCard
-                                      ._typeColors.keys
-                                      .toList()
-                                      .reversed)
+                                  for (final type
+                                      in WimzStatus.barkTypes.reversed)
                                     if ((b.counts[type] ?? 0) > 0)
                                       Expanded(
                                         flex: b.counts[type]!,
                                         child: Container(
-                                            color: SgSummaryCard
-                                                ._typeColors[type]),
+                                            color: WimzStatus.barkType(
+                                                context, type)),
                                       ),
                                 ],
                               ),
@@ -265,11 +270,9 @@ class _BarkTimelineChart extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Text(_fmtMin(buckets.first.offsetMin),
-                style: const TextStyle(
-                    fontSize: 9, color: AppTheme.textTertiary)),
+                style: TextStyle(fontSize: 9, color: context.wimz.inkMuted)),
             Text(_fmtMin(buckets.last.offsetMin),
-                style: const TextStyle(
-                    fontSize: 9, color: AppTheme.textTertiary)),
+                style: TextStyle(fontSize: 9, color: context.wimz.inkMuted)),
           ],
         ),
       ],
@@ -296,8 +299,7 @@ class _BarkTypeBar extends StatelessWidget {
               Expanded(
                 flex: (e.value * 10).round().clamp(1, 1000),
                 child: Container(
-                    color:
-                        SgSummaryCard._typeColors[e.key] ?? Colors.blueGrey),
+                    color: WimzStatus.barkType(context, e.key)),
               ),
           ],
         ),
@@ -309,11 +311,11 @@ class _BarkTypeBar extends StatelessWidget {
 class _Stat extends StatelessWidget {
   final String label;
   final String value;
-  final Color? color;
-  const _Stat(this.label, this.value, {this.color});
+  const _Stat(this.label, this.value);
 
   @override
   Widget build(BuildContext context) {
+    final w = context.wimz;
     return Expanded(
       child: Column(
         children: [
@@ -322,12 +324,12 @@ class _Stat extends StatelessWidget {
             style: TextStyle(
               fontSize: 15,
               fontWeight: FontWeight.bold,
-              color: color ?? AppTheme.textPrimary,
+              color: w.ink,
             ),
           ),
           Text(
             label,
-            style: const TextStyle(fontSize: 10, color: AppTheme.textTertiary),
+            style: TextStyle(fontSize: 10, color: w.inkMuted),
           ),
         ],
       ),
@@ -341,10 +343,13 @@ class _TrendStat extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final w = context.wimz;
+    // The arrow icon + "Trend" label carry the state; worsening is the
+    // alert case and keeps the error slot.
     final (icon, color) = switch (trend) {
-      'improving' => (Icons.trending_down, Colors.green),
-      'worsening' => (Icons.trending_up, AppTheme.error),
-      _ => (Icons.trending_flat, AppTheme.textTertiary),
+      'improving' => (Icons.trending_down, w.ink),
+      'worsening' => (Icons.trending_up, Theme.of(context).colorScheme.error),
+      _ => (Icons.trending_flat, w.inkMuted),
     };
     return Expanded(
       child: Column(
@@ -352,7 +357,7 @@ class _TrendStat extends StatelessWidget {
           Icon(icon, size: 18, color: color),
           Text(
             context.l10n.sgStatTrend,
-            style: const TextStyle(fontSize: 10, color: AppTheme.textTertiary),
+            style: TextStyle(fontSize: 10, color: w.inkMuted),
           ),
         ],
       ),
@@ -363,21 +368,32 @@ class _TrendStat extends StatelessWidget {
 class _Tag extends StatelessWidget {
   final String text;
   final Color color;
-  const _Tag(this.text, this.color);
+  /// Small mark beside the word so the tag never relies on colour alone.
+  final IconData? icon;
+  const _Tag(this.text, this.color, {this.icon});
 
   @override
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.15),
+        color: color.withValues(alpha: 0.15),
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: color.withOpacity(0.5)),
+        border: Border.all(color: color.withValues(alpha: 0.5)),
       ),
-      child: Text(
-        text,
-        style: TextStyle(
-            fontSize: 10, fontWeight: FontWeight.w600, color: color),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (icon != null) ...[
+            Icon(icon, size: 11, color: color),
+            const SizedBox(width: 3),
+          ],
+          Text(
+            text,
+            style: TextStyle(
+                fontSize: 10, fontWeight: FontWeight.w600, color: color),
+          ),
+        ],
       ),
     );
   }

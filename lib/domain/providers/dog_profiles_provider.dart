@@ -11,6 +11,7 @@ import '../../core/utils/conn_trace.dart';
 import '../../data/datasources/robot_api.dart';
 import '../../data/models/activity_aggregation.dart';
 import '../../data/models/dog_profile.dart';
+import '../../theme/wimz_colors.dart';
 import 'auth_provider.dart';
 import 'connection_provider.dart';
 import 'notifications_provider.dart';
@@ -652,19 +653,22 @@ extension DogProfileExtension on DogProfile {
     return '$years ${years == 1 ? 'year' : 'years'}';
   }
 
-  /// Get color for display
-  Color get displayColor {
+  /// Coat swatch colour from the brand tokens. Callers always show the
+  /// enum label next to the swatch, so the colour never carries meaning
+  /// alone. Takes [WimzColors] because this file has no BuildContext
+  /// (pass `context.wimz`).
+  Color displayColor(WimzColors w) {
     switch (color) {
       case DogColor.black:
-        return const Color(0xFF333333);
+        return w.brandInk;
       case DogColor.yellow:
-        return const Color(0xFFD4A574);
+        return w.goldDeep;
       case DogColor.brown:
-        return const Color(0xFF8B4513);
+        return w.inkMuted;
       case DogColor.white:
-        return const Color(0xFFF5F5F5);
+        return w.brandWhite;
       case DogColor.mixed:
-        return const Color(0xFF888888);
+        return w.lineStrong;
     }
   }
 }

@@ -154,6 +154,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     final authState = ref.watch(authProvider);
+    final w = context.wimz;
+    final cs = Theme.of(context).colorScheme;
 
     return Scaffold(
       body: SafeArea(
@@ -163,13 +165,15 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                // Logo
-                Image.asset(
-                  Theme.of(context).brightness == Brightness.dark
-                      ? 'assets/images/BLACK_WZ.png'
-                      : 'assets/images/WHITE_WZ.png',
-                  width: 120,
-                  height: 120,
+                // Logo — the product figurehead photo (black ground, square)
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(WimzTheme.radiusLarge),
+                  child: Image.asset(
+                    'assets/images/wimz_figurehead.jpg',
+                    width: 120,
+                    height: 120,
+                    fit: BoxFit.cover,
+                  ),
                 ),
                 const SizedBox(height: 16),
                 Text(
@@ -196,22 +200,22 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   Container(
                     padding: const EdgeInsets.symmetric(
                         horizontal: 12, vertical: 10),
+                    // Informational notice: a flat brand card.
                     decoration: BoxDecoration(
-                      color: AppTheme.primary.withValues(alpha: 0.10),
+                      color: w.surfaceRaised,
                       borderRadius: BorderRadius.circular(10),
-                      border: Border.all(
-                          color: AppTheme.primary.withValues(alpha: 0.35)),
+                      border: Border.all(color: w.line),
                     ),
                     child: Row(
                       children: [
-                        const Icon(Icons.info_outline,
-                            color: AppTheme.primary, size: 20),
+                        Icon(Icons.info_outline,
+                            color: cs.onSurface, size: 20),
                         const SizedBox(width: 10),
                         Expanded(
                           child: Text(
                             authState.loginNotice!,
-                            style: const TextStyle(
-                                color: AppTheme.primary, fontSize: 13),
+                            style: TextStyle(
+                                color: cs.onSurface, fontSize: 13),
                           ),
                         ),
                         InkWell(
@@ -219,10 +223,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                               .read(authProvider.notifier)
                               .clearLoginNotice(),
                           borderRadius: BorderRadius.circular(16),
-                          child: const Padding(
-                            padding: EdgeInsets.all(4),
+                          child: Padding(
+                            padding: const EdgeInsets.all(4),
                             child: Icon(Icons.close,
-                                color: AppTheme.primary, size: 18),
+                                color: w.inkMuted, size: 18),
                           ),
                         ),
                       ],
@@ -242,10 +246,13 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       icon: const Icon(Icons.cloud),
                       label: Text(context.l10n.loginButton,
                           style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppTheme.primary,
-                        foregroundColor: AppTheme.background,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                      // Login's ONE gold element: the Sign-in hero CTA.
+                      // (The form's submit below takes it over when the form
+                      // is open — the two are never on screen together.)
+                      style: WimzTheme.goldButtonStyle(context).copyWith(
+                        shape: WidgetStatePropertyAll(
+                          RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                        ),
                       ),
                     ),
                   ),
@@ -263,16 +270,16 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     child: ElevatedButton.icon(
                       onPressed: _isConnectingLocal ? null : _connectToRobot,
                       icon: _isConnectingLocal
-                          ? const SizedBox(width: 20, height: 20,
-                              child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                          ? SizedBox(width: 20, height: 20,
+                              child: CircularProgressIndicator(strokeWidth: 2, color: cs.onPrimary))
                           : const Icon(Icons.wifi),
                       label: Text(
                         _isConnectingLocal ? context.l10n.connecting : context.l10n.loginConnectToRobot,
                         style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                       ),
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: AppTheme.accent,
-                        foregroundColor: AppTheme.background,
+                        backgroundColor: cs.primary,
+                        foregroundColor: cs.onPrimary,
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                       ),
                     ),
@@ -290,16 +297,16 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       padding: const EdgeInsets.all(12),
                       margin: const EdgeInsets.only(bottom: 16),
                       decoration: BoxDecoration(
-                        color: AppTheme.error.withValues(alpha: 0.1),
+                        color: cs.error.withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Icon(Icons.error_outline, color: AppTheme.error, size: 20),
+                          Icon(Icons.error_outline, color: cs.error, size: 20),
                           const SizedBox(width: 8),
                           Expanded(child: Text(_localError!,
-                              style: const TextStyle(color: AppTheme.error, fontSize: 13))),
+                              style: TextStyle(color: cs.error, fontSize: 13))),
                         ],
                       ),
                     ),
@@ -409,13 +416,13 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                           Container(
                             padding: const EdgeInsets.all(12),
                             decoration: BoxDecoration(
-                              color: AppTheme.error.withValues(alpha: 0.1),
+                              color: cs.error.withValues(alpha: 0.1),
                               borderRadius: BorderRadius.circular(8)),
                             child: Row(children: [
-                              const Icon(Icons.error_outline, color: AppTheme.error, size: 20),
+                              Icon(Icons.error_outline, color: cs.error, size: 20),
                               const SizedBox(width: 8),
                               Expanded(child: Text(authState.errorMessage!,
-                                  style: const TextStyle(color: AppTheme.error))),
+                                  style: TextStyle(color: cs.error))),
                             ]),
                           ),
                           const SizedBox(height: 16),
@@ -424,6 +431,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                           width: double.infinity, height: 48,
                           child: ElevatedButton(
                             onPressed: authState.isLoading ? null : _submitLogin,
+                            // The form's Sign in / Create account submit is the
+                            // gold hero CTA while the form is open.
+                            style: WimzTheme.goldButtonStyle(context),
                             child: authState.isLoading
                                 ? const SizedBox(width: 24, height: 24,
                                     child: CircularProgressIndicator(strokeWidth: 2))

@@ -33,18 +33,19 @@ class VideoHudOverlay extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l = context.l10n;
+    final w = context.wimz;
     return IgnorePointer(
       child: Stack(
       children: [
         // Corner brackets (HUD frame)
-        ..._buildCornerBrackets(),
+        ..._buildCornerBrackets(w),
 
         // Top bar - status info
         Positioned(
           top: 12,
           left: 12,
           right: 12,
-          child: _buildTopBar(l),
+          child: _buildTopBar(context, l),
         ),
 
         // Bottom bar - mode and controls hint
@@ -52,31 +53,31 @@ class VideoHudOverlay extends StatelessWidget {
           bottom: 12,
           left: 12,
           right: 12,
-          child: _buildBottomBar(l),
+          child: _buildBottomBar(w, l),
         ),
 
         // Detection bounding box
-        if (dogDetected && bbox != null) _buildDetectionBox(l),
+        if (dogDetected && bbox != null) _buildDetectionBox(context, l),
 
         // Center reticle (subtle)
-        Center(child: _buildReticle()),
+        Center(child: _buildReticle(w)),
 
         // Recording indicator
         if (isRecording)
           Positioned(
             top: 12,
             right: 12,
-            child: _buildRecordingIndicator(l),
+            child: _buildRecordingIndicator(w, l),
           ),
       ],
     ),
     );
   }
 
-  List<Widget> _buildCornerBrackets() {
+  List<Widget> _buildCornerBrackets(WimzColors w) {
     const size = 24.0;
     const thickness = 2.0;
-    const color = AppTheme.primary;
+    final color = w.onVideo;
     const opacity = 0.5;
 
     Widget bracket(bool top, bool left) {
@@ -85,10 +86,10 @@ class VideoHudOverlay extends StatelessWidget {
         height: size,
         decoration: BoxDecoration(
           border: Border(
-            top: top ? BorderSide(color: color.withOpacity(opacity), width: thickness) : BorderSide.none,
-            bottom: !top ? BorderSide(color: color.withOpacity(opacity), width: thickness) : BorderSide.none,
-            left: left ? BorderSide(color: color.withOpacity(opacity), width: thickness) : BorderSide.none,
-            right: !left ? BorderSide(color: color.withOpacity(opacity), width: thickness) : BorderSide.none,
+            top: top ? BorderSide(color: color.withValues(alpha: opacity), width: thickness) : BorderSide.none,
+            bottom: !top ? BorderSide(color: color.withValues(alpha: opacity), width: thickness) : BorderSide.none,
+            left: left ? BorderSide(color: color.withValues(alpha: opacity), width: thickness) : BorderSide.none,
+            right: !left ? BorderSide(color: color.withValues(alpha: opacity), width: thickness) : BorderSide.none,
           ),
         ),
       );
@@ -102,7 +103,8 @@ class VideoHudOverlay extends StatelessWidget {
     ];
   }
 
-  Widget _buildTopBar(AppLocalizations l) {
+  Widget _buildTopBar(BuildContext context, AppLocalizations l) {
+    final w = context.wimz;
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
@@ -110,7 +112,7 @@ class VideoHudOverlay extends StatelessWidget {
         HudLabel(
           label: l.videoHudFps,
           value: fps.toString(),
-          valueColor: fps > 10 ? AppTheme.accent : AppTheme.warning,
+          valueColor: fps > 10 ? w.onVideo : w.onVideo.withValues(alpha: 0.6),
         ),
 
         // Detection status
@@ -125,13 +127,17 @@ class VideoHudOverlay extends StatelessWidget {
           label: l.videoHudBattery,
           value: '${battery.toInt()}%',
           icon: Icons.battery_full,
-          valueColor: AppTheme.getBatteryColor(battery),
+          // On the always-dark video ground: white while healthy, error
+          // (with the battery icon + percentage) when critical.
+          valueColor: battery <= 20
+              ? Theme.of(context).colorScheme.error
+              : w.onVideo,
         ),
       ],
     );
   }
 
-  Widget _buildBottomBar(AppLocalizations l) {
+  Widget _buildBottomBar(WimzColors w, AppLocalizations l) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
@@ -139,7 +145,7 @@ class VideoHudOverlay extends StatelessWidget {
         HudLabel(
           label: '',
           value: _formatTime(DateTime.now()),
-          valueColor: AppTheme.textSecondary,
+          valueColor: w.onVideo.withValues(alpha: 0.7),
         ),
 
         // Mode
@@ -149,16 +155,17 @@ class VideoHudOverlay extends StatelessWidget {
         HudLabel(
           label: l.videoHudPan,
           value: '0°',
-          valueColor: AppTheme.textSecondary,
+          valueColor: w.onVideo.withValues(alpha: 0.7),
         ),
       ],
     );
   }
 
-  Widget _buildDetectionBox(AppLocalizations l) {
+  Widget _buildDetectionBox(BuildContext context, AppLocalizations l) {
     if (bbox == null || bbox!.length < 4) return const SizedBox.shrink();
 
-    final color = AppTheme.getBehaviorColor(behavior);
+    final color = WimzStatus.behavior(context, behavior, onVideo: true);
+    final labelColor = context.wimz.surface;
     final left = bbox![0] * videoSize.width;
     final top = bbox![1] * videoSize.height;
     final width = bbox![2] * videoSize.width;
@@ -173,7 +180,6 @@ class VideoHudOverlay extends StatelessWidget {
         decoration: BoxDecoration(
           border: Border.all(color: color, width: 2),
           borderRadius: BorderRadius.circular(4),
-          boxShadow: AppTheme.glowShadow(color, blur: 10),
         ),
         child: Stack(
           children: [
@@ -213,8 +219,8 @@ class VideoHudOverlay extends StatelessWidget {
                 ),
                 child: Text(
                   '${behaviorDisplayName(l, behavior).toUpperCase()} ${((confidence ?? 0) * 100).toInt()}%',
-                  style: const TextStyle(
-                    color: AppTheme.background,
+                  style: TextStyle(
+                    color: labelColor,
                     fontSize: 10,
                     fontWeight: FontWeight.bold,
                     fontFamily: 'monospace',
@@ -226,31 +232,31 @@ class VideoHudOverlay extends StatelessWidget {
         ),
       )
           .animate(onPlay: (c) => c.repeat())
-          .shimmer(duration: 2000.ms, color: color.withOpacity(0.3)),
+          .shimmer(duration: 2000.ms, color: color.withValues(alpha: 0.3)),
     );
   }
 
-  Widget _buildReticle() {
+  Widget _buildReticle(WimzColors w) {
     return SizedBox(
       width: 40,
       height: 40,
       child: CustomPaint(
         painter: _ReticlePainter(
-          color: AppTheme.textTertiary.withOpacity(0.3),
+          color: w.lineOnVideo,
         ),
       ),
     );
   }
 
-  Widget _buildRecordingIndicator(AppLocalizations l) {
+  Widget _buildRecordingIndicator(WimzColors w, AppLocalizations l) {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
         Container(
           width: 8,
           height: 8,
-          decoration: const BoxDecoration(
-            color: AppTheme.error,
+          decoration: BoxDecoration(
+            color: w.onVideo,
             shape: BoxShape.circle,
           ),
         )
@@ -261,8 +267,8 @@ class VideoHudOverlay extends StatelessWidget {
         const SizedBox(width: 6),
         Text(
           l.videoHudRec,
-          style: const TextStyle(
-            color: AppTheme.error,
+          style: TextStyle(
+            color: w.onVideo,
             fontSize: 10,
             fontWeight: FontWeight.bold,
             fontFamily: 'monospace',
@@ -285,15 +291,15 @@ class _DetectionBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = AppTheme.getBehaviorColor(behavior);
+    final w = context.wimz;
+    final color = WimzStatus.behavior(context, behavior, onVideo: true);
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.2),
+        color: w.scrim(0.7),
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: color, width: 1),
-        boxShadow: AppTheme.glowShadow(color, blur: 15),
+        border: Border.all(color: w.lineOnVideo, width: 1),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -303,7 +309,7 @@ class _DetectionBadge extends StatelessWidget {
           Text(
             behaviorDisplayName(context.l10n, behavior).toUpperCase(),
             style: TextStyle(
-              color: color,
+              color: w.onVideo,
               fontSize: 12,
               fontWeight: FontWeight.bold,
               letterSpacing: 1,
@@ -314,7 +320,7 @@ class _DetectionBadge extends StatelessWidget {
             Text(
               '${(confidence! * 100).toInt()}%',
               style: TextStyle(
-                color: color.withOpacity(0.8),
+                color: w.onVideo.withValues(alpha: 0.8),
                 fontSize: 11,
                 fontFamily: 'monospace',
               ),
@@ -330,21 +336,6 @@ class _ModeBadge extends StatelessWidget {
   final String mode;
 
   const _ModeBadge({required this.mode});
-
-  Color get _modeColor {
-    switch (mode.toLowerCase()) {
-      case 'training':
-        return AppTheme.accent;
-      case 'guardian':
-        return AppTheme.secondary;
-      case 'manual':
-        return AppTheme.primary;
-      case 'docking':
-        return AppTheme.warning;
-      default:
-        return AppTheme.textTertiary;
-    }
-  }
 
   IconData get _modeIcon {
     switch (mode.toLowerCase()) {
@@ -363,22 +354,25 @@ class _ModeBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Every mode carries its own icon + word, so the badge is plain
+    // white-on-scrim over the video ground.
+    final w = context.wimz;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
       decoration: BoxDecoration(
-        color: AppTheme.background.withOpacity(0.8),
+        color: w.scrim(0.8),
         borderRadius: BorderRadius.circular(4),
-        border: Border.all(color: _modeColor.withOpacity(0.5)),
+        border: Border.all(color: w.lineOnVideo),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(_modeIcon, size: 14, color: _modeColor),
+          Icon(_modeIcon, size: 14, color: w.onVideo),
           const SizedBox(width: 6),
           Text(
             robotModeIdLabel(context.l10n, mode).toUpperCase(),
             style: TextStyle(
-              color: _modeColor,
+              color: w.onVideo,
               fontSize: 11,
               fontWeight: FontWeight.w600,
               letterSpacing: 1,

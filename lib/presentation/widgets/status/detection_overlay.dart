@@ -5,20 +5,19 @@ import '../../theme/app_theme.dart';
 import '../../../l10n/l10n.dart';
 
 /// Stable per-dog color so the same dog always renders with the same color
-/// across the session. Hash the trackKey into the existing chip palette.
-Color _colorForDog(Detection d) {
-  // Theme palette of distinguishable colors. Keep small so two dogs are
-  // unlikely to collide in practice.
-  const palette = <Color>[
-    Color(0xFF00E5FF), // cyan (primary)
-    Color(0xFFFFC400), // amber
-    Color(0xFFFF4081), // pink
-    Color(0xFF76FF03), // lime
-    Color(0xFFB388FF), // purple
-    Color(0xFFFF6E40), // orange
-  ];
+/// across the session. Hash the trackKey into the brand token palette (no
+/// new hues); every box also prints the dog's name + behaviour label.
+Color _colorForDog(BuildContext context, Detection d) {
+  final palette = WimzStatus.dogPalette(context, onVideo: true);
   final idx = d.trackKey.hashCode.abs() % palette.length;
   return palette[idx];
+}
+
+/// Label ink that reads on [fill]: brand-ink on light fills, brand-white
+/// on dark ones (no new hue).
+Color _labelOn(BuildContext context, Color fill) {
+  final w = context.wimz;
+  return fill.computeLuminance() > 0.4 ? w.brandInk : w.brandWhite;
 }
 
 class DetectionOverlay extends StatelessWidget {
@@ -43,8 +42,9 @@ class DetectionOverlay extends StatelessWidget {
     // C5: prefer per-dog color so multiple boxes are visually distinguishable.
     // Behavior color is still used as a hint when the dog is unidentified.
     final color = detection.dogId != null
-        ? _colorForDog(detection)
-        : AppTheme.getBehaviorColor(detection.behavior);
+        ? _colorForDog(context, detection)
+        : WimzStatus.behavior(context, detection.behavior, onVideo: true);
+    final labelColor = _labelOn(context, color);
 
     return Positioned(
       left: bbox[0] * videoSize.width,
@@ -69,8 +69,8 @@ class DetectionOverlay extends StatelessWidget {
             ),
             child: Text(
               '${detection.localizedDisplayName(context.l10n).isNotEmpty ? "${detection.localizedDisplayName(context.l10n)} • " : ""}${behaviorDisplayName(context.l10n, detection.behavior)} ${((detection.confidence ?? 0) * 100).toInt()}%',
-              style: const TextStyle(
-                color: Colors.white,
+              style: TextStyle(
+                color: labelColor,
                 fontSize: 10,
                 fontWeight: FontWeight.bold,
               ),

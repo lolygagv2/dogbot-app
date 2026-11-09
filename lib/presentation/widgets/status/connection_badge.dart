@@ -20,6 +20,10 @@ class ConnectionBadge extends ConsumerWidget {
     // Local mode is always "paired" (direct connection, no relay id needed).
     final isLocal = ref.watch(isLocalModeProvider);
     final hasPairedDevice = isLocal || ref.watch(hasSelectedDeviceProvider);
+    // signal = online/live only; everything that is merely not-yet-connected
+    // is ink-muted; a genuine error is colorScheme.error. Every state also
+    // carries an icon and a word.
+    final w = context.wimz;
 
     // Determine color and text based on 3-tier status
     Color color;
@@ -31,7 +35,7 @@ class ConnectionBadge extends ConsumerWidget {
     // next step is pairing, not waiting.
     if (!hasPairedDevice && !connection.isDemoMode) {
       return _PillContainer(
-        color: AppTheme.disconnected,
+        color: w.inkMuted,
         icon: Icons.device_unknown,
         text: l.connBadgeNoRobot,
       );
@@ -39,33 +43,33 @@ class ConnectionBadge extends ConsumerWidget {
 
     switch (connection.status) {
       case ConnectionStatus.disconnected:
-        color = AppTheme.disconnected;
+        color = w.inkMuted;
         text = l.connBadgeOffline;
         icon = Icons.cloud_off;
         break;
       case ConnectionStatus.connecting:
-        color = AppTheme.connecting;
+        color = w.inkMuted;
         text = l.connecting;
         icon = Icons.cloud_sync;
         break;
       case ConnectionStatus.relayConnected:
-        color = connection.isNotPaired ? AppTheme.warning : AppTheme.connecting;
+        color = w.inkMuted;
         text = connection.isNotPaired ? l.connBadgeNotPaired : l.connBadgeWaiting;
         icon = Icons.cloud_done;
         break;
       case ConnectionStatus.robotOnline:
-        color = AppTheme.connected;
+        color = w.signal;
         text = l.connBadgeRobotOnline;
         icon = Icons.smart_toy;
         break;
       case ConnectionStatus.error:
-        color = AppTheme.error;
+        color = Theme.of(context).colorScheme.error;
         text = l.error;
         icon = Icons.error_outline;
         break;
       case ConnectionStatus.superseded:
         // B1: another device took over this account/device pair.
-        color = AppTheme.warning;
+        color = w.inkMuted;
         text = l.connBadgeOtherDeviceActive;
         icon = Icons.swap_horiz;
         break;
@@ -73,7 +77,7 @@ class ConnectionBadge extends ConsumerWidget {
 
     // Demo mode override
     if (connection.isDemoMode) {
-      color = AppTheme.secondary;
+      color = w.ink;
       text = l.connBadgeDemo;
       icon = Icons.play_circle_outline;
     }
@@ -82,7 +86,7 @@ class ConnectionBadge extends ConsumerWidget {
       color: color,
       icon: icon,
       text: text,
-      glow: connection.status == ConnectionStatus.robotOnline,
+      live: connection.status == ConnectionStatus.robotOnline,
     );
   }
 }
@@ -91,23 +95,26 @@ class _PillContainer extends StatelessWidget {
   final Color color;
   final IconData? icon;
   final String text;
-  final bool glow;
+
+  /// Robot online: the signal status chip (signal-glow fill).
+  final bool live;
 
   const _PillContainer({
     required this.color,
     required this.icon,
     required this.text,
-    this.glow = false,
+    this.live = false,
   });
 
   @override
   Widget build(BuildContext context) {
+    final w = context.wimz;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.2),
+        color: live ? w.signalGlow : w.surfaceRaised,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: color.withOpacity(0.3)),
+        border: Border.all(color: live ? Colors.transparent : w.line),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -122,15 +129,6 @@ class _PillContainer extends StatelessWidget {
             decoration: BoxDecoration(
               color: color,
               shape: BoxShape.circle,
-              boxShadow: glow
-                  ? [
-                      BoxShadow(
-                        color: color.withOpacity(0.5),
-                        blurRadius: 4,
-                        spreadRadius: 1,
-                      ),
-                    ]
-                  : null,
             ),
           ),
           const SizedBox(width: 6),

@@ -26,7 +26,9 @@ class NightVisionSettingsSection extends ConsumerWidget {
     }
 
     final isNight = state.currentMode == DayNight.night;
-    final accent = isNight ? AppTheme.behaviorLying : AppTheme.primary;
+    // Day/night is said by the icon + word; both are ink (no cool tint).
+    final w = context.wimz;
+    final accent = w.ink;
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -38,7 +40,7 @@ class NightVisionSettingsSection extends ConsumerWidget {
             children: [
               Icon(
                 isNight ? Icons.nights_stay : Icons.wb_sunny,
-                color: isStale ? AppTheme.textTertiary : accent,
+                color: isStale ? w.inkMuted : accent,
                 size: 28,
               ),
               const SizedBox(width: 12),
@@ -49,7 +51,7 @@ class NightVisionSettingsSection extends ConsumerWidget {
                     Text(
                       isNight ? l.nightVisionNightMode : l.nightVisionDayMode,
                       style: TextStyle(
-                        color: isStale ? AppTheme.textTertiary : accent,
+                        color: isStale ? w.inkMuted : accent,
                         fontSize: 17,
                         fontWeight: FontWeight.w600,
                       ),
@@ -57,8 +59,8 @@ class NightVisionSettingsSection extends ConsumerWidget {
                     const SizedBox(height: 2),
                     Text(
                       _luxLine(l, state.currentLux),
-                      style: const TextStyle(
-                        color: AppTheme.textSecondary,
+                      style: TextStyle(
+                        color: w.inkMuted,
                         fontSize: 13,
                       ),
                     ),
@@ -70,7 +72,7 @@ class NightVisionSettingsSection extends ConsumerWidget {
                   message: l.nightVisionStaleTooltip,
                   child: Icon(
                     Icons.cloud_off,
-                    color: AppTheme.warning.withOpacity(0.8),
+                    color: w.inkMuted,
                     size: 20,
                   ),
                 ),
@@ -82,8 +84,8 @@ class NightVisionSettingsSection extends ConsumerWidget {
             const SizedBox(height: 8),
             Text(
               _lastChangedLine(l, state.lastChangedAt!, isNight),
-              style: const TextStyle(
-                color: AppTheme.textTertiary,
+              style: TextStyle(
+                color: w.inkMuted,
                 fontSize: 12,
               ),
             ),
@@ -115,11 +117,7 @@ class NightVisionSettingsSection extends ConsumerWidget {
               if (set.isEmpty) return;
               ref.read(nightModeProvider.notifier).setOverride(set.first);
             },
-            style: SegmentedButton.styleFrom(
-              foregroundColor: AppTheme.textSecondary,
-              selectedForegroundColor: AppTheme.background,
-              selectedBackgroundColor: accent,
-            ),
+            // Colours from segmentedButtonTheme (selected = primary).
           ),
 
           const SizedBox(height: 10),
@@ -131,8 +129,8 @@ class NightVisionSettingsSection extends ConsumerWidget {
                 : l.nightVisionOverrideHint,
             style: TextStyle(
               color: state.override == NightModeOverride.auto
-                  ? AppTheme.textTertiary
-                  : AppTheme.warning.withOpacity(0.9),
+                  ? w.inkMuted
+                  : w.ink,
               fontSize: 12,
             ),
           ),
@@ -142,7 +140,7 @@ class NightVisionSettingsSection extends ConsumerWidget {
             Text(
               l.nightVisionOfflineHint,
               style: TextStyle(
-                color: AppTheme.warning.withOpacity(0.9),
+                color: w.inkMuted,
                 fontSize: 12,
               ),
             ),

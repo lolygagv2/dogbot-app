@@ -30,13 +30,20 @@ class _PushToTalkControlsState extends ConsumerState<PushToTalkControls> {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text(pttState.error!),
-              backgroundColor: Colors.red.shade700,
+              content: Row(
+                children: [
+                  Icon(Icons.error_outline,
+                      color: Theme.of(context).colorScheme.onError, size: 20),
+                  const SizedBox(width: 8),
+                  Expanded(child: Text(pttState.error!)),
+                ],
+              ),
+              backgroundColor: Theme.of(context).colorScheme.error,
               behavior: SnackBarBehavior.floating,
               duration: const Duration(seconds: 3),
               action: SnackBarAction(
                 label: context.l10n.dismiss,
-                textColor: Colors.white,
+                textColor: Theme.of(context).colorScheme.onError,
                 onPressed: () {
                   ref.read(pushToTalkProvider.notifier).clearError();
                 },
@@ -63,9 +70,9 @@ class _PushToTalkControlsState extends ConsumerState<PushToTalkControls> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
-        color: AppTheme.surface.withAlpha(200),
+        color: context.wimz.surface.withValues(alpha: 0.78),
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: AppTheme.glassBorder),
+        border: Border.all(color: context.wimz.line),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -135,17 +142,21 @@ class _MicToggleButtonState extends ConsumerState<_MicToggleButton>
     final remainingMs = PushToTalkNotifier.maxRecordingDurationMs - pttState.recordingDurationMs;
     final remainingSec = (remainingMs / 1000).ceil().clamp(0, 5);
 
-    // Button color
+    // Button color: primary fill throughout (sent = check icon, recording =
+    // pulsing primary + countdown, busy = disabled ink). No red.
+    final cs = Theme.of(context).colorScheme;
+    final w = context.wimz;
+    final onFill = cs.onPrimary;
     Color bgColor;
     if (isSent) {
-      bgColor = AppTheme.accent;
+      bgColor = cs.primary;
     } else if (isRecording) {
       final pulse = 0.7 + (_pulseController.value * 0.3);
-      bgColor = Colors.red.withOpacity(pulse);
+      bgColor = cs.primary.withValues(alpha: pulse);
     } else if (isBusy) {
-      bgColor = Colors.grey;
+      bgColor = w.inkDisabled;
     } else {
-      bgColor = AppTheme.primary;
+      bgColor = cs.primary;
     }
 
     // Label text
@@ -182,15 +193,6 @@ class _MicToggleButtonState extends ConsumerState<_MicToggleButton>
             decoration: BoxDecoration(
               shape: BoxShape.circle,
               color: bgColor,
-              boxShadow: isRecording
-                  ? [
-                      BoxShadow(
-                        color: Colors.red.withAlpha(128),
-                        blurRadius: 16,
-                        spreadRadius: 4,
-                      ),
-                    ]
-                  : null,
             ),
             child: Stack(
               alignment: Alignment.center,
@@ -203,8 +205,8 @@ class _MicToggleButtonState extends ConsumerState<_MicToggleButton>
                     child: CircularProgressIndicator(
                       value: pttState.recordingProgress,
                       strokeWidth: 3,
-                      valueColor: const AlwaysStoppedAnimation(Colors.white),
-                      backgroundColor: Colors.white24,
+                      valueColor: AlwaysStoppedAnimation(onFill),
+                      backgroundColor: onFill.withValues(alpha: 0.24),
                     ),
                   ),
                 // Sending spinner
@@ -212,9 +214,9 @@ class _MicToggleButtonState extends ConsumerState<_MicToggleButton>
                   SizedBox(
                     width: size - 16,
                     height: size - 16,
-                    child: const CircularProgressIndicator(
+                    child: CircularProgressIndicator(
                       strokeWidth: 2,
-                      valueColor: AlwaysStoppedAnimation(Colors.white),
+                      valueColor: AlwaysStoppedAnimation(onFill),
                     ),
                   ),
                 // Show countdown number inside button when recording (always visible)
@@ -222,7 +224,7 @@ class _MicToggleButtonState extends ConsumerState<_MicToggleButton>
                   Text(
                     '$remainingSec',
                     style: TextStyle(
-                      color: Colors.white,
+                      color: onFill,
                       fontSize: iconSize,
                       fontWeight: FontWeight.bold,
                     ),
@@ -233,7 +235,7 @@ class _MicToggleButtonState extends ConsumerState<_MicToggleButton>
                         ? Icons.check
                         : (isRecording ? Icons.stop : Icons.mic),
                     size: iconSize,
-                    color: Colors.white,
+                    color: onFill,
                   ),
               ],
             ),
@@ -245,9 +247,7 @@ class _MicToggleButtonState extends ConsumerState<_MicToggleButton>
             label,
             style: TextStyle(
               fontSize: 10,
-              color: isSent
-                  ? AppTheme.accent
-                  : (isRecording ? Colors.red : AppTheme.textSecondary),
+              color: isSent || isRecording ? w.ink : w.inkMuted,
               fontWeight: isRecording || isSent ? FontWeight.bold : FontWeight.normal,
             ),
           ),
@@ -272,6 +272,13 @@ class _ListenButton extends ConsumerWidget {
     final size = compact ? 44.0 : 56.0;
     final iconSize = compact ? 24.0 : 28.0;
 
+    // Playing = solid primary fill; requesting = sunken fill with a
+    // spinner; idle = raised fill with a primary outline. The icon and
+    // (non-compact) label carry the state.
+    final cs = Theme.of(context).colorScheme;
+    final w = context.wimz;
+    final fg = isPlaying ? cs.onPrimary : (isBusy ? w.inkDisabled : w.ink);
+
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -288,25 +295,16 @@ class _ListenButton extends ConsumerWidget {
             decoration: BoxDecoration(
               shape: BoxShape.circle,
               color: isPlaying
-                  ? Colors.green
-                  : (isRequesting
-                      ? Colors.orange
-                      : (isBusy ? Colors.grey : AppTheme.surfaceLight)),
+                  ? cs.primary
+                  : (isRequesting || isBusy
+                      ? w.surfaceSunken
+                      : w.surfaceRaised),
               border: Border.all(
                 color: isPlaying || isRequesting
                     ? Colors.transparent
-                    : AppTheme.primary,
+                    : cs.primary,
                 width: 2,
               ),
-              boxShadow: isPlaying
-                  ? [
-                      BoxShadow(
-                        color: Colors.green.withAlpha(128),
-                        blurRadius: 16,
-                        spreadRadius: 4,
-                      ),
-                    ]
-                  : null,
             ),
             child: Stack(
               alignment: Alignment.center,
@@ -316,9 +314,9 @@ class _ListenButton extends ConsumerWidget {
                   SizedBox(
                     width: size - 12,
                     height: size - 12,
-                    child: const CircularProgressIndicator(
+                    child: CircularProgressIndicator(
                       strokeWidth: 2,
-                      valueColor: AlwaysStoppedAnimation(Colors.white),
+                      valueColor: AlwaysStoppedAnimation(fg),
                     ),
                   ),
                 // Icon
@@ -327,9 +325,7 @@ class _ListenButton extends ConsumerWidget {
                       ? Icons.volume_up
                       : (isRequesting ? Icons.hearing : Icons.hearing_outlined),
                   size: iconSize,
-                  color: isPlaying || isRequesting
-                      ? Colors.white
-                      : AppTheme.primary,
+                  color: fg,
                 ),
               ],
             ),
@@ -345,9 +341,7 @@ class _ListenButton extends ConsumerWidget {
                     : context.l10n.pttTapToListen),
             style: TextStyle(
               fontSize: 10,
-              color: isPlaying
-                  ? Colors.green
-                  : (isRequesting ? Colors.orange : AppTheme.textSecondary),
+              color: isPlaying ? w.ink : w.inkMuted,
               fontWeight:
                   isPlaying || isRequesting ? FontWeight.bold : FontWeight.normal,
             ),
@@ -390,8 +384,15 @@ class _PushToTalkMicOnlyState extends ConsumerState<PushToTalkMicOnly> {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text(pttState.error!),
-              backgroundColor: Colors.red.shade700,
+              content: Row(
+                children: [
+                  Icon(Icons.error_outline,
+                      color: Theme.of(context).colorScheme.onError, size: 20),
+                  const SizedBox(width: 8),
+                  Expanded(child: Text(pttState.error!)),
+                ],
+              ),
+              backgroundColor: Theme.of(context).colorScheme.error,
               behavior: SnackBarBehavior.floating,
               duration: const Duration(seconds: 3),
             ),

@@ -6,6 +6,7 @@ import '../../../domain/providers/device_provider.dart';
 import '../../../domain/providers/settings_provider.dart';
 import '../../../domain/providers/video_transport_provider.dart';
 import '../../../domain/providers/webrtc_provider.dart';
+import '../../theme/app_theme.dart';
 import 'mjpeg_viewer.dart';
 import 'webrtc_video_view.dart';
 
@@ -67,7 +68,7 @@ class _SmartVideoViewState extends ConsumerState<SmartVideoView> {
     if (!isLocal &&
         widget.deviceId == null &&
         !ref.watch(hasSelectedDeviceProvider)) {
-      return Container(color: Colors.black);
+      return Container(color: context.wimz.brandInk);
     }
 
     // Relay mode: always WebRTC

@@ -55,24 +55,19 @@ class _MissionOverlayCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final w = context.wimz;
+    final muted = w.onVideo.withValues(alpha: 0.7);
     // Build 34: Reduced overlay size by ~40% for less intrusive display
     return Container(
       width: 140,
       padding: const EdgeInsets.all(10),
       decoration: BoxDecoration(
-        color: Colors.black.withOpacity(0.75),
+        color: w.scrim(0.75),
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: _getStatusColor().withOpacity(0.5),
+          color: _getStatusColor(context).withValues(alpha: 0.5),
           width: 1.5,
         ),
-        boxShadow: [
-          BoxShadow(
-            color: _getStatusColor().withOpacity(0.3),
-            blurRadius: 12,
-            spreadRadius: 1,
-          ),
-        ],
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -82,7 +77,7 @@ class _MissionOverlayCard extends StatelessWidget {
             Text(
               progress.localizedStage(context.l10n)!,
               style: TextStyle(
-                color: AppTheme.textSecondary,
+                color: muted,
                 fontSize: 10,
                 fontWeight: FontWeight.w500,
               ),
@@ -99,24 +94,24 @@ class _MissionOverlayCard extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               if (progress.dogName != null) ...[
-                const Icon(Icons.pets, size: 10, color: AppTheme.textSecondary),
+                Icon(Icons.pets, size: 10, color: muted),
                 const SizedBox(width: 2),
                 Text(
                   progress.dogName!,
-                  style: const TextStyle(
-                    color: AppTheme.textSecondary,
+                  style: TextStyle(
+                    color: muted,
                     fontSize: 10,
                   ),
                   overflow: TextOverflow.ellipsis,
                 ),
                 const SizedBox(width: 6),
               ],
-              const Icon(Icons.cookie, size: 10, color: AppTheme.accent),
+              Icon(Icons.cookie, size: 10, color: w.onVideo),
               const SizedBox(width: 2),
               Text(
                 '${progress.rewardsGiven}',
-                style: const TextStyle(
-                  color: AppTheme.accent,
+                style: TextStyle(
+                  color: w.onVideo,
                   fontSize: 10,
                   fontWeight: FontWeight.bold,
                 ),
@@ -134,7 +129,7 @@ class _MissionOverlayCard extends StatelessWidget {
       // Show circular progress during watching
       return _CircularPieProgress(
         progress: progress.effectiveProgress,
-        color: _getStatusColor(),
+        color: _getStatusColor(context),
         label: statusLabel,
       );
     }
@@ -161,25 +156,29 @@ class _MissionOverlayCard extends StatelessWidget {
     );
   }
 
-  Color _getStatusColor() {
+  /// Overlay sits on video (always dark), so status is white / muted white,
+  /// with error only for a failed attempt. Every state also shows its icon
+  /// (or the pie) and the status label.
+  Color _getStatusColor(BuildContext context) {
+    final w = context.wimz;
     switch (status) {
       case MissionStatus.waitingForDog:
-        return Colors.orange;
+        return w.onVideo.withValues(alpha: 0.7);
       case MissionStatus.greeting:
-        return AppTheme.primary;
+        return w.onVideo;
       case MissionStatus.command:
-        return Colors.amber;
+        return w.onVideo;
       case MissionStatus.watching:
-        return AppTheme.primary;
+        return w.onVideo;
       case MissionStatus.success:
       case MissionStatus.completed:
-        return Colors.green;
+        return w.onVideo;
       case MissionStatus.failed:
-        return Colors.red;
+        return Theme.of(context).colorScheme.error;
       case MissionStatus.retry:
-        return Colors.orange;
+        return w.onVideo.withValues(alpha: 0.7);
       default:
-        return AppTheme.textSecondary;
+        return w.onVideo.withValues(alpha: 0.7);
     }
   }
 }
@@ -213,7 +212,7 @@ class _CircularPieProgress extends StatelessWidget {
                 painter: _PieProgressPainter(
                   progress: progress,
                   color: color,
-                  backgroundColor: color.withOpacity(0.2),
+                  backgroundColor: color.withValues(alpha: 0.2),
                 ),
               ),
               // Percentage text
@@ -299,6 +298,7 @@ class _SuccessIndicator extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final w = context.wimz;
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -307,12 +307,12 @@ class _SuccessIndicator extends StatelessWidget {
           height: 40,
           decoration: BoxDecoration(
             shape: BoxShape.circle,
-            color: Colors.green.withOpacity(0.2),
-            border: Border.all(color: Colors.green, width: 2),
+            color: w.onVideo.withValues(alpha: 0.2),
+            border: Border.all(color: w.onVideo, width: 2),
           ),
-          child: const Icon(
+          child: Icon(
             Icons.check,
-            color: Colors.green,
+            color: w.onVideo,
             size: 24,
           ),
         )
@@ -321,8 +321,8 @@ class _SuccessIndicator extends StatelessWidget {
         const SizedBox(height: 4),
         Text(
           label,
-          style: const TextStyle(
-            color: Colors.green,
+          style: TextStyle(
+            color: w.onVideo,
             fontSize: 11,
             fontWeight: FontWeight.bold,
           ),
@@ -341,6 +341,8 @@ class _FailureIndicator extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Failed attempt: error tint with the X icon and the status label.
+    final error = Theme.of(context).colorScheme.error;
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -349,20 +351,20 @@ class _FailureIndicator extends StatelessWidget {
           height: 40,
           decoration: BoxDecoration(
             shape: BoxShape.circle,
-            color: Colors.red.withOpacity(0.2),
-            border: Border.all(color: Colors.red, width: 2),
+            color: error.withValues(alpha: 0.2),
+            border: Border.all(color: error, width: 2),
           ),
-          child: const Icon(
+          child: Icon(
             Icons.close,
-            color: Colors.red,
+            color: error,
             size: 24,
           ),
         ).animate().shake(duration: 500.ms),
         const SizedBox(height: 4),
         Text(
           label,
-          style: const TextStyle(
-            color: Colors.red,
+          style: TextStyle(
+            color: error,
             fontSize: 11,
             fontWeight: FontWeight.bold,
           ),
@@ -387,6 +389,7 @@ class _StatusIndicator extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final color = _getStatusColor(context);
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -395,12 +398,12 @@ class _StatusIndicator extends StatelessWidget {
           height: 40,
           decoration: BoxDecoration(
             shape: BoxShape.circle,
-            color: _getStatusColor().withOpacity(0.2),
-            border: Border.all(color: _getStatusColor(), width: 1.5),
+            color: color.withValues(alpha: 0.2),
+            border: Border.all(color: color, width: 1.5),
           ),
           child: Icon(
             _getStatusIcon(),
-            color: _getStatusColor(),
+            color: color,
             size: 20,
           ),
         )
@@ -411,7 +414,7 @@ class _StatusIndicator extends StatelessWidget {
           label,
           textAlign: TextAlign.center,
           style: TextStyle(
-            color: _getStatusColor(),
+            color: color,
             fontSize: 10,
             fontWeight: FontWeight.w600,
           ),
@@ -420,18 +423,21 @@ class _StatusIndicator extends StatelessWidget {
     );
   }
 
-  Color _getStatusColor() {
+  /// On video: white for the active prompts, muted white while waiting.
+  /// Each state has its own icon ([_getStatusIcon]) and the label.
+  Color _getStatusColor(BuildContext context) {
+    final w = context.wimz;
     switch (status) {
       case MissionStatus.waitingForDog:
-        return Colors.orange;
+        return w.onVideo.withValues(alpha: 0.7);
       case MissionStatus.greeting:
-        return AppTheme.primary;
+        return w.onVideo;
       case MissionStatus.command:
-        return Colors.amber;
+        return w.onVideo;
       case MissionStatus.retry:
-        return Colors.orange;
+        return w.onVideo.withValues(alpha: 0.7);
       default:
-        return AppTheme.textSecondary;
+        return w.onVideo.withValues(alpha: 0.7);
     }
   }
 

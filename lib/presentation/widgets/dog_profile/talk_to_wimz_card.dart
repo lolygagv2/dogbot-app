@@ -17,31 +17,36 @@ class TalkToWimzCard extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final l = context.l10n;
+    final w = context.wimz;
+    final cs = Theme.of(context).colorScheme;
     final s = ref.watch(agentTalkProvider);
     final isLocal = ref.watch(settingsProvider).localModeEnabled;
 
     final String status;
-    Color statusColor = AppTheme.textTertiary;
-    if (s.error != null && s.phase == AgentTalkPhase.idle) {
+    Color statusColor = w.inkMuted;
+    // Error message in idle: muted text + a warning icon beside it (colour
+    // never carries the state alone).
+    final bool isError = s.error != null && s.phase == AgentTalkPhase.idle;
+    if (isError) {
       status = s.error!;
-      statusColor = AppTheme.warning;
+      statusColor = w.inkMuted;
     } else {
       switch (s.phase) {
         case AgentTalkPhase.recording:
           status = l.talkRecording((s.elapsedMs / 1000).toStringAsFixed(1));
-          statusColor = AppTheme.error;
+          statusColor = w.signal; // live indicator (text says "Recording")
           break;
         case AgentTalkPhase.sending:
           status = l.talkSending;
-          statusColor = AppTheme.primary;
+          statusColor = cs.primary;
           break;
         case AgentTalkPhase.playingRobot:
           status = l.talkPlayingRobot;
-          statusColor = AppTheme.accent;
+          statusColor = cs.onSurface;
           break;
         case AgentTalkPhase.playingPhone:
           status = l.talkPlayingPhone;
-          statusColor = AppTheme.accent;
+          statusColor = cs.onSurface;
           break;
         case AgentTalkPhase.idle:
           status = isLocal
@@ -55,12 +60,10 @@ class TalkToWimzCard extends ConsumerWidget {
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: AppTheme.surfaceLight,
+        color: w.surfaceRaised,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: s.isRecording
-              ? AppTheme.error.withOpacity(0.7)
-              : AppTheme.glassBorder,
+          color: s.isRecording ? w.lineStrong : w.line,
         ),
       ),
       child: Row(
@@ -74,17 +77,28 @@ class TalkToWimzCard extends ConsumerWidget {
               children: [
                 Text(
                   l.talkCardTitle,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontWeight: FontWeight.w600,
-                    color: AppTheme.textPrimary,
+                    color: cs.onSurface,
                   ),
                 ),
                 const SizedBox(height: 2),
-                Text(
-                  status,
-                  style: TextStyle(fontSize: 12, color: statusColor),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    if (isError) ...[
+                      Icon(Icons.warning_amber, size: 14, color: statusColor),
+                      const SizedBox(width: 4),
+                    ],
+                    Expanded(
+                      child: Text(
+                        status,
+                        style: TextStyle(fontSize: 12, color: statusColor),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
                 ),
                 if (s.textIn != null) ...[
                   const SizedBox(height: 6),
@@ -98,7 +112,7 @@ class TalkToWimzCard extends ConsumerWidget {
                   const SizedBox(height: 2),
                   Text(
                     l.talkRefused(r),
-                    style: const TextStyle(fontSize: 11, color: AppTheme.warning),
+                    style: TextStyle(fontSize: 11, color: w.inkMuted),
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                   ),
@@ -120,6 +134,8 @@ class _Line extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final w = context.wimz;
+    final cs = Theme.of(context).colorScheme;
     return Text.rich(
       TextSpan(
         children: [
@@ -127,13 +143,13 @@ class _Line extends StatelessWidget {
             text: '$speaker: ',
             style: TextStyle(
               fontWeight: FontWeight.w600,
-              color: mine ? AppTheme.textSecondary : AppTheme.primary,
+              color: mine ? w.inkMuted : cs.primary,
             ),
           ),
           TextSpan(text: text),
         ],
       ),
-      style: const TextStyle(fontSize: 12, color: AppTheme.textPrimary),
+      style: TextStyle(fontSize: 12, color: cs.onSurface),
       maxLines: 3,
       overflow: TextOverflow.ellipsis,
     );

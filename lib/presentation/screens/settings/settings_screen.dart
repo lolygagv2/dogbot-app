@@ -117,9 +117,11 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             onPressed: () => Navigator.pop(ctx, false),
             child: Text(ctx.l10n.cancel),
           ),
-          TextButton(
+          TextButton.icon(
             onPressed: () => Navigator.pop(ctx, true),
-            child: Text(ctx.l10n.signOut, style: const TextStyle(color: Colors.red)),
+            icon: Icon(Icons.logout, size: 18, color: Theme.of(ctx).colorScheme.error),
+            label: Text(ctx.l10n.signOut,
+                style: TextStyle(color: Theme.of(ctx).colorScheme.error)),
           ),
         ],
       ),
@@ -192,7 +194,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           ListTile(
             leading: Icon(
               telemetry.isCharging ? Icons.battery_charging_full : Icons.battery_full,
-              color: telemetry.battery > 20 ? Colors.green : Colors.red,
+              color: WimzStatus.battery(context, telemetry.battery),
             ),
             title: Text(l.settingsBattery),
             trailing: Text(
@@ -241,7 +243,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           const _ResetSoundsTile(),
           if (settings.advancedModeEnabled)
             ListTile(
-              leading: const Icon(Icons.graphic_eq, color: AppTheme.secondary),
+              leading: Icon(Icons.graphic_eq, color: Theme.of(context).colorScheme.onSurface),
               title: Text(l.settingsSoundsAll),
               subtitle: Text(l.settingsSoundsAllSubtitle),
               trailing: const Icon(Icons.chevron_right),
@@ -254,7 +256,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           if (!isLocalMode) ...[
             _SectionHeader(l.connectedAiTitle),
             ListTile(
-              leading: const Icon(Icons.hub_outlined, color: AppTheme.secondary),
+              leading: Icon(Icons.hub_outlined, color: Theme.of(context).colorScheme.onSurface),
               title: Text(l.connectedAiTitle),
               subtitle: Text(l.connectedAiSubtitle),
               trailing: const Icon(Icons.chevron_right),
@@ -294,7 +296,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
 
           _SectionHeader(l.settingsSectionDemo),
           ListTile(
-            leading: const Icon(Icons.cast, color: AppTheme.primary),
+            leading: Icon(Icons.cast, color: Theme.of(context).colorScheme.primary),
             title: Text(l.demoViewTitle),
             subtitle: Text(l.demoViewSubtitle),
             trailing: const Icon(Icons.chevron_right),
@@ -307,8 +309,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             secondary: Icon(
               Icons.science_outlined,
               color: settings.advancedModeEnabled
-                  ? AppTheme.secondary
-                  : AppTheme.textTertiary,
+                  ? Theme.of(context).colorScheme.onSurface
+                  : context.wimz.inkMuted,
             ),
             title: Text(l.settingsAdvancedMode),
             subtitle: Text(
@@ -364,11 +366,11 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
 
           _SectionHeader(l.settingsSectionAccount),
           ListTile(
-            leading: const Icon(Icons.logout, color: Colors.red),
+            leading: Icon(Icons.logout, color: Theme.of(context).colorScheme.error),
             title: Text(l.signOut),
             subtitle: Text(
               ref.watch(authProvider).email ?? '',
-              style: TextStyle(color: AppTheme.textTertiary, fontSize: 12),
+              style: TextStyle(color: context.wimz.inkMuted, fontSize: 12),
             ),
             onTap: () => _confirmSignOut(context),
           ),
@@ -433,7 +435,7 @@ class _LanguageTile extends ConsumerWidget {
       title: Text(l.language),
       subtitle: Text(
         '${_label(l, locale)} · ${l.languageSubtitle}',
-        style: TextStyle(color: AppTheme.textTertiary, fontSize: 12),
+        style: TextStyle(color: context.wimz.inkMuted, fontSize: 12),
       ),
       onTap: () => _pick(context, ref),
     );
@@ -485,11 +487,11 @@ class _QuietHoursTileState extends ConsumerState<_QuietHoursTile> {
 
     if (s.unsupported || !hasDog) {
       return ListTile(
-        leading: const Icon(Icons.bedtime_outlined, color: AppTheme.textTertiary),
+        leading: Icon(Icons.bedtime_outlined, color: context.wimz.inkMuted),
         title: Text(l.quietHoursTitle),
         subtitle: Text(
           hasDog ? l.quietHoursUnsupported : l.aiErrNoDog,
-          style: TextStyle(color: AppTheme.textTertiary, fontSize: 12),
+          style: TextStyle(color: context.wimz.inkMuted, fontSize: 12),
         ),
         enabled: false,
       );
@@ -512,18 +514,19 @@ class _QuietHoursTileState extends ConsumerState<_QuietHoursTile> {
         SwitchListTile(
           secondary: Icon(
             v.enabled ? Icons.bedtime : Icons.bedtime_outlined,
-            color: v.enabled ? AppTheme.primary : AppTheme.textTertiary,
+            color: v.enabled
+                ? Theme.of(context).colorScheme.primary
+                : context.wimz.inkMuted,
           ),
           title: Text(l.quietHoursTitle),
           subtitle: Text(
             subtitle,
             style: TextStyle(
-              color: s.error != null ? AppTheme.warning : AppTheme.textTertiary,
+              color: s.error != null ? context.wimz.ink : context.wimz.inkMuted,
               fontSize: 12,
             ),
           ),
           value: v.enabled,
-          activeColor: AppTheme.primary,
           onChanged: (s.loaded && !s.saving)
               ? (on) => ref.read(quietHoursProvider.notifier).setEnabled(on)
               : null,
@@ -535,7 +538,8 @@ class _QuietHoursTileState extends ConsumerState<_QuietHoursTile> {
             title: Text(l.quietHoursStart),
             trailing: Text(
               ml.formatTimeOfDay(v.startTime),
-              style: const TextStyle(color: AppTheme.primary, fontSize: 15),
+              style: TextStyle(
+                  color: Theme.of(context).colorScheme.primary, fontSize: 15),
             ),
             onTap: s.saving ? null : () => _pick(true),
           ),
@@ -545,7 +549,8 @@ class _QuietHoursTileState extends ConsumerState<_QuietHoursTile> {
             title: Text(l.quietHoursEnd),
             trailing: Text(
               ml.formatTimeOfDay(v.endTime),
-              style: const TextStyle(color: AppTheme.primary, fontSize: 15),
+              style: TextStyle(
+                  color: Theme.of(context).colorScheme.primary, fontSize: 15),
             ),
             onTap: s.saving ? null : () => _pick(false),
           ),
@@ -553,7 +558,7 @@ class _QuietHoursTileState extends ConsumerState<_QuietHoursTile> {
             padding: const EdgeInsets.only(left: 72, right: 16, bottom: 8),
             child: Text(
               l.quietHoursHint,
-              style: TextStyle(color: AppTheme.textTertiary, fontSize: 11),
+              style: TextStyle(color: context.wimz.inkMuted, fontSize: 11),
             ),
           ),
         ],
@@ -604,7 +609,8 @@ class _ConnectionInfoTile extends ConsumerWidget {
     if (isLocalMode) {
       isConnected = localConn.isConnected;
       icon = Icons.wifi;
-      color = isConnected ? AppTheme.accent : AppTheme.textTertiary;
+      color = WimzStatus.connection(context,
+          isConnected: isConnected, isConnecting: false);
       title = isConnected
           ? l.settingsConnectedToRobot(localConn.robotIp ?? '192.168.4.1')
           : l.settingsLocalNotConnected;
@@ -612,7 +618,8 @@ class _ConnectionInfoTile extends ConsumerWidget {
     } else {
       isConnected = connection.isRobotOnline;
       icon = Icons.cloud;
-      color = isConnected ? AppTheme.accent : AppTheme.textTertiary;
+      color = WimzStatus.connection(context,
+          isConnected: isConnected, isConnecting: false);
       title = isConnected
           ? l.settingsConnectedViaCloud
           : connection.statusMessage(l);
@@ -625,16 +632,16 @@ class _ConnectionInfoTile extends ConsumerWidget {
         title,
         style: TextStyle(
           fontWeight: FontWeight.bold,
-          color: isConnected ? AppTheme.accent : null,
+          color: isConnected ? context.wimz.signal : null,
           fontSize: 14,
         ),
       ),
       subtitle: Text(
         subtitle,
-        style: TextStyle(color: AppTheme.textTertiary, fontSize: 12),
+        style: TextStyle(color: context.wimz.inkMuted, fontSize: 12),
       ),
       trailing: isConnected
-          ? const Icon(Icons.check_circle, color: AppTheme.accent, size: 20)
+          ? Icon(Icons.check_circle, color: context.wimz.signal, size: 20)
           : null,
     );
   }
@@ -690,7 +697,7 @@ class _ManageDevicesTile extends ConsumerWidget {
       title: Text(l.settingsManageRobots),
       subtitle: Text(
         subtitle,
-        style: TextStyle(color: AppTheme.textTertiary, fontSize: 12),
+        style: TextStyle(color: context.wimz.inkMuted, fontSize: 12),
       ),
       trailing: const Icon(Icons.chevron_right),
       onTap: () => context.push('/device-pairing'),
@@ -724,25 +731,27 @@ class _RobotSoftwareTile extends ConsumerWidget {
 
     final String subtitle;
     Color? subtitleColor;
+    bool otaFailed = false;
     if (ota.inProgress) {
       final pct = ota.progressPct != null ? ' ${ota.progressPct}%' : '';
       subtitle = l.settingsOtaUpdating(ota.version ?? '?', ota.state ?? '', pct);
-      subtitleColor = AppTheme.accent;
+      subtitleColor = context.wimz.ink;
     } else if (ota.isTerminal) {
       switch (ota.state) {
         case 'success':
           subtitle = l.settingsOtaUpdated(ota.version ?? '?');
-          subtitleColor = Colors.green;
+          subtitleColor = context.wimz.ink;
           break;
         case 'rolled_back':
           subtitle = l.settingsOtaRolledBack(
               ota.error != null ? ' (${ota.error})' : '');
-          subtitleColor = AppTheme.warning;
+          subtitleColor = context.wimz.inkMuted;
           break;
         default: // failed
           subtitle = l.settingsOtaFailed(
               ota.error != null ? ': ${ota.error}' : '');
-          subtitleColor = AppTheme.error;
+          subtitleColor = Theme.of(context).colorScheme.error;
+          otaFailed = true;
       }
     } else if (running == null) {
       subtitle = l.settingsOtaNotReported;
@@ -750,20 +759,25 @@ class _RobotSoftwareTile extends ConsumerWidget {
       subtitle = l.settingsOtaUpToDateNoRelease;
     } else if (updateAvailable) {
       subtitle = l.settingsOtaAvailable(latestVersion);
-      subtitleColor = AppTheme.accent;
+      subtitleColor = context.wimz.ink;
     } else {
       subtitle = l.settingsOtaUpToDate;
     }
 
     return ListTile(
       leading: Icon(
-        Icons.system_update_alt,
-        color: updateAvailable ? AppTheme.accent : null,
+        otaFailed ? Icons.error_outline : Icons.system_update_alt,
+        color: otaFailed
+            ? Theme.of(context).colorScheme.error
+            : updateAvailable
+                ? context.wimz.ink
+                : null,
       ),
       title: Text(l.settingsRobotSoftware),
       subtitle: Text(
         subtitle,
-        style: TextStyle(color: subtitleColor ?? AppTheme.textTertiary, fontSize: 12),
+        style: TextStyle(
+            color: subtitleColor ?? context.wimz.inkMuted, fontSize: 12),
       ),
       trailing: ota.inProgress
           ? const SizedBox(
@@ -780,8 +794,10 @@ class _RobotSoftwareTile extends ConsumerWidget {
                   ? ElevatedButton(
                       onPressed: () => _confirmUpdate(context, ref, latestVersion),
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: AppTheme.accent,
-                        foregroundColor: AppTheme.background,
+                        backgroundColor:
+                            Theme.of(context).colorScheme.primary,
+                        foregroundColor:
+                            Theme.of(context).colorScheme.onPrimary,
                       ),
                       child: Text(l.settingsUpdateCaps),
                     )
@@ -834,11 +850,11 @@ class _TreatsRemainingTile extends ConsumerWidget {
     final isLow = remaining != null && remaining < 5;
 
     return ListTile(
-      leading: Icon(Icons.cookie,
+      leading: Icon(isEmpty ? Icons.error_outline : Icons.cookie,
           color: isEmpty
-              ? AppTheme.error
+              ? Theme.of(context).colorScheme.error
               : isLow
-                  ? AppTheme.warning
+                  ? context.wimz.inkMuted
                   : null),
       title: Text(l.settingsTreats),
       subtitle: remaining == null
@@ -851,16 +867,16 @@ class _TreatsRemainingTile extends ConsumerWidget {
                       : l.settingsTreatsRemaining(remaining),
               style: TextStyle(
                 color: isEmpty
-                    ? AppTheme.error
-                    : isLow
-                        ? AppTheme.warning
-                        : AppTheme.textTertiary,
+                    ? Theme.of(context).colorScheme.error
+                    : context.wimz.inkMuted,
                 fontSize: 12,
               ),
             ),
       trailing: Text(
         display,
-        style: isEmpty ? const TextStyle(color: AppTheme.error) : null,
+        style: isEmpty
+            ? TextStyle(color: Theme.of(context).colorScheme.error)
+            : null,
       ),
     );
   }
@@ -931,14 +947,16 @@ class _DailyLimitTileState extends ConsumerState<_DailyLimitTile> {
         SwitchListTile(
           secondary: Icon(
             Icons.cookie,
-            color: settings.dailyLimitEnabled ? AppTheme.warning : AppTheme.textTertiary,
+            color: settings.dailyLimitEnabled
+                ? context.wimz.ink
+                : context.wimz.inkMuted,
           ),
           title: Text(l.settingsDailyTreatLimit),
           subtitle: Text(
             settings.dailyLimitEnabled
                 ? l.settingsDailyLimitMax(settings.dailyLimitCount)
                 : l.settingsDailyLimitNone,
-            style: TextStyle(fontSize: 12, color: AppTheme.textTertiary),
+            style: TextStyle(fontSize: 12, color: context.wimz.inkMuted),
           ),
           value: settings.dailyLimitEnabled,
           onChanged: (value) {
@@ -980,10 +998,10 @@ class _DailyLimitTileState extends ConsumerState<_DailyLimitTile> {
               hint,
               style: TextStyle(
                 color: remote.error != null
-                    ? AppTheme.warning
+                    ? context.wimz.ink
                     : (remote.changedElsewhere && remote.loaded
-                        ? AppTheme.warning
-                        : AppTheme.textTertiary),
+                        ? context.wimz.ink
+                        : context.wimz.inkMuted),
                 fontSize: 11,
               ),
             ),
@@ -995,7 +1013,7 @@ class _DailyLimitTileState extends ConsumerState<_DailyLimitTile> {
       duration: const Duration(milliseconds: 400),
       decoration: BoxDecoration(
         color: widget.highlighted
-            ? AppTheme.warning.withOpacity(0.15)
+            ? context.wimz.surfaceSunken
             : Colors.transparent,
         borderRadius: BorderRadius.circular(8),
       ),
@@ -1016,14 +1034,16 @@ class _CameraTrackingTile extends ConsumerWidget {
     return SwitchListTile(
       secondary: Icon(
         settings.cameraTrackingEnabled ? Icons.videocam : Icons.videocam_off,
-        color: settings.cameraTrackingEnabled ? AppTheme.accent : AppTheme.textTertiary,
+        color: settings.cameraTrackingEnabled
+            ? context.wimz.ink
+            : context.wimz.inkMuted,
       ),
       title: Text(l.settingsCameraTrackDog),
       subtitle: Text(
         settings.cameraTrackingEnabled
             ? l.settingsCameraTrackOn
             : l.settingsCameraTrackOff,
-        style: TextStyle(fontSize: 12, color: AppTheme.textTertiary),
+        style: TextStyle(fontSize: 12, color: context.wimz.inkMuted),
       ),
       value: settings.cameraTrackingEnabled,
       onChanged: (value) {
@@ -1103,7 +1123,7 @@ class _VideoQualityTile extends ConsumerWidget {
           const SizedBox(height: 8),
           Text(
             l.settingsCurrentlyStreaming(streamingLabel),
-            style: TextStyle(fontSize: 12, color: AppTheme.textTertiary),
+            style: TextStyle(fontSize: 12, color: context.wimz.inkMuted),
           ),
         ],
       ),
@@ -1123,14 +1143,16 @@ class _BackgroundAudioTile extends ConsumerWidget {
     return SwitchListTile(
       secondary: Icon(
         Icons.headphones,
-        color: settings.backgroundAudioEnabled ? AppTheme.accent : AppTheme.textTertiary,
+        color: settings.backgroundAudioEnabled
+            ? context.wimz.ink
+            : context.wimz.inkMuted,
       ),
       title: Text(l.settingsBackgroundAudio),
       subtitle: Text(
         settings.backgroundAudioEnabled
             ? l.settingsBackgroundAudioOn
             : l.settingsBackgroundAudioOff,
-        style: TextStyle(fontSize: 12, color: AppTheme.textTertiary),
+        style: TextStyle(fontSize: 12, color: context.wimz.inkMuted),
       ),
       value: settings.backgroundAudioEnabled,
       onChanged: (value) {
@@ -1154,14 +1176,16 @@ class _NotificationsTile extends ConsumerWidget {
         SwitchListTile(
           secondary: Icon(
             settings.notificationsEnabled ? Icons.notifications_active : Icons.notifications_off,
-            color: settings.notificationsEnabled ? AppTheme.accent : AppTheme.textTertiary,
+            color: settings.notificationsEnabled
+                ? context.wimz.ink
+                : context.wimz.inkMuted,
           ),
           title: Text(l.settingsActivityNotifications),
           subtitle: Text(
             settings.notificationsEnabled
                 ? l.settingsNotificationsOn
                 : l.settingsNotificationsOff,
-            style: TextStyle(fontSize: 12, color: AppTheme.textTertiary),
+            style: TextStyle(fontSize: 12, color: context.wimz.inkMuted),
           ),
           value: settings.notificationsEnabled,
           onChanged: (value) {
@@ -1200,10 +1224,12 @@ class _ResetSoundsTile extends ConsumerWidget {
             onPressed: () => Navigator.pop(ctx, false),
             child: Text(ctx.l10n.cancel),
           ),
-          TextButton(
+          TextButton.icon(
             onPressed: () => Navigator.pop(ctx, true),
-            child: Text(ctx.l10n.settingsResetSounds,
-                style: const TextStyle(color: Colors.red)),
+            icon: Icon(Icons.settings_backup_restore,
+                size: 18, color: Theme.of(ctx).colorScheme.error),
+            label: Text(ctx.l10n.settingsResetSounds,
+                style: TextStyle(color: Theme.of(ctx).colorScheme.error)),
           ),
         ],
       ),
@@ -1216,7 +1242,6 @@ class _ResetSoundsTile extends ConsumerWidget {
         content: Text(err == null
             ? l.settingsResetSoundsDone
             : l.settingsResetSoundsFailed(err)),
-        backgroundColor: err == null ? Colors.green : Colors.red,
         behavior: SnackBarBehavior.floating,
       ),
     );
@@ -1298,7 +1323,7 @@ class _MotorTrimSlider extends ConsumerWidget {
             l.settingsMotorTrimHint,
             style: TextStyle(
               fontSize: 12,
-              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+              color: context.wimz.inkMuted,
             ),
           ),
         ),
@@ -1355,22 +1380,22 @@ class _WiFiSetupHelp extends StatelessWidget {
         const SizedBox(height: 8),
 
         _LedIndicator(
-          color: Colors.cyan,
+          color: context.wimz.signal,
           label: l.settingsLedSpinningCyan,
           meaning: l.settingsLedSearchingWifi,
         ),
         _LedIndicator(
-          color: Colors.blue,
+          color: context.wimz.signal,
           label: l.settingsLedPulsingBlue,
           meaning: l.settingsLedSetupMode,
         ),
         _LedIndicator(
-          color: Colors.green,
+          color: context.wimz.ink,
           label: l.settingsLedSolidGreen,
           meaning: l.settingsLedConnectedWifi,
         ),
         _LedIndicator(
-          color: Colors.red,
+          color: Theme.of(context).colorScheme.error,
           label: l.settingsLedPulsingRed,
           meaning: l.error,
         ),
@@ -1408,8 +1433,8 @@ class _SetupStep extends StatelessWidget {
             child: Center(
               child: Text(
                 number,
-                style: const TextStyle(
-                  color: Colors.white,
+                style: TextStyle(
+                  color: Theme.of(context).colorScheme.onPrimary,
                   fontSize: 12,
                   fontWeight: FontWeight.bold,
                 ),
@@ -1463,13 +1488,6 @@ class _LedIndicator extends StatelessWidget {
             decoration: BoxDecoration(
               color: color,
               shape: BoxShape.circle,
-              boxShadow: [
-                BoxShadow(
-                  color: color.withOpacity(0.5),
-                  blurRadius: 4,
-                  spreadRadius: 1,
-                ),
-              ],
             ),
           ),
           const SizedBox(width: 8),
@@ -1481,7 +1499,7 @@ class _LedIndicator extends StatelessWidget {
             child: Text(
               meaning,
               style: TextStyle(
-                color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+                color: context.wimz.inkMuted,
               ),
             ),
           ),
@@ -1532,14 +1550,14 @@ class _NetworkStatusIndicatorState
         : status.isWifi
             ? l.settingsNetWifi
             : robotModeIdLabel(l, status.mode);
-    final modeColor = status.isAP ? AppTheme.warning : AppTheme.accent;
+    final modeColor = context.wimz.ink;
 
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: AppTheme.surfaceLight,
+        color: context.wimz.surfaceRaised,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: modeColor.withOpacity(0.3)),
+        border: Border.all(color: context.wimz.line),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1582,7 +1600,7 @@ class _NetworkStatusIndicatorState
             width: 60,
             child: Text(
               label,
-              style: TextStyle(fontSize: 11, color: AppTheme.textTertiary),
+              style: TextStyle(fontSize: 11, color: context.wimz.inkMuted),
             ),
           ),
           Expanded(
@@ -1651,7 +1669,7 @@ class _WifiConfigSheetState extends ConsumerState<_WifiConfigSheet> {
             width: 40,
             height: 4,
             decoration: BoxDecoration(
-              color: AppTheme.textTertiary.withOpacity(0.3),
+              color: context.wimz.lineStrong,
               borderRadius: BorderRadius.circular(2),
             ),
           ),
@@ -1660,7 +1678,7 @@ class _WifiConfigSheetState extends ConsumerState<_WifiConfigSheet> {
             padding: const EdgeInsets.all(16),
             child: Row(
               children: [
-                const Icon(Icons.wifi, color: AppTheme.primary),
+                Icon(Icons.wifi, color: Theme.of(context).colorScheme.primary),
                 const SizedBox(width: 12),
                 Text(
                   context.l10n.settingsConfigureRobotWifi,
@@ -1735,7 +1753,7 @@ class _WifiConfigSheetState extends ConsumerState<_WifiConfigSheet> {
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(Icons.wifi_off, size: 48, color: AppTheme.textTertiary),
+                      Icon(Icons.wifi_off, size: 48, color: context.wimz.inkMuted),
                       const SizedBox(height: 12),
                       Text(l.settingsWifiNoneFound),
                       const SizedBox(height: 16),
@@ -1760,24 +1778,28 @@ class _WifiConfigSheetState extends ConsumerState<_WifiConfigSheet> {
                         ListTile(
                           leading: Icon(
                             _signalIcon(network.signal),
-                            color: isSelected ? AppTheme.primary : null,
+                            color: isSelected
+                                ? Theme.of(context).colorScheme.primary
+                                : null,
                           ),
                           title: Text(
                             network.ssid,
                             style: TextStyle(
                               fontWeight:
                                   isSelected ? FontWeight.bold : FontWeight.normal,
-                              color: isSelected ? AppTheme.primary : null,
+                              color: isSelected
+                                  ? Theme.of(context).colorScheme.primary
+                                  : null,
                             ),
                           ),
                           subtitle: Text(
                             '${_signalLabel(network.signal)}${network.security.isNotEmpty ? ' · ${network.security}' : ''}',
                             style: TextStyle(
-                                fontSize: 12, color: AppTheme.textTertiary),
+                                fontSize: 12, color: context.wimz.inkMuted),
                           ),
                           trailing: isSelected
-                              ? const Icon(Icons.check_circle,
-                                  color: AppTheme.primary)
+                              ? Icon(Icons.check_circle,
+                                  color: Theme.of(context).colorScheme.primary)
                               : null,
                           selected: isSelected,
                           onTap: () {
@@ -1834,8 +1856,12 @@ class _WifiConfigSheetState extends ConsumerState<_WifiConfigSheet> {
                                     icon: const Icon(Icons.wifi),
                                     label: Text(l.settingsWifiConnect),
                                     style: FilledButton.styleFrom(
-                                      backgroundColor: AppTheme.primary,
-                                      foregroundColor: AppTheme.background,
+                                      backgroundColor: Theme.of(context)
+                                          .colorScheme
+                                          .primary,
+                                      foregroundColor: Theme.of(context)
+                                          .colorScheme
+                                          .onPrimary,
                                       shape: RoundedRectangleBorder(
                                         borderRadius: BorderRadius.circular(12),
                                       ),
@@ -1853,9 +1879,20 @@ class _WifiConfigSheetState extends ConsumerState<_WifiConfigSheet> {
         if (wifiState.errorMessage != null)
           Padding(
             padding: const EdgeInsets.all(12),
-            child: Text(
-              wifiState.errorMessage!,
-              style: const TextStyle(color: Colors.red, fontSize: 12),
+            child: Row(
+              children: [
+                Icon(Icons.error_outline,
+                    size: 16, color: Theme.of(context).colorScheme.error),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: Text(
+                    wifiState.errorMessage!,
+                    style: TextStyle(
+                        color: Theme.of(context).colorScheme.error,
+                        fontSize: 12),
+                  ),
+                ),
+              ],
             ),
           ),
         // Rescan button at bottom
@@ -1885,7 +1922,8 @@ class _WifiConfigSheetState extends ConsumerState<_WifiConfigSheet> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.error_outline, size: 48, color: AppTheme.error),
+            Icon(Icons.error_outline,
+                size: 48, color: Theme.of(context).colorScheme.error),
             const SizedBox(height: 16),
             Text(message, textAlign: TextAlign.center),
             const SizedBox(height: 24),
@@ -1916,7 +1954,7 @@ class _WifiConfigSheetState extends ConsumerState<_WifiConfigSheet> {
           const SizedBox(height: 8),
           Text(
             l.settingsWifiMayTakeMoment,
-            style: const TextStyle(color: AppTheme.textTertiary),
+            style: TextStyle(color: context.wimz.inkMuted),
           ),
         ],
       ),
@@ -1931,7 +1969,7 @@ class _WifiConfigSheetState extends ConsumerState<_WifiConfigSheet> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const CircularProgressIndicator(color: AppTheme.warning),
+            const CircularProgressIndicator(),
             const SizedBox(height: 16),
             Text(
               l.settingsWifiRobotSwitching,
@@ -1941,7 +1979,7 @@ class _WifiConfigSheetState extends ConsumerState<_WifiConfigSheet> {
             Text(
               l.settingsWifiHotspotShutdown,
               textAlign: TextAlign.center,
-              style: const TextStyle(color: AppTheme.textTertiary),
+              style: TextStyle(color: context.wimz.inkMuted),
             ),
           ],
         ),
@@ -1957,7 +1995,7 @@ class _WifiConfigSheetState extends ConsumerState<_WifiConfigSheet> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.check_circle, size: 56, color: AppTheme.accent),
+            Icon(Icons.check_circle, size: 56, color: context.wimz.ink),
             const SizedBox(height: 16),
             Text(
               l.settingsWifiCommandSent,
@@ -1973,8 +2011,8 @@ class _WifiConfigSheetState extends ConsumerState<_WifiConfigSheet> {
             FilledButton(
               onPressed: () => Navigator.pop(context),
               style: FilledButton.styleFrom(
-                backgroundColor: AppTheme.primary,
-                foregroundColor: AppTheme.background,
+                backgroundColor: Theme.of(context).colorScheme.primary,
+                foregroundColor: Theme.of(context).colorScheme.onPrimary,
               ),
               child: Text(l.settingsGotIt),
             ),
@@ -2051,7 +2089,7 @@ class _RecordingDiagnosticsDialogState
     return AlertDialog(
       title: Row(
         children: [
-          Icon(Icons.bug_report, color: AppTheme.accent),
+          Icon(Icons.bug_report, color: context.wimz.ink),
           const SizedBox(width: 8),
           Text(l.settingsRecordingDiagnostics),
         ],
@@ -2081,16 +2119,16 @@ class _RecordingDiagnosticsDialogState
               child: Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: Colors.black87,
+                  color: context.wimz.brandInk,
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: SingleChildScrollView(
                   child: SelectableText(
                     _results,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontFamily: 'monospace',
                       fontSize: 11,
-                      color: Colors.greenAccent,
+                      color: context.wimz.brandWhite,
                     ),
                   ),
                 ),

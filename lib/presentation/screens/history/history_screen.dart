@@ -103,7 +103,7 @@ class _FilterBar extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.all(12),
-      color: AppTheme.surface,
+      color: Theme.of(context).colorScheme.surface,
       child: Row(
         children: [
           // Days filter
@@ -173,6 +173,7 @@ class _StatsSummary extends StatelessWidget {
         (entries.isEmpty
             ? 0.0
             : entries.where((e) => e.wasCompleted).length / entries.length);
+    final w = context.wimz;
 
     return Container(
       padding: const EdgeInsets.all(16),
@@ -188,19 +189,19 @@ class _StatsSummary extends StatelessWidget {
             icon: Icons.check_circle,
             label: context.l10n.historyStatCompleted,
             value: '$completedMissions',
-            color: Colors.green,
+            color: w.ink,
           ),
           _StatItem(
             icon: Icons.cookie,
             label: context.l10n.historyStatTreats,
             value: '$totalTreats',
-            color: Colors.amber,
+            color: w.inkMuted,
           ),
           _StatItem(
             icon: Icons.trending_up,
             label: context.l10n.historyStatSuccess,
             value: '${(successRate * 100).toInt()}%',
-            color: AppTheme.primary,
+            color: w.ink,
           ),
         ],
       ),
@@ -223,23 +224,24 @@ class _StatItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final w = context.wimz;
     return Column(
       children: [
-        Icon(icon, color: color ?? AppTheme.textSecondary, size: 24),
+        Icon(icon, color: color ?? w.inkMuted, size: 24),
         const SizedBox(height: 4),
         Text(
           value,
           style: TextStyle(
             fontSize: 18,
             fontWeight: FontWeight.bold,
-            color: color ?? AppTheme.textPrimary,
+            color: color ?? w.ink,
           ),
         ),
         Text(
           label,
           style: TextStyle(
             fontSize: 11,
-            color: AppTheme.textTertiary,
+            color: w.inkMuted,
           ),
         ),
       ],
@@ -275,7 +277,7 @@ class _HistoryList extends StatelessWidget {
                 style: TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w600,
-                  color: AppTheme.textSecondary,
+                  color: context.wimz.inkMuted,
                 ),
               ),
             ),
@@ -316,6 +318,10 @@ class _HistoryEntryCard extends StatelessWidget {
     final durationStr = entry.completedAt != null
         ? _formatDuration(context, entry.completedAt!.difference(entry.startedAt))
         : context.l10n.historyInProgress;
+    final w = context.wimz;
+    // Completed = ink, not completed = muted; the check / cancel icon and
+    // the mission name carry the state.
+    final statusColor = entry.wasCompleted ? w.ink : w.inkMuted;
 
     return Card(
       margin: const EdgeInsets.only(bottom: 8),
@@ -328,14 +334,12 @@ class _HistoryEntryCard extends StatelessWidget {
               width: 40,
               height: 40,
               decoration: BoxDecoration(
-                color: entry.wasCompleted
-                    ? Colors.green.withOpacity(0.1)
-                    : Colors.orange.withOpacity(0.1),
+                color: statusColor.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Icon(
                 entry.wasCompleted ? Icons.check_circle : Icons.cancel,
-                color: entry.wasCompleted ? Colors.green : Colors.orange,
+                color: statusColor,
                 size: 20,
               ),
             ),
@@ -355,23 +359,23 @@ class _HistoryEntryCard extends StatelessWidget {
                   const SizedBox(height: 2),
                   Row(
                     children: [
-                      Icon(Icons.access_time, size: 12, color: AppTheme.textTertiary),
+                      Icon(Icons.access_time, size: 12, color: w.inkMuted),
                       const SizedBox(width: 4),
                       Text(
                         timeFormat.format(entry.startedAt.toLocal()),
                         style: TextStyle(
                           fontSize: 11,
-                          color: AppTheme.textTertiary,
+                          color: w.inkMuted,
                         ),
                       ),
                       const SizedBox(width: 8),
-                      Icon(Icons.timer, size: 12, color: AppTheme.textTertiary),
+                      Icon(Icons.timer, size: 12, color: w.inkMuted),
                       const SizedBox(width: 4),
                       Text(
                         durationStr,
                         style: TextStyle(
                           fontSize: 11,
-                          color: AppTheme.textTertiary,
+                          color: w.inkMuted,
                         ),
                       ),
                     ],
@@ -386,13 +390,13 @@ class _HistoryEntryCard extends StatelessWidget {
               children: [
                 Row(
                   children: [
-                    Icon(Icons.cookie, size: 14, color: Colors.amber.shade600),
+                    Icon(Icons.cookie, size: 14, color: w.inkMuted),
                     const SizedBox(width: 4),
                     Text(
                       '${entry.treatsGiven}',
                       style: TextStyle(
                         fontWeight: FontWeight.w600,
-                        color: Colors.amber.shade600,
+                        color: w.inkMuted,
                       ),
                     ),
                   ],
@@ -402,7 +406,7 @@ class _HistoryEntryCard extends StatelessWidget {
                     context.l10n.historyStages(entry.stagesCompleted, entry.totalStages),
                     style: TextStyle(
                       fontSize: 11,
-                      color: AppTheme.textTertiary,
+                      color: w.inkMuted,
                     ),
                   ),
               ],
@@ -430,17 +434,18 @@ class _EmptyView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final w = context.wimz;
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.history, size: 64, color: AppTheme.textTertiary),
+          Icon(Icons.history, size: 64, color: w.inkMuted),
           const SizedBox(height: 16),
           Text(
             context.l10n.historyEmptyTitle,
             style: TextStyle(
               fontSize: 16,
-              color: AppTheme.textSecondary,
+              color: w.inkMuted,
             ),
           ),
           const SizedBox(height: 8),
@@ -448,7 +453,7 @@ class _EmptyView extends StatelessWidget {
             context.l10n.historyEmptyBody,
             style: TextStyle(
               fontSize: 12,
-              color: AppTheme.textTertiary,
+              color: w.inkMuted,
             ),
             textAlign: TextAlign.center,
           ),
@@ -473,11 +478,11 @@ class _ErrorView extends StatelessWidget {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          const Icon(Icons.error_outline, size: 48, color: Colors.red),
+          Icon(Icons.error_outline, size: 48, color: Theme.of(context).colorScheme.error),
           const SizedBox(height: 16),
           Text(
             message,
-            style: TextStyle(color: AppTheme.textSecondary),
+            style: TextStyle(color: context.wimz.inkMuted),
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: 16),

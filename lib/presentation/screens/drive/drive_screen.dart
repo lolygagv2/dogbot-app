@@ -144,6 +144,8 @@ class _DriveScreenState extends ConsumerState<DriveScreen> {
 
     final nightState = ref.watch(nightModeProvider);
     final isNightActive = nightState?.currentMode == DayNight.night;
+    final w = context.wimz;
+    final cs = Theme.of(context).colorScheme;
 
     return PopScope(
       // Intercept Android hardware/gesture back so it runs the same mission/mode
@@ -167,10 +169,10 @@ class _DriveScreenState extends ConsumerState<DriveScreen> {
           icon: Container(
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
-              color: Colors.black54,
+              color: w.scrim(0.54),
               borderRadius: BorderRadius.circular(8),
             ),
-            child: const Icon(Icons.arrow_back, color: Colors.white),
+            child: Icon(Icons.arrow_back, color: w.onVideo),
           ),
         ),
         actions: [
@@ -182,10 +184,10 @@ class _DriveScreenState extends ConsumerState<DriveScreen> {
               icon: Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: Colors.red.withOpacity(0.9),
+                  color: cs.error.withValues(alpha: 0.9),
                   borderRadius: BorderRadius.circular(8),
                 ),
-                child: const Icon(Icons.emergency, color: Colors.white),
+                child: Icon(Icons.emergency, color: cs.onError),
               ),
               tooltip: context.l10n.driveEmergencyStop,
             ),
@@ -210,7 +212,7 @@ class _DriveScreenState extends ConsumerState<DriveScreen> {
                 child: Container(
                   decoration: BoxDecoration(
                     border: Border.all(
-                      color: AppTheme.behaviorLying.withOpacity(0.55),
+                      color: w.onVideo.withValues(alpha: 0.55),
                       width: 2,
                     ),
                   ),
@@ -294,6 +296,7 @@ class _DriveScreenState extends ConsumerState<DriveScreen> {
                             _OverlayButton(
                               icon: Icons.cookie,
                               label: context.l10n.driveTreat,
+                              isGold: true,
                               onTap: () => ref.read(treatControlProvider).dispense(),
                             ),
                             const SizedBox(width: 12),
@@ -405,25 +408,25 @@ class _DriveScreenState extends ConsumerState<DriveScreen> {
                 child: Container(
                   padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
                   decoration: BoxDecoration(
-                    color: Colors.black87,
+                    color: w.scrim(0.87),
                     borderRadius: BorderRadius.circular(20),
                   ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      const SizedBox(
+                      SizedBox(
                         width: 16,
                         height: 16,
                         child: CircularProgressIndicator(
                           strokeWidth: 2,
-                          valueColor: AlwaysStoppedAnimation(Colors.orange),
+                          valueColor: AlwaysStoppedAnimation(w.onVideo),
                         ),
                       ),
                       const SizedBox(width: 10),
                       Text(
                         context.l10n.driveSwitchingMode,
-                        style: const TextStyle(
-                          color: Colors.white,
+                        style: TextStyle(
+                          color: w.onVideo,
                           fontSize: 13,
                           fontWeight: FontWeight.w500,
                         ),
@@ -455,7 +458,7 @@ class _CompactSpeedIndicator extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration: BoxDecoration(
-        color: Colors.black54,
+        color: context.wimz.scrim(0.54),
         borderRadius: BorderRadius.circular(20),
       ),
       child: Row(
@@ -478,16 +481,19 @@ class _SpeedBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final w = context.wimz;
+    // Forward and reverse both fill in white (the bar's alignment already
+    // says which way); idle is the hairline track colour.
     final color = value > 0.05
-        ? Colors.green
-        : (value < -0.05 ? Colors.red : Colors.grey);
+        ? w.onVideo
+        : (value < -0.05 ? w.onVideo.withValues(alpha: 0.7) : w.lineOnVideo);
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
         Text(
           label,
-          style: const TextStyle(
-            color: Colors.white70,
+          style: TextStyle(
+            color: w.onVideo.withValues(alpha: 0.7),
             fontSize: 10,
             fontWeight: FontWeight.bold,
           ),
@@ -497,7 +503,7 @@ class _SpeedBar extends StatelessWidget {
           width: 40,
           height: 8,
           decoration: BoxDecoration(
-            color: Colors.white24,
+            color: w.lineOnVideo,
             borderRadius: BorderRadius.circular(4),
           ),
           child: FractionallySizedBox(
@@ -619,14 +625,15 @@ class _MotorJoystickState extends ConsumerState<_MotorJoystick> {
     // Display speed = the larger-magnitude wheel, so pure turns still show a value.
     final mag = math.max(_currentLeft.abs(), _currentRight.abs());
     final speedPercent = (mag * 100).round();
+    final w = context.wimz;
 
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
         Text(
           context.l10n.driveLabel,
-          style: const TextStyle(
-            color: Colors.white70,
+          style: TextStyle(
+            color: w.onVideo.withValues(alpha: 0.7),
             fontSize: 10,
             fontWeight: FontWeight.bold,
             letterSpacing: 2,
@@ -644,6 +651,25 @@ class _MotorJoystickState extends ConsumerState<_MotorJoystick> {
                 period: _tick,
                 listener: _onStick,
                 onStickDragEnd: _onStickReleased,
+                // Brand re-theme: the package's default base/stick are
+                // grey/blue; on the video ground use translucent white
+                // rings with a white stick (signal blue is status-only).
+                base: JoystickBase(
+                  size: 148,
+                  decoration: JoystickBaseDecoration(
+                    color: w.onVideo.withValues(alpha: 0.18),
+                    boxShadowColor: Colors.transparent,
+                  ),
+                  arrowsDecoration: JoystickArrowsDecoration(
+                    color: w.onVideo.withValues(alpha: 0.8),
+                  ),
+                ),
+                stick: JoystickStick(
+                  decoration: JoystickStickDecoration(
+                    color: w.onVideo,
+                    shadowColor: w.brandInk.withValues(alpha: 0.4),
+                  ),
+                ),
               ),
             ),
             // Emergency stop / speed readout pinned to the top-right of the base.
@@ -656,12 +682,13 @@ class _MotorJoystickState extends ConsumerState<_MotorJoystick> {
                   width: 36,
                   height: 36,
                   decoration: BoxDecoration(
+                    // Moving = inverted (white fill, ink readout); idle = scrim.
                     color: motorState.isMoving
-                        ? Colors.red.withOpacity(0.85)
-                        : AppTheme.primary.withOpacity(0.5),
+                        ? w.onVideo.withValues(alpha: 0.85)
+                        : w.scrim(0.5),
                     shape: BoxShape.circle,
                     border: Border.all(
-                      color: motorState.isMoving ? Colors.red : AppTheme.primary,
+                      color: w.onVideo,
                       width: 2,
                     ),
                   ),
@@ -669,13 +696,13 @@ class _MotorJoystickState extends ConsumerState<_MotorJoystick> {
                     child: motorState.isMoving
                         ? Text(
                             '$speedPercent%',
-                            style: const TextStyle(
-                              color: Colors.white,
+                            style: TextStyle(
+                              color: w.brandInk,
                               fontSize: 10,
                               fontWeight: FontWeight.bold,
                             ),
                           )
-                        : const Icon(Icons.stop, color: Colors.white, size: 16),
+                        : Icon(Icons.stop, color: w.onVideo, size: 16),
                   ),
                 ),
               ),
@@ -698,14 +725,15 @@ class _OverlayCameraControl extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final servoControl = ref.watch(servoControlProvider.notifier);
     final servoState = ref.watch(servoControlProvider);
+    final w = context.wimz;
 
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
         Text(
           context.l10n.driveCamera,
-          style: const TextStyle(
-            color: Colors.white70,
+          style: TextStyle(
+            color: w.onVideo.withValues(alpha: 0.7),
             fontSize: 10,
             fontWeight: FontWeight.bold,
             letterSpacing: 2,
@@ -716,7 +744,7 @@ class _OverlayCameraControl extends ConsumerWidget {
           width: 148,
           height: 148,
           decoration: BoxDecoration(
-            color: Colors.black38,
+            color: w.scrim(0.38),
             borderRadius: BorderRadius.circular(78),
           ),
           child: Stack(
@@ -776,15 +804,15 @@ class _OverlayCameraControl extends ConsumerWidget {
                 width: 36,
                 height: 36,
                 decoration: BoxDecoration(
-                  color: Colors.orange.withOpacity(0.3),
+                  color: w.scrim(0.6),
                   shape: BoxShape.circle,
-                  border: Border.all(color: Colors.orange, width: 2),
+                  border: Border.all(color: w.onVideo.withValues(alpha: 0.6), width: 2),
                 ),
                 child: Center(
                   child: Text(
                     '${servoState.pan.round()}°',
-                    style: const TextStyle(
-                      color: Colors.white,
+                    style: TextStyle(
+                      color: w.onVideo,
                       fontSize: 9,
                       fontWeight: FontWeight.bold,
                     ),
@@ -823,10 +851,10 @@ class _DpadButton extends StatelessWidget {
           width: 44,
           height: 44,
           decoration: BoxDecoration(
-            color: Colors.orange.withOpacity(0.7),
+            color: context.wimz.onVideo.withValues(alpha: 0.3),
             shape: BoxShape.circle,
           ),
-          child: Icon(icon, color: Colors.white, size: 28),
+          child: Icon(icon, color: context.wimz.onVideo, size: 28),
         ),
       ),
     );
@@ -839,6 +867,7 @@ class _DriveCoachOverlay extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final coachState = ref.watch(coachProvider);
     final isConnected = ref.watch(isRobotOnlineProvider);
+    final w = context.wimz;
 
     // No detection chip here anymore — it pushed the trick buttons down on
     // every detection. Dog presence lives in _DogDetectedPaw (top-left).
@@ -852,9 +881,9 @@ class _DriveCoachOverlay extends ConsumerWidget {
           Container(
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
-              color: Colors.black.withOpacity(0.7),
+              color: w.scrim(0.7),
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: Colors.orange.withOpacity(0.4)),
+              border: Border.all(color: w.lineOnVideo),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.end,
@@ -862,8 +891,8 @@ class _DriveCoachOverlay extends ConsumerWidget {
               children: [
                 Text(
                   context.l10n.driveCoach,
-                  style: const TextStyle(
-                    color: Colors.orange,
+                  style: TextStyle(
+                    color: w.onVideo.withValues(alpha: 0.7),
                     fontSize: 10,
                     fontWeight: FontWeight.bold,
                     letterSpacing: 1,
@@ -900,34 +929,41 @@ class _DriveCoachOverlay extends ConsumerWidget {
                       child: Container(
                         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                         decoration: BoxDecoration(
+                          // Rewarded = inverted chip (solid white, ink text,
+                          // check mark); active = translucent white.
                           color: isRewarded
-                              ? Colors.green.withOpacity(0.3)
+                              ? w.onVideo
                               : isActiveTrick
-                                  ? AppTheme.primary.withOpacity(0.35)
-                                  : Colors.white.withOpacity(0.1),
+                                  ? w.onVideo.withValues(alpha: 0.35)
+                                  : w.onVideo.withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(12),
                           border: Border.all(
                             color: isRewarded
-                                ? Colors.green
+                                ? w.onVideo
                                 : isActiveTrick
-                                    ? AppTheme.primary
+                                    ? w.onVideo
                                     : coachState.isActive && isConnected
-                                        ? AppTheme.primary.withOpacity(0.5)
-                                        : Colors.white.withOpacity(0.3),
+                                        ? w.onVideo.withValues(alpha: 0.5)
+                                        : w.onVideo.withValues(alpha: 0.3),
                             width: isActiveTrick || (coachState.isActive && isConnected) ? 2 : 1,
                           ),
                         ),
-                        child: Text(
-                          behaviorDisplayName(context.l10n, behavior).toUpperCase(),
-                          style: TextStyle(
-                            color: isRewarded
-                                ? Colors.green
-                                : isActiveTrick
-                                    ? AppTheme.primary
-                                    : Colors.white,
-                            fontSize: 11,
-                            fontWeight: FontWeight.w600,
-                          ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            if (isRewarded) ...[
+                              Icon(Icons.check, size: 12, color: w.brandInk),
+                              const SizedBox(width: 3),
+                            ],
+                            Text(
+                              behaviorDisplayName(context.l10n, behavior).toUpperCase(),
+                              style: TextStyle(
+                                color: isRewarded ? w.brandInk : w.onVideo,
+                                fontSize: 11,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                     );
@@ -952,23 +988,25 @@ class _ActiveMissionBanner extends ConsumerWidget {
     final missionName = missionsState.activeMission?.localizedName(l) ?? l.driveMissionFallback;
     final status = progress?.localizedStatus(l) ?? '';
     final stage = status.isNotEmpty ? status : progress?.localizedStage(l);
+    final w = context.wimz;
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
-        color: Colors.green.withOpacity(0.85),
+        color: w.scrim(0.85),
         borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: w.lineOnVideo),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Icon(Icons.flag, color: Colors.white, size: 16),
+          Icon(Icons.flag, color: w.onVideo, size: 16),
           const SizedBox(width: 8),
           Flexible(
             child: Text(
               stage != null ? context.l10n.driveMissionStage(missionName, stage) : missionName,
-              style: const TextStyle(
-                color: Colors.white,
+              style: TextStyle(
+                color: w.onVideo,
                 fontSize: 12,
                 fontWeight: FontWeight.w600,
               ),
@@ -989,13 +1027,13 @@ class _ActiveMissionBanner extends ConsumerWidget {
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
               decoration: BoxDecoration(
-                color: Colors.red,
+                color: w.onVideo,
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Text(
                 context.l10n.driveStop,
-                style: const TextStyle(
-                  color: Colors.white,
+                style: TextStyle(
+                  color: w.brandInk,
                   fontSize: 11,
                   fontWeight: FontWeight.bold,
                 ),
@@ -1023,7 +1061,7 @@ class _LandscapeModeSelector extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final modeLabel = currentMode.localizedLabel(context.l10n).toUpperCase();
-    final color = _getModeColor(currentMode);
+    final w = context.wimz;
 
     return PopupMenuButton<RobotMode>(
       onSelected: (mode) {
@@ -1034,32 +1072,33 @@ class _LandscapeModeSelector extends ConsumerWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
         decoration: BoxDecoration(
-          color: color.withOpacity(isChanging ? 0.6 : 0.9),
+          // Mode is carried by the icon + label; the chip itself is a scrim.
+          color: w.scrim(isChanging ? 0.6 : 0.9),
           borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: Colors.white.withOpacity(0.2), width: 1),
+          border: Border.all(color: w.lineOnVideo, width: 1),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
             if (isChanging)
-              const SizedBox(
+              SizedBox(
                 width: 14,
                 height: 14,
-                child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                child: CircularProgressIndicator(strokeWidth: 2, color: w.onVideo),
               )
             else
-              Icon(_getModeIcon(currentMode), color: Colors.white, size: 14),
+              Icon(_getModeIcon(currentMode), color: w.onVideo, size: 14),
             const SizedBox(width: 4),
             Text(
               modeLabel,
-              style: const TextStyle(
-                color: Colors.white,
+              style: TextStyle(
+                color: w.onVideo,
                 fontWeight: FontWeight.bold,
                 fontSize: 11,
               ),
             ),
             const SizedBox(width: 2),
-            const Icon(Icons.arrow_drop_down, color: Colors.white, size: 16),
+            Icon(Icons.arrow_drop_down, color: w.onVideo, size: 16),
           ],
         ),
       ),
@@ -1075,7 +1114,7 @@ class _LandscapeModeSelector extends ConsumerWidget {
             value: mode,
             child: Row(
               children: [
-                Icon(_getModeIcon(mode), size: 20, color: _getModeColor(mode)),
+                Icon(_getModeIcon(mode), size: 20, color: _getModeColor(context, mode)),
                 const SizedBox(width: 12),
                 Text(mode.localizedLabel(context.l10n)),
                 if (mode == currentMode) ...[
@@ -1090,13 +1129,16 @@ class _LandscapeModeSelector extends ConsumerWidget {
     );
   }
 
-  Color _getModeColor(RobotMode mode) {
+  /// Menu-item icon tint (on a normal ground). Every mode also shows its
+  /// icon and label, so idle is simply muted and the rest are ink.
+  Color _getModeColor(BuildContext context, RobotMode mode) {
+    final w = context.wimz;
     switch (mode) {
-      case RobotMode.idle: return Colors.grey;
-      case RobotMode.manual: return Colors.blue;
-      case RobotMode.silentGuardian: return Colors.purple;
-      case RobotMode.coach: return Colors.orange;
-      case RobotMode.mission: return Colors.green;
+      case RobotMode.idle: return w.inkMuted;
+      case RobotMode.manual: return w.ink;
+      case RobotMode.silentGuardian: return w.ink;
+      case RobotMode.coach: return w.ink;
+      case RobotMode.mission: return w.ink;
     }
   }
 
@@ -1123,11 +1165,16 @@ class _DogDetectedPaw extends ConsumerWidget {
     final telemetry = ref.watch(telemetryProvider);
     if (!telemetry.dogDetected) return const SizedBox.shrink();
 
+    // On video the paw is always white; a bark alert keeps the error tint.
+    // (Other behaviour tints would be ink — black — and vanish on video.)
+    final w = context.wimz;
+    final cs = Theme.of(context).colorScheme;
+    final behaviorColor = WimzStatus.behavior(context, telemetry.currentBehavior, onVideo: true);
     return Icon(
       Icons.pets,
       size: 14,
-      color: AppTheme.getBehaviorColor(telemetry.currentBehavior),
-      shadows: const [Shadow(color: Colors.black, blurRadius: 4)],
+      color: behaviorColor == cs.error ? cs.error : w.onVideo,
+      shadows: [Shadow(color: w.brandInk, blurRadius: 4)],
     );
   }
 }
@@ -1144,23 +1191,25 @@ class _IcePathBadge extends ConsumerWidget {
     // Only show when robot reports connection type
     if (connectionType == null) return const SizedBox.shrink();
 
+    // Both paths are "online"; the icon + LAN/WAN word carry the distinction.
+    final w = context.wimz;
     final Color badgeColor;
     final IconData badgeIcon;
     if (connectionType == 'LAN') {
-      badgeColor = Colors.green;
+      badgeColor = w.onVideo;
       badgeIcon = Icons.wifi;
     } else {
       // WAN / TURN relay
-      badgeColor = Colors.orange;
+      badgeColor = w.onVideo;
       badgeIcon = Icons.cloud;
     }
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-        color: Colors.black.withOpacity(0.7),
+        color: w.scrim(0.7),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: badgeColor.withOpacity(0.6), width: 1),
+        border: Border.all(color: w.lineOnVideo, width: 1),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -1187,32 +1236,39 @@ class _OverlayButton extends StatelessWidget {
   final String label;
   final VoidCallback onTap;
 
+  /// The screen's ONE gold element (the Treat button): brand-gold fill,
+  /// ink-on-gold icon and label.
+  final bool isGold;
+
   const _OverlayButton({
     required this.icon,
     required this.label,
     required this.onTap,
+    this.isGold = false,
   });
 
   @override
   Widget build(BuildContext context) {
+    final w = context.wimz;
+    final fg = isGold ? w.inkOnGold : w.onVideo;
     return GestureDetector(
       onTap: onTap,
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: Colors.black54,
+          color: isGold ? w.brandGold : w.scrim(0.54),
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: Colors.white24),
+          border: Border.all(color: isGold ? w.brandGold : w.lineOnVideo),
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon, color: Colors.white, size: 24),
+            Icon(icon, color: fg, size: 24),
             const SizedBox(height: 4),
             Text(
               label,
-              style: const TextStyle(
-                color: Colors.white70,
+              style: TextStyle(
+                color: isGold ? w.inkOnGold : w.onVideo.withValues(alpha: 0.7),
                 fontSize: 10,
                 fontWeight: FontWeight.bold,
               ),

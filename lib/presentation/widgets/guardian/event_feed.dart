@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../data/models/guardian_event.dart';
 import '../../../domain/providers/guardian_events_provider.dart';
 import '../../../l10n/l10n.dart';
+import '../../theme/app_theme.dart';
 import '../silent_guardian/sg_summary_card.dart';
 
 /// Widget displaying a scrollable feed of guardian events
@@ -49,13 +50,13 @@ class _EventFeedState extends ConsumerState<EventFeed> {
                   Icon(
                     Icons.visibility,
                     size: 64,
-                    color: Colors.purple.withOpacity(0.5),
+                    color: context.wimz.inkMuted,
                   ),
                   const SizedBox(height: 16),
                   Text(
                     context.l10n.eventFeedSgActive,
                     style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                          color: Colors.purple,
+                          color: context.wimz.ink,
                           fontWeight: FontWeight.bold,
                         ),
                   ),
@@ -63,10 +64,7 @@ class _EventFeedState extends ConsumerState<EventFeed> {
                   Text(
                     context.l10n.eventFeedWatching,
                     style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: Theme.of(context)
-                              .colorScheme
-                              .onSurface
-                              .withOpacity(0.6),
+                          color: context.wimz.inkMuted,
                         ),
                   ),
                 ],
@@ -90,7 +88,7 @@ class _EventFeedState extends ConsumerState<EventFeed> {
               Text(
                 context.l10n.eventFeedRecentEvents(events.length),
                 style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                      color: Colors.purple,
+                      color: context.wimz.ink,
                       fontWeight: FontWeight.bold,
                     ),
               ),
@@ -101,10 +99,7 @@ class _EventFeedState extends ConsumerState<EventFeed> {
                 icon: const Icon(Icons.clear_all, size: 16),
                 label: Text(context.l10n.eventFeedClear),
                 style: TextButton.styleFrom(
-                  foregroundColor: Theme.of(context)
-                      .colorScheme
-                      .onSurface
-                      .withOpacity(0.6),
+                  foregroundColor: context.wimz.inkMuted,
                 ),
               ),
             ],
@@ -134,28 +129,26 @@ class EventCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final w = context.wimz;
+    // Type colour from the model's brand map; the icon + label beside it
+    // always carry the meaning.
+    final color = event.type.colorOf(context);
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
-      decoration: BoxDecoration(
-        color: event.type.color.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: event.type.color.withOpacity(0.3),
-          width: 1,
-        ),
-      ),
+      // Flat brand card: raised fill, 1px line edge, no tint, no shadow.
+      decoration: WimzTheme.cardDecoration(context),
       child: ListTile(
         contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
         leading: Container(
           width: 40,
           height: 40,
           decoration: BoxDecoration(
-            color: event.type.color.withOpacity(0.2),
+            color: w.surfaceSunken,
             borderRadius: BorderRadius.circular(10),
           ),
           child: Icon(
             event.type.icon,
-            color: event.type.color,
+            color: color,
             size: 22,
           ),
         ),
@@ -163,17 +156,14 @@ class EventCard extends StatelessWidget {
           event.type.localizedLabel(context.l10n),
           style: TextStyle(
             fontWeight: FontWeight.w600,
-            color: event.type.color,
+            color: color,
           ),
         ),
         subtitle: event.details != null
             ? Text(
                 event.details!,
                 style: TextStyle(
-                  color: Theme.of(context)
-                      .colorScheme
-                      .onSurface
-                      .withOpacity(0.7),
+                  color: w.inkMuted,
                   fontSize: 12,
                 ),
                 maxLines: 1,
@@ -183,7 +173,7 @@ class EventCard extends StatelessWidget {
         trailing: Text(
           event.localizedTime(context.l10n),
           style: TextStyle(
-            color: Theme.of(context).colorScheme.onSurface.withOpacity(0.5),
+            color: w.inkMuted,
             fontSize: 12,
           ),
         ),
@@ -200,15 +190,13 @@ class CompactEventCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final w = context.wimz;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      decoration: BoxDecoration(
-        color: event.type.color.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(8),
-      ),
+      decoration: WimzTheme.cardDecoration(context, radius: 8),
       child: Row(
         children: [
-          Icon(event.type.icon, color: event.type.color, size: 18),
+          Icon(event.type.icon, color: event.type.colorOf(context), size: 18),
           const SizedBox(width: 8),
           Expanded(
             child: Text(
@@ -222,7 +210,7 @@ class CompactEventCard extends StatelessWidget {
             event.localizedTime(context.l10n),
             style: TextStyle(
               fontSize: 11,
-              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.5),
+              color: w.inkMuted,
             ),
           ),
         ],

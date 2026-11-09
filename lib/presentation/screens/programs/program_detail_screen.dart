@@ -33,6 +33,7 @@ class ProgramDetailScreen extends ConsumerWidget {
 
     final isActive = programsState.activeProgramId == programId;
     final hasOtherActive = (programsState.hasActiveProgram && !isActive) || missionsState.hasActiveMission;
+    final cs = Theme.of(context).colorScheme;
 
     return Scaffold(
       appBar: AppBar(
@@ -40,7 +41,8 @@ class ProgramDetailScreen extends ConsumerWidget {
         actions: [
           if (isActive)
             IconButton(
-              icon: const Icon(Icons.stop, color: Colors.red),
+              // Icon-only stop (tooltip only) — plain ink, not an error state.
+              icon: Icon(Icons.stop, color: cs.onSurface),
               onPressed: () => ref.read(programsProvider.notifier).stopProgram(),
               tooltip: context.l10n.programStop,
             ),
@@ -69,7 +71,7 @@ class ProgramDetailScreen extends ConsumerWidget {
             style: TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.w600,
-              color: AppTheme.textPrimary,
+              color: cs.onSurface,
             ),
           ),
           const SizedBox(height: 12),
@@ -126,17 +128,14 @@ class _ProgramHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final w = context.wimz;
+    final cs = Theme.of(context).colorScheme;
     return Container(
       padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: isActive
-              ? [Colors.purple.shade600, Colors.purple.shade800]
-              : [Colors.purple.shade100, Colors.purple.shade200],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(16),
+      decoration: WimzTheme.cardDecoration(
+        context,
+        radius: 16,
+        borderColor: isActive ? cs.primary : null,
       ),
       child: Row(
         children: [
@@ -144,13 +143,13 @@ class _ProgramHeader extends StatelessWidget {
             width: 64,
             height: 64,
             decoration: BoxDecoration(
-              color: isActive ? Colors.white.withOpacity(0.2) : Colors.purple.shade300,
+              color: isActive ? cs.primary : w.surfaceSunken,
               borderRadius: BorderRadius.circular(12),
             ),
             child: Icon(
               Icons.auto_awesome,
               size: 32,
-              color: isActive ? Colors.white : Colors.purple.shade700,
+              color: isActive ? cs.onPrimary : cs.onSurface,
             ),
           ),
           const SizedBox(width: 16),
@@ -162,14 +161,12 @@ class _ProgramHeader extends StatelessWidget {
                   Container(
                     margin: const EdgeInsets.only(bottom: 4),
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.2),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
+                    // Live "running" status chip.
+                    decoration: WimzTheme.statusChipDecoration(context, radius: 8),
                     child: Text(
                       context.l10n.programRunningBadge,
-                      style: const TextStyle(
-                        color: Colors.white,
+                      style: TextStyle(
+                        color: w.signal,
                         fontSize: 10,
                         fontWeight: FontWeight.bold,
                         letterSpacing: 1,
@@ -181,7 +178,7 @@ class _ProgramHeader extends StatelessWidget {
                   style: TextStyle(
                     fontSize: 20,
                     fontWeight: FontWeight.bold,
-                    color: isActive ? Colors.white : Colors.purple.shade900,
+                    color: cs.onSurface,
                   ),
                 ),
                 const SizedBox(height: 4),
@@ -189,7 +186,7 @@ class _ProgramHeader extends StatelessWidget {
                   program.localizedDescription(context.l10n),
                   style: TextStyle(
                     fontSize: 13,
-                    color: isActive ? Colors.white.withOpacity(0.9) : Colors.purple.shade700,
+                    color: cs.onSurfaceVariant,
                   ),
                 ),
               ],
@@ -214,13 +211,11 @@ class _ActiveProgress extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final w = context.wimz;
+    final cs = Theme.of(context).colorScheme;
     return Container(
       padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: AppTheme.surface,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.purple.shade300),
-      ),
+      decoration: WimzTheme.cardDecoration(context),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -228,7 +223,7 @@ class _ActiveProgress extends StatelessWidget {
             children: [
               Icon(
                 progress.isResting ? Icons.pause_circle : Icons.play_circle,
-                color: progress.isResting ? Colors.amber : Colors.purple,
+                color: progress.isResting ? w.inkMuted : cs.primary,
               ),
               const SizedBox(width: 8),
               Text(
@@ -247,9 +242,9 @@ class _ActiveProgress extends StatelessWidget {
             borderRadius: BorderRadius.circular(4),
             child: LinearProgressIndicator(
               value: progress.progress,
-              backgroundColor: Colors.grey.shade800,
+              backgroundColor: w.surfaceSunken,
               valueColor: AlwaysStoppedAnimation(
-                progress.isResting ? Colors.amber : Colors.purple,
+                progress.isResting ? w.inkMuted : cs.primary,
               ),
               minHeight: 8,
             ),
@@ -258,12 +253,12 @@ class _ActiveProgress extends StatelessWidget {
           if (progress.isResting)
             Text(
               context.l10n.programSecondsUntilNext(progress.restSecondsRemaining),
-              style: TextStyle(color: Colors.amber.shade300),
+              style: TextStyle(color: cs.onSurfaceVariant),
             )
           else
             Text(
               context.l10n.programPercentThrough((progress.progress * 100).toInt()),
-              style: TextStyle(color: AppTheme.textSecondary),
+              style: TextStyle(color: cs.onSurfaceVariant),
             ),
         ],
       ),
@@ -294,6 +289,8 @@ class _MissionSequenceItem extends StatelessWidget {
   Widget build(BuildContext context) {
     final name = mission?.localizedName(context.l10n) ?? missionIdDisplayName(context.l10n, missionId);
     final description = mission?.localizedDescription(context.l10n) ?? '';
+    final w = context.wimz;
+    final cs = Theme.of(context).colorScheme;
 
     return Column(
       children: [
@@ -301,18 +298,20 @@ class _MissionSequenceItem extends StatelessWidget {
           margin: const EdgeInsets.only(bottom: 8),
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
+            // Current = sunken + ink border; completed/pending = raised card.
+            // The circle's check / play icon carries the state.
             color: isCurrentMission
-                ? Colors.purple.withOpacity(0.2)
+                ? w.surfaceSunken
                 : isCompleted
-                    ? Colors.green.withOpacity(0.1)
-                    : AppTheme.surface,
+                    ? w.surfaceRaised
+                    : w.surfaceRaised,
             borderRadius: BorderRadius.circular(12),
             border: Border.all(
               color: isCurrentMission
-                  ? Colors.purple
+                  ? cs.primary
                   : isCompleted
-                      ? Colors.green
-                      : AppTheme.glassBorder,
+                      ? w.lineStrong
+                      : w.line,
               width: isCurrentMission ? 2 : 1,
             ),
           ),
@@ -323,21 +322,21 @@ class _MissionSequenceItem extends StatelessWidget {
                 height: 32,
                 decoration: BoxDecoration(
                   color: isCompleted
-                      ? Colors.green
+                      ? cs.primary
                       : isCurrentMission
-                          ? Colors.purple
-                          : Colors.grey.shade700,
+                          ? cs.primary
+                          : w.surfaceSunken,
                   shape: BoxShape.circle,
                 ),
                 child: Center(
                   child: isCompleted
-                      ? const Icon(Icons.check, color: Colors.white, size: 18)
+                      ? Icon(Icons.check, color: cs.onPrimary, size: 18)
                       : isCurrentMission
-                          ? const Icon(Icons.play_arrow, color: Colors.white, size: 18)
+                          ? Icon(Icons.play_arrow, color: cs.onPrimary, size: 18)
                           : Text(
                               '${index + 1}',
-                              style: const TextStyle(
-                                color: Colors.white,
+                              style: TextStyle(
+                                color: cs.onSurface,
                                 fontWeight: FontWeight.bold,
                               ),
                             ),
@@ -353,8 +352,8 @@ class _MissionSequenceItem extends StatelessWidget {
                       style: TextStyle(
                         fontWeight: FontWeight.w600,
                         color: isCurrentMission || isCompleted
-                            ? AppTheme.textPrimary
-                            : AppTheme.textSecondary,
+                            ? cs.onSurface
+                            : cs.onSurfaceVariant,
                       ),
                     ),
                     if (description.isNotEmpty)
@@ -362,7 +361,7 @@ class _MissionSequenceItem extends StatelessWidget {
                         description,
                         style: TextStyle(
                           fontSize: 12,
-                          color: AppTheme.textTertiary,
+                          color: cs.onSurfaceVariant,
                         ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
@@ -374,13 +373,13 @@ class _MissionSequenceItem extends StatelessWidget {
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   decoration: BoxDecoration(
-                    color: Colors.purple,
+                    color: cs.primary,
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Text(
                     context.l10n.programNowBadge,
-                    style: const TextStyle(
-                      color: Colors.white,
+                    style: TextStyle(
+                      color: cs.onPrimary,
                       fontSize: 10,
                       fontWeight: FontWeight.bold,
                     ),
@@ -397,16 +396,16 @@ class _MissionSequenceItem extends StatelessWidget {
                 Container(
                   width: 2,
                   height: 20,
-                  color: Colors.grey.shade700,
+                  color: w.line,
                 ),
                 const SizedBox(width: 12),
-                Icon(Icons.timer, size: 14, color: AppTheme.textTertiary),
+                Icon(Icons.timer, size: 14, color: cs.onSurfaceVariant),
                 const SizedBox(width: 4),
                 Text(
                   context.l10n.missionsRestChip(restSeconds),
                   style: TextStyle(
                     fontSize: 11,
-                    color: AppTheme.textTertiary,
+                    color: cs.onSurfaceVariant,
                   ),
                 ),
               ],
@@ -426,10 +425,7 @@ class _ProgramInfo extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: AppTheme.surface,
-        borderRadius: BorderRadius.circular(12),
-      ),
+      decoration: WimzTheme.cardDecoration(context),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -437,7 +433,7 @@ class _ProgramInfo extends StatelessWidget {
             context.l10n.programDetails,
             style: TextStyle(
               fontWeight: FontWeight.w600,
-              color: AppTheme.textPrimary,
+              color: Theme.of(context).colorScheme.onSurface,
             ),
           ),
           const SizedBox(height: 12),
@@ -485,17 +481,18 @@ class _InfoRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
     return Row(
       children: [
-        Icon(icon, size: 18, color: AppTheme.textTertiary),
+        Icon(icon, size: 18, color: cs.onSurfaceVariant),
         const SizedBox(width: 8),
-        Text(label, style: TextStyle(color: AppTheme.textSecondary)),
+        Text(label, style: TextStyle(color: cs.onSurfaceVariant)),
         const Spacer(),
         Text(
           value,
           style: TextStyle(
             fontWeight: FontWeight.w500,
-            color: AppTheme.textPrimary,
+            color: cs.onSurface,
           ),
         ),
       ],
@@ -519,6 +516,7 @@ class _StartButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final canStart = isConnected && !hasOtherActive;
+    final cs = Theme.of(context).colorScheme;
 
     return Column(
       children: [
@@ -527,12 +525,12 @@ class _StartButton extends StatelessWidget {
           height: 56,
           child: ElevatedButton.icon(
             onPressed: canStart ? onStart : null,
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.purple,
-              foregroundColor: Colors.white,
-              disabledBackgroundColor: Colors.grey.shade800,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
+            // This screen's ONE gold element: the Start hero CTA.
+            style: WimzTheme.goldButtonStyle(context).copyWith(
+              shape: WidgetStatePropertyAll(
+                RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
               ),
             ),
             icon: const Icon(Icons.play_arrow, size: 28),
@@ -549,13 +547,13 @@ class _StartButton extends StatelessWidget {
           const SizedBox(height: 8),
           Text(
             context.l10n.programConnectToStart,
-            style: TextStyle(color: AppTheme.textTertiary, fontSize: 12),
+            style: TextStyle(color: cs.onSurfaceVariant, fontSize: 12),
           ),
         ] else if (hasOtherActive) ...[
           const SizedBox(height: 8),
           Text(
             context.l10n.programStopCurrentFirst,
-            style: TextStyle(color: Colors.orange.shade300, fontSize: 12),
+            style: TextStyle(color: cs.onSurfaceVariant, fontSize: 12),
           ),
         ],
       ],

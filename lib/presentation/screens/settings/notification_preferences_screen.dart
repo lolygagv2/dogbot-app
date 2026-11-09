@@ -68,11 +68,11 @@ class NotificationPreferencesScreen extends ConsumerWidget {
             padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
             child: Text(
               l.notifPrefsPerEventType,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 12,
                 fontWeight: FontWeight.bold,
                 letterSpacing: 1.2,
-                color: Colors.grey,
+                color: context.wimz.inkMuted,
               ),
             ),
           ),
@@ -80,7 +80,7 @@ class NotificationPreferencesScreen extends ConsumerWidget {
             padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
             child: Text(
               l.notifPrefsLegend,
-              style: const TextStyle(fontSize: 12, color: Colors.grey),
+              style: TextStyle(fontSize: 12, color: context.wimz.inkMuted),
             ),
           ),
           for (final type in ordered)
@@ -191,7 +191,7 @@ class _ChannelRow extends StatelessWidget {
         children: [
           Row(
             children: [
-              Icon(_icon, size: 18, color: AppTheme.primary),
+              Icon(_icon, size: 18, color: Theme.of(context).colorScheme.primary),
               const SizedBox(width: 8),
               Text(
                 _label(l),

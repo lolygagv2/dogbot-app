@@ -28,7 +28,7 @@ class UiPreviewHubScreen extends StatelessWidget {
           Container(
             width: double.infinity,
             padding: const EdgeInsets.all(12),
-            color: AppTheme.surfaceLight,
+            color: context.wimz.surfaceRaised,
             child: Text(
               'Developer previews rendered from spec-shaped SAMPLE data '
               '(WIMZ_Data_Architecture_Spec.md). Nothing here is live.',
@@ -77,21 +77,22 @@ class UiPreviewHubScreen extends StatelessWidget {
   }
 }
 
-/// Yellow strip shown on any view rendered from stub rows.
+/// Inverted (ink) strip shown on any view rendered from stub rows.
 class SampleDataBanner extends StatelessWidget {
   const SampleDataBanner({super.key});
 
   @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
     return Container(
       width: double.infinity,
-      color: Colors.amber.shade800,
+      color: cs.inverseSurface,
       padding: const EdgeInsets.symmetric(vertical: 4),
-      child: const Text(
+      child: Text(
         'SAMPLE DATA — not live',
         textAlign: TextAlign.center,
         style: TextStyle(
-          color: Colors.black,
+          color: cs.onInverseSurface,
           fontSize: 11,
           fontWeight: FontWeight.bold,
           letterSpacing: 1,
@@ -175,12 +176,13 @@ class EventListView extends StatelessWidget {
                     itemBuilder: (context, i) {
                       final e = sorted[i];
                       final isError = e.eventType == 'error';
+                      final cs = Theme.of(context).colorScheme;
                       return ListTile(
                         dense: true,
+                        // Error rows: error_outline icon + the 'error' title.
                         leading: Icon(
                           _typeIcons[e.eventType] ?? Icons.circle_outlined,
-                          color:
-                              isError ? AppTheme.error : AppTheme.primary,
+                          color: isError ? cs.error : cs.onSurface,
                           size: 22,
                         ),
                         title: Text(
@@ -201,8 +203,8 @@ class EventListView extends StatelessWidget {
                             if (e.confidence != null)
                               Text(
                                 '${(e.confidence! * 100).round()}%',
-                                style: const TextStyle(
-                                  color: AppTheme.textSecondary,
+                                style: TextStyle(
+                                  color: cs.onSurfaceVariant,
                                   fontSize: 12,
                                 ),
                               ),
@@ -211,8 +213,8 @@ class EventListView extends StatelessWidget {
                               e.labelSource == 'machine'
                                   ? (e.modelId ?? 'machine')
                                   : e.labelSource,
-                              style: const TextStyle(
-                                color: AppTheme.textTertiary,
+                              style: TextStyle(
+                                color: cs.onSurfaceVariant,
                                 fontSize: 10,
                               ),
                             ),
@@ -244,6 +246,8 @@ class SessionReportView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final stats = report.statsJson;
+    final w = context.wimz;
+    final cs = Theme.of(context).colorScheme;
     return Scaffold(
       appBar: AppBar(title: const Text('Session Report')),
       body: Column(
@@ -255,11 +259,7 @@ class SessionReportView extends StatelessWidget {
               children: [
                 Container(
                   padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: AppTheme.surface,
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: AppTheme.glassBorder),
-                  ),
+                  decoration: WimzTheme.cardDecoration(context),
                   child: Text(
                     report.summaryText,
                     style: const TextStyle(fontSize: 15, height: 1.5),
@@ -267,10 +267,10 @@ class SessionReportView extends StatelessWidget {
                 ),
                 const SizedBox(height: 16),
                 if (stats.isNotEmpty) ...[
-                  const Text(
+                  Text(
                     'STATS',
                     style: TextStyle(
-                      color: AppTheme.textTertiary,
+                      color: cs.onSurfaceVariant,
                       fontSize: 11,
                       fontWeight: FontWeight.bold,
                       letterSpacing: 2,
@@ -287,7 +287,7 @@ class SessionReportView extends StatelessWidget {
                             '${entry.key}: ${entry.value}',
                             style: const TextStyle(fontSize: 12),
                           ),
-                          backgroundColor: AppTheme.surfaceLight,
+                          backgroundColor: w.surfaceRaised,
                         ),
                     ],
                   ),
@@ -299,8 +299,8 @@ class SessionReportView extends StatelessWidget {
                   'Generated ${report.generatedTime.toLocal()} · '
                   '${report.modelId} · '
                   'input ${report.inputHash.length >= 8 ? report.inputHash.substring(0, 8) : report.inputHash}…',
-                  style: const TextStyle(
-                    color: AppTheme.textTertiary,
+                  style: TextStyle(
+                    color: cs.onSurfaceVariant,
                     fontSize: 11,
                   ),
                 ),

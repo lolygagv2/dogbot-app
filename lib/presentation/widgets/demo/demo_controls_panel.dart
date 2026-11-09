@@ -64,17 +64,20 @@ class _DemoControlsPanelState extends ConsumerState<DemoControlsPanel> {
     final clockText =
         clock == null ? '––:––:––' : DateFormat.Hms(locale).format(clock);
     final active = s.replayActive;
+    final w = context.wimz;
+    final cs = Theme.of(context).colorScheme;
+    // "Replay active" is a live indicator → signal; otherwise muted.
     final activeColor = active == null
-        ? AppTheme.textTertiary
-        : (active ? AppTheme.accent : AppTheme.textTertiary);
+        ? w.inkMuted
+        : (active ? w.signal : w.inkMuted);
 
     return Container(
       margin: const EdgeInsets.only(top: 8),
       padding: const EdgeInsets.fromLTRB(10, 8, 10, 8),
       decoration: BoxDecoration(
-        color: AppTheme.surface.withOpacity(0.6),
+        color: w.surfaceRaised,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppTheme.warning.withOpacity(0.35)),
+        border: Border.all(color: w.line),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -82,16 +85,16 @@ class _DemoControlsPanelState extends ConsumerState<DemoControlsPanel> {
         children: [
           Row(
             children: [
-              const Icon(Icons.admin_panel_settings_outlined,
-                  size: 14, color: AppTheme.warning),
+              Icon(Icons.admin_panel_settings_outlined,
+                  size: 14, color: w.inkMuted),
               const SizedBox(width: 6),
               Text(
                 l.demoControlsTitle.toUpperCase(),
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 11,
                   fontWeight: FontWeight.bold,
                   letterSpacing: 1,
-                  color: AppTheme.warning,
+                  color: w.inkMuted,
                 ),
               ),
               const SizedBox(width: 12),
@@ -107,25 +110,25 @@ class _DemoControlsPanelState extends ConsumerState<DemoControlsPanel> {
               _Chip(
                 icon: Icons.schedule,
                 label: l.demoVirtualClock(clockText),
-                color: loaded ? AppTheme.primary : AppTheme.textTertiary,
+                color: loaded ? cs.primary : w.inkMuted,
                 mono: true,
               ),
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
                   _detail(l, s),
-                  style: const TextStyle(
-                      fontSize: 10, color: AppTheme.textTertiary),
+                  style: TextStyle(
+                      fontSize: 10, color: w.inkMuted),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
               ),
               if (s.busy)
-                const SizedBox(
+                SizedBox(
                   width: 14,
                   height: 14,
                   child: CircularProgressIndicator(
-                      strokeWidth: 2, color: AppTheme.warning),
+                      strokeWidth: 2, color: cs.primary),
                 ),
             ],
           ),
@@ -137,21 +140,21 @@ class _DemoControlsPanelState extends ConsumerState<DemoControlsPanel> {
               _Btn(
                 label: l.demoLoadGoodDay,
                 icon: Icons.wb_sunny_outlined,
-                color: AppTheme.accent,
+                color: w.ink,
                 enabled: !s.busy,
                 onTap: n.loadGoodDay,
               ),
               _Btn(
                 label: l.demoLoadBadDay,
                 icon: Icons.thunderstorm_outlined,
-                color: AppTheme.error,
+                color: w.ink,
                 enabled: !s.busy,
                 onTap: n.loadBadDay,
               ),
               _Btn(
                 label: l.demoStartSpeed(120),
                 icon: Icons.play_arrow,
-                color: AppTheme.primary,
+                color: cs.primary,
                 enabled: !s.busy && loaded && !s.replay.isRunning,
                 onTap: () => n.start(speed: 120),
               ),
@@ -159,28 +162,28 @@ class _DemoControlsPanelState extends ConsumerState<DemoControlsPanel> {
                 _Btn(
                   label: l.demoPause,
                   icon: Icons.pause,
-                  color: AppTheme.primary,
+                  color: cs.primary,
                   enabled: !s.busy,
                   onTap: n.pause,
                 ),
               _Btn(
                 label: l.demoJumpTo('15:30'),
                 icon: Icons.fast_forward,
-                color: AppTheme.secondary,
+                color: w.ink,
                 enabled: !s.busy && loaded,
                 onTap: () => n.jumpTo('15:30'),
               ),
               _Btn(
                 label: l.demoJumpTo('17:00'),
                 icon: Icons.fast_forward,
-                color: AppTheme.secondary,
+                color: w.ink,
                 enabled: !s.busy && loaded,
                 onTap: () => n.jumpTo('17:00'),
               ),
               _Btn(
                 label: l.demoReset,
                 icon: Icons.restart_alt,
-                color: AppTheme.warning,
+                color: w.inkMuted,
                 enabled: !s.busy,
                 onTap: n.reset,
               ),
@@ -190,21 +193,21 @@ class _DemoControlsPanelState extends ConsumerState<DemoControlsPanel> {
             const SizedBox(height: 6),
             Row(
               children: [
-                const Icon(Icons.error_outline,
-                    size: 12, color: AppTheme.error),
+                Icon(Icons.error_outline,
+                    size: 12, color: cs.error),
                 const SizedBox(width: 4),
                 Expanded(
                   child: Text(
                     s.error!,
-                    style: const TextStyle(fontSize: 11, color: AppTheme.error),
+                    style: TextStyle(fontSize: 11, color: cs.error),
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                   ),
                 ),
                 InkWell(
                   onTap: n.clearError,
-                  child: const Icon(Icons.close,
-                      size: 14, color: AppTheme.textTertiary),
+                  child: Icon(Icons.close,
+                      size: 14, color: w.inkMuted),
                 ),
               ],
             ),
@@ -255,9 +258,9 @@ class _Chip extends StatelessWidget {
   Widget build(BuildContext context) => Container(
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
         decoration: BoxDecoration(
-          color: color.withOpacity(0.12),
+          color: color.withValues(alpha: 0.12),
           borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: color.withOpacity(0.4)),
+          border: Border.all(color: color.withValues(alpha: 0.4)),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
@@ -300,8 +303,8 @@ class _Btn extends StatelessWidget {
         label: Text(label),
         style: OutlinedButton.styleFrom(
           foregroundColor: color,
-          disabledForegroundColor: color.withOpacity(0.3),
-          side: BorderSide(color: color.withOpacity(enabled ? 0.6 : 0.2)),
+          disabledForegroundColor: color.withValues(alpha: 0.3),
+          side: BorderSide(color: color.withValues(alpha: enabled ? 0.6 : 0.2)),
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
           minimumSize: const Size(0, 30),
           tapTargetSize: MaterialTapTargetSize.shrinkWrap,

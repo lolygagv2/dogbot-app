@@ -49,9 +49,12 @@ class _ConnectedAiScreenState extends ConsumerState<ConnectedAiScreen> {
         actions: [
           TextButton(
               onPressed: () => Navigator.pop(ctx, false), child: Text(l.cancel)),
-          TextButton(
+          TextButton.icon(
             onPressed: () => Navigator.pop(ctx, true),
-            child: Text(l.aiRevoke, style: const TextStyle(color: Colors.red)),
+            icon: Icon(Icons.link_off,
+                size: 18, color: Theme.of(ctx).colorScheme.error),
+            label: Text(l.aiRevoke,
+                style: TextStyle(color: Theme.of(ctx).colorScheme.error)),
           ),
         ],
       ),
@@ -71,10 +74,12 @@ class _ConnectedAiScreenState extends ConsumerState<ConnectedAiScreen> {
         actions: [
           TextButton(
               onPressed: () => Navigator.pop(ctx, false), child: Text(l.cancel)),
-          TextButton(
+          TextButton.icon(
             onPressed: () => Navigator.pop(ctx, true),
-            child: Text(l.aiDisconnectAll,
-                style: const TextStyle(color: Colors.red)),
+            icon: Icon(Icons.block,
+                size: 18, color: Theme.of(ctx).colorScheme.error),
+            label: Text(l.aiDisconnectAll,
+                style: TextStyle(color: Theme.of(ctx).colorScheme.error)),
           ),
         ],
       ),
@@ -95,7 +100,7 @@ class _ConnectedAiScreenState extends ConsumerState<ConnectedAiScreen> {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      backgroundColor: AppTheme.surface,
+      backgroundColor: Theme.of(context).colorScheme.surface,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
       ),
@@ -141,10 +146,19 @@ class _ConnectedAiScreenState extends ConsumerState<ConnectedAiScreen> {
                   if (state.error != null)
                     Padding(
                       padding: const EdgeInsets.only(top: 4),
-                      child: Text(
-                        state.error!,
-                        style: const TextStyle(
-                            color: AppTheme.warning, fontSize: 12),
+                      child: Row(
+                        children: [
+                          Icon(Icons.warning_amber,
+                              size: 14, color: context.wimz.inkMuted),
+                          const SizedBox(width: 4),
+                          Expanded(
+                            child: Text(
+                              state.error!,
+                              style: TextStyle(
+                                  color: context.wimz.inkMuted, fontSize: 12),
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   const SizedBox(height: 8),
@@ -187,8 +201,7 @@ class _ConnectedAiScreenState extends ConsumerState<ConnectedAiScreen> {
                             style: OutlinedButton.styleFrom(
                               visualDensity: VisualDensity.compact,
                               padding: const EdgeInsets.symmetric(horizontal: 4),
-                              side: BorderSide(
-                                  color: AppTheme.primary.withOpacity(0.5)),
+                              side: BorderSide(color: context.wimz.lineStrong),
                             ),
                             onPressed: () => _openGuide(p, state.connectorUrl),
                             child: Text(
@@ -222,13 +235,13 @@ class _ConnectorUrlRow extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.fromLTRB(12, 8, 4, 8),
       decoration: BoxDecoration(
-        color: AppTheme.surface,
+        color: context.wimz.surfaceRaised,
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: AppTheme.primary.withOpacity(0.35)),
+        border: Border.all(color: context.wimz.line),
       ),
       child: Row(
         children: [
-          const Icon(Icons.link, color: AppTheme.primary, size: 18),
+          Icon(Icons.link, color: context.wimz.signal, size: 18),
           const SizedBox(width: 8),
           Expanded(
             child: Column(
@@ -236,10 +249,10 @@ class _ConnectorUrlRow extends StatelessWidget {
               children: [
                 Text(
                   l.aiConnectorUrl,
-                  style: const TextStyle(
+                  style: TextStyle(
                       fontSize: 10,
                       letterSpacing: 0.5,
-                      color: AppTheme.textTertiary),
+                      color: context.wimz.inkMuted),
                 ),
                 Text(
                   loading
@@ -249,8 +262,8 @@ class _ConnectorUrlRow extends StatelessWidget {
                     fontSize: 13,
                     fontFamily: 'monospace',
                     color: url != null
-                        ? AppTheme.textPrimary
-                        : AppTheme.textTertiary,
+                        ? context.wimz.ink
+                        : context.wimz.inkMuted,
                   ),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
@@ -260,7 +273,7 @@ class _ConnectorUrlRow extends StatelessWidget {
           ),
           IconButton(
             icon: const Icon(Icons.copy, size: 18),
-            color: AppTheme.primary,
+            color: Theme.of(context).colorScheme.primary,
             tooltip: l.aiCopyUrl,
             onPressed: url == null ? null : () => onCopy(url!),
           ),
@@ -285,22 +298,26 @@ class _DisconnectAllTile extends StatelessWidget {
     final enabled = count > 0 && !busy;
     return Container(
       decoration: BoxDecoration(
-        color: AppTheme.surface,
+        color: context.wimz.surfaceRaised,
         borderRadius: BorderRadius.circular(10),
         border: Border.all(
-          color: enabled ? AppTheme.error.withOpacity(0.6) : AppTheme.glassBorder,
+          color: enabled
+              ? Theme.of(context).colorScheme.error.withValues(alpha: 0.6)
+              : context.wimz.line,
         ),
       ),
       child: ListTile(
         dense: true,
         contentPadding: const EdgeInsets.symmetric(horizontal: 12),
         leading: Icon(Icons.block,
-            color: enabled ? AppTheme.error : AppTheme.textTertiary),
+            color: enabled
+                ? Theme.of(context).colorScheme.error
+                : context.wimz.inkMuted),
         title: Text(l.aiDisconnectAll,
             style: const TextStyle(fontWeight: FontWeight.w600)),
         subtitle: Text(
           l.aiDisconnectAllSubtitle,
-          style: const TextStyle(fontSize: 11, color: AppTheme.textTertiary),
+          style: TextStyle(fontSize: 11, color: context.wimz.inkMuted),
         ),
         trailing: busy
             ? const SizedBox(
@@ -308,7 +325,7 @@ class _DisconnectAllTile extends StatelessWidget {
                 height: 18,
                 child: CircularProgressIndicator(strokeWidth: 2),
               )
-            : const Icon(Icons.chevron_right, color: AppTheme.textTertiary),
+            : Icon(Icons.chevron_right, color: context.wimz.inkMuted),
         enabled: enabled,
         onTap: enabled ? onPressed : null,
       ),
@@ -338,16 +355,17 @@ class _AssistantRow extends StatelessWidget {
               children: [
                 Text(
                   assistant.name,
-                  style: const TextStyle(
-                      fontWeight: FontWeight.w600, color: AppTheme.textPrimary),
+                  style: TextStyle(
+                      fontWeight: FontWeight.w600, color: context.wimz.ink),
                   overflow: TextOverflow.ellipsis,
                 ),
                 Text(
                   assistant.scopes.isEmpty
                       ? l.aiScopesNone
                       : assistant.scopes.join(' · '),
-                  style: const TextStyle(
-                      fontSize: 11, color: AppTheme.primary),
+                  style: TextStyle(
+                      fontSize: 11,
+                      color: Theme.of(context).colorScheme.primary),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
@@ -356,19 +374,20 @@ class _AssistantRow extends StatelessWidget {
                       ? l.aiLastUsed(
                           DateFormat.MMMd(locale).add_jm().format(lastUsed.toLocal()))
                       : l.aiNeverUsed,
-                  style: const TextStyle(
-                      fontSize: 10, color: AppTheme.textTertiary),
+                  style: TextStyle(
+                      fontSize: 10, color: context.wimz.inkMuted),
                 ),
               ],
             ),
           ),
-          TextButton(
+          TextButton.icon(
             style: TextButton.styleFrom(
-              foregroundColor: AppTheme.error,
+              foregroundColor: Theme.of(context).colorScheme.error,
               visualDensity: VisualDensity.compact,
             ),
             onPressed: onRevoke,
-            child: Text(l.aiRevoke),
+            icon: const Icon(Icons.link_off, size: 16),
+            label: Text(l.aiRevoke),
           ),
         ],
       ),
@@ -381,24 +400,20 @@ class _ProviderBadge extends StatelessWidget {
   final String name;
   const _ProviderBadge({required this.provider, required this.name});
 
-  static Color colorFor(AiProvider? p) => switch (p) {
-        AiProvider.chatgpt => const Color(0xFF10A37F),
-        AiProvider.claude => const Color(0xFFD97757),
-        AiProvider.grok => const Color(0xFFE0E0E0),
-        AiProvider.perplexity => const Color(0xFF20B8CD),
-        null => AppTheme.secondary,
-      };
+  /// Vendor colours are gone: the provider's name text carries identity.
+  static Color colorFor(BuildContext context, AiProvider? p) =>
+      context.wimz.ink;
 
   @override
   Widget build(BuildContext context) {
-    final c = colorFor(provider);
+    final c = colorFor(context, provider);
     return Container(
       width: 34,
       height: 34,
       decoration: BoxDecoration(
-        color: c.withOpacity(0.18),
+        color: context.wimz.surfaceSunken,
         borderRadius: BorderRadius.circular(9),
-        border: Border.all(color: c.withOpacity(0.6)),
+        border: Border.all(color: context.wimz.lineStrong),
       ),
       alignment: Alignment.center,
       child: Text(
@@ -416,26 +431,23 @@ class _AuditRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final locale = Localizations.localeOf(context).toString();
-    final color = entry.isOk ? AppTheme.textSecondary : AppTheme.warning;
+    final color = entry.isOk ? context.wimz.inkMuted : context.wimz.ink;
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 3),
       child: Row(
         children: [
           Text(
             DateFormat.Hm(locale).format(entry.ts.toLocal()),
-            style: const TextStyle(
+            style: TextStyle(
                 fontSize: 11,
                 fontFamily: 'monospace',
-                color: AppTheme.textTertiary),
+                color: context.wimz.inkMuted),
           ),
           const SizedBox(width: 8),
-          Container(
-            width: 6,
-            height: 6,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: entry.isOk ? AppTheme.accent : AppTheme.warning,
-            ),
+          Icon(
+            entry.isOk ? Icons.check : Icons.warning_amber,
+            size: 10,
+            color: color,
           ),
           const SizedBox(width: 8),
           Expanded(
@@ -484,7 +496,7 @@ class _Empty extends StatelessWidget {
   Widget build(BuildContext context) => Center(
         child: Text(
           text,
-          style: const TextStyle(color: AppTheme.textTertiary, fontSize: 13),
+          style: TextStyle(color: context.wimz.inkMuted, fontSize: 13),
           textAlign: TextAlign.center,
         ),
       );
@@ -501,11 +513,11 @@ class _Unsupported extends StatelessWidget {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Icon(Icons.cloud_off, size: 48, color: AppTheme.textTertiary),
+              Icon(Icons.cloud_off, size: 48, color: context.wimz.inkMuted),
               const SizedBox(height: 12),
               Text(text,
                   textAlign: TextAlign.center,
-                  style: const TextStyle(color: AppTheme.textSecondary)),
+                  style: TextStyle(color: context.wimz.inkMuted)),
             ],
           ),
         ),
@@ -541,7 +553,7 @@ class _SetupGuideSheet extends StatelessWidget {
       l.aiGuideStep4,
       l.aiGuideStep5(name),
     ];
-    final c = _ProviderBadge.colorFor(provider);
+    final c = context.wimz.inkMuted;
     return SafeArea(
       child: Padding(
         padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
@@ -556,10 +568,10 @@ class _SetupGuideSheet extends StatelessWidget {
                 Expanded(
                   child: Text(
                     l.aiGuideTitle(name),
-                    style: const TextStyle(
+                    style: TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
-                        color: AppTheme.textPrimary),
+                        color: context.wimz.ink),
                   ),
                 ),
                 IconButton(
@@ -586,20 +598,21 @@ class _SetupGuideSheet extends StatelessWidget {
                       alignment: Alignment.center,
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
-                        color: AppTheme.primary.withOpacity(0.15),
-                        border: Border.all(color: AppTheme.primary),
+                        color: context.wimz.surfaceSunken,
+                        border: Border.all(
+                            color: Theme.of(context).colorScheme.primary),
                       ),
                       child: Text('${i + 1}',
-                          style: const TextStyle(
+                          style: TextStyle(
                               fontSize: 12,
                               fontWeight: FontWeight.bold,
-                              color: AppTheme.primary)),
+                              color: Theme.of(context).colorScheme.primary)),
                     ),
                     const SizedBox(width: 10),
                     Expanded(
                       child: Text(steps[i],
-                          style: const TextStyle(
-                              fontSize: 14, color: AppTheme.textPrimary)),
+                          style: TextStyle(
+                              fontSize: 14, color: context.wimz.ink)),
                     ),
                   ],
                 ),
@@ -608,7 +621,7 @@ class _SetupGuideSheet extends StatelessWidget {
             Container(
               padding: const EdgeInsets.fromLTRB(12, 6, 4, 6),
               decoration: BoxDecoration(
-                color: AppTheme.surfaceLight,
+                color: context.wimz.surfaceRaised,
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Row(
@@ -620,8 +633,8 @@ class _SetupGuideSheet extends StatelessWidget {
                         fontSize: 12,
                         fontFamily: 'monospace',
                         color: connectorUrl != null
-                            ? AppTheme.textPrimary
-                            : AppTheme.textTertiary,
+                            ? context.wimz.ink
+                            : context.wimz.inkMuted,
                       ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,

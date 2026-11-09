@@ -49,12 +49,16 @@ class _CoachScreenState extends ConsumerState<CoachScreen> {
     // ignore: unused_local_variable
     final selectedDog = ref.watch(selectedDogProvider);
     final isConnected = ref.watch(isRobotOnlineProvider);
+    // Everything here sits over live video (always a dark ground), so the
+    // on-video tokens are used throughout rather than ink / surface.
+    final w = context.wimz;
+    final cs = Theme.of(context).colorScheme;
 
     // Build 38: NO commands in lifecycle handlers. Commands ONLY on explicit user tap.
     // If user navigates away while coaching, coach mode stays active on robot.
     // User must explicitly tap Stop to end coaching.
     return Scaffold(
-        backgroundColor: Colors.black,
+        backgroundColor: w.brandInk,
         body: Stack(
           children: [
             // Full screen video — WebRTC first, MJPEG fallback in local mode
@@ -106,7 +110,7 @@ class _CoachScreenState extends ConsumerState<CoachScreen> {
                     begin: Alignment.topCenter,
                     end: Alignment.bottomCenter,
                     colors: [
-                      Colors.black.withOpacity(0.7),
+                      w.scrim(0.7),
                       Colors.transparent,
                     ],
                   ),
@@ -114,7 +118,7 @@ class _CoachScreenState extends ConsumerState<CoachScreen> {
                 child: Row(
                   children: [
                     IconButton(
-                      icon: const Icon(Icons.arrow_back, color: Colors.white),
+                      icon: Icon(Icons.arrow_back, color: w.onVideo),
                       onPressed: () {
                         // Build 93: Leaving the coach screen by any means exits
                         // coach mode. stopCoaching() routes through set_mode(idle),
@@ -126,10 +130,11 @@ class _CoachScreenState extends ConsumerState<CoachScreen> {
                     const Spacer(),
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      // Live status chip: signal while coaching, muted when
+                      // (on-video tokens: the coach view sits on the camera feed)
+                      // stopped; the eye icon + word carry the state.
                       decoration: BoxDecoration(
-                        color: coachState.isActive
-                            ? Colors.green.withOpacity(0.8)
-                            : Colors.grey.withOpacity(0.8),
+                        color: coachState.isActive ? WimzColors.dark.signal : w.inkMuted,
                         borderRadius: BorderRadius.circular(20),
                       ),
                       child: Row(
@@ -137,14 +142,14 @@ class _CoachScreenState extends ConsumerState<CoachScreen> {
                         children: [
                           Icon(
                             coachState.isActive ? Icons.visibility : Icons.visibility_off,
-                            color: Colors.white,
+                            color: coachState.isActive ? WimzColors.dark.inkOnSignal : w.surface,
                             size: 16,
                           ),
                           const SizedBox(width: 6),
                           Text(
                             coachState.isActive ? context.l10n.coachCoachingBadge : context.l10n.coachStoppedBadge,
-                            style: const TextStyle(
-                              color: Colors.white,
+                            style: TextStyle(
+                              color: coachState.isActive ? WimzColors.dark.inkOnSignal : w.surface,
                               fontSize: 12,
                               fontWeight: FontWeight.bold,
                               letterSpacing: 1,
@@ -175,7 +180,7 @@ class _CoachScreenState extends ConsumerState<CoachScreen> {
                     begin: Alignment.bottomCenter,
                     end: Alignment.topCenter,
                     colors: [
-                      Colors.black.withOpacity(0.85),
+                      w.scrim(0.85),
                       Colors.transparent,
                     ],
                   ),
@@ -193,10 +198,10 @@ class _CoachScreenState extends ConsumerState<CoachScreen> {
                     Container(
                       padding: const EdgeInsets.all(16),
                       decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.1),
+                        color: w.onVideo.withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(16),
                         border: Border.all(
-                          color: Colors.white.withOpacity(0.2),
+                          color: w.lineOnVideo,
                         ),
                       ),
                       child: Column(
@@ -204,14 +209,14 @@ class _CoachScreenState extends ConsumerState<CoachScreen> {
                         children: [
                           Row(
                             children: [
-                              const Icon(Icons.pets, color: AppTheme.primary, size: 20),
+                              Icon(Icons.pets, color: w.onVideo, size: 20),
                               const SizedBox(width: 8),
                               Text(
                                 // Priority: detection event dog name > coach state > fallback
                                 // Do NOT use selectedDog.name — that locks to profile selection
                                 coachState.dogName ?? context.l10n.coachDogDetected,
-                                style: const TextStyle(
-                                  color: Colors.white,
+                                style: TextStyle(
+                                  color: w.onVideo,
                                   fontSize: 16,
                                   fontWeight: FontWeight.bold,
                                 ),
@@ -223,18 +228,18 @@ class _CoachScreenState extends ConsumerState<CoachScreen> {
                                   vertical: 4,
                                 ),
                                 decoration: BoxDecoration(
-                                  color: AppTheme.primary.withOpacity(0.2),
+                                  color: w.onVideo.withValues(alpha: 0.12),
                                   borderRadius: BorderRadius.circular(12),
                                 ),
                                 child: Row(
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
-                                    const Icon(Icons.cookie, color: AppTheme.primary, size: 16),
+                                    Icon(Icons.cookie, color: w.onVideo, size: 16),
                                     const SizedBox(width: 4),
                                     Text(
                                       '${coachState.rewardsGiven}',
-                                      style: const TextStyle(
-                                        color: AppTheme.primary,
+                                      style: TextStyle(
+                                        color: w.onVideo,
                                         fontWeight: FontWeight.bold,
                                       ),
                                     ),
@@ -246,8 +251,8 @@ class _CoachScreenState extends ConsumerState<CoachScreen> {
                           const SizedBox(height: 12),
                           Text(
                             context.l10n.coachWhenDogVisible,
-                            style: const TextStyle(
-                              color: Colors.white70,
+                            style: TextStyle(
+                              color: w.onVideo.withValues(alpha: 0.7),
                               fontSize: 12,
                             ),
                           ),
@@ -303,9 +308,11 @@ class _CoachScreenState extends ConsumerState<CoachScreen> {
                                 context.pop();
                               }
                             : null,
+                        // Stop / leave coach mode: the error slot (destructive),
+                        // with the stop icon + EXIT label.
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.red.shade700,
-                          foregroundColor: Colors.white,
+                          backgroundColor: cs.error,
+                          foregroundColor: cs.onError,
                           padding: const EdgeInsets.symmetric(vertical: 14),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(12),
@@ -333,60 +340,64 @@ class _CoachScreenState extends ConsumerState<CoachScreen> {
 
 /// C5: Per-dog chip showing dog name, behavior, and confidence. Color is
 /// hashed from dog_id (or aruco id) so the same dog renders consistently.
+/// The palette is the brand differentiation set (ink / ink-muted / signal /
+/// line-strong / error, on-video tokens, no gold); the chip prints the dog's
+/// name, so colour never identifies a dog alone.
 class _DogChip extends StatelessWidget {
   final Detection detection;
   const _DogChip({required this.detection});
 
-  static const _palette = <Color>[
-    Color(0xFF00E5FF),
-    Color(0xFFFFC400),
-    Color(0xFFFF4081),
-    Color(0xFF76FF03),
-    Color(0xFFB388FF),
-    Color(0xFFFF6E40),
-  ];
+  static List<Color> _palette(BuildContext context) =>
+      WimzStatus.dogPalette(context, onVideo: true);
 
-  Color get _dogColor => _palette[detection.trackKey.hashCode.abs() % _palette.length];
+  Color _dogColor(BuildContext context) {
+    final palette = _palette(context);
+    return palette[detection.trackKey.hashCode.abs() % palette.length];
+  }
 
   @override
   Widget build(BuildContext context) {
+    final w = context.wimz;
     final dogLabel = detection.localizedDisplayName(context.l10n);
     final behaviorLabel = behaviorDisplayName(context.l10n, detection.behavior).toUpperCase();
     final confidence = detection.confidence;
     final color = detection.dogId != null
-        ? _dogColor
-        : AppTheme.getBehaviorColor(detection.behavior);
+        ? _dogColor(context)
+        : WimzStatus.behavior(context, detection.behavior, onVideo: true);
+    // Text takes the surface colour so it contrasts with whichever brand
+    // colour fills the chip in either theme.
+    final onChip = w.surface;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.9),
+        color: color.withValues(alpha: 0.9),
         borderRadius: BorderRadius.circular(20),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Icon(Icons.pets, color: Colors.white, size: 16),
+          Icon(Icons.pets, color: onChip, size: 16),
           const SizedBox(width: 6),
           if (dogLabel.isNotEmpty) ...[
             Text(
               dogLabel,
-              style: const TextStyle(
-                color: Colors.white,
+              style: TextStyle(
+                color: onChip,
                 fontWeight: FontWeight.bold,
                 fontSize: 12,
               ),
             ),
             const SizedBox(width: 6),
-            const Text(
+            Text(
               '|',
-              style: TextStyle(color: Colors.white54, fontSize: 12),
+              style: TextStyle(color: onChip.withValues(alpha: 0.54), fontSize: 12),
             ),
             const SizedBox(width: 6),
           ],
           Text(
             behaviorLabel,
-            style: const TextStyle(
-              color: Colors.white,
+            style: TextStyle(
+              color: onChip,
               fontWeight: FontWeight.bold,
               fontSize: 12,
             ),
@@ -395,8 +406,8 @@ class _DogChip extends StatelessWidget {
             const SizedBox(width: 6),
             Text(
               '${(confidence * 100).toInt()}%',
-              style: const TextStyle(
-                color: Colors.white70,
+              style: TextStyle(
+                color: onChip.withValues(alpha: 0.7),
                 fontSize: 12,
               ),
             ),
@@ -408,8 +419,9 @@ class _DogChip extends StatelessWidget {
 }
 
 /// Tappable trick chip - Build 38: sends force_trick command.
-/// Reward flash (green, 3s) wins over the active-trick highlight (blue);
-/// tapping a different chip force-switches the session and moves the blue.
+/// Reward flash (solid on-video, 3s) wins over the active-trick highlight
+/// (signal = the trick the robot is live-coaching); tapping a different
+/// chip force-switches the session and moves the highlight.
 class _TrickChip extends StatelessWidget {
   final String behavior;
   final bool isHighlighted;
@@ -427,6 +439,15 @@ class _TrickChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final w = context.wimz;
+    // Over video: on-video white for text; signal only for the live
+    // (active) trick. The active trick also swaps its icon so the state is
+    // not carried by colour alone.
+    final accent = isHighlighted
+        ? w.onVideo
+        : isActiveTrick
+            ? WimzColors.dark.signal
+            : w.onVideo;
     return GestureDetector(
       onTap: onTap,
       child: AnimatedContainer(
@@ -437,29 +458,29 @@ class _TrickChip extends StatelessWidget {
         ),
         decoration: BoxDecoration(
           color: isHighlighted
-              ? Colors.green.withOpacity(0.3)
+              ? w.onVideo.withValues(alpha: 0.3)
               : isActiveTrick
-                  ? AppTheme.primary.withOpacity(0.35)
-                  : Colors.white.withOpacity(0.1),
+                  ? WimzColors.dark.signal.withValues(alpha: 0.35)
+                  : w.onVideo.withValues(alpha: 0.1),
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
             color: isHighlighted
-                ? Colors.green
+                ? w.onVideo
                 : isActiveTrick
-                    ? AppTheme.primary
+                    ? WimzColors.dark.signal
                     : onTap != null
-                        ? AppTheme.primary.withOpacity(0.5)
-                        : Colors.white.withOpacity(0.3),
+                        ? w.onVideo.withValues(alpha: 0.5)
+                        : w.lineOnVideo,
             width: isActiveTrick || onTap != null ? 2 : 1,
           ),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            if (onTap != null) ...[
+            if (onTap != null || isActiveTrick) ...[
               Icon(
-                Icons.touch_app,
-                color: AppTheme.primary,
+                isActiveTrick ? Icons.radio_button_checked : Icons.touch_app,
+                color: accent,
                 size: 14,
               ),
               const SizedBox(width: 4),
@@ -467,11 +488,7 @@ class _TrickChip extends StatelessWidget {
             Text(
               behaviorDisplayName(context.l10n, behavior).toUpperCase(),
               style: TextStyle(
-                color: isHighlighted
-                    ? Colors.green
-                    : isActiveTrick
-                        ? AppTheme.primary
-                        : Colors.white,
+                color: accent,
                 fontSize: 12,
                 fontWeight: FontWeight.w600,
               ),
@@ -491,6 +508,9 @@ class _RewardFlash extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // The Coach screen's ONE gold element: the reward celebration pill
+    // (brand-gold fill, ink-on-gold text, flat — no glow).
+    final w = context.wimz;
     return TweenAnimationBuilder<double>(
       tween: Tween(begin: 0.0, end: 1.0),
       duration: const Duration(milliseconds: 300),
@@ -506,32 +526,25 @@ class _RewardFlash extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
         decoration: BoxDecoration(
-          color: Colors.green.shade600,
+          color: w.brandGold,
           borderRadius: BorderRadius.circular(24),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.green.withOpacity(0.5),
-              blurRadius: 20,
-              spreadRadius: 2,
-            ),
-          ],
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.celebration, color: Colors.white, size: 24),
+            Icon(Icons.celebration, color: w.inkOnGold, size: 24),
             const SizedBox(width: 8),
             Text(
               behavior != null ? context.l10n.coachBehaviorBang(AppTheme.getBehaviorDisplayName(behavior!).toUpperCase()) : context.l10n.coachGoodBang,
-              style: const TextStyle(
-                color: Colors.white,
+              style: TextStyle(
+                color: w.inkOnGold,
                 fontSize: 20,
                 fontWeight: FontWeight.bold,
                 letterSpacing: 1,
               ),
             ),
             const SizedBox(width: 8),
-            const Icon(Icons.cookie, color: Colors.amber, size: 24),
+            Icon(Icons.cookie, color: w.inkOnGold, size: 24),
           ],
         ),
       ),

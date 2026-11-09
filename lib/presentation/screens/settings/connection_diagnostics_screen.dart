@@ -159,7 +159,7 @@ class _ConnectionDiagnosticsScreenState
           Container(
             width: double.infinity,
             padding: const EdgeInsets.all(12),
-            color: AppTheme.surfaceLight,
+            color: context.wimz.surfaceRaised,
             child: Text(
               l.connDiagHeader(entries.length),
               style: Theme.of(context).textTheme.bodySmall,

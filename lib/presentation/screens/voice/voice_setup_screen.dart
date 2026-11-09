@@ -108,15 +108,15 @@ class _VoiceSetupScreenState extends ConsumerState<VoiceSetupScreen> {
           if (!_isMobilePlatform)
             Container(
               padding: const EdgeInsets.all(12),
-              color: Colors.orange.shade100,
+              color: context.wimz.surfaceRaised,
               child: Row(
                 children: [
-                  Icon(Icons.phone_android, color: Colors.orange.shade800),
+                  Icon(Icons.phone_android, color: context.wimz.inkMuted),
                   const SizedBox(width: 12),
                   Expanded(
                     child: Text(
                       context.l10n.voiceMobileOnlyBanner,
-                      style: TextStyle(color: Colors.orange.shade900, fontSize: 13),
+                      style: TextStyle(color: context.wimz.inkMuted, fontSize: 13),
                     ),
                   ),
                 ],
@@ -176,8 +176,8 @@ class _VoiceSetupScreenState extends ConsumerState<VoiceSetupScreen> {
                 context.l10n.voiceSyncedCount(synced),
                 style: TextStyle(
                   color: synced == recorded && recorded > 0
-                      ? Colors.green
-                      : AppTheme.textSecondary,
+                      ? context.wimz.ink
+                      : context.wimz.inkMuted,
                 ),
               ),
             ],
@@ -188,7 +188,7 @@ class _VoiceSetupScreenState extends ConsumerState<VoiceSetupScreen> {
             child: LinearProgressIndicator(
               value: progress,
               minHeight: 8,
-              backgroundColor: AppTheme.surfaceLight,
+              backgroundColor: context.wimz.surfaceSunken,
             ),
           ),
         ],
@@ -253,9 +253,12 @@ class _VoiceSetupScreenState extends ConsumerState<VoiceSetupScreen> {
             onPressed: () => Navigator.pop(context, false),
             child: Text(context.l10n.cancel),
           ),
-          TextButton(
+          TextButton.icon(
             onPressed: () => Navigator.pop(context, true),
-            child: Text(context.l10n.delete, style: const TextStyle(color: Colors.red)),
+            icon: Icon(Icons.delete_outline,
+                size: 18, color: Theme.of(context).colorScheme.error),
+            label: Text(context.l10n.delete,
+                style: TextStyle(color: Theme.of(context).colorScheme.error)),
           ),
         ],
       ),
@@ -290,9 +293,12 @@ class _VoiceSetupScreenState extends ConsumerState<VoiceSetupScreen> {
             onPressed: () => Navigator.pop(context, false),
             child: Text(context.l10n.cancel),
           ),
-          TextButton(
+          TextButton.icon(
             onPressed: () => Navigator.pop(context, true),
-            child: Text(context.l10n.voiceResetAction, style: const TextStyle(color: Colors.red)),
+            icon: Icon(Icons.settings_backup_restore,
+                size: 18, color: Theme.of(context).colorScheme.error),
+            label: Text(context.l10n.voiceResetAction,
+                style: TextStyle(color: Theme.of(context).colorScheme.error)),
           ),
         ],
       ),
@@ -361,14 +367,16 @@ class _CommandTile extends StatelessWidget {
           decoration: BoxDecoration(
             shape: BoxShape.circle,
             color: isRecorded
-                ? (isSynced ? Colors.green : AppTheme.primary)
-                : AppTheme.surfaceLight,
+                ? Theme.of(context).colorScheme.primary
+                : context.wimz.surfaceSunken,
           ),
           child: Icon(
             isRecorded
                 ? (isSynced ? Icons.cloud_done : Icons.check)
                 : Icons.mic_none,
-            color: isRecorded ? Colors.white : AppTheme.textTertiary,
+            color: isRecorded
+                ? Theme.of(context).colorScheme.onPrimary
+                : context.wimz.inkMuted,
             size: 20,
           ),
         ),
@@ -383,8 +391,8 @@ class _CommandTile extends StatelessWidget {
           style: TextStyle(
             fontSize: 12,
             color: isRecorded
-                ? (isSynced ? Colors.green : AppTheme.primary)
-                : AppTheme.textTertiary,
+                ? Theme.of(context).colorScheme.primary
+                : context.wimz.inkMuted,
           ),
         ),
         trailing: Row(
@@ -398,7 +406,7 @@ class _CommandTile extends StatelessWidget {
                   tooltip: context.l10n.voiceSyncToRobotTooltip,
                 ),
               IconButton(
-                icon: const Icon(Icons.delete_outline, color: Colors.red),
+                icon: Icon(Icons.delete_outline, color: context.wimz.ink),
                 onPressed: onDelete,
                 tooltip: context.l10n.delete,
               ),
@@ -406,7 +414,7 @@ class _CommandTile extends StatelessWidget {
             IconButton(
               icon: Icon(
                 isRecorded ? Icons.refresh : Icons.mic,
-                color: AppTheme.primary,
+                color: Theme.of(context).colorScheme.primary,
               ),
               onPressed: onRecord,
               tooltip: isRecorded ? context.l10n.voiceReRecord : context.l10n.voiceRecord,
@@ -520,15 +528,17 @@ class _RecordingDialogState extends State<_RecordingDialog> {
         mainAxisSize: MainAxisSize.min,
         children: [
           if (_error != null) ...[
-            const Icon(Icons.error, color: Colors.red, size: 48),
+            Icon(Icons.error,
+                color: Theme.of(context).colorScheme.error, size: 48),
             const SizedBox(height: 12),
-            Text(_error!, style: const TextStyle(color: Colors.red)),
+            Text(_error!,
+                style: TextStyle(color: Theme.of(context).colorScheme.error)),
           ] else if (_isDone) ...[
-            const Icon(Icons.check_circle, color: Colors.green, size: 48),
+            Icon(Icons.check_circle, color: context.wimz.ink, size: 48),
             const SizedBox(height: 12),
             Text(context.l10n.voiceRecordedSuccess),
           ] else if (_isRecording) ...[
-            const Icon(Icons.mic, color: Colors.red, size: 48),
+            Icon(Icons.mic, color: context.wimz.ink, size: 48),
             const SizedBox(height: 12),
             Text(
               context.l10n.voiceSeconds(seconds),
@@ -568,7 +578,6 @@ class _RecordingDialogState extends State<_RecordingDialog> {
             onPressed: _stopRecording,
             icon: const Icon(Icons.stop),
             label: Text(context.l10n.voiceStop),
-            style: FilledButton.styleFrom(backgroundColor: Colors.red),
           ),
         ],
       ],

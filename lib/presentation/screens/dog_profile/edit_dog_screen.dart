@@ -61,6 +61,8 @@ class _EditDogScreenState extends ConsumerState<EditDogScreen> {
   @override
   Widget build(BuildContext context) {
     final profile = ref.watch(dogProfileProvider(widget.dogId));
+    final w = context.wimz;
+    final cs = Theme.of(context).colorScheme;
 
     if (profile == null) {
       return Scaffold(
@@ -75,7 +77,9 @@ class _EditDogScreenState extends ConsumerState<EditDogScreen> {
       appBar: AppBar(
         title: Text(context.l10n.editDogTitle),
         actions: [
+          // The screen's ONE gold element: the Save action (gold as text).
           TextButton(
+            style: TextButton.styleFrom(foregroundColor: w.goldDeep),
             onPressed: _isSaving ? null : () => _save(profile),
             child: _isSaving
                 ? const SizedBox(
@@ -139,8 +143,8 @@ class _EditDogScreenState extends ConsumerState<EditDogScreen> {
             const SizedBox(height: 24),
             OutlinedButton.icon(
               style: OutlinedButton.styleFrom(
-                foregroundColor: AppTheme.error,
-                side: BorderSide(color: AppTheme.error.withOpacity(0.6)),
+                foregroundColor: cs.error,
+                side: BorderSide(color: cs.error.withValues(alpha: 0.6)),
                 padding: const EdgeInsets.symmetric(vertical: 14),
               ),
               onPressed: _isSaving ? null : () => _confirmDelete(profile),
@@ -166,6 +170,7 @@ class _EditDogScreenState extends ConsumerState<EditDogScreen> {
     final messenger = ScaffoldMessenger.of(context);
     final router = GoRouter.of(context);
     final l = context.l10n;
+    final cs = Theme.of(context).colorScheme;
     try {
       final newBreed = _breedController.text.trim();
       await ref.read(dogProfilesProvider.notifier).updateProfile(
@@ -181,8 +186,19 @@ class _EditDogScreenState extends ConsumerState<EditDogScreen> {
     } catch (e) {
       messenger.showSnackBar(
         SnackBar(
-          content: Text(l.editDogSaveFailed('$e')),
-          backgroundColor: AppTheme.error,
+          content: Row(
+            children: [
+              Icon(Icons.error_outline, size: 18, color: cs.onError),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  l.editDogSaveFailed('\$e'),
+                  style: TextStyle(color: cs.onError),
+                ),
+              ),
+            ],
+          ),
+          backgroundColor: cs.error,
         ),
       );
     } finally {
@@ -195,6 +211,7 @@ class _EditDogScreenState extends ConsumerState<EditDogScreen> {
     final messenger = ScaffoldMessenger.of(context);
     final notifier = ref.read(dogProfilesProvider.notifier);
     final l = context.l10n;
+    final cs = Theme.of(context).colorScheme;
 
     final confirmed = await showDialog<bool>(
       context: context,
@@ -206,10 +223,14 @@ class _EditDogScreenState extends ConsumerState<EditDogScreen> {
             onPressed: () => Navigator.pop(ctx, false),
             child: Text(l.cancel),
           ),
-          FilledButton(
-            style: FilledButton.styleFrom(backgroundColor: AppTheme.error),
+          FilledButton.icon(
+            style: FilledButton.styleFrom(
+              backgroundColor: cs.error,
+              foregroundColor: cs.onError,
+            ),
             onPressed: () => Navigator.pop(ctx, true),
-            child: Text(l.delete),
+            icon: const Icon(Icons.delete_forever, size: 18),
+            label: Text(l.delete),
           ),
         ],
       ),
@@ -228,6 +249,8 @@ class _PhotoEditor extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final w = context.wimz;
+    final cs = Theme.of(context).colorScheme;
     return Center(
       child: Column(
         children: [
@@ -238,10 +261,10 @@ class _PhotoEditor extends ConsumerWidget {
               height: 120,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: AppTheme.surfaceLight,
-                border: Border.all(color: AppTheme.primary, width: 3),
+                color: w.surfaceRaised,
+                border: Border.all(color: cs.primary, width: 3),
               ),
-              child: _buildPhoto(),
+              child: _buildPhoto(context),
             ),
           ),
           const SizedBox(height: 8),
@@ -255,7 +278,7 @@ class _PhotoEditor extends ConsumerWidget {
     );
   }
 
-  Widget _buildPhoto() {
+  Widget _buildPhoto(BuildContext context) {
     if (profile.localPhotoPath != null) {
       final file = File(profile.localPhotoPath!);
       if (file.existsSync()) {
@@ -275,13 +298,15 @@ class _PhotoEditor extends ConsumerWidget {
         child: Image.network(profile.photoUrl!, fit: BoxFit.cover),
       );
     }
-    return Icon(Icons.pets, color: AppTheme.primary, size: 48);
+    return Icon(Icons.pets,
+        color: Theme.of(context).colorScheme.primary, size: 48);
   }
 
   Future<void> _changePhoto(BuildContext context, WidgetRef ref) async {
     final messenger = ScaffoldMessenger.of(context);
     final notifier = ref.read(dogProfilesProvider.notifier);
     final l = context.l10n;
+    final cs = Theme.of(context).colorScheme;
 
     final source = await showDialog<ImageSource>(
       context: context,
@@ -329,8 +354,19 @@ class _PhotoEditor extends ConsumerWidget {
     } catch (e) {
       messenger.showSnackBar(
         SnackBar(
-          content: Text(l.editDogPhotoSaveFailed('$e')),
-          backgroundColor: AppTheme.error,
+          content: Row(
+            children: [
+              Icon(Icons.error_outline, size: 18, color: cs.onError),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  l.editDogPhotoSaveFailed('\$e'),
+                  style: TextStyle(color: cs.onError),
+                ),
+              ),
+            ],
+          ),
+          backgroundColor: cs.error,
         ),
       );
     }
@@ -348,25 +384,27 @@ class _TreatsPerRewardStepper extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final w = context.wimz;
+    final cs = Theme.of(context).colorScheme;
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppTheme.surfaceLight,
+        color: w.surfaceRaised,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppTheme.glassBorder),
+        border: Border.all(color: w.line),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              const Icon(Icons.cookie, color: AppTheme.accent, size: 24),
+              Icon(Icons.cookie, color: cs.onSurface, size: 24),
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
                   context.l10n.editDogTreatsPerReward,
-                  style: const TextStyle(
-                    color: AppTheme.textPrimary,
+                  style: TextStyle(
+                    color: cs.onSurface,
                     fontSize: 16,
                     fontWeight: FontWeight.w600,
                   ),
@@ -375,15 +413,15 @@ class _TreatsPerRewardStepper extends StatelessWidget {
               IconButton(
                 onPressed: value > 1 ? () => onChanged(value - 1) : null,
                 icon: const Icon(Icons.remove_circle_outline),
-                color: AppTheme.primary,
+                color: cs.primary,
               ),
               SizedBox(
                 width: 32,
                 child: Text(
                   '$value',
                   textAlign: TextAlign.center,
-                  style: const TextStyle(
-                    color: AppTheme.textPrimary,
+                  style: TextStyle(
+                    color: cs.onSurface,
                     fontSize: 20,
                     fontWeight: FontWeight.bold,
                   ),
@@ -392,15 +430,15 @@ class _TreatsPerRewardStepper extends StatelessWidget {
               IconButton(
                 onPressed: value < 5 ? () => onChanged(value + 1) : null,
                 icon: const Icon(Icons.add_circle_outline),
-                color: AppTheme.primary,
+                color: cs.primary,
               ),
             ],
           ),
           const SizedBox(height: 4),
           Text(
             _helperFor(context, value),
-            style: const TextStyle(
-              color: AppTheme.textSecondary,
+            style: TextStyle(
+              color: w.inkMuted,
               fontSize: 12,
             ),
           ),
@@ -430,20 +468,22 @@ class _MarkerSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final markerId = profile.arucoMarkerId;
+    final w = context.wimz;
+    final cs = Theme.of(context).colorScheme;
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppTheme.surfaceLight,
+        color: w.surfaceRaised,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppTheme.glassBorder),
+        border: Border.all(color: w.line),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
             context.l10n.editDogArucoMarker,
-            style: const TextStyle(
-              color: AppTheme.textPrimary,
+            style: TextStyle(
+              color: cs.onSurface,
               fontSize: 16,
               fontWeight: FontWeight.w600,
             ),
@@ -453,8 +493,8 @@ class _MarkerSection extends StatelessWidget {
             markerId == null
                 ? context.l10n.editDogNoMarker
                 : context.l10n.editDogMarkerId(markerId),
-            style: const TextStyle(
-              color: AppTheme.textSecondary,
+            style: TextStyle(
+              color: w.inkMuted,
               fontSize: 12,
             ),
           ),
@@ -482,6 +522,7 @@ class _MarkerSection extends StatelessWidget {
       BuildContext context, int markerId, String dogName) async {
     final messenger = ScaffoldMessenger.of(context);
     final l = context.l10n;
+    final cs = Theme.of(context).colorScheme;
     final bytes = await loadArucoMarkerBytes(markerId);
     final pdf = pw.Document();
     final hasMarker = bytes != null;
@@ -563,8 +604,19 @@ class _MarkerSection extends StatelessWidget {
     } catch (e) {
       messenger.showSnackBar(
         SnackBar(
-          content: Text(l.editDogPrintFailed('$e')),
-          backgroundColor: AppTheme.error,
+          content: Row(
+            children: [
+              Icon(Icons.error_outline, size: 18, color: cs.onError),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  l.editDogPrintFailed('\$e'),
+                  style: TextStyle(color: cs.onError),
+                ),
+              ),
+            ],
+          ),
+          backgroundColor: cs.error,
         ),
       );
     }

@@ -47,6 +47,8 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen>
   Widget build(BuildContext context) {
     final unreadCount = ref.watch(unreadCountProvider);
     final selectedDog = ref.watch(selectedDogProvider);
+    final w = context.wimz;
+    final cs = Theme.of(context).colorScheme;
 
     return Scaffold(
       appBar: AppBar(
@@ -86,7 +88,14 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen>
                 const PopupMenuDivider(),
                 PopupMenuItem(
                   value: 'clear_all',
-                  child: Text(context.l10n.notificationsClearAll, style: const TextStyle(color: Colors.red)),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.delete_outline, size: 18, color: cs.error),
+                      const SizedBox(width: 8),
+                      Text(context.l10n.notificationsClearAll, style: TextStyle(color: cs.error)),
+                    ],
+                  ),
                 ),
               ],
             ),
@@ -94,9 +103,9 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen>
         bottom: TabBar(
           controller: _tabController,
           onTap: (_) => setState(() {}), // rebuild actions
-          indicatorColor: AppTheme.primary,
-          labelColor: AppTheme.primary,
-          unselectedLabelColor: AppTheme.textTertiary,
+          indicatorColor: cs.primary,
+          labelColor: cs.primary,
+          unselectedLabelColor: w.inkMuted,
           tabs: [
             Tab(icon: const Icon(Icons.bar_chart, size: 20), text: context.l10n.notificationsTabDashboard),
             Tab(icon: const Icon(Icons.notifications, size: 20), text: context.l10n.notificationsTabEvents),
@@ -179,6 +188,7 @@ class _EventsTab extends ConsumerWidget {
   }
 
   Widget _buildEmptyState(BuildContext context) {
+    final w = context.wimz;
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -186,13 +196,13 @@ class _EventsTab extends ConsumerWidget {
           Icon(
             Icons.notifications_none,
             size: 64,
-            color: AppTheme.textTertiary,
+            color: w.inkMuted,
           ),
           const SizedBox(height: 16),
           Text(
             context.l10n.notificationsEmpty,
             style: TextStyle(
-              color: AppTheme.textSecondary,
+              color: w.inkMuted,
               fontSize: 16,
             ),
           ),
@@ -200,7 +210,7 @@ class _EventsTab extends ConsumerWidget {
           Text(
             context.l10n.notificationsEmptyHint,
             style: TextStyle(
-              color: AppTheme.textTertiary,
+              color: w.inkMuted,
               fontSize: 14,
             ),
           ),
@@ -215,6 +225,8 @@ class _EventsTab extends ConsumerWidget {
     _DayGroup group,
     List<NotificationEvent> events,
   ) {
+    final w = context.wimz;
+    final cs = Theme.of(context).colorScheme;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -223,7 +235,7 @@ class _EventsTab extends ConsumerWidget {
           child: Text(
             group.label(context.l10n),
             style: TextStyle(
-              color: AppTheme.textTertiary,
+              color: w.inkMuted,
               fontSize: 12,
               fontWeight: FontWeight.w600,
               letterSpacing: 1,
@@ -239,8 +251,16 @@ class _EventsTab extends ConsumerWidget {
               background: Container(
                 alignment: Alignment.centerRight,
                 padding: const EdgeInsets.only(right: 20),
-                color: Colors.red,
-                child: const Icon(Icons.delete, color: Colors.white),
+                color: cs.error,
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.delete, color: cs.onError),
+                    const SizedBox(width: 6),
+                    Text(context.l10n.delete,
+                        style: TextStyle(color: cs.onError, fontWeight: FontWeight.w600)),
+                  ],
+                ),
               ),
               child: _NotificationTile(
                 event: event,
@@ -322,11 +342,12 @@ class _NotificationTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final w = context.wimz;
     final icon = _getIcon(event.type);
-    final color = _getColor(event.type);
+    final color = _getColor(context, event.type);
 
     return Material(
-      color: event.isRead ? Colors.transparent : AppTheme.surfaceLight,
+      color: event.isRead ? Colors.transparent : w.surfaceRaised,
       child: InkWell(
         onTap: onTap,
         child: Padding(
@@ -339,7 +360,7 @@ class _NotificationTile extends StatelessWidget {
                 width: 40,
                 height: 40,
                 decoration: BoxDecoration(
-                  color: color.withOpacity(0.15),
+                  color: color.withValues(alpha: 0.15),
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: Icon(icon, color: color, size: 20),
@@ -357,7 +378,7 @@ class _NotificationTile extends StatelessWidget {
                           child: Text(
                             event.title,
                             style: TextStyle(
-                              color: AppTheme.textPrimary,
+                              color: w.ink,
                               fontWeight:
                                   event.isRead ? FontWeight.normal : FontWeight.w600,
                               fontSize: 14,
@@ -367,7 +388,7 @@ class _NotificationTile extends StatelessWidget {
                         Text(
                           _formatTime(context, event.timestamp),
                           style: TextStyle(
-                            color: AppTheme.textTertiary,
+                            color: w.inkMuted,
                             fontSize: 12,
                           ),
                         ),
@@ -378,7 +399,7 @@ class _NotificationTile extends StatelessWidget {
                       Text(
                         event.subtitle!,
                         style: TextStyle(
-                          color: AppTheme.textSecondary,
+                          color: w.inkMuted,
                           fontSize: 13,
                         ),
                       ),
@@ -407,7 +428,7 @@ class _NotificationTile extends StatelessWidget {
                   height: 8,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    color: AppTheme.primary,
+                    color: Theme.of(context).colorScheme.primary,
                   ),
                 ),
               ],
@@ -440,25 +461,30 @@ class _NotificationTile extends StatelessWidget {
     };
   }
 
-  Color _getColor(NotificationEventType type) {
+  /// Every tile also shows the type icon and a title, so colour is never
+  /// the only cue. Error slot = genuine alerts / failures only; "connected"
+  /// is live status (signal); "disconnected" is a state, not an error.
+  Color _getColor(BuildContext context, NotificationEventType type) {
+    final w = context.wimz;
+    final cs = Theme.of(context).colorScheme;
     return switch (type) {
-      NotificationEventType.bark => Colors.orange,
-      NotificationEventType.sit => AppTheme.accent,
-      NotificationEventType.lieDown => AppTheme.primary,
-      NotificationEventType.stand => Colors.amber,
-      NotificationEventType.treatDispensed => AppTheme.accent,
-      NotificationEventType.missionStarted => AppTheme.primary,
-      NotificationEventType.missionCompleted => AppTheme.accent,
-      NotificationEventType.missionFailed => AppTheme.error,
-      NotificationEventType.lowBattery => AppTheme.error,
-      NotificationEventType.alert => Colors.orange,
-      NotificationEventType.happy => AppTheme.accent,
-      NotificationEventType.connected => AppTheme.accent,
-      NotificationEventType.disconnected => AppTheme.error,
-      NotificationEventType.coachReward => Colors.orange,
-      NotificationEventType.panicAlert => AppTheme.error,
-      NotificationEventType.sgSummary => Colors.purple,
-      NotificationEventType.missionDraft => AppTheme.secondary,
+      NotificationEventType.bark => cs.error,
+      NotificationEventType.sit => w.ink,
+      NotificationEventType.lieDown => w.ink,
+      NotificationEventType.stand => w.inkMuted,
+      NotificationEventType.treatDispensed => w.ink,
+      NotificationEventType.missionStarted => cs.primary,
+      NotificationEventType.missionCompleted => w.ink,
+      NotificationEventType.missionFailed => cs.error,
+      NotificationEventType.lowBattery => cs.error,
+      NotificationEventType.alert => w.inkMuted,
+      NotificationEventType.happy => w.ink,
+      NotificationEventType.connected => w.signal,
+      NotificationEventType.disconnected => w.inkMuted,
+      NotificationEventType.coachReward => w.inkMuted,
+      NotificationEventType.panicAlert => cs.error,
+      NotificationEventType.sgSummary => w.ink,
+      NotificationEventType.missionDraft => w.ink,
     };
   }
 

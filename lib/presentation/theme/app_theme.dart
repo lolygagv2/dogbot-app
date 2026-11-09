@@ -1,428 +1,27 @@
 import 'package:flutter/material.dart';
 
-/// WIM-Z Premium Dark Theme - Robotics HUD Aesthetic
-/// Inspired by Tesla FSD, DJI drone apps, and premium IoT interfaces
+import '../../theme/wimz_theme.dart';
+
+export '../../theme/wimz_theme.dart';
+
+/// Legacy entry point kept for the existing imports.
+///
+/// Colour now lives in `lib/theme/` ([WimzColors] tokens, [WimzTheme]
+/// ThemeData, [WimzStatus] status maps). Nothing here holds a colour: read
+/// them from `Theme.of(context).colorScheme` or `context.wimz` so light and
+/// dark both resolve correctly.
 class AppTheme {
   AppTheme._();
 
-  // ============ Brand Colors ============
-  // Primary: Cyan/Teal (matches WIM-Z blue LED ring)
-  static const Color primary = Color(0xFF00E5FF);
-  static const Color primaryDark = Color(0xFF00B8D4);
-  static const Color primaryLight = Color(0xFF6EFFFF);
-
-  // Night-vision accent (Build 100): cooler steel-blue shown app-wide when
-  // the robot reports `night_mode_state.mode == 'night'`. Stays within the
-  // cool palette so it harmonises with the existing dark theme rather than
-  // clashing — but is unambiguously different from the daylight cyan.
-  static const Color primaryNight = Color(0xFF5B8EE8);
-  static const Color primaryNightDark = Color(0xFF3D6BC4);
-
-  // Secondary: Electric Purple (for AI/detection highlights)
-  /// Bark-type (SG reporting group) colors — fixed order, shared by the SG
-  /// summary card and the dog profile's bark breakdown so a type always
-  /// wears the same color everywhere.
-  static const Map<String, Color> barkTypeColors = {
-    'distress': Colors.deepOrange,
-    'demand': Colors.amber,
-    'alarm': Colors.redAccent,
-    'aggressive': Colors.red,
-    'play': Colors.lightGreen,
-    'unclassified': Colors.blueGrey,
-  };
-
-  static const Color secondary = Color(0xFFBB86FC);
-  static const Color secondaryDark = Color(0xFF9C64FB);
-
-  // Accent: Neon Green (success states, treats, positive actions)
-  static const Color accent = Color(0xFF00FF94);
-  static const Color accentDark = Color(0xFF00C853);
-
-  // Warning/Alert
-  static const Color warning = Color(0xFFFFD600);
-  static const Color error = Color(0xFFFF5252);
-
-  // ============ Surface Colors ============
-  static const Color background = Color(0xFF0A0E14);
-  static const Color surface = Color(0xFF12181F);
-  static const Color surfaceLight = Color(0xFF1A2332);
-  static const Color surfaceLighter = Color(0xFF242D3C);
-
-  // Glass effect colors
-  static const Color glassWhite = Color(0x1AFFFFFF);
-  static const Color glassBorder = Color(0x33FFFFFF);
-
-  // ============ Text Colors ============
-  static const Color textPrimary = Color(0xFFFFFFFF);
-  static const Color textSecondary = Color(0xB3FFFFFF); // 70%
-  static const Color textTertiary = Color(0x80FFFFFF); // 50%
-  static const Color textDisabled = Color(0x4DFFFFFF); // 30%
-
-  // ============ Status Colors ============
-  static const Color connected = Color(0xFF00FF94);
-  static const Color connecting = Color(0xFFFFD600);
-  static const Color disconnected = Color(0xFF6B7280);
-  static const Color offline = Color(0xFFFF5252);
-
-  // ============ Behavior Detection Colors ============
-  static const Color behaviorSitting = Color(0xFF00FF94);  // Green - goal achieved
-  static const Color behaviorStanding = Color(0xFFFFD600); // Yellow - neutral
-  static const Color behaviorLying = Color(0xFF00E5FF);    // Cyan - relaxed
-  static const Color behaviorBarking = Color(0xFFFF5252);  // Red - alert
-  static const Color behaviorUnknown = Color(0xFF6B7280);  // Grey
-
-  // ============ Gradients ============
-  static const LinearGradient primaryGradient = LinearGradient(
-    colors: [primary, primaryDark],
-    begin: Alignment.topLeft,
-    end: Alignment.bottomRight,
-  );
-
-  static const LinearGradient accentGradient = LinearGradient(
-    colors: [accent, accentDark],
-    begin: Alignment.topLeft,
-    end: Alignment.bottomRight,
-  );
-
-  static const LinearGradient surfaceGradient = LinearGradient(
-    colors: [surfaceLight, surface],
-    begin: Alignment.topCenter,
-    end: Alignment.bottomCenter,
-  );
-
-  // Glow gradient for video overlay
-  static const RadialGradient glowGradient = RadialGradient(
-    colors: [
-      Color(0x4000E5FF),
-      Color(0x0000E5FF),
-    ],
-    radius: 0.8,
-  );
-
-  // ============ Shadows ============
-  static List<BoxShadow> glowShadow(Color color, {double blur = 20}) => [
-        BoxShadow(
-          color: color.withOpacity(0.4),
-          blurRadius: blur,
-          spreadRadius: 0,
-        ),
-      ];
-
-  static List<BoxShadow> get cardShadow => [
-        BoxShadow(
-          color: Colors.black.withOpacity(0.3),
-          blurRadius: 10,
-          offset: const Offset(0, 4),
-        ),
-      ];
-
   // ============ Border Radius ============
-  static const double radiusSmall = 8;
-  static const double radiusMedium = 12;
-  static const double radiusLarge = 16;
-  static const double radiusXLarge = 24;
-
-  // ============ Glass Card Decoration ============
-  static BoxDecoration get glassCard => BoxDecoration(
-        color: glassWhite,
-        borderRadius: BorderRadius.circular(radiusMedium),
-        border: Border.all(color: glassBorder, width: 1),
-        boxShadow: cardShadow,
-      );
-
-  static BoxDecoration glassCardWithGlow(Color glowColor) => BoxDecoration(
-        color: glassWhite,
-        borderRadius: BorderRadius.circular(radiusMedium),
-        border: Border.all(color: glowColor.withOpacity(0.3), width: 1),
-        boxShadow: [
-          ...cardShadow,
-          BoxShadow(
-            color: glowColor.withOpacity(0.2),
-            blurRadius: 20,
-            spreadRadius: -5,
-          ),
-        ],
-      );
+  static const double radiusSmall = WimzTheme.radiusSmall;
+  static const double radiusMedium = WimzTheme.radiusMedium;
+  static const double radiusLarge = WimzTheme.radiusLarge;
+  static const double radiusXLarge = WimzTheme.radiusXLarge;
 
   // ============ Theme Data ============
-  static ThemeData get dark {
-    return ThemeData(
-      useMaterial3: true,
-      brightness: Brightness.dark,
-      scaffoldBackgroundColor: background,
-      colorScheme: const ColorScheme.dark(
-        primary: primary,
-        onPrimary: background,
-        secondary: secondary,
-        onSecondary: background,
-        tertiary: accent,
-        surface: surface,
-        onSurface: textPrimary,
-        error: error,
-        onError: textPrimary,
-      ),
-
-      // App Bar
-      appBarTheme: const AppBarTheme(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        centerTitle: true,
-        titleTextStyle: TextStyle(
-          color: textPrimary,
-          fontSize: 18,
-          fontWeight: FontWeight.w600,
-          letterSpacing: 0.5,
-        ),
-        iconTheme: IconThemeData(color: textPrimary),
-      ),
-
-      // Cards
-      cardTheme: CardThemeData(
-        color: surfaceLight,
-        elevation: 0,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(radiusMedium),
-          side: const BorderSide(color: glassBorder, width: 1),
-        ),
-      ),
-
-      // Elevated Buttons (Primary actions)
-      elevatedButtonTheme: ElevatedButtonThemeData(
-        style: ElevatedButton.styleFrom(
-          backgroundColor: primary,
-          foregroundColor: background,
-          elevation: 0,
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(radiusSmall),
-          ),
-          textStyle: const TextStyle(
-            fontWeight: FontWeight.w600,
-            letterSpacing: 0.5,
-          ),
-        ),
-      ),
-
-      // Outlined Buttons (Secondary actions)
-      outlinedButtonTheme: OutlinedButtonThemeData(
-        style: OutlinedButton.styleFrom(
-          foregroundColor: primary,
-          side: const BorderSide(color: primary, width: 1.5),
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(radiusSmall),
-          ),
-        ),
-      ),
-
-      // Text Buttons
-      textButtonTheme: TextButtonThemeData(
-        style: TextButton.styleFrom(
-          foregroundColor: primary,
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        ),
-      ),
-
-      // Floating Action Button
-      floatingActionButtonTheme: const FloatingActionButtonThemeData(
-        backgroundColor: primary,
-        foregroundColor: background,
-        elevation: 4,
-        shape: CircleBorder(),
-      ),
-
-      // Input Fields
-      inputDecorationTheme: InputDecorationTheme(
-        filled: true,
-        fillColor: surfaceLight,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(radiusSmall),
-          borderSide: const BorderSide(color: glassBorder),
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(radiusSmall),
-          borderSide: const BorderSide(color: glassBorder),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(radiusSmall),
-          borderSide: const BorderSide(color: primary, width: 2),
-        ),
-        errorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(radiusSmall),
-          borderSide: const BorderSide(color: error),
-        ),
-        labelStyle: const TextStyle(color: textSecondary),
-        hintStyle: const TextStyle(color: textTertiary),
-      ),
-
-      // Bottom Navigation
-      bottomNavigationBarTheme: const BottomNavigationBarThemeData(
-        backgroundColor: surface,
-        selectedItemColor: primary,
-        unselectedItemColor: textTertiary,
-        type: BottomNavigationBarType.fixed,
-        elevation: 0,
-      ),
-
-      // Slider
-      sliderTheme: SliderThemeData(
-        activeTrackColor: primary,
-        inactiveTrackColor: surfaceLighter,
-        thumbColor: primary,
-        overlayColor: primary.withOpacity(0.2),
-        trackHeight: 4,
-      ),
-
-      // Switch
-      switchTheme: SwitchThemeData(
-        thumbColor: WidgetStateProperty.resolveWith((states) {
-          if (states.contains(WidgetState.selected)) return primary;
-          return textTertiary;
-        }),
-        trackColor: WidgetStateProperty.resolveWith((states) {
-          if (states.contains(WidgetState.selected)) return primary.withOpacity(0.5);
-          return surfaceLighter;
-        }),
-      ),
-
-      // Divider
-      dividerTheme: const DividerThemeData(
-        color: glassBorder,
-        thickness: 1,
-        space: 1,
-      ),
-
-      // Icon
-      iconTheme: const IconThemeData(
-        color: textSecondary,
-        size: 24,
-      ),
-
-      // Text
-      textTheme: const TextTheme(
-        displayLarge: TextStyle(color: textPrimary, fontWeight: FontWeight.w700),
-        displayMedium: TextStyle(color: textPrimary, fontWeight: FontWeight.w700),
-        displaySmall: TextStyle(color: textPrimary, fontWeight: FontWeight.w600),
-        headlineLarge: TextStyle(color: textPrimary, fontWeight: FontWeight.w600),
-        headlineMedium: TextStyle(color: textPrimary, fontWeight: FontWeight.w600),
-        headlineSmall: TextStyle(color: textPrimary, fontWeight: FontWeight.w600),
-        titleLarge: TextStyle(color: textPrimary, fontWeight: FontWeight.w600),
-        titleMedium: TextStyle(color: textPrimary, fontWeight: FontWeight.w500),
-        titleSmall: TextStyle(color: textSecondary, fontWeight: FontWeight.w500),
-        bodyLarge: TextStyle(color: textPrimary),
-        bodyMedium: TextStyle(color: textSecondary),
-        bodySmall: TextStyle(color: textTertiary),
-        labelLarge: TextStyle(color: textPrimary, fontWeight: FontWeight.w600, letterSpacing: 0.5),
-        labelMedium: TextStyle(color: textSecondary, fontWeight: FontWeight.w500),
-        labelSmall: TextStyle(color: textTertiary, letterSpacing: 0.5),
-      ),
-    );
-  }
-
-  // Light theme (minimal - most users will prefer dark for this type of app)
-  static ThemeData get light => dark; // Default to dark for robotics app
-
-  /// Night-vision theme (Build 100). Identical to [dark] but with the primary
-  /// accent shifted to a cooler steel-blue. App-wide chrome shift driven by
-  /// `nightModeProvider.currentMode` — see WimzApp.build().
-  static ThemeData get darkNight {
-    final base = dark;
-    return base.copyWith(
-      colorScheme: base.colorScheme.copyWith(
-        primary: primaryNight,
-      ),
-      // Re-derive widget themes that hard-bind the primary colour so the
-      // shift actually lands (ColorScheme alone doesn't cascade through these).
-      elevatedButtonTheme: ElevatedButtonThemeData(
-        style: ElevatedButton.styleFrom(
-          backgroundColor: primaryNight,
-          foregroundColor: background,
-          elevation: 0,
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(radiusSmall),
-          ),
-          textStyle: const TextStyle(
-            fontWeight: FontWeight.w600,
-            letterSpacing: 0.5,
-          ),
-        ),
-      ),
-      outlinedButtonTheme: OutlinedButtonThemeData(
-        style: OutlinedButton.styleFrom(
-          foregroundColor: primaryNight,
-          side: const BorderSide(color: primaryNight, width: 1.5),
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(radiusSmall),
-          ),
-        ),
-      ),
-      textButtonTheme: TextButtonThemeData(
-        style: TextButton.styleFrom(
-          foregroundColor: primaryNight,
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        ),
-      ),
-      floatingActionButtonTheme: const FloatingActionButtonThemeData(
-        backgroundColor: primaryNight,
-        foregroundColor: background,
-        elevation: 4,
-        shape: CircleBorder(),
-      ),
-      sliderTheme: SliderThemeData(
-        activeTrackColor: primaryNight,
-        inactiveTrackColor: surfaceLighter,
-        thumbColor: primaryNight,
-        overlayColor: primaryNight.withOpacity(0.2),
-        trackHeight: 4,
-      ),
-      switchTheme: SwitchThemeData(
-        thumbColor: WidgetStateProperty.resolveWith((states) {
-          if (states.contains(WidgetState.selected)) return primaryNight;
-          return textTertiary;
-        }),
-        trackColor: WidgetStateProperty.resolveWith((states) {
-          if (states.contains(WidgetState.selected)) {
-            return primaryNight.withOpacity(0.5);
-          }
-          return surfaceLighter;
-        }),
-      ),
-      bottomNavigationBarTheme: const BottomNavigationBarThemeData(
-        backgroundColor: surface,
-        selectedItemColor: primaryNight,
-        unselectedItemColor: textTertiary,
-        type: BottomNavigationBarType.fixed,
-        elevation: 0,
-      ),
-      inputDecorationTheme: InputDecorationTheme(
-        filled: true,
-        fillColor: surfaceLight,
-        contentPadding:
-            const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(radiusSmall),
-          borderSide: const BorderSide(color: glassBorder),
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(radiusSmall),
-          borderSide: const BorderSide(color: glassBorder),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(radiusSmall),
-          borderSide: const BorderSide(color: primaryNight, width: 2),
-        ),
-        errorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(radiusSmall),
-          borderSide: const BorderSide(color: error),
-        ),
-        labelStyle: const TextStyle(color: textSecondary),
-        hintStyle: const TextStyle(color: textTertiary),
-      ),
-    );
-  }
+  static ThemeData get light => WimzTheme.light;
+  static ThemeData get dark => WimzTheme.dark;
 
   // ============ Helper Methods ============
 
@@ -454,51 +53,13 @@ class AppTheme {
         return behavior;
     }
   }
-
-  /// Get color for behavior type with glow effect
-  static Color getBehaviorColor(String? behavior) {
-    switch (behavior?.toLowerCase()) {
-      case 'sitting':
-      case 'sit':
-        return behaviorSitting;
-      case 'come':
-      case 'standing':
-      case 'stand':
-        return behaviorStanding;
-      case 'laydown':
-      case 'lying':
-      case 'lie':
-      case 'down':
-        return behaviorLying;
-      case 'spin':
-      case 'speak':
-        return behaviorStanding; // reuse standing color for new tricks
-      case 'barking':
-      case 'bark':
-        return behaviorBarking;
-      default:
-        return behaviorUnknown;
-    }
-  }
-
-  /// Get color for connection status
-  static Color getConnectionColor(bool isConnected, bool isConnecting) {
-    if (isConnected) return connected;
-    if (isConnecting) return connecting;
-    return disconnected;
-  }
-
-  /// Get battery color based on level
-  static Color getBatteryColor(double level) {
-    if (level > 50) return accent;
-    if (level > 20) return warning;
-    return error;
-  }
 }
 
 // ============ Custom Widgets ============
 
-/// Glass morphism container
+/// Flat brand card: surface-raised fill, 1px line edge, elevation 0.
+/// `glowColor`, when given, becomes the border colour (a status edge) —
+/// never a glow.
 class GlassContainer extends StatelessWidget {
   final Widget child;
   final EdgeInsets? padding;
@@ -517,17 +78,18 @@ class GlassContainer extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       padding: padding ?? const EdgeInsets.all(16),
-      decoration: glowColor != null
-          ? AppTheme.glassCardWithGlow(glowColor!)
-          : AppTheme.glassCard.copyWith(
-              borderRadius: BorderRadius.circular(borderRadius ?? AppTheme.radiusMedium),
-            ),
+      decoration: WimzTheme.cardDecoration(
+        context,
+        radius: borderRadius ?? AppTheme.radiusMedium,
+        borderColor: glowColor,
+      ),
       child: child,
     );
   }
 }
 
-/// Neon glow text
+/// Emphasised text. Formerly neon-glow; now plain ink (or the colour given)
+/// with no shadow — the brand has no glow on light grounds.
 class GlowText extends StatelessWidget {
   final String text;
   final TextStyle? style;
@@ -542,21 +104,16 @@ class GlowText extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = glowColor ?? AppTheme.primary;
+    final color = glowColor ?? context.wimz.ink;
     return Text(
       text,
-      style: (style ?? const TextStyle()).copyWith(
-        color: color,
-        shadows: [
-          Shadow(color: color.withOpacity(0.8), blurRadius: 10),
-          Shadow(color: color.withOpacity(0.5), blurRadius: 20),
-        ],
-      ),
+      style: (style ?? const TextStyle()).copyWith(color: color),
     );
   }
 }
 
-/// Animated pulse indicator (for detection, status)
+/// Animated pulse indicator (for detection, status). Pair it with a word or
+/// icon — colour alone never carries the status.
 class PulseIndicator extends StatefulWidget {
   final Color color;
   final double size;
@@ -612,21 +169,15 @@ class _PulseIndicatorState extends State<PulseIndicator>
     return AnimatedBuilder(
       animation: _animation,
       builder: (context, child) {
-        return Container(
-          width: widget.size,
-          height: widget.size,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            color: widget.color,
-            boxShadow: widget.isActive
-                ? [
-                    BoxShadow(
-                      color: widget.color.withOpacity(_animation.value * 0.6),
-                      blurRadius: widget.size * _animation.value,
-                      spreadRadius: widget.size * 0.2 * _animation.value,
-                    ),
-                  ]
-                : null,
+        return Opacity(
+          opacity: widget.isActive ? _animation.value : 1.0,
+          child: Container(
+            width: widget.size,
+            height: widget.size,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: widget.color,
+            ),
           ),
         );
       },
@@ -634,7 +185,8 @@ class _PulseIndicatorState extends State<PulseIndicator>
   }
 }
 
-/// HUD-style label (for overlays on video)
+/// HUD-style label (for overlays on video). Video is an always-dark ground,
+/// so this uses the ink scrim with white text in both themes.
 class HudLabel extends StatelessWidget {
   final String label;
   final String value;
@@ -651,24 +203,25 @@ class HudLabel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final c = context.wimz;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
-        color: AppTheme.background.withOpacity(0.7),
+        color: c.scrim(0.7),
         borderRadius: BorderRadius.circular(4),
-        border: Border.all(color: AppTheme.glassBorder),
+        border: Border.all(color: c.lineOnVideo),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
           if (icon != null) ...[
-            Icon(icon, size: 14, color: valueColor ?? AppTheme.textSecondary),
+            Icon(icon, size: 14, color: valueColor ?? c.onVideo),
             const SizedBox(width: 6),
           ],
           Text(
             label,
-            style: const TextStyle(
-              color: AppTheme.textTertiary,
+            style: TextStyle(
+              color: c.onVideo.withValues(alpha: 0.7),
               fontSize: 10,
               fontWeight: FontWeight.w500,
               letterSpacing: 1,
@@ -678,7 +231,7 @@ class HudLabel extends StatelessWidget {
           Text(
             value,
             style: TextStyle(
-              color: valueColor ?? AppTheme.primary,
+              color: valueColor ?? c.onVideo,
               fontSize: 12,
               fontWeight: FontWeight.w700,
               fontFamily: 'monospace',

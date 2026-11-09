@@ -1,25 +1,48 @@
 import 'package:flutter/material.dart';
 
 import '../../core/utils/time_utils.dart';
+import '../../theme/wimz_colors.dart';
 
 /// Types of guardian events from the robot
 enum GuardianEventType {
-  dogDetected('dog_detected', 'Dog detected', Icons.pets, Colors.blue),
-  dogLeft('dog_left', 'Dog left frame', Icons.directions_walk, Colors.grey),
-  barkingDetected('barking', 'Barking detected', Icons.volume_up, Colors.red),
-  treatDispensed('treat_dispensed', 'Treat dispensed', Icons.card_giftcard, Colors.green),
-  behaviorChange('behavior_change', 'Behavior change', Icons.psychology, Colors.orange),
-  motionDetected('motion_detected', 'Motion detected', Icons.motion_photos_on, Colors.purple),
-  quietReward('quiet_reward', 'Quiet reward', Icons.star, Colors.amber),
-  alertTriggered('alert_triggered', 'Alert triggered', Icons.warning, Colors.deepOrange),
-  unknown('unknown', 'Event', Icons.info, Colors.grey);
+  dogDetected('dog_detected', 'Dog detected', Icons.pets),
+  dogLeft('dog_left', 'Dog left frame', Icons.directions_walk),
+  barkingDetected('barking', 'Barking detected', Icons.volume_up),
+  treatDispensed('treat_dispensed', 'Treat dispensed', Icons.card_giftcard),
+  behaviorChange('behavior_change', 'Behavior change', Icons.psychology),
+  motionDetected('motion_detected', 'Motion detected', Icons.motion_photos_on),
+  quietReward('quiet_reward', 'Quiet reward', Icons.star),
+  alertTriggered('alert_triggered', 'Alert triggered', Icons.warning),
+  unknown('unknown', 'Event', Icons.info);
 
   final String value;
   final String label;
   final IconData icon;
-  final Color color;
 
-  const GuardianEventType(this.value, this.label, this.icon, this.color);
+  const GuardianEventType(this.value, this.label, this.icon);
+
+  /// Brand colour for this event type. Alerts and barking use the error
+  /// slot; treats and quiet rewards are ink; a detected dog is a live
+  /// signal; everything else is ink-muted. Callers always draw [icon] and
+  /// the label beside it, so colour never carries the meaning alone.
+  Color colorOf(BuildContext context) {
+    final w = context.wimz;
+    switch (this) {
+      case GuardianEventType.barkingDetected:
+      case GuardianEventType.alertTriggered:
+        return Theme.of(context).colorScheme.error;
+      case GuardianEventType.treatDispensed:
+      case GuardianEventType.quietReward:
+        return w.ink;
+      case GuardianEventType.dogDetected:
+        return w.signal;
+      case GuardianEventType.dogLeft:
+      case GuardianEventType.behaviorChange:
+      case GuardianEventType.motionDetected:
+      case GuardianEventType.unknown:
+        return w.inkMuted;
+    }
+  }
 
   static GuardianEventType fromString(String value) {
     return GuardianEventType.values.firstWhere(

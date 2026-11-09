@@ -53,15 +53,18 @@ class _SchedulerScreenState extends ConsumerState<SchedulerScreen> {
             Container(
               width: double.infinity,
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              color: AppTheme.error.withOpacity(0.2),
+              color: Theme.of(context).colorScheme.errorContainer,
               child: Row(
                 children: [
-                  const Icon(Icons.error_outline, color: AppTheme.error, size: 18),
+                  Icon(Icons.error_outline,
+                      color: Theme.of(context).colorScheme.error, size: 18),
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
                       schedulerState.error!,
-                      style: const TextStyle(color: AppTheme.error, fontSize: 13),
+                      style: TextStyle(
+                          color: Theme.of(context).colorScheme.error,
+                          fontSize: 13),
                     ),
                   ),
                 ],
@@ -114,19 +117,17 @@ class _MasterToggle extends StatelessWidget {
       margin: const EdgeInsets.all(16),
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
-        color: isEnabled
-            ? AppTheme.accent.withOpacity(0.1)
-            : AppTheme.surfaceLight,
+        color: context.wimz.surfaceRaised,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: isEnabled ? AppTheme.accent.withOpacity(0.3) : AppTheme.glassBorder,
+          color: isEnabled ? context.wimz.lineStrong : context.wimz.line,
         ),
       ),
       child: Row(
         children: [
           Icon(
             isEnabled ? Icons.schedule : Icons.schedule_outlined,
-            color: isEnabled ? AppTheme.accent : AppTheme.textTertiary,
+            color: isEnabled ? context.wimz.ink : context.wimz.inkMuted,
             size: 28,
           ),
           const SizedBox(width: 12),
@@ -138,14 +139,14 @@ class _MasterToggle extends StatelessWidget {
                   context.l10n.schedulerAutoScheduler,
                   style: TextStyle(
                     fontWeight: FontWeight.w600,
-                    color: isEnabled ? AppTheme.textPrimary : AppTheme.textSecondary,
+                    color: isEnabled ? context.wimz.ink : context.wimz.inkMuted,
                   ),
                 ),
                 Text(
                   isEnabled ? context.l10n.schedulerRunsAutomatically : context.l10n.schedulerPaused,
                   style: TextStyle(
                     fontSize: 12,
-                    color: isEnabled ? AppTheme.accent : AppTheme.textTertiary,
+                    color: isEnabled ? context.wimz.ink : context.wimz.inkMuted,
                   ),
                 ),
               ],
@@ -177,7 +178,7 @@ class _EmptyState extends StatelessWidget {
             Icon(
               Icons.calendar_today,
               size: 64,
-              color: AppTheme.textTertiary,
+              color: context.wimz.inkMuted,
             ),
             const SizedBox(height: 16),
             Text(
@@ -192,7 +193,7 @@ class _EmptyState extends StatelessWidget {
               context.l10n.schedulerEmptyBody,
               textAlign: TextAlign.center,
               style: TextStyle(
-                color: AppTheme.textTertiary,
+                color: context.wimz.inkMuted,
               ),
             ),
             const SizedBox(height: 24),
@@ -234,10 +235,10 @@ class _ScheduleCard extends ConsumerWidget {
         alignment: Alignment.centerRight,
         padding: const EdgeInsets.only(right: 20),
         decoration: BoxDecoration(
-          color: AppTheme.error,
+          color: Theme.of(context).colorScheme.error,
           borderRadius: BorderRadius.circular(12),
         ),
-        child: const Icon(Icons.delete, color: Colors.white),
+        child: Icon(Icons.delete, color: Theme.of(context).colorScheme.onError),
       ),
       confirmDismiss: (direction) async {
         return await showDialog<bool>(
@@ -250,10 +251,14 @@ class _ScheduleCard extends ConsumerWidget {
                 onPressed: () => Navigator.pop(ctx, false),
                 child: Text(context.l10n.cancel),
               ),
-              FilledButton(
+              FilledButton.icon(
                 onPressed: () => Navigator.pop(ctx, true),
-                style: FilledButton.styleFrom(backgroundColor: AppTheme.error),
-                child: Text(context.l10n.delete),
+                style: FilledButton.styleFrom(
+                  backgroundColor: Theme.of(ctx).colorScheme.error,
+                  foregroundColor: Theme.of(ctx).colorScheme.onError,
+                ),
+                icon: const Icon(Icons.delete, size: 18),
+                label: Text(context.l10n.delete),
               ),
             ],
           ),
@@ -281,13 +286,15 @@ class _ScheduleCard extends ConsumerWidget {
                   height: 48,
                   decoration: BoxDecoration(
                     color: isActive
-                        ? AppTheme.primary.withOpacity(0.2)
-                        : AppTheme.surfaceLighter,
+                        ? context.wimz.surfaceSunken
+                        : context.wimz.surfaceRaised,
                     borderRadius: BorderRadius.circular(24),
                   ),
                   child: Icon(
                     Icons.pets,
-                    color: isActive ? AppTheme.primary : AppTheme.textTertiary,
+                    color: isActive
+                        ? Theme.of(context).colorScheme.primary
+                        : context.wimz.inkMuted,
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -309,8 +316,8 @@ class _ScheduleCard extends ConsumerWidget {
                               style: TextStyle(
                                 fontWeight: FontWeight.w600,
                                 color: isActive
-                                    ? AppTheme.textPrimary
-                                    : AppTheme.textSecondary,
+                                    ? context.wimz.ink
+                                    : context.wimz.inkMuted,
                               ),
                             ),
                           ),
@@ -322,8 +329,8 @@ class _ScheduleCard extends ConsumerWidget {
                                 child: Icon(Icons.auto_awesome,
                                     size: 14,
                                     color: isActive
-                                        ? AppTheme.accent
-                                        : AppTheme.textTertiary),
+                                        ? context.wimz.ink
+                                        : context.wimz.inkMuted),
                               ),
                             ),
                           if (!schedule.enabled)
@@ -333,15 +340,15 @@ class _ScheduleCard extends ConsumerWidget {
                                 vertical: 2,
                               ),
                               decoration: BoxDecoration(
-                                color: AppTheme.textTertiary.withOpacity(0.2),
+                                color: context.wimz.surfaceSunken,
                                 borderRadius: BorderRadius.circular(4),
                               ),
                               child: Text(
                                 context.l10n.schedulerPausedBadge,
-                                style: const TextStyle(
+                                style: TextStyle(
                                   fontSize: 9,
                                   fontWeight: FontWeight.bold,
-                                  color: AppTheme.textTertiary,
+                                  color: context.wimz.inkMuted,
                                 ),
                               ),
                             ),
@@ -352,7 +359,9 @@ class _ScheduleCard extends ConsumerWidget {
                         dog?.name ?? context.l10n.schedulerUnknownDog,
                         style: TextStyle(
                           fontSize: 13,
-                          color: isActive ? AppTheme.primary : AppTheme.textTertiary,
+                          color: isActive
+                              ? Theme.of(context).colorScheme.primary
+                              : context.wimz.inkMuted,
                         ),
                       ),
                       const SizedBox(height: 4),
@@ -361,7 +370,7 @@ class _ScheduleCard extends ConsumerWidget {
                           Icon(
                             Icons.access_time,
                             size: 14,
-                            color: AppTheme.textTertiary,
+                            color: context.wimz.inkMuted,
                           ),
                           const SizedBox(width: 4),
                           Expanded(
@@ -373,7 +382,7 @@ class _ScheduleCard extends ConsumerWidget {
                               overflow: TextOverflow.ellipsis,
                               style: TextStyle(
                                 fontSize: 12,
-                                color: AppTheme.textTertiary,
+                                color: context.wimz.inkMuted,
                               ),
                             ),
                           ),
@@ -386,14 +395,18 @@ class _ScheduleCard extends ConsumerWidget {
                             Icon(
                               Icons.event,
                               size: 14,
-                              color: isActive ? AppTheme.accent : AppTheme.textTertiary,
+                              color: isActive
+                                  ? context.wimz.ink
+                                  : context.wimz.inkMuted,
                             ),
                             const SizedBox(width: 4),
                             Text(
                               context.l10n.schedulerNextRun(nextRun),
                               style: TextStyle(
                                 fontSize: 12,
-                                color: isActive ? AppTheme.accent : AppTheme.textTertiary,
+                                color: isActive
+                                    ? context.wimz.ink
+                                    : context.wimz.inkMuted,
                               ),
                             ),
                           ],
@@ -403,10 +416,10 @@ class _ScheduleCard extends ConsumerWidget {
                         Row(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            const Icon(
+                            Icon(
                               Icons.info_outline,
                               size: 14,
-                              color: AppTheme.textTertiary,
+                              color: context.wimz.inkMuted,
                             ),
                             const SizedBox(width: 4),
                             Expanded(
@@ -414,9 +427,9 @@ class _ScheduleCard extends ConsumerWidget {
                                 schedule.reason!,
                                 maxLines: 2,
                                 overflow: TextOverflow.ellipsis,
-                                style: const TextStyle(
+                                style: TextStyle(
                                   fontSize: 12,
-                                  color: AppTheme.textTertiary,
+                                  color: context.wimz.inkMuted,
                                 ),
                               ),
                             ),
@@ -440,7 +453,7 @@ class _ScheduleCard extends ConsumerWidget {
                     ),
                     Icon(
                       Icons.chevron_right,
-                      color: AppTheme.textTertiary,
+                      color: context.wimz.inkMuted,
                     ),
                   ],
                 ),

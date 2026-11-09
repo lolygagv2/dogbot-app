@@ -40,9 +40,11 @@ class _DemoViewScreenState extends ConsumerState<DemoViewScreen> {
   Widget build(BuildContext context) {
     final l = context.l10n;
     final dog = ref.watch(selectedDogProvider);
+    final w = context.wimz;
+    final cs = Theme.of(context).colorScheme;
 
     return Scaffold(
-      backgroundColor: AppTheme.background,
+      backgroundColor: cs.surface,
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.fromLTRB(12, 6, 12, 12),
@@ -50,26 +52,24 @@ class _DemoViewScreenState extends ConsumerState<DemoViewScreen> {
             children: [
               Row(
                 children: [
-                  const Icon(Icons.pets, color: AppTheme.primary, size: 18),
+                  // The demo view's one gold mark: the brand paw.
+                  Icon(Icons.pets, color: w.goldDeep, size: 18),
                   const SizedBox(width: 6),
                   Text(
                     'WIM-Z',
                     style: TextStyle(
                       fontWeight: FontWeight.bold,
                       letterSpacing: 2,
-                      color: AppTheme.primary,
-                      shadows: AppTheme.glowShadow(AppTheme.primary, blur: 12)
-                          .map((s) => Shadow(color: s.color, blurRadius: s.blurRadius))
-                          .toList(),
+                      color: cs.onSurface,
                     ),
                   ),
                   const SizedBox(width: 10),
                   if (dog != null)
                     Text(dog.name,
-                        style: const TextStyle(color: AppTheme.textSecondary)),
+                        style: TextStyle(color: w.inkMuted)),
                   const Spacer(),
                   IconButton(
-                    icon: const Icon(Icons.close, color: AppTheme.textTertiary),
+                    icon: Icon(Icons.close, color: w.inkMuted),
                     onPressed: () => Navigator.of(context).maybePop(),
                   ),
                 ],
@@ -82,7 +82,7 @@ class _DemoViewScreenState extends ConsumerState<DemoViewScreen> {
                       _Pane(
                         title: l.todayCardTitle,
                         icon: Icons.today,
-                        color: AppTheme.primary,
+                        color: cs.onSurface,
                         child: dog == null
                             ? _Empty(l.demoNoDog)
                             : TodayCard(
@@ -91,13 +91,13 @@ class _DemoViewScreenState extends ConsumerState<DemoViewScreen> {
                       _Pane(
                         title: l.demoPanelGuardian,
                         icon: Icons.shield_outlined,
-                        color: Colors.purple,
+                        color: cs.onSurface,
                         child: const _SgPanel(),
                       ),
                       _Pane(
                         title: l.demoPanelTranscript,
                         icon: Icons.forum_outlined,
-                        color: AppTheme.secondary,
+                        color: cs.onSurface,
                         child: const _TranscriptPanel(),
                       ),
                     ];
@@ -150,12 +150,13 @@ class _Pane extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final w = context.wimz;
     return Container(
       padding: const EdgeInsets.all(8),
       decoration: BoxDecoration(
-        color: AppTheme.surface.withOpacity(0.6),
+        color: w.surfaceRaised,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: color.withOpacity(0.35)),
+        border: Border.all(color: w.line),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -190,7 +191,7 @@ class _Empty extends StatelessWidget {
   Widget build(BuildContext context) => Center(
         child: Text(text,
             textAlign: TextAlign.center,
-            style: const TextStyle(color: AppTheme.textTertiary, fontSize: 13)),
+            style: TextStyle(color: context.wimz.inkMuted, fontSize: 13)),
       );
 }
 
@@ -203,6 +204,8 @@ class _SgPanel extends ConsumerWidget {
     final state = ref.watch(sgSummaryProvider);
     final s = state.summary;
     final l = context.l10n;
+    final w = context.wimz;
+    final cs = Theme.of(context).colorScheme;
     if (s == null) {
       return _Empty(state.pulling
           ? l.loading
@@ -216,17 +219,17 @@ class _SgPanel extends ConsumerWidget {
         if (s.headline != null)
           Text(
             s.headline!,
-            style: const TextStyle(
+            style: TextStyle(
                 fontSize: 14,
                 fontWeight: FontWeight.w600,
-                color: AppTheme.textPrimary),
+                color: w.ink),
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
           ),
         if (s.currentAction != null)
           Text(
             s.currentAction!,
-            style: const TextStyle(fontSize: 11, color: AppTheme.textSecondary),
+            style: TextStyle(fontSize: 11, color: w.inkMuted),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
           ),
@@ -239,7 +242,8 @@ class _SgPanel extends ConsumerWidget {
             _Stat(
               l.sgStatLevel,
               s.escalationLevel?.toString() ?? '–',
-              color: (s.escalationLevel ?? 0) >= 4 ? AppTheme.error : null,
+              color: (s.escalationLevel ?? 0) >= 4 ? cs.error : null,
+              icon: (s.escalationLevel ?? 0) >= 4 ? Icons.warning_amber : null,
             ),
             _Trend(trend: s.trend),
           ],
@@ -256,7 +260,7 @@ class _SgPanel extends ConsumerWidget {
                     Expanded(
                       flex: (e.value * 10).round().clamp(1, 1000),
                       child: Container(
-                          color: AppTheme.barkTypeColors[e.key] ?? Colors.blueGrey),
+                          color: WimzStatus.barkType(context, e.key)),
                     ),
                 ],
               ),
@@ -271,16 +275,23 @@ class _SgPanel extends ConsumerWidget {
                   '${e.key} ${e.value.toStringAsFixed(0)}%',
                   style: TextStyle(
                       fontSize: 10,
-                      color: AppTheme.barkTypeColors[e.key] ?? Colors.blueGrey),
+                      color: WimzStatus.barkType(context, e.key)),
                 ),
             ],
           ),
         ],
         if (s.panicActive) ...[
           const SizedBox(height: 6),
-          Text(l.sgPanicActive,
-              style: const TextStyle(
-                  fontSize: 11, fontWeight: FontWeight.bold, color: AppTheme.error)),
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.crisis_alert, size: 12, color: cs.error),
+              const SizedBox(width: 4),
+              Text(l.sgPanicActive,
+                  style: TextStyle(
+                      fontSize: 11, fontWeight: FontWeight.bold, color: cs.error)),
+            ],
+          ),
         ],
       ],
     );
@@ -291,22 +302,39 @@ class _Stat extends StatelessWidget {
   final String label;
   final String value;
   final Color? color;
-  const _Stat(this.label, this.value, {this.color});
+
+  /// Optional mark drawn before [value] so a coloured stat never relies on
+  /// colour alone.
+  final IconData? icon;
+  const _Stat(this.label, this.value, {this.color, this.icon});
   @override
-  Widget build(BuildContext context) => Expanded(
-        child: Column(
-          children: [
-            Text(value,
-                style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                    color: color ?? AppTheme.textPrimary)),
-            Text(label,
-                style: const TextStyle(fontSize: 9, color: AppTheme.textTertiary),
-                overflow: TextOverflow.ellipsis),
-          ],
-        ),
-      );
+  Widget build(BuildContext context) {
+    final w = context.wimz;
+    final valueColor = color ?? w.ink;
+    return Expanded(
+      child: Column(
+        children: [
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (icon != null) ...[
+                Icon(icon, size: 14, color: valueColor),
+                const SizedBox(width: 2),
+              ],
+              Text(value,
+                  style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: valueColor)),
+            ],
+          ),
+          Text(label,
+              style: TextStyle(fontSize: 9, color: w.inkMuted),
+              overflow: TextOverflow.ellipsis),
+        ],
+      ),
+    );
+  }
 }
 
 class _Trend extends StatelessWidget {
@@ -314,17 +342,18 @@ class _Trend extends StatelessWidget {
   const _Trend({required this.trend});
   @override
   Widget build(BuildContext context) {
+    final w = context.wimz;
     final (icon, color) = switch (trend) {
-      'improving' => (Icons.trending_down, Colors.green),
-      'worsening' => (Icons.trending_up, AppTheme.error),
-      _ => (Icons.trending_flat, AppTheme.textTertiary),
+      'improving' => (Icons.trending_down, w.ink),
+      'worsening' => (Icons.trending_up, Theme.of(context).colorScheme.error),
+      _ => (Icons.trending_flat, w.inkMuted),
     };
     return Expanded(
       child: Column(
         children: [
           Icon(icon, size: 18, color: color),
           Text(context.l10n.sgStatTrend,
-              style: const TextStyle(fontSize: 9, color: AppTheme.textTertiary)),
+              style: TextStyle(fontSize: 9, color: w.inkMuted)),
         ],
       ),
     );
@@ -362,6 +391,8 @@ class _TranscriptPanelState extends ConsumerState<_TranscriptPanel> {
     final l = context.l10n;
     if (lines.isEmpty) return _Empty(l.demoTranscriptEmpty);
     final locale = Localizations.localeOf(context).toString();
+    final w = context.wimz;
+    final cs = Theme.of(context).colorScheme;
     return ListView.builder(
       controller: _scroll,
       padding: EdgeInsets.zero,
@@ -369,14 +400,16 @@ class _TranscriptPanelState extends ConsumerState<_TranscriptPanel> {
       itemBuilder: (_, i) {
         final line = lines[i];
         final isUser = line.role == 'user';
+        // Vendor colours are gone: the speaker name carries identity.
         final color = isUser
-            ? AppTheme.primary
+            ? cs.primary
             : switch (line.provider) {
-                AiProvider.chatgpt => const Color(0xFF10A37F),
-                AiProvider.claude => const Color(0xFFD97757),
-                AiProvider.grok => const Color(0xFFE0E0E0),
-                AiProvider.perplexity => const Color(0xFF20B8CD),
-                null => AppTheme.secondary,
+                AiProvider.chatgpt ||
+                AiProvider.claude ||
+                AiProvider.grok ||
+                AiProvider.perplexity ||
+                null =>
+                  w.ink,
               };
         return Padding(
           padding: const EdgeInsets.only(bottom: 6),
@@ -392,16 +425,16 @@ class _TranscriptPanelState extends ConsumerState<_TranscriptPanel> {
                           color: color)),
                   const SizedBox(width: 6),
                   Text(DateFormat.Hm(locale).format(line.ts.toLocal()),
-                      style: const TextStyle(
-                          fontSize: 10, color: AppTheme.textTertiary)),
+                      style: TextStyle(
+                          fontSize: 10, color: w.inkMuted)),
                 ],
               ),
               Text(line.text,
                   style: TextStyle(
                     fontSize: 13,
                     color: line.role == 'tool'
-                        ? AppTheme.textTertiary
-                        : AppTheme.textPrimary,
+                        ? w.inkMuted
+                        : w.ink,
                     fontStyle: line.role == 'tool'
                         ? FontStyle.italic
                         : FontStyle.normal,

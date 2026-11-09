@@ -43,6 +43,7 @@ class HomeScreen extends ConsumerWidget {
     // deviceId != defaultDeviceId — the placeholder equals a real robot's id
     // (wimz_robot_01), so that comparison misread it as "no robot".
     final hasPairedDevice = isLocal || ref.watch(hasSelectedDeviceProvider);
+    final w = context.wimz;
 
     return Scaffold(
       appBar: AppBar(
@@ -57,8 +58,7 @@ class HomeScreen extends ConsumerWidget {
                 displayName,
                 style: TextStyle(
                   fontSize: 12,
-                  color:
-                      Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+                  color: w.inkMuted,
                 ),
               )
             else
@@ -68,7 +68,8 @@ class HomeScreen extends ConsumerWidget {
                   context.l10n.homeFindYourRobot,
                   style: TextStyle(
                     fontSize: 12,
-                    color: AppTheme.primary,
+                    // A link → signal.
+                    color: w.signal,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
@@ -94,7 +95,7 @@ class HomeScreen extends ConsumerWidget {
               Expanded(
                 flex: isLandscape ? 4 : 5,
                 child: Container(
-                  color: Colors.black,
+                  color: w.brandInk,
                   child: Stack(
                     fit: StackFit.expand,
                     children: [
@@ -214,7 +215,11 @@ class _DetectionChipState extends State<_DetectionChip> {
   Widget build(BuildContext context) {
     if (!_isVisible) return const SizedBox.shrink();
 
-    final color = AppTheme.getBehaviorColor(widget.behavior);
+    final w = context.wimz;
+    final color = WimzStatus.behavior(context, widget.behavior, onVideo: true);
+    // The chip is filled with the behaviour colour (ink / ink-muted / error),
+    // so its text takes the surface colour for contrast in both themes.
+    final onChip = w.surface;
     final confidenceText =
         widget.confidence != null ? '${(widget.confidence! * 100).toInt()}%' : '';
 
@@ -224,18 +229,18 @@ class _DetectionChipState extends State<_DetectionChip> {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
         decoration: BoxDecoration(
-          color: color.withOpacity(0.9),
+          color: color.withValues(alpha: 0.9),
           borderRadius: BorderRadius.circular(20),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.pets, color: Colors.white, size: 16),
+            Icon(Icons.pets, color: onChip, size: 16),
             const SizedBox(width: 6),
             Text(
               behaviorDisplayName(context.l10n, widget.behavior).toUpperCase(),
-              style: const TextStyle(
-                color: Colors.white,
+              style: TextStyle(
+                color: onChip,
                 fontWeight: FontWeight.bold,
                 fontSize: 12,
               ),
@@ -244,8 +249,8 @@ class _DetectionChipState extends State<_DetectionChip> {
               const SizedBox(width: 6),
               Text(
                 confidenceText,
-                style: const TextStyle(
-                  color: Colors.white70,
+                style: TextStyle(
+                  color: onChip.withValues(alpha: 0.7),
                   fontSize: 12,
                 ),
               ),
@@ -281,11 +286,13 @@ class _UnknownDogBannerState extends ConsumerState<_UnknownDogBanner> {
       _dismissed = false;
     }
 
+    final w = context.wimz;
     return Positioned(
       top: 16,
       right: 16,
       child: Material(
-        color: AppTheme.warning.withOpacity(0.9),
+        // Card over video: raised surface, ink text (no warning wash).
+        color: w.surfaceRaised.withValues(alpha: 0.95),
         borderRadius: BorderRadius.circular(12),
         child: InkWell(
           onTap: () {
@@ -297,12 +304,12 @@ class _UnknownDogBannerState extends ConsumerState<_UnknownDogBanner> {
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Icon(Icons.pets, color: Colors.black87, size: 16),
+                Icon(Icons.pets, color: w.ink, size: 16),
                 const SizedBox(width: 6),
                 Text(
                   context.l10n.homeNewDog(unknownDog.arucoId ?? 0),
-                  style: const TextStyle(
-                    color: Colors.black87,
+                  style: TextStyle(
+                    color: w.ink,
                     fontWeight: FontWeight.bold,
                     fontSize: 12,
                   ),
@@ -310,8 +317,9 @@ class _UnknownDogBannerState extends ConsumerState<_UnknownDogBanner> {
                 const SizedBox(width: 6),
                 Text(
                   context.l10n.add,
-                  style: const TextStyle(
-                    color: Colors.black54,
+                  style: TextStyle(
+                    // A link → signal.
+                    color: w.signal,
                     fontSize: 12,
                     decoration: TextDecoration.underline,
                   ),
@@ -324,7 +332,7 @@ class _UnknownDogBannerState extends ConsumerState<_UnknownDogBanner> {
                       _lastDismissedArucoId = unknownDog.arucoId;
                     });
                   },
-                  child: const Icon(Icons.close, color: Colors.black54, size: 14),
+                  child: Icon(Icons.close, color: w.inkMuted, size: 14),
                 ),
               ],
             ),
@@ -363,6 +371,8 @@ class _ModeRow extends ConsumerWidget {
     final isLocked = modeState.isModeLocked;
     final unreadCount = ref.watch(unreadEventCountProvider);
     final l = context.l10n;
+    final w = context.wimz;
+    final cs = Theme.of(context).colorScheme;
 
     // Show error snackbar when mode change fails
     ref.listen<String?>(modeErrorProvider, (previous, error) {
@@ -370,13 +380,19 @@ class _ModeRow extends ConsumerWidget {
         ScaffoldMessenger.of(context).hideCurrentSnackBar();
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(error),
-            backgroundColor: AppTheme.error,
+            content: Row(
+              children: [
+                Icon(Icons.error_outline, color: cs.onError, size: 18),
+                const SizedBox(width: 8),
+                Expanded(child: Text(error, style: TextStyle(color: cs.onError))),
+              ],
+            ),
+            backgroundColor: cs.error,
             behavior: SnackBarBehavior.floating,
             duration: const Duration(seconds: 5),
             action: SnackBarAction(
               label: l.homeDismiss,
-              textColor: Colors.white,
+              textColor: cs.onError,
               onPressed: () {
                 ref.read(modeStateProvider.notifier).clearError();
                 ScaffoldMessenger.of(context).hideCurrentSnackBar();
@@ -388,7 +404,7 @@ class _ModeRow extends ConsumerWidget {
     });
 
     final shownMode = isChanging ? (modeState.pendingMode ?? displayMode) : displayMode;
-    final color = _getModeColor(shownMode);
+    final color = _getModeColor(context, shownMode);
     final showExit = displayMode != RobotMode.idle || (isChanging && shownMode != RobotMode.idle);
     final showBadge = displayMode == RobotMode.silentGuardian && unreadCount > 0;
 
@@ -397,7 +413,7 @@ class _ModeRow extends ConsumerWidget {
         // Mode chip — "Mode: Idle ▾"
         Expanded(
           child: Material(
-            color: AppTheme.surfaceLight,
+            color: w.surfaceRaised,
             borderRadius: BorderRadius.circular(10),
             child: InkWell(
               borderRadius: BorderRadius.circular(10),
@@ -409,17 +425,17 @@ class _ModeRow extends ConsumerWidget {
                   borderRadius: BorderRadius.circular(10),
                   border: Border.all(
                     color: shownMode == RobotMode.idle
-                        ? AppTheme.glassBorder
-                        : color.withOpacity(0.8),
+                        ? w.line
+                        : color.withValues(alpha: 0.8),
                   ),
                 ),
                 child: Row(
                   children: [
                     if (isChanging)
-                      const SizedBox(
+                      SizedBox(
                         width: 16,
                         height: 16,
-                        child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                        child: CircularProgressIndicator(strokeWidth: 2, color: cs.primary),
                       )
                     else if (isLocked)
                       Icon(Icons.lock, size: 16, color: color)
@@ -430,7 +446,7 @@ class _ModeRow extends ConsumerWidget {
                       child: Text(
                         l.homeModeChip(shownMode.localizedLabel(l)),
                         style: TextStyle(
-                          color: shownMode == RobotMode.idle ? AppTheme.textSecondary : Colors.white,
+                          color: shownMode == RobotMode.idle ? w.inkMuted : w.ink,
                           fontWeight: shownMode == RobotMode.idle ? FontWeight.normal : FontWeight.bold,
                           fontSize: 14,
                         ),
@@ -442,17 +458,18 @@ class _ModeRow extends ConsumerWidget {
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                         decoration: BoxDecoration(
-                          color: Colors.red,
+                          // Unread count: emphasis, not an error.
+                          color: cs.primary,
                           borderRadius: BorderRadius.circular(10),
                         ),
                         child: Text(
                           unreadCount > 99 ? '99+' : unreadCount.toString(),
-                          style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
+                          style: TextStyle(color: cs.onPrimary, fontSize: 10, fontWeight: FontWeight.bold),
                         ),
                       ),
                       const SizedBox(width: 6),
                     ],
-                    const Icon(Icons.arrow_drop_down, color: AppTheme.textSecondary),
+                    Icon(Icons.arrow_drop_down, color: w.inkMuted),
                   ],
                 ),
               ),
@@ -475,11 +492,13 @@ class _ModeRow extends ConsumerWidget {
                 l.homeExit,
                 style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, letterSpacing: 1),
               ),
+              // Stop / leave the active mode: the error slot (destructive),
+              // always with the stop icon + EXIT label.
               style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.red,
-                foregroundColor: Colors.white,
-                disabledBackgroundColor: Colors.red.withOpacity(0.4),
-                disabledForegroundColor: Colors.white70,
+                backgroundColor: cs.error,
+                foregroundColor: cs.onError,
+                disabledBackgroundColor: cs.error.withValues(alpha: 0.4),
+                disabledForegroundColor: cs.onError.withValues(alpha: 0.7),
                 padding: const EdgeInsets.symmetric(horizontal: 14),
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
               ),
@@ -501,13 +520,14 @@ class _ModeRow extends ConsumerWidget {
     final modeState = ref.read(modeStateProvider);
     final picked = await showModalBottomSheet<RobotMode>(
       context: context,
-      backgroundColor: AppTheme.surface,
+      backgroundColor: Theme.of(context).colorScheme.surface,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
       ),
       builder: (ctx) {
         final l = ctx.l10n;
         final current = modeState.currentMode;
+        final w = ctx.wimz;
         return SafeArea(
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -518,8 +538,8 @@ class _ModeRow extends ConsumerWidget {
                   children: [
                     Text(
                       l.homeModeSheetTitle,
-                      style: const TextStyle(
-                        color: AppTheme.textSecondary,
+                      style: TextStyle(
+                        color: w.inkMuted,
                         fontSize: 13,
                         fontWeight: FontWeight.bold,
                         letterSpacing: 2,
@@ -530,19 +550,19 @@ class _ModeRow extends ConsumerWidget {
               ),
               for (final mode in _modes)
                 ListTile(
-                  leading: Icon(_getModeIcon(mode), color: _getModeColor(mode)),
+                  leading: Icon(_getModeIcon(mode), color: _getModeColor(ctx, mode)),
                   title: Text(
                     mode.localizedLabel(l),
                     style: TextStyle(
                       fontWeight: mode == current ? FontWeight.bold : FontWeight.normal,
-                      color: Colors.white,
+                      color: w.ink,
                     ),
                   ),
                   trailing: mode == current
-                      ? Icon(Icons.check, color: _getModeColor(mode))
+                      ? Icon(Icons.check, color: _getModeColor(ctx, mode))
                       : null,
                   selected: mode == current,
-                  selectedTileColor: _getModeColor(mode).withOpacity(0.12),
+                  selectedTileColor: w.surfaceSunken,
                   onTap: () => Navigator.pop(ctx, mode),
                 ),
               const SizedBox(height: 8),
@@ -579,13 +599,18 @@ class _ModeRow extends ConsumerWidget {
     }
   }
 
-  static Color _getModeColor(RobotMode mode) {
+  /// Idle is muted; every active mode is ink. The mode icon + label always
+  /// sit beside the colour.
+  static Color _getModeColor(BuildContext context, RobotMode mode) {
+    final w = context.wimz;
     switch (mode) {
-      case RobotMode.idle: return Colors.grey;
-      case RobotMode.manual: return Colors.blue;
-      case RobotMode.silentGuardian: return Colors.purple;
-      case RobotMode.coach: return Colors.orange;
-      case RobotMode.mission: return Colors.green;
+      case RobotMode.idle:
+        return w.inkMuted;
+      case RobotMode.manual:
+      case RobotMode.silentGuardian:
+      case RobotMode.coach:
+      case RobotMode.mission:
+        return w.ink;
     }
   }
 
@@ -666,7 +691,7 @@ class _DogSelector extends ConsumerWidget {
                 Icon(
                   Icons.arrow_drop_down,
                   size: 16,
-                  color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+                  color: context.wimz.inkMuted,
                 ),
             ],
           ),
@@ -716,14 +741,14 @@ class _DogSelector extends ConsumerWidget {
                   title: Text(dog.name),
                   subtitle: dog.isPlaceholder
                       ? Text(context.l10n.dogNameYourDog,
-                          style: const TextStyle(color: AppTheme.primary))
+                          style: TextStyle(color: Theme.of(context).colorScheme.primary))
                       : dog.breed != null && dog.breed!.isNotEmpty
                           ? Text(dog.breed!)
                           : dog.color != DogColor.mixed
                               ? Text(dog.color.localizedLabel(context.l10n))
                               : null,
                   trailing: current?.id == dog.id
-                      ? Icon(Icons.check, color: AppTheme.primary)
+                      ? Icon(Icons.check, color: Theme.of(context).colorScheme.primary)
                       : null,
                   onTap: () {
                     ref.read(selectedDogProvider.notifier).selectDog(dog);
@@ -747,21 +772,23 @@ class _DogAvatar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final w = context.wimz;
+    final cs = Theme.of(context).colorScheme;
     return Container(
       width: size,
       height: size,
       decoration: BoxDecoration(
         shape: BoxShape.circle,
-        color: AppTheme.surfaceLight,
-        border: Border.all(color: AppTheme.primary, width: 2),
+        color: w.surfaceRaised,
+        border: Border.all(color: cs.primary, width: 2),
       ),
       child: profile == null
-          ? Icon(Icons.add, color: AppTheme.primary, size: size * 0.5)
-          : _buildPhoto(),
+          ? Icon(Icons.add, color: cs.primary, size: size * 0.5)
+          : _buildPhoto(context),
     );
   }
 
-  Widget _buildPhoto() {
+  Widget _buildPhoto(BuildContext context) {
     // Try local photo first, then URL
     if (profile!.localPhotoPath != null) {
       final file = File(profile!.localPhotoPath!);
@@ -772,7 +799,7 @@ class _DogAvatar extends StatelessWidget {
             fit: BoxFit.cover,
             width: size,
             height: size,
-            errorBuilder: (_, __, ___) => _buildPlaceholder(),
+            errorBuilder: (_, __, ___) => _buildPlaceholder(context),
           ),
         );
       }
@@ -782,21 +809,21 @@ class _DogAvatar extends StatelessWidget {
         child: Image.network(
           profile!.photoUrl!,
           fit: BoxFit.cover,
-          errorBuilder: (_, __, ___) => _buildPlaceholder(),
+          errorBuilder: (_, __, ___) => _buildPlaceholder(context),
         ),
       );
     }
-    return _buildPlaceholder();
+    return _buildPlaceholder(context);
   }
 
-  Widget _buildPlaceholder() {
+  Widget _buildPlaceholder(BuildContext context) {
     return Center(
       child: Text(
         profile!.name.substring(0, 1).toUpperCase(),
         style: TextStyle(
           fontSize: size * 0.4,
           fontWeight: FontWeight.bold,
-          color: AppTheme.primary,
+          color: Theme.of(context).colorScheme.primary,
         ),
       ),
     );

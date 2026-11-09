@@ -28,6 +28,8 @@ class _InterventionLevelSectionState
   Widget build(BuildContext context) {
     final state = ref.watch(silentGuardianProvider);
     final l = context.l10n;
+    final w = context.wimz;
+    final cs = Theme.of(context).colorScheme;
 
     // Surface acked errors as a transient toast — once per distinct error.
     if (state.lastError != null && state.lastError != _lastShownError) {
@@ -38,8 +40,19 @@ class _InterventionLevelSectionState
         messenger?.hideCurrentSnackBar();
         messenger?.showSnackBar(
           SnackBar(
-            content: Text(l.sgError('${state.lastError}')),
-            backgroundColor: AppTheme.error,
+            content: Row(
+              children: [
+                Icon(Icons.error_outline, size: 18, color: cs.onError),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    l.sgError('${state.lastError}'),
+                    style: TextStyle(color: cs.onError),
+                  ),
+                ),
+              ],
+            ),
+            backgroundColor: cs.error,
             duration: const Duration(seconds: 4),
           ),
         );
@@ -50,7 +63,7 @@ class _InterventionLevelSectionState
 
     final current = (_dragValue ?? state.interventionLevel.toDouble()).round();
     final isOff = current == 0;
-    final accent = isOff ? AppTheme.textTertiary : AppTheme.secondary;
+    final accent = isOff ? w.inkMuted : cs.primary;
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -71,8 +84,8 @@ class _InterventionLevelSectionState
                   children: [
                     Text(
                       l.sgInterventionLevel,
-                      style: const TextStyle(
-                        color: AppTheme.textPrimary,
+                      style: TextStyle(
+                        color: cs.onSurface,
                         fontSize: 17,
                         fontWeight: FontWeight.w600,
                       ),
@@ -80,8 +93,8 @@ class _InterventionLevelSectionState
                     const SizedBox(height: 2),
                     Text(
                       l.sgInterventionSubtitle,
-                      style: const TextStyle(
-                        color: AppTheme.textSecondary,
+                      style: TextStyle(
+                        color: w.inkMuted,
                         fontSize: 12,
                       ),
                     ),
@@ -92,7 +105,7 @@ class _InterventionLevelSectionState
                 padding:
                     const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                 decoration: BoxDecoration(
-                  color: accent.withOpacity(0.18),
+                  color: w.surfaceSunken,
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Text(
@@ -112,12 +125,12 @@ class _InterventionLevelSectionState
           SliderTheme(
             data: SliderTheme.of(context).copyWith(
               activeTrackColor: accent,
-              inactiveTrackColor: AppTheme.surfaceLight,
+              inactiveTrackColor: w.surfaceSunken,
               thumbColor: accent,
-              overlayColor: accent.withOpacity(0.2),
+              overlayColor: accent.withValues(alpha: 0.2),
               valueIndicatorColor: accent,
-              valueIndicatorTextStyle: const TextStyle(
-                color: AppTheme.background,
+              valueIndicatorTextStyle: TextStyle(
+                color: cs.onPrimary,
                 fontWeight: FontWeight.w600,
               ),
             ),
@@ -147,22 +160,22 @@ class _InterventionLevelSectionState
               children: [
                 Text(
                   l.off,
-                  style: const TextStyle(
-                    color: AppTheme.textTertiary,
+                  style: TextStyle(
+                    color: w.inkMuted,
                     fontSize: 11,
                   ),
                 ),
                 Text(
                   l.sgAggressive,
-                  style: const TextStyle(
-                    color: AppTheme.textTertiary,
+                  style: TextStyle(
+                    color: w.inkMuted,
                     fontSize: 11,
                   ),
                 ),
                 Text(
                   l.sgTolerant,
-                  style: const TextStyle(
-                    color: AppTheme.textTertiary,
+                  style: TextStyle(
+                    color: w.inkMuted,
                     fontSize: 11,
                   ),
                 ),
@@ -174,8 +187,8 @@ class _InterventionLevelSectionState
 
           Text(
             _helperText(l, current),
-            style: const TextStyle(
-              color: AppTheme.textSecondary,
+            style: TextStyle(
+              color: w.inkMuted,
               fontSize: 12,
             ),
           ),

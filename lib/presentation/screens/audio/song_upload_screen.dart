@@ -158,12 +158,13 @@ class _SongUploadScreenState extends ConsumerState<SongUploadScreen> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               const Spacer(),
-              const Icon(Icons.library_music, size: 64, color: AppTheme.primary),
+              Icon(Icons.library_music,
+                  size: 64, color: Theme.of(context).colorScheme.primary),
               const SizedBox(height: 16),
               Text(
                 l.songUploadPdNotice,
                 textAlign: TextAlign.center,
-                style: const TextStyle(fontSize: 14, color: AppTheme.textSecondary),
+                style: TextStyle(fontSize: 14, color: context.wimz.inkMuted),
               ),
               const SizedBox(height: 12),
               CheckboxListTile(
@@ -172,18 +173,14 @@ class _SongUploadScreenState extends ConsumerState<SongUploadScreen> {
                     ? null
                     : (v) => setState(() => _attested = v ?? false),
                 controlAffinity: ListTileControlAffinity.leading,
-                activeColor: AppTheme.accent,
+                activeColor: Theme.of(context).colorScheme.primary,
                 contentPadding: EdgeInsets.zero,
                 title: Text(l.songUploadPdCheckbox,
                     style: const TextStyle(fontSize: 14)),
               ),
               const SizedBox(height: 8),
               FilledButton.icon(
-                style: FilledButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                  backgroundColor: AppTheme.primary,
-                  foregroundColor: Colors.black,
-                ),
+                style: WimzTheme.goldButtonStyle(context),
                 onPressed: (!_attested || _uploading) ? null : _pickAndUpload,
                 icon: const Icon(Icons.upload_file),
                 label: Text(_uploading && _currentName != null
@@ -194,7 +191,7 @@ class _SongUploadScreenState extends ConsumerState<SongUploadScreen> {
               Text(
                 l.songUploadFormats,
                 textAlign: TextAlign.center,
-                style: const TextStyle(fontSize: 12, color: AppTheme.textTertiary),
+                style: TextStyle(fontSize: 12, color: context.wimz.inkMuted),
               ),
               const SizedBox(height: 16),
               if (_uploading)
@@ -207,14 +204,17 @@ class _SongUploadScreenState extends ConsumerState<SongUploadScreen> {
                   margin: const EdgeInsets.only(top: 4),
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: (_resultOk ? AppTheme.accent : AppTheme.error)
-                        .withOpacity(0.12),
+                    color: _resultOk
+                        ? context.wimz.surfaceRaised
+                        : Theme.of(context).colorScheme.errorContainer,
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Row(
                     children: [
                       Icon(_resultOk ? Icons.check_circle : Icons.error_outline,
-                          color: _resultOk ? AppTheme.accent : AppTheme.error,
+                          color: _resultOk
+                              ? context.wimz.ink
+                              : Theme.of(context).colorScheme.error,
                           size: 20),
                       const SizedBox(width: 8),
                       Expanded(
@@ -232,7 +232,7 @@ class _SongUploadScreenState extends ConsumerState<SongUploadScreen> {
               Text(
                 dog != null ? '${l.todayCardTitle}: ${dog.name}' : l.songUploadNoDog,
                 textAlign: TextAlign.center,
-                style: const TextStyle(fontSize: 11, color: AppTheme.textTertiary),
+                style: TextStyle(fontSize: 11, color: context.wimz.inkMuted),
               ),
             ],
           ),

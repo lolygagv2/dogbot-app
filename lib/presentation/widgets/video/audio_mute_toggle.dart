@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../domain/providers/webrtc_provider.dart';
 import '../../../l10n/l10n.dart';
+import '../../theme/app_theme.dart';
 
 /// Small speaker mute/unmute toggle overlaid on video feed.
 /// Purely app-side — does NOT send any command to the robot.
@@ -15,7 +16,8 @@ import '../../../l10n/l10n.dart';
 /// state — usually muted — with no way out, which read as "mic broken"
 /// exactly when they most wanted to listen in. See 2026-08-06 mic brief.)
 ///
-/// During auto-listen (after PTT send), shows a pulsing cyan icon.
+/// During auto-listen (after PTT send), shows a pulsing signal-coloured
+/// icon (live-audio status).
 class AudioMuteToggle extends ConsumerWidget {
   const AudioMuteToggle({super.key});
 
@@ -40,14 +42,16 @@ class AudioMuteToggle extends ConsumerWidget {
         child: Container(
           padding: const EdgeInsets.all(8),
           decoration: BoxDecoration(
-            color: Colors.black54,
+            color: context.wimz.scrim(0.54),
             borderRadius: BorderRadius.circular(8),
           ),
           child: isAutoListening
               ? const _PulsingAutoListenIcon()
               : Icon(
                   isMuted ? Icons.volume_off : Icons.volume_up,
-                  color: isMuted ? Colors.white54 : Colors.white,
+                  color: isMuted
+                      ? context.wimz.onVideo.withValues(alpha: 0.54)
+                      : context.wimz.onVideo,
                   size: 20,
                 ),
         ),
@@ -56,7 +60,7 @@ class AudioMuteToggle extends ConsumerWidget {
   }
 }
 
-/// Pulsing cyan speaker icon shown during auto-listen window.
+/// Pulsing speaker icon shown during auto-listen window (signal = live).
 class _PulsingAutoListenIcon extends StatefulWidget {
   const _PulsingAutoListenIcon();
 
@@ -91,9 +95,9 @@ class _PulsingAutoListenIconState extends State<_PulsingAutoListenIcon>
   Widget build(BuildContext context) {
     return FadeTransition(
       opacity: _opacity,
-      child: const Icon(
+      child: Icon(
         Icons.hearing,
-        color: Color(0xFF00E5FF), // Cyan — matches WIM-Z theme
+        color: context.wimz.signal, // live-audio status
         size: 20,
       ),
     );

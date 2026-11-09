@@ -67,7 +67,7 @@ class _ScheduleEditScreenState extends ConsumerState<ScheduleEditScreen> {
         return Theme(
           data: Theme.of(context).copyWith(
             timePickerTheme: TimePickerThemeData(
-              backgroundColor: AppTheme.surface,
+              backgroundColor: Theme.of(context).colorScheme.surface,
               hourMinuteShape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(8),
               ),
@@ -168,7 +168,6 @@ class _ScheduleEditScreenState extends ConsumerState<ScheduleEditScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(_isEditing ? context.l10n.scheduleEditUpdated : context.l10n.scheduleEditCreated),
-            backgroundColor: Colors.green,
           ),
         );
         context.pop();
@@ -180,7 +179,6 @@ class _ScheduleEditScreenState extends ConsumerState<ScheduleEditScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(errorMsg),
-            backgroundColor: AppTheme.error,
             duration: const Duration(seconds: 5),
           ),
         );
@@ -201,10 +199,14 @@ class _ScheduleEditScreenState extends ConsumerState<ScheduleEditScreen> {
             onPressed: () => Navigator.pop(ctx, false),
             child: Text(context.l10n.cancel),
           ),
-          FilledButton(
+          FilledButton.icon(
             onPressed: () => Navigator.pop(ctx, true),
-            style: FilledButton.styleFrom(backgroundColor: AppTheme.error),
-            child: Text(context.l10n.delete),
+            style: FilledButton.styleFrom(
+              backgroundColor: Theme.of(ctx).colorScheme.error,
+              foregroundColor: Theme.of(ctx).colorScheme.onError,
+            ),
+            icon: const Icon(Icons.delete, size: 18),
+            label: Text(context.l10n.delete),
           ),
         ],
       ),
@@ -251,6 +253,9 @@ class _ScheduleEditScreenState extends ConsumerState<ScheduleEditScreen> {
           else
             TextButton(
               onPressed: _save,
+              style: TextButton.styleFrom(
+                foregroundColor: context.wimz.goldDeep,
+              ),
               child: Text(context.l10n.save),
             ),
         ],
@@ -328,11 +333,11 @@ class _ScheduleEditScreenState extends ConsumerState<ScheduleEditScreen> {
             const SizedBox(height: 48),
             OutlinedButton.icon(
               onPressed: _isLoading ? null : _delete,
-              icon: const Icon(Icons.delete, color: AppTheme.error),
+              icon: Icon(Icons.delete, color: Theme.of(context).colorScheme.error),
               label: Text(context.l10n.schedulerDeleteTitle),
               style: OutlinedButton.styleFrom(
-                foregroundColor: AppTheme.error,
-                side: const BorderSide(color: AppTheme.error),
+                foregroundColor: Theme.of(context).colorScheme.error,
+                side: BorderSide(color: Theme.of(context).colorScheme.error),
               ),
             ),
           ],
@@ -357,7 +362,7 @@ class _SectionTitle extends StatelessWidget {
         style: TextStyle(
           fontSize: 12,
           fontWeight: FontWeight.bold,
-          color: AppTheme.primary,
+          color: Theme.of(context).colorScheme.primary,
           letterSpacing: 1,
         ),
       ),
@@ -383,18 +388,18 @@ class _DropdownCard<T> extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
       decoration: BoxDecoration(
-        color: AppTheme.surfaceLight,
+        color: context.wimz.surfaceRaised,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppTheme.glassBorder),
+        border: Border.all(color: context.wimz.line),
       ),
       child: DropdownButtonHideUnderline(
         child: DropdownButton<T>(
           value: value,
           items: items,
           onChanged: onChanged,
-          hint: Text(hint, style: TextStyle(color: AppTheme.textTertiary)),
+          hint: Text(hint, style: TextStyle(color: context.wimz.inkMuted)),
           isExpanded: true,
-          dropdownColor: AppTheme.surfaceLight,
+          dropdownColor: context.wimz.surfaceRaised,
         ),
       ),
     );
@@ -418,25 +423,26 @@ class _TimePickerCard extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: AppTheme.surfaceLight,
+          color: context.wimz.surfaceRaised,
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: AppTheme.glassBorder),
+          border: Border.all(color: context.wimz.line),
         ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(Icons.access_time, color: AppTheme.primary),
+            Icon(Icons.access_time,
+                color: Theme.of(context).colorScheme.primary),
             const SizedBox(width: 12),
             Text(
               time.format(context),
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 24,
                 fontWeight: FontWeight.bold,
-                color: AppTheme.primary,
+                color: Theme.of(context).colorScheme.primary,
               ),
             ),
             const SizedBox(width: 8),
-            const Icon(Icons.edit, size: 16, color: AppTheme.textTertiary),
+            Icon(Icons.edit, size: 16, color: context.wimz.inkMuted),
           ],
         ),
       ),
@@ -471,11 +477,13 @@ class _RepeatTypeSelector extends StatelessWidget {
                 padding: const EdgeInsets.symmetric(vertical: 12),
                 decoration: BoxDecoration(
                   color: isSelected
-                      ? AppTheme.primary.withOpacity(0.2)
-                      : AppTheme.surfaceLight,
+                      ? context.wimz.surfaceSunken
+                      : context.wimz.surfaceRaised,
                   borderRadius: BorderRadius.circular(8),
                   border: Border.all(
-                    color: isSelected ? AppTheme.primary : AppTheme.glassBorder,
+                    color: isSelected
+                        ? Theme.of(context).colorScheme.primary
+                        : context.wimz.line,
                     width: isSelected ? 2 : 1,
                   ),
                 ),
@@ -483,7 +491,9 @@ class _RepeatTypeSelector extends StatelessWidget {
                   children: [
                     Icon(
                       _iconForType(type),
-                      color: isSelected ? AppTheme.primary : AppTheme.textTertiary,
+                      color: isSelected
+                          ? Theme.of(context).colorScheme.primary
+                          : context.wimz.inkMuted,
                       size: 24,
                     ),
                     const SizedBox(height: 4),
@@ -493,8 +503,8 @@ class _RepeatTypeSelector extends StatelessWidget {
                         fontSize: 12,
                         fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
                         color: isSelected
-                            ? AppTheme.primary
-                            : AppTheme.textSecondary,
+                            ? Theme.of(context).colorScheme.primary
+                            : context.wimz.inkMuted,
                       ),
                     ),
                   ],
@@ -555,11 +565,13 @@ class _WeekdaySelector extends StatelessWidget {
             height: 40,
             decoration: BoxDecoration(
               color: isSelected
-                  ? AppTheme.primary
-                  : AppTheme.surfaceLight,
+                  ? Theme.of(context).colorScheme.primary
+                  : context.wimz.surfaceRaised,
               shape: BoxShape.circle,
               border: Border.all(
-                color: isSelected ? AppTheme.primary : AppTheme.glassBorder,
+                color: isSelected
+                    ? Theme.of(context).colorScheme.primary
+                    : context.wimz.line,
               ),
             ),
             child: Center(
@@ -568,8 +580,8 @@ class _WeekdaySelector extends StatelessWidget {
                 style: TextStyle(
                   fontWeight: FontWeight.bold,
                   color: isSelected
-                      ? AppTheme.background
-                      : AppTheme.textSecondary,
+                      ? Theme.of(context).colorScheme.onPrimary
+                      : context.wimz.inkMuted,
                 ),
               ),
             ),

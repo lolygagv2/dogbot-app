@@ -8,14 +8,12 @@ import 'core/network/dio_client.dart';
 import 'core/network/websocket_client.dart';
 import 'core/services/local_connection_service.dart';
 import 'core/services/wifi_binder.dart';
-import 'data/models/night_mode_state.dart';
 import 'l10n/l10n.dart';
 import 'domain/providers/auth_provider.dart';
 import 'domain/providers/connection_provider.dart';
 import 'domain/providers/locale_provider.dart';
 import 'domain/providers/control_provider.dart';
 import 'domain/providers/network_state_provider.dart';
-import 'domain/providers/night_mode_provider.dart';
 import 'domain/providers/notifications_provider.dart';
 import 'domain/providers/settings_provider.dart';
 import 'domain/providers/video_transport_provider.dart';
@@ -414,8 +412,16 @@ class MainShell extends ConsumerWidget {
           ScaffoldMessenger.of(context).hideCurrentSnackBar();
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text(context.l10n.appRateLimited),
-              backgroundColor: Colors.orange.shade800,
+              // Theme (inverse-surface) snackbar; warning icon + text.
+              content: Row(
+                children: [
+                  Icon(Icons.warning_amber_rounded,
+                      color: Theme.of(context).colorScheme.onInverseSurface,
+                      size: 20),
+                  const SizedBox(width: 8),
+                  Expanded(child: Text(context.l10n.appRateLimited)),
+                ],
+              ),
               behavior: SnackBarBehavior.floating,
               duration: const Duration(seconds: 3),
             ),
@@ -435,14 +441,22 @@ class MainShell extends ConsumerWidget {
         ScaffoldMessenger.of(context).hideCurrentSnackBar();
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(treatRefusalMessage(context, r)),
-            backgroundColor: Colors.orange.shade800,
+            // Theme (inverse-surface) snackbar; warning icon + text.
+            content: Row(
+              children: [
+                Icon(Icons.warning_amber_rounded,
+                    color: Theme.of(context).colorScheme.onInverseSurface,
+                    size: 20),
+                const SizedBox(width: 8),
+                Expanded(child: Text(treatRefusalMessage(context, r))),
+              ],
+            ),
             behavior: SnackBarBehavior.floating,
             duration: const Duration(seconds: 4),
             action: r.code == TreatRefusal.capReached
                 ? SnackBarAction(
                     label: context.l10n.settings,
-                    textColor: Colors.white,
+                    textColor: Theme.of(context).colorScheme.onInverseSurface,
                     onPressed: () => context.go(kSettingsTreatLimitRoute),
                   )
                 : null,
@@ -471,8 +485,10 @@ class MainShell extends ConsumerWidget {
               bottom: 0,
               left: 0,
               right: 0,
+              // Reconnecting banner: inverse-surface strip (like a
+              // snackbar) with spinner + words; no orange wash.
               child: Material(
-                color: Colors.orange.shade800,
+                color: Theme.of(context).colorScheme.inverseSurface,
                 child: InkWell(
                   // A-BANNER: in local mode "retry" must retry the LOCAL
                   // connection — reconnect() would run the relay connect
@@ -497,19 +513,20 @@ class MainShell extends ConsumerWidget {
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        const SizedBox(
+                        SizedBox(
                           width: 14,
                           height: 14,
                           child: CircularProgressIndicator(
                             strokeWidth: 2,
-                            valueColor: AlwaysStoppedAnimation(Colors.white),
+                            valueColor: AlwaysStoppedAnimation(
+                                Theme.of(context).colorScheme.onInverseSurface),
                           ),
                         ),
                         const SizedBox(width: 10),
                         Text(
                           context.l10n.appReconnecting,
-                          style: const TextStyle(
-                            color: Colors.white,
+                          style: TextStyle(
+                            color: Theme.of(context).colorScheme.onInverseSurface,
                             fontSize: 13,
                             fontWeight: FontWeight.w600,
                           ),
@@ -517,8 +534,11 @@ class MainShell extends ConsumerWidget {
                         const SizedBox(width: 16),
                         Text(
                           context.l10n.appTapToRetry,
-                          style: const TextStyle(
-                            color: Colors.white70,
+                          style: TextStyle(
+                            color: Theme.of(context)
+                                .colorScheme
+                                .onInverseSurface
+                                .withValues(alpha: 0.7),
                             fontSize: 12,
                           ),
                         ),
@@ -532,10 +552,10 @@ class MainShell extends ConsumerWidget {
       ),
       bottomNavigationBar: Container(
         decoration: BoxDecoration(
-          color: AppTheme.surface,
+          color: context.wimz.surface,
           border: Border(
             top: BorderSide(
-              color: AppTheme.glassBorder,
+              color: context.wimz.line,
               width: 1,
             ),
           ),
@@ -620,7 +640,9 @@ class _NavBarItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = isSelected ? AppTheme.primary : AppTheme.textTertiary;
+    // Selected = ink, unselected = ink-muted (never gold).
+    final w = context.wimz;
+    final color = isSelected ? w.ink : w.inkMuted;
 
     return InkWell(
       onTap: onTap,
@@ -640,15 +662,17 @@ class _NavBarItem extends StatelessWidget {
                     top: -4,
                     child: Container(
                       padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                      // Unread count is information, not an error:
+                      // primary (ink) pill with on-primary digits.
                       decoration: BoxDecoration(
-                        color: AppTheme.error,
+                        color: Theme.of(context).colorScheme.primary,
                         borderRadius: BorderRadius.circular(10),
                       ),
                       constraints: const BoxConstraints(minWidth: 16, minHeight: 16),
                       child: Text(
                         badgeCount > 99 ? '99+' : badgeCount.toString(),
-                        style: const TextStyle(
-                          color: Colors.white,
+                        style: TextStyle(
+                          color: Theme.of(context).colorScheme.onPrimary,
                           fontSize: 10,
                           fontWeight: FontWeight.bold,
                         ),
@@ -886,19 +910,17 @@ class _WimzAppState extends ConsumerState<WimzApp> with WidgetsBindingObserver {
 
   @override
   Widget build(BuildContext context) {
-    // Build 100: app-wide chrome shift driven by the robot's night_mode_state.
-    // Swapping the theme primary cyan → steel-blue makes every screen feel
-    // the mode change without modifying the IR video pixels themselves.
-    final nightState = ref.watch(nightModeProvider);
-    final isNight = nightState?.currentMode == DayNight.night;
-    final theme = isNight ? AppTheme.darkNight : AppTheme.dark;
+    // Brand re-theme: night mode no longer shifts the chrome colour (signal
+    // blue is status-only, never a brand colour); the mode badge still shows
+    // the word. Light = "White / Black / Gold", dark = "Stealth Black",
+    // following the device setting (the app has no theme setting of its own).
     // Settings → Language. null = follow the device locale.
     final locale = ref.watch(localeProvider);
     return MaterialApp.router(
       title: 'WIM-Z',
-      theme: theme,
-      darkTheme: theme,
-      themeMode: ThemeMode.dark,
+      theme: WimzTheme.light,
+      darkTheme: WimzTheme.dark,
+      themeMode: ThemeMode.system,
       routerConfig: _router,
       debugShowCheckedModeBanner: false,
       locale: locale,

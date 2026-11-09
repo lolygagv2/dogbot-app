@@ -26,7 +26,7 @@ class ActivityDashboard extends ConsumerWidget {
       return Center(
         child: Text(
           context.l10n.activityNoDogSelected,
-          style: const TextStyle(color: AppTheme.textSecondary),
+          style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant),
         ),
       );
     }
@@ -56,6 +56,7 @@ class _SummaryStatsRow extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final analytics = ref.watch(dogAnalyticsProvider(dogId));
+    final w = context.wimz;
 
     return Row(
       children: [
@@ -64,7 +65,7 @@ class _SummaryStatsRow extends ConsumerWidget {
             value: analytics.treatCount.toString(),
             label: context.l10n.activityStatTreats,
             icon: Icons.cookie,
-            color: AppTheme.accent,
+            color: w.ink,
           ),
         ),
         const SizedBox(width: 8),
@@ -73,7 +74,7 @@ class _SummaryStatsRow extends ConsumerWidget {
             value: analytics.detectionCount.toString(),
             label: context.l10n.activityStatDetections,
             icon: Icons.visibility,
-            color: AppTheme.primary,
+            color: w.ink,
           ),
         ),
         const SizedBox(width: 8),
@@ -82,7 +83,7 @@ class _SummaryStatsRow extends ConsumerWidget {
             value: '${analytics.missionsSucceeded}/${analytics.missionsAttempted}',
             label: context.l10n.activityStatMissions,
             icon: Icons.flag,
-            color: Colors.green,
+            color: w.ink,
           ),
         ),
         const SizedBox(width: 8),
@@ -91,7 +92,7 @@ class _SummaryStatsRow extends ConsumerWidget {
             value: analytics.coachRewards.toString(),
             label: context.l10n.activityStatCoach,
             icon: Icons.school,
-            color: Colors.orange,
+            color: w.inkMuted,
           ),
         ),
       ],
@@ -114,12 +115,13 @@ class _CompactStatCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final w = context.wimz;
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
       decoration: BoxDecoration(
-        color: AppTheme.surfaceLight,
+        color: w.surfaceRaised,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppTheme.glassBorder),
+        border: Border.all(color: w.line),
       ),
       child: Column(
         children: [
@@ -127,18 +129,18 @@ class _CompactStatCard extends StatelessWidget {
           const SizedBox(height: 4),
           Text(
             value,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.bold,
-              color: AppTheme.textPrimary,
+              color: w.ink,
             ),
           ),
           const SizedBox(height: 2),
           Text(
             label,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 10,
-              color: AppTheme.textTertiary,
+              color: w.inkMuted,
             ),
           ),
         ],
@@ -160,13 +162,19 @@ extension _ActivitySeriesSpec on _ActivitySeries {
         _ActivitySeries.alerts => l.activitySeriesAlerts,
       };
 
-  Color get color => switch (this) {
-        _ActivitySeries.treats => AppTheme.accent,
-        _ActivitySeries.barks => AppTheme.error,
-        _ActivitySeries.behaviors => AppTheme.primary,
-        _ActivitySeries.missions => AppTheme.secondary,
-        _ActivitySeries.alerts => AppTheme.warning,
-      };
+  /// Series colour. Five labelled lines need five distinct marks, so this
+  /// follows the brand differentiation palette (ink / error / ink-muted /
+  /// signal / gold-deep); the legend chips and tooltips print the name.
+  Color color(BuildContext context) {
+    final w = context.wimz;
+    return switch (this) {
+      _ActivitySeries.treats => w.ink,
+      _ActivitySeries.barks => Theme.of(context).colorScheme.error,
+      _ActivitySeries.behaviors => w.inkMuted,
+      _ActivitySeries.missions => w.signal,
+      _ActivitySeries.alerts => w.goldDeep,
+    };
+  }
 
   int countOf(DogDailySummary s) => switch (this) {
         _ActivitySeries.treats => s.treatCount,
@@ -192,6 +200,7 @@ class _ActivityLineChart extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final weekStats = ref.watch(dogWeeklyStatsProvider(dogId));
     final visible = ref.watch(activityChartSeriesProvider);
+    final w = context.wimz;
 
     // Fixed series order; a toggled-off series never repaints the survivors.
     final activeSeries =
@@ -221,10 +230,10 @@ class _ActivityLineChart extends ConsumerWidget {
       children: [
         Text(
           context.l10n.activityChartTitle,
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 14,
             fontWeight: FontWeight.w600,
-            color: AppTheme.textPrimary,
+            color: w.ink,
           ),
         ),
         const SizedBox(height: 8),
@@ -243,8 +252,8 @@ class _ActivityLineChart extends ConsumerWidget {
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
                     color: visible.contains(s)
-                        ? s.color
-                        : AppTheme.textDisabled,
+                        ? s.color(context)
+                        : w.inkDisabled,
                   ),
                 ),
                 label: Text(
@@ -252,16 +261,16 @@ class _ActivityLineChart extends ConsumerWidget {
                   style: TextStyle(
                     fontSize: 11,
                     color: visible.contains(s)
-                        ? AppTheme.textPrimary
-                        : AppTheme.textTertiary,
+                        ? w.ink
+                        : w.inkMuted,
                   ),
                 ),
-                backgroundColor: AppTheme.surfaceLight,
-                selectedColor: AppTheme.surfaceLighter,
+                backgroundColor: w.surfaceRaised,
+                selectedColor: w.surfaceSunken,
                 side: BorderSide(
                   color: visible.contains(s)
-                      ? s.color.withOpacity(0.5)
-                      : AppTheme.glassBorder,
+                      ? s.color(context).withValues(alpha: 0.5)
+                      : w.line,
                 ),
                 visualDensity: VisualDensity.compact,
                 materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
@@ -278,15 +287,15 @@ class _ActivityLineChart extends ConsumerWidget {
           height: 180,
           padding: const EdgeInsets.fromLTRB(8, 16, 16, 8),
           decoration: BoxDecoration(
-            color: AppTheme.surfaceLight,
+            color: w.surfaceRaised,
             borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: AppTheme.glassBorder),
+            border: Border.all(color: w.line),
           ),
           child: activeSeries.isEmpty
               ? Center(
                   child: Text(
                     context.l10n.activityNoSeriesSelected,
-                    style: const TextStyle(color: AppTheme.textTertiary, fontSize: 12),
+                    style: TextStyle(color: w.inkMuted, fontSize: 12),
                   ),
                 )
               : LineChart(
@@ -298,7 +307,7 @@ class _ActivityLineChart extends ConsumerWidget {
                       drawVerticalLine: false,
                       horizontalInterval: yInterval,
                       getDrawingHorizontalLine: (value) => FlLine(
-                        color: AppTheme.glassBorder,
+                        color: w.line,
                         strokeWidth: 0.5,
                       ),
                     ),
@@ -314,8 +323,8 @@ class _ActivityLineChart extends ConsumerWidget {
                           interval: yInterval,
                           getTitlesWidget: (value, meta) => Text(
                             value.toInt().toString(),
-                            style: const TextStyle(
-                              color: AppTheme.textTertiary,
+                            style: TextStyle(
+                              color: w.inkMuted,
                               fontSize: 10,
                             ),
                           ),
@@ -334,8 +343,8 @@ class _ActivityLineChart extends ConsumerWidget {
                               padding: const EdgeInsets.only(top: 6),
                               child: Text(
                                 labels[idx],
-                                style: const TextStyle(
-                                  color: AppTheme.textTertiary,
+                                style: TextStyle(
+                                  color: w.inkMuted,
                                   fontSize: 10,
                                 ),
                               ),
@@ -355,16 +364,16 @@ class _ActivityLineChart extends ConsumerWidget {
                                   s.countOf(weekStats[i]).toDouble()),
                           ],
                           isCurved: false,
-                          color: s.color,
+                          color: s.color(context),
                           barWidth: 2,
                           dotData: FlDotData(
                             show: true,
                             getDotPainter: (spot, percent, bar, index) =>
                                 FlDotCirclePainter(
                               radius: 2.5,
-                              color: s.color,
+                              color: s.color(context),
                               strokeWidth: 1,
-                              strokeColor: AppTheme.background,
+                              strokeColor: w.surface,
                             ),
                           ),
                         ),
@@ -376,7 +385,7 @@ class _ActivityLineChart extends ConsumerWidget {
                             LineTooltipItem(
                               context.l10n.activitySeriesCount(activeSeries[spot.barIndex].label(context.l10n), spot.y.toInt()),
                               TextStyle(
-                                color: activeSeries[spot.barIndex].color,
+                                color: activeSeries[spot.barIndex].color(context),
                                 fontWeight: FontWeight.bold,
                                 fontSize: 12,
                               ),
@@ -400,6 +409,7 @@ class _BehaviorEventLog extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final events = ref.watch(notificationsProvider);
     final displayEvents = events.take(50).toList();
+    final w = context.wimz;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -408,24 +418,24 @@ class _BehaviorEventLog extends ConsumerWidget {
           children: [
             Text(
               context.l10n.activityRecentEvents,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 14,
                 fontWeight: FontWeight.w600,
-                color: AppTheme.textPrimary,
+                color: w.ink,
               ),
             ),
             const SizedBox(width: 8),
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
               decoration: BoxDecoration(
-                color: AppTheme.surfaceLighter,
+                color: w.surfaceSunken,
                 borderRadius: BorderRadius.circular(10),
               ),
               child: Text(
                 '${displayEvents.length}',
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 11,
-                  color: AppTheme.textTertiary,
+                  color: w.inkMuted,
                 ),
               ),
             ),
@@ -438,7 +448,7 @@ class _BehaviorEventLog extends ConsumerWidget {
             child: Center(
               child: Text(
                 context.l10n.activityNoEvents,
-                style: TextStyle(color: AppTheme.textTertiary),
+                style: TextStyle(color: w.inkMuted),
               ),
             ),
           )
@@ -464,7 +474,8 @@ class _EventRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = _getEventColor(event.type);
+    final w = context.wimz;
+    final color = _getEventColor(context, event.type);
     final icon = _getEventIcon(event.type);
     final time = _formatTime(context, event.timestamp);
 
@@ -476,8 +487,8 @@ class _EventRow extends StatelessWidget {
           const SizedBox(width: 8),
           Text(
             time,
-            style: const TextStyle(
-              color: AppTheme.textTertiary,
+            style: TextStyle(
+              color: w.inkMuted,
               fontSize: 12,
               fontFamily: 'monospace',
             ),
@@ -486,8 +497,8 @@ class _EventRow extends StatelessWidget {
           Expanded(
             child: Text(
               event.title,
-              style: const TextStyle(
-                color: AppTheme.textSecondary,
+              style: TextStyle(
+                color: w.inkMuted,
                 fontSize: 13,
               ),
               overflow: TextOverflow.ellipsis,
@@ -498,19 +509,21 @@ class _EventRow extends StatelessWidget {
     );
   }
 
-  Color _getEventColor(NotificationEventType type) {
+  Color _getEventColor(BuildContext context, NotificationEventType type) {
+    final w = context.wimz;
+    final cs = Theme.of(context).colorScheme;
     return switch (type) {
-      NotificationEventType.bark => Colors.red,
-      NotificationEventType.treatDispensed => AppTheme.accent,
+      NotificationEventType.bark => cs.error,
+      NotificationEventType.treatDispensed => w.ink,
       NotificationEventType.sit ||
       NotificationEventType.lieDown ||
       NotificationEventType.stand =>
-        Colors.blue,
-      NotificationEventType.missionCompleted => AppTheme.accent,
-      NotificationEventType.missionStarted => AppTheme.primary,
-      NotificationEventType.missionFailed => AppTheme.error,
-      NotificationEventType.coachReward => Colors.orange,
-      _ => Colors.grey,
+        w.ink,
+      NotificationEventType.missionCompleted => w.ink,
+      NotificationEventType.missionStarted => cs.primary,
+      NotificationEventType.missionFailed => cs.error,
+      NotificationEventType.coachReward => w.inkMuted,
+      _ => w.inkMuted,
     };
   }
 

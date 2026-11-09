@@ -41,28 +41,26 @@ class _DogWeeklySummaryCardState extends ConsumerState<DogWeeklySummaryCard> {
     final state = ref.watch(dogWeeklySummaryProvider(widget.dogId));
     final s = state.summary;
     final l = context.l10n;
+    final w = context.wimz;
+    final cs = Theme.of(context).colorScheme;
 
     return Container(
       padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: AppTheme.surface,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppTheme.primary.withOpacity(0.3)),
-      ),
+      decoration: WimzTheme.cardDecoration(context, radius: 12),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
         children: [
           Row(
             children: [
-              const Icon(Icons.insights, color: AppTheme.primary, size: 18),
+              Icon(Icons.insights, color: cs.primary, size: 18),
               const SizedBox(width: 6),
               Expanded(
                 child: Text(
                   l.weeklySummaryTitle,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontWeight: FontWeight.bold,
-                    color: AppTheme.textPrimary,
+                    color: cs.onSurface,
                   ),
                 ),
               ),
@@ -75,8 +73,7 @@ class _DogWeeklySummaryCardState extends ConsumerState<DogWeeklySummaryCard> {
                   : IconButton(
                       visualDensity: VisualDensity.compact,
                       padding: EdgeInsets.zero,
-                      icon: const Icon(Icons.refresh,
-                          size: 18, color: AppTheme.primary),
+                      icon: Icon(Icons.refresh, size: 18, color: cs.primary),
                       onPressed: () => ref
                           .read(
                               dogWeeklySummaryProvider(widget.dogId).notifier)
@@ -86,16 +83,25 @@ class _DogWeeklySummaryCardState extends ConsumerState<DogWeeklySummaryCard> {
           ),
           if (state.error != null) ...[
             const SizedBox(height: 4),
-            Text(
-              state.error!,
-              style: const TextStyle(color: AppTheme.warning, fontSize: 12),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Icon(Icons.warning_amber, size: 14, color: w.inkMuted),
+                const SizedBox(width: 4),
+                Expanded(
+                  child: Text(
+                    state.error!,
+                    style: TextStyle(color: w.inkMuted, fontSize: 12),
+                  ),
+                ),
+              ],
             ),
           ],
           if (s == null && state.error == null && !state.pulling) ...[
             const SizedBox(height: 4),
             Text(
               l.weeklyTapRefresh,
-              style: const TextStyle(color: AppTheme.textTertiary, fontSize: 12),
+              style: TextStyle(color: w.inkMuted, fontSize: 12),
             ),
           ],
           if (s != null) ...[
@@ -103,22 +109,19 @@ class _DogWeeklySummaryCardState extends ConsumerState<DogWeeklySummaryCard> {
             if (s.headline != null)
               Text(
                 s.headline!,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w600,
-                  color: AppTheme.textPrimary,
+                  color: cs.onSurface,
                 ),
               ),
             const SizedBox(height: 8),
             Row(
               children: [
                 _Stat(l.dogProfileStatBarks, '${s.barks.total}'),
-                _Stat(l.weeklyVsLastWeek, _delta(s.barks),
-                    color: switch (s.barks.trend) {
-                      'down' => Colors.green,
-                      'up' => AppTheme.error,
-                      _ => null,
-                    }),
+                // Direction is carried by the sign in the delta text
+                // ("+12%" / "-8%"), not by a hue.
+                _Stat(l.weeklyVsLastWeek, _delta(s.barks)),
                 _Stat(l.dogProfileStatTreats, '${s.treatsTotal}'),
                 _Stat(l.weeklyQuiets, '${s.guardianSuccessfulQuiets}'),
               ],
@@ -139,16 +142,14 @@ class _DogWeeklySummaryCardState extends ConsumerState<DogWeeklySummaryCard> {
                           width: 8,
                           height: 8,
                           decoration: BoxDecoration(
-                            color: AppTheme.barkTypeColors[e.key] ??
-                                Colors.blueGrey,
+                            color: WimzStatus.barkType(context, e.key),
                             shape: BoxShape.circle,
                           ),
                         ),
                         const SizedBox(width: 4),
                         Text(
                           '${e.key} ${e.value}',
-                          style: const TextStyle(
-                              fontSize: 11, color: AppTheme.textSecondary),
+                          style: TextStyle(fontSize: 11, color: w.inkMuted),
                         ),
                       ],
                     ),
@@ -168,8 +169,7 @@ class _DogWeeklySummaryCardState extends ConsumerState<DogWeeklySummaryCard> {
                         s.coaching.completed,
                         s.coaching.attempts,
                       ),
-                style: const TextStyle(
-                    fontSize: 12, color: AppTheme.textSecondary),
+                style: TextStyle(fontSize: 12, color: w.inkMuted),
               ),
             ],
             if (s.guardianInterventions > 0) ...[
@@ -179,8 +179,7 @@ class _DogWeeklySummaryCardState extends ConsumerState<DogWeeklySummaryCard> {
                   s.guardianInterventions,
                   s.guardianHouseholdSessions,
                 ),
-                style: const TextStyle(
-                    fontSize: 12, color: AppTheme.textSecondary),
+                style: TextStyle(fontSize: 12, color: w.inkMuted),
               ),
             ],
             // Robot c032823: honest data-coverage caption — how far back
@@ -189,10 +188,10 @@ class _DogWeeklySummaryCardState extends ConsumerState<DogWeeklySummaryCard> {
               const SizedBox(height: 8),
               Text(
                 _coverageCaption(context, s.coverage)!,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 10,
                   fontStyle: FontStyle.italic,
-                  color: AppTheme.textTertiary,
+                  color: w.inkMuted,
                 ),
               ),
             ],
@@ -261,8 +260,7 @@ class _TypeCountBar extends StatelessWidget {
               Expanded(
                 flex: e.value.clamp(1, 1 << 20),
                 child: Container(
-                    color:
-                        AppTheme.barkTypeColors[e.key] ?? Colors.blueGrey),
+                    color: WimzStatus.barkType(context, e.key)),
               ),
           ],
         ),
@@ -274,11 +272,11 @@ class _TypeCountBar extends StatelessWidget {
 class _Stat extends StatelessWidget {
   final String label;
   final String value;
-  final Color? color;
-  const _Stat(this.label, this.value, {this.color});
+  const _Stat(this.label, this.value);
 
   @override
   Widget build(BuildContext context) {
+    final w = context.wimz;
     return Expanded(
       child: Column(
         children: [
@@ -287,12 +285,12 @@ class _Stat extends StatelessWidget {
             style: TextStyle(
               fontSize: 15,
               fontWeight: FontWeight.bold,
-              color: color ?? AppTheme.textPrimary,
+              color: w.ink,
             ),
           ),
           Text(
             label,
-            style: const TextStyle(fontSize: 10, color: AppTheme.textTertiary),
+            style: TextStyle(fontSize: 10, color: w.inkMuted),
           ),
         ],
       ),

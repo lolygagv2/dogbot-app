@@ -29,7 +29,7 @@ class VideoSavedSheet extends StatelessWidget {
   }) {
     return showModalBottomSheet(
       context: context,
-      backgroundColor: AppTheme.surface,
+      backgroundColor: Theme.of(context).colorScheme.surface,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
       ),
@@ -63,6 +63,7 @@ class VideoSavedSheet extends StatelessWidget {
   Widget build(BuildContext context) {
     final robotPath = '/data/${asset.relPath}';
     final l = context.l10n;
+    final w = context.wimz;
     return SafeArea(
       child: Padding(
         padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
@@ -74,8 +75,8 @@ class VideoSavedSheet extends StatelessWidget {
               Center(
                 child: Text(
                   l.videoSavedSampleData,
-                  style: const TextStyle(
-                    color: Colors.amber,
+                  style: TextStyle(
+                    color: w.inkMuted,
                     fontSize: 11,
                     fontWeight: FontWeight.bold,
                     letterSpacing: 1,
@@ -85,7 +86,7 @@ class VideoSavedSheet extends StatelessWidget {
             const SizedBox(height: 8),
             Row(
               children: [
-                const Icon(Icons.check_circle, color: AppTheme.accent, size: 28),
+                Icon(Icons.check_circle, color: w.ink, size: 28),
                 const SizedBox(width: 10),
                 Text(
                   l.videoSavedTitle,
@@ -96,8 +97,8 @@ class VideoSavedSheet extends StatelessWidget {
             const SizedBox(height: 12),
             Text(
               l.videoSavedOnRobotAt,
-              style: const TextStyle(
-                color: AppTheme.textTertiary,
+              style: TextStyle(
+                color: w.inkMuted,
                 fontSize: 10,
                 fontWeight: FontWeight.bold,
                 letterSpacing: 2,
@@ -115,10 +116,10 @@ class VideoSavedSheet extends StatelessWidget {
               },
               child: Text(
                 robotPath,
-                style: const TextStyle(
+                style: TextStyle(
                   fontFamily: 'monospace',
                   fontSize: 12,
-                  color: AppTheme.textSecondary,
+                  color: w.inkMuted,
                 ),
               ),
             ),
@@ -127,12 +128,12 @@ class VideoSavedSheet extends StatelessWidget {
               spacing: 8,
               runSpacing: 8,
               children: [
-                _chip(_duration),
-                _chip(_size),
+                _chip(w, _duration),
+                _chip(w, _size),
                 if (asset.width != null && asset.height != null)
-                  _chip('${asset.width}×${asset.height}'),
-                if (asset.codec != null) _chip(asset.codec!.toUpperCase()),
-                _chip(l.videoSavedRetention(asset.retentionClass)),
+                  _chip(w, '${asset.width}×${asset.height}'),
+                if (asset.codec != null) _chip(w, asset.codec!.toUpperCase()),
+                _chip(w, l.videoSavedRetention(asset.retentionClass)),
               ],
             ),
             const SizedBox(height: 20),
@@ -161,11 +162,12 @@ class VideoSavedSheet extends StatelessWidget {
     );
   }
 
-  Widget _chip(String label) => Container(
+  Widget _chip(WimzColors w, String label) => Container(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
         decoration: BoxDecoration(
-          color: AppTheme.surfaceLight,
+          color: w.surfaceRaised,
           borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: w.line),
         ),
         child: Text(label, style: const TextStyle(fontSize: 12)),
       );

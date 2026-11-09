@@ -10,6 +10,7 @@ import '../../../data/services/photo_service.dart';
 import '../../../domain/providers/dog_profiles_provider.dart';
 import '../../../domain/providers/photo_provider.dart';
 import '../../../l10n/l10n.dart';
+import '../../theme/app_theme.dart';
 
 /// Photo gallery screen showing all captured photos
 class PhotoGalleryScreen extends ConsumerStatefulWidget {
@@ -79,20 +80,20 @@ class _PhotoGalleryScreenState extends ConsumerState<PhotoGalleryScreen> {
           Icon(
             Icons.photo_library_outlined,
             size: 64,
-            color: Theme.of(context).colorScheme.onSurface.withOpacity(0.4),
+            color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.4),
           ),
           const SizedBox(height: 16),
           Text(
             context.l10n.galleryNoPhotos,
             style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                  color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+                  color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
                 ),
           ),
           const SizedBox(height: 8),
           Text(
             context.l10n.galleryTakePhotosHint,
             style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: Theme.of(context).colorScheme.onSurface.withOpacity(0.4),
+                  color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.4),
                 ),
           ),
         ],
@@ -148,6 +149,8 @@ class _PhotoThumbnail extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Overlays on a photo: scrim + on-video tokens.
+    final w = context.wimz;
     return GestureDetector(
       onTap: onTap,
       child: ClipRRect(
@@ -174,13 +177,13 @@ class _PhotoThumbnail extends StatelessWidget {
                   child: Container(
                     padding: const EdgeInsets.all(3),
                     decoration: BoxDecoration(
-                      color: Colors.black.withOpacity(0.55),
+                      color: w.scrim(0.55),
                       shape: BoxShape.circle,
                     ),
                     child: Icon(
                       Icons.auto_awesome,
                       size: 12,
-                      color: Theme.of(context).colorScheme.primary,
+                      color: w.onVideo,
                     ),
                   ),
                 ),
@@ -198,14 +201,14 @@ class _PhotoThumbnail extends StatelessWidget {
                     end: Alignment.bottomCenter,
                     colors: [
                       Colors.transparent,
-                      Colors.black.withOpacity(0.7),
+                      w.scrim(0.7),
                     ],
                   ),
                 ),
                 child: Text(
                   photo.formattedTime(context),
-                  style: const TextStyle(
-                    color: Colors.white,
+                  style: TextStyle(
+                    color: w.onVideo,
                     fontSize: 10,
                   ),
                   maxLines: 1,
@@ -247,11 +250,13 @@ class _PhotoViewerScreen extends ConsumerWidget {
             ? context.l10n.galleryAssistantPhotoFor(dogName)
             : context.l10n.galleryAssistantPhoto)
         : null;
+    // Full-screen photo viewer: always a dark ground.
+    final w = context.wimz;
     return Scaffold(
-      backgroundColor: Colors.black,
+      backgroundColor: w.brandInk,
       appBar: AppBar(
-        backgroundColor: Colors.black,
-        foregroundColor: Colors.white,
+        backgroundColor: w.brandInk,
+        foregroundColor: w.onVideo,
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisSize: MainAxisSize.min,
@@ -265,7 +270,7 @@ class _PhotoViewerScreen extends ConsumerWidget {
                 subtitle,
                 style: TextStyle(
                   fontSize: 11,
-                  color: Theme.of(context).colorScheme.primary,
+                  color: w.onVideo.withValues(alpha: 0.7),
                 ),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
@@ -298,11 +303,11 @@ class _PhotoViewerScreen extends ConsumerWidget {
               return Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  const Icon(Icons.broken_image, color: Colors.white54, size: 64),
+                  Icon(Icons.broken_image, color: w.onVideo.withValues(alpha: 0.54), size: 64),
                   const SizedBox(height: 16),
                   Text(
                     context.l10n.galleryFailedToLoad,
-                    style: TextStyle(color: Colors.white.withOpacity(0.6)),
+                    style: TextStyle(color: w.onVideo.withValues(alpha: 0.6)),
                   ),
                 ],
               );
@@ -349,7 +354,8 @@ class _PhotoViewerScreen extends ConsumerWidget {
             onPressed: () => Navigator.pop(dialogContext),
             child: Text(context.l10n.cancel),
           ),
-          FilledButton(
+          // Destructive: error slot, with icon + "Delete" label.
+          FilledButton.icon(
             onPressed: () {
               // Close dialog first, then viewer, then delete
               Navigator.pop(dialogContext); // Close dialog
@@ -357,9 +363,11 @@ class _PhotoViewerScreen extends ConsumerWidget {
               ref.read(photoProvider.notifier).deletePhoto(photo.localPath);
             },
             style: FilledButton.styleFrom(
-              backgroundColor: Colors.red,
+              backgroundColor: Theme.of(context).colorScheme.error,
+              foregroundColor: Theme.of(context).colorScheme.onError,
             ),
-            child: Text(context.l10n.delete),
+            icon: const Icon(Icons.delete_outline, size: 18),
+            label: Text(context.l10n.delete),
           ),
         ],
       ),

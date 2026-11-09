@@ -128,19 +128,21 @@ class _WebRTCVideoViewState extends ConsumerState<WebRTCVideoView> {
   }
 
   Widget _buildPlaceholder(String message, IconData icon, VoidCallback? onTap) {
+    final w = context.wimz;
+    final muted = w.onVideo.withValues(alpha: 0.7);
     return Container(
-      color: Colors.black,
+      color: w.brandInk,
       child: InkWell(
         onTap: onTap,
         child: Center(
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(icon, color: AppTheme.textSecondary, size: 48),
+              Icon(icon, color: muted, size: 48),
               const SizedBox(height: 16),
               Text(
                 message,
-                style: const TextStyle(color: AppTheme.textSecondary),
+                style: TextStyle(color: muted),
               ),
             ],
           ),
@@ -150,17 +152,18 @@ class _WebRTCVideoViewState extends ConsumerState<WebRTCVideoView> {
   }
 
   Widget _buildLoading(String message) {
+    final w = context.wimz;
     return Container(
-      color: Colors.black,
+      color: w.brandInk,
       child: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const CircularProgressIndicator(color: AppTheme.primary),
+            CircularProgressIndicator(color: w.onVideo),
             const SizedBox(height: 16),
             Text(
               message,
-              style: const TextStyle(color: AppTheme.textSecondary),
+              style: TextStyle(color: w.onVideo.withValues(alpha: 0.7)),
             ),
           ],
         ),
@@ -169,17 +172,20 @@ class _WebRTCVideoViewState extends ConsumerState<WebRTCVideoView> {
   }
 
   Widget _buildError(AppLocalizations l, String? errorMessage) {
+    final w = context.wimz;
     return Container(
-      color: Colors.black,
+      color: w.brandInk,
       child: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(Icons.error_outline, color: AppTheme.error, size: 48),
+            // Genuine error: icon + message text.
+            Icon(Icons.error_outline,
+                color: Theme.of(context).colorScheme.error, size: 48),
             const SizedBox(height: 16),
             Text(
               errorMessage ?? l.webrtcConnectionFailed,
-              style: const TextStyle(color: AppTheme.textSecondary),
+              style: TextStyle(color: w.onVideo.withValues(alpha: 0.7)),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 16),
@@ -229,16 +235,17 @@ class _WebRTCVideoViewState extends ConsumerState<WebRTCVideoView> {
           // Overlay loading indicator
           AbsorbPointer(
             child: Container(
-              color: Colors.black87,
+              color: context.wimz.scrim(0.87),
               child: Center(
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    const CircularProgressIndicator(color: AppTheme.primary),
+                    CircularProgressIndicator(color: context.wimz.onVideo),
                     const SizedBox(height: 16),
                     Text(
                       l.webrtcReceivingVideo,
-                      style: const TextStyle(color: AppTheme.textSecondary),
+                      style: TextStyle(
+                          color: context.wimz.onVideo.withValues(alpha: 0.7)),
                     ),
                   ],
                 ),
@@ -253,7 +260,7 @@ class _WebRTCVideoViewState extends ConsumerState<WebRTCVideoView> {
     return Stack(
       children: [
         Container(
-          color: Colors.black,
+          color: context.wimz.brandInk,
           child: SizedBox.expand(
             child: RTCVideoView(
               renderer,
@@ -341,7 +348,7 @@ class VideoRecordButtonState extends ConsumerState<VideoRecordButton>
                   next.lastCaptured!.savedToGallery
                       ? Icons.check_circle
                       : Icons.videocam,
-                  color: Colors.white,
+                  color: Theme.of(context).colorScheme.onInverseSurface,
                   size: 20,
                 ),
                 const SizedBox(width: 8),
@@ -363,8 +370,15 @@ class VideoRecordButtonState extends ConsumerState<VideoRecordButton>
         ScaffoldMessenger.of(context).hideCurrentSnackBar();
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(next.error!),
-            backgroundColor: Colors.red,
+            content: Row(
+              children: [
+                Icon(Icons.error_outline,
+                    color: Theme.of(context).colorScheme.onError, size: 20),
+                const SizedBox(width: 8),
+                Expanded(child: Text(next.error!)),
+              ],
+            ),
+            backgroundColor: Theme.of(context).colorScheme.error,
             duration: const Duration(seconds: 3),
           ),
         );
@@ -376,10 +390,14 @@ class VideoRecordButtonState extends ConsumerState<VideoRecordButton>
         ? 0.4 + (_pulseController.value * 0.6)
         : 1.0;
 
+    // On the video ground: ink scrim at rest, a pulsing white fill while
+    // recording (the stop icon carries the state; no red).
+    final w = context.wimz;
+    final fg = isRecording ? w.brandInk : w.onVideo;
     return Material(
       color: isRecording
-          ? Colors.red.withOpacity(opacity * 0.6)
-          : Colors.black54,
+          ? w.onVideo.withValues(alpha: opacity * 0.85)
+          : w.scrim(0.54),
       borderRadius: BorderRadius.circular(24),
       child: InkWell(
         onTap: isProcessing
@@ -402,13 +420,13 @@ class VideoRecordButtonState extends ConsumerState<VideoRecordButton>
                     value: videoState.downloadProgress > 0
                         ? videoState.downloadProgress
                         : null, // indeterminate until download starts
-                    color: Colors.white,
+                    color: fg,
                     strokeWidth: 2,
                   ),
                 )
               : Icon(
                   isRecording ? Icons.stop : Icons.videocam,
-                  color: Colors.white,
+                  color: fg,
                   size: 24,
                 ),
         ),
@@ -439,7 +457,7 @@ class CameraButton extends ConsumerWidget {
                   next.lastCaptured!.savedToGallery
                       ? Icons.check_circle
                       : Icons.photo,
-                  color: Colors.white,
+                  color: Theme.of(context).colorScheme.onInverseSurface,
                   size: 20,
                 ),
                 const SizedBox(width: 8),
@@ -462,8 +480,15 @@ class CameraButton extends ConsumerWidget {
         ScaffoldMessenger.of(context).hideCurrentSnackBar();
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(next.error!),
-            backgroundColor: Colors.red,
+            content: Row(
+              children: [
+                Icon(Icons.error_outline,
+                    color: Theme.of(context).colorScheme.onError, size: 20),
+                const SizedBox(width: 8),
+                Expanded(child: Text(next.error!)),
+              ],
+            ),
+            backgroundColor: Theme.of(context).colorScheme.error,
             duration: const Duration(seconds: 3),
           ),
         );
@@ -471,8 +496,9 @@ class CameraButton extends ConsumerWidget {
       }
     });
 
+    final w = context.wimz;
     return Material(
-      color: Colors.black54,
+      color: w.scrim(0.54),
       borderRadius: BorderRadius.circular(24),
       child: InkWell(
         onTap: isCapturing
@@ -482,17 +508,17 @@ class CameraButton extends ConsumerWidget {
         child: Padding(
           padding: const EdgeInsets.all(12),
           child: isCapturing
-              ? const SizedBox(
+              ? SizedBox(
                   width: 24,
                   height: 24,
                   child: CircularProgressIndicator(
-                    color: Colors.white,
+                    color: w.onVideo,
                     strokeWidth: 2,
                   ),
                 )
-              : const Icon(
+              : Icon(
                   Icons.camera_alt,
-                  color: Colors.white,
+                  color: w.onVideo,
                   size: 24,
                 ),
         ),

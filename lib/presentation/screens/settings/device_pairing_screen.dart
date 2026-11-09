@@ -82,12 +82,14 @@ class _DevicePairingScreenState extends ConsumerState<DevicePairingScreen> {
             onPressed: () => Navigator.pop(context, false),
             child: Text(l.cancel),
           ),
-          FilledButton(
+          FilledButton.icon(
             onPressed: () => Navigator.pop(context, true),
             style: FilledButton.styleFrom(
-              backgroundColor: AppTheme.error,
+              backgroundColor: Theme.of(context).colorScheme.error,
+              foregroundColor: Theme.of(context).colorScheme.onError,
             ),
-            child: Text(l.devicePairingUnpair),
+            icon: const Icon(Icons.link_off, size: 18),
+            label: Text(l.devicePairingUnpair),
           ),
         ],
       ),
@@ -126,10 +128,14 @@ class _DevicePairingScreenState extends ConsumerState<DevicePairingScreen> {
             onPressed: () => Navigator.pop(context, false),
             child: Text(l.devicePairingKeep),
           ),
-          FilledButton(
+          FilledButton.icon(
             onPressed: () => Navigator.pop(context, true),
-            style: FilledButton.styleFrom(backgroundColor: AppTheme.error),
-            child: Text(l.devicePairingHide),
+            style: FilledButton.styleFrom(
+              backgroundColor: Theme.of(context).colorScheme.error,
+              foregroundColor: Theme.of(context).colorScheme.onError,
+            ),
+            icon: const Icon(Icons.visibility_off, size: 18),
+            label: Text(l.devicePairingHide),
           ),
         ],
       ),
@@ -177,9 +183,9 @@ class _DevicePairingScreenState extends ConsumerState<DevicePairingScreen> {
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: AppTheme.surface,
+              color: Theme.of(context).colorScheme.surface,
               border: Border(
-                bottom: BorderSide(color: AppTheme.glassBorder),
+                bottom: BorderSide(color: context.wimz.line),
               ),
             ),
             child: Column(
@@ -190,7 +196,7 @@ class _DevicePairingScreenState extends ConsumerState<DevicePairingScreen> {
                   style: TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.bold,
-                    color: AppTheme.primary,
+                    color: Theme.of(context).colorScheme.primary,
                     letterSpacing: 1,
                   ),
                 ),
@@ -216,13 +222,14 @@ class _DevicePairingScreenState extends ConsumerState<DevicePairingScreen> {
                     const SizedBox(width: 12),
                     FilledButton.icon(
                       onPressed: _isPairing ? null : _pairDevice,
+                      style: WimzTheme.goldButtonStyle(context),
                       icon: _isPairing
-                          ? const SizedBox(
+                          ? SizedBox(
                               width: 16,
                               height: 16,
                               child: CircularProgressIndicator(
                                 strokeWidth: 2,
-                                color: Colors.white,
+                                color: context.wimz.inkOnGold,
                               ),
                             )
                           : const Icon(Icons.add),
@@ -239,15 +246,17 @@ class _DevicePairingScreenState extends ConsumerState<DevicePairingScreen> {
             Container(
               width: double.infinity,
               padding: const EdgeInsets.all(12),
-              color: AppTheme.error.withOpacity(0.1),
+              color: Theme.of(context).colorScheme.errorContainer,
               child: Row(
                 children: [
-                  Icon(Icons.error_outline, color: AppTheme.error, size: 20),
+                  Icon(Icons.error_outline,
+                      color: Theme.of(context).colorScheme.error, size: 20),
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
                       pairedDevicesState.error!,
-                      style: TextStyle(color: AppTheme.error),
+                      style: TextStyle(
+                          color: Theme.of(context).colorScheme.error),
                     ),
                   ),
                   IconButton(
@@ -306,7 +315,7 @@ class _EmptyState extends StatelessWidget {
           Icon(
             Icons.devices,
             size: 64,
-            color: AppTheme.textTertiary,
+            color: context.wimz.inkMuted,
           ),
           const SizedBox(height: 16),
           Text(
@@ -314,13 +323,13 @@ class _EmptyState extends StatelessWidget {
             style: TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.bold,
-              color: AppTheme.textSecondary,
+              color: context.wimz.inkMuted,
             ),
           ),
           const SizedBox(height: 8),
           Text(
             l.devicePairingNoDevicesBody,
-            style: TextStyle(color: AppTheme.textTertiary),
+            style: TextStyle(color: context.wimz.inkMuted),
           ),
         ],
       ),
@@ -349,10 +358,14 @@ class _DeviceListItem extends StatelessWidget {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
       decoration: BoxDecoration(
-        color: isActive ? AppTheme.primary.withOpacity(0.1) : AppTheme.surface,
+        color: isActive
+            ? context.wimz.surfaceSunken
+            : context.wimz.surfaceRaised,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: isActive ? AppTheme.primary : AppTheme.glassBorder,
+          color: isActive
+              ? Theme.of(context).colorScheme.primary
+              : context.wimz.line,
           width: isActive ? 2 : 1,
         ),
       ),
@@ -366,13 +379,13 @@ class _DeviceListItem extends StatelessWidget {
               height: 48,
               decoration: BoxDecoration(
                 color: isOnline
-                    ? AppTheme.accent.withOpacity(0.1)
-                    : AppTheme.textTertiary.withOpacity(0.1),
+                    ? context.wimz.signalGlow
+                    : context.wimz.surfaceSunken,
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Icon(
                 Icons.smart_toy,
-                color: isOnline ? AppTheme.accent : AppTheme.textTertiary,
+                color: isOnline ? context.wimz.signal : context.wimz.inkMuted,
                 size: 28,
               ),
             ),
@@ -383,9 +396,9 @@ class _DeviceListItem extends StatelessWidget {
                 width: 14,
                 height: 14,
                 decoration: BoxDecoration(
-                  color: isOnline ? AppTheme.accent : AppTheme.textTertiary,
+                  color: isOnline ? context.wimz.signal : context.wimz.inkMuted,
                   shape: BoxShape.circle,
-                  border: Border.all(color: AppTheme.surface, width: 2),
+                  border: Border.all(color: context.wimz.surfaceRaised, width: 2),
                 ),
               ),
             ),
@@ -398,7 +411,7 @@ class _DeviceListItem extends StatelessWidget {
                 device.name ?? device.deviceId,
                 style: TextStyle(
                   fontWeight: FontWeight.bold,
-                  color: isActive ? AppTheme.primary : null,
+                  color: isActive ? Theme.of(context).colorScheme.primary : null,
                 ),
               ),
             ),
@@ -406,13 +419,13 @@ class _DeviceListItem extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                 decoration: BoxDecoration(
-                  color: AppTheme.primary,
+                  color: Theme.of(context).colorScheme.primary,
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Text(
                   l.devicePairingActive,
-                  style: const TextStyle(
-                    color: Colors.white,
+                  style: TextStyle(
+                    color: Theme.of(context).colorScheme.onPrimary,
                     fontSize: 10,
                     fontWeight: FontWeight.bold,
                   ),
@@ -428,7 +441,7 @@ class _DeviceListItem extends StatelessWidget {
                 device.deviceId,
                 style: TextStyle(
                   fontSize: 12,
-                  color: AppTheme.textTertiary,
+                  color: context.wimz.inkMuted,
                 ),
               ),
             const SizedBox(height: 4),
@@ -437,14 +450,14 @@ class _DeviceListItem extends StatelessWidget {
                 Icon(
                   isOnline ? Icons.circle : Icons.circle_outlined,
                   size: 8,
-                  color: isOnline ? AppTheme.accent : AppTheme.textTertiary,
+                  color: isOnline ? context.wimz.signal : context.wimz.inkMuted,
                 ),
                 const SizedBox(width: 4),
                 Text(
                   isOnline ? l.devicePairingOnline : l.devicePairingOffline,
                   style: TextStyle(
                     fontSize: 12,
-                    color: isOnline ? AppTheme.accent : AppTheme.textTertiary,
+                    color: isOnline ? context.wimz.signal : context.wimz.inkMuted,
                   ),
                 ),
                 if (device.lastSeen != null && !isOnline) ...[
@@ -453,7 +466,7 @@ class _DeviceListItem extends StatelessWidget {
                         _formatLastSeen(l, device.lastSeen!)),
                     style: TextStyle(
                       fontSize: 12,
-                      color: AppTheme.textTertiary,
+                      color: context.wimz.inkMuted,
                     ),
                   ),
                 ],
@@ -462,7 +475,7 @@ class _DeviceListItem extends StatelessWidget {
           ],
         ),
         trailing: IconButton(
-          icon: Icon(Icons.link_off, color: AppTheme.error),
+          icon: Icon(Icons.link_off, color: context.wimz.ink),
           onPressed: onUnpair,
           tooltip: l.devicePairingUnpairTooltip,
         ),

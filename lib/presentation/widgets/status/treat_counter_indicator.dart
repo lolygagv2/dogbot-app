@@ -21,19 +21,22 @@ class TreatCounterIndicator extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final remaining = ref.watch(treatsRemainingProvider); // null = no data yet
+    final w = context.wimz;
 
+    // Empty = error (cookie icon + "0/44" text); low = ink-muted with a
+    // warning badge icon; healthy = ink. Never colour alone.
     final Color color;
     final String label;
     if (remaining == null) {
-      color = AppTheme.textTertiary;
+      color = w.inkMuted;
       label = '—'; // em-dash
     } else {
       if (remaining == 0) {
-        color = AppTheme.error;
+        color = Theme.of(context).colorScheme.error;
       } else if (remaining < 5) {
-        color = AppTheme.warning;
+        color = w.inkMuted;
       } else {
-        color = AppTheme.accent;
+        color = w.ink;
       }
       label = '$remaining/$kTreatCapacity';
     }
@@ -47,19 +50,13 @@ class TreatCounterIndicator extends ConsumerWidget {
             clipBehavior: Clip.none,
             children: [
               Icon(Icons.cookie, color: color, size: 20),
-              // Warning dot when low but not empty
+              // Warning badge when low but not empty
               if (remaining != null && remaining > 0 && remaining < 5)
                 Positioned(
-                  top: -2,
-                  right: -2,
-                  child: Container(
-                    width: 8,
-                    height: 8,
-                    decoration: const BoxDecoration(
-                      color: Colors.red,
-                      shape: BoxShape.circle,
-                    ),
-                  ),
+                  top: -4,
+                  right: -4,
+                  child: Icon(Icons.warning_amber_rounded,
+                      size: 10, color: w.ink),
                 ),
             ],
           ),
@@ -112,6 +109,7 @@ class _TreatManagementSheetState extends ConsumerState<_TreatManagementSheet> {
     final remaining = ref.watch(treatsRemainingProvider);
 
     final l = context.l10n;
+    final w = context.wimz;
     final headline =
         remaining != null ? l.treatCounterOf(remaining, kTreatCapacity) : '—';
     final bool isEmpty = remaining == 0;
@@ -132,17 +130,17 @@ class _TreatManagementSheetState extends ConsumerState<_TreatManagementSheet> {
               width: 40,
               height: 4,
               decoration: BoxDecoration(
-                color: AppTheme.textTertiary,
+                color: w.lineStrong,
                 borderRadius: BorderRadius.circular(2),
               ),
             ),
             const SizedBox(height: 16),
             Text(
               l.treatCounterTitle(headline),
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
-                color: AppTheme.textPrimary,
+                color: w.ink,
               ),
             ),
             if (remaining != null) ...[
@@ -152,7 +150,8 @@ class _TreatManagementSheetState extends ConsumerState<_TreatManagementSheet> {
                 style: TextStyle(
                   fontSize: 13,
                   fontWeight: isEmpty ? FontWeight.w600 : FontWeight.w400,
-                  color: isEmpty ? AppTheme.error : AppTheme.textTertiary,
+                  // "Empty — refill" is said in words; ink, not error.
+                  color: isEmpty ? w.ink : w.inkMuted,
                 ),
               ),
             ],
@@ -171,9 +170,8 @@ class _TreatManagementSheetState extends ConsumerState<_TreatManagementSheet> {
                   l.treatCounterRefilledReset,
                   style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                 ),
+                // Theme primary fill (ink / white); no gold in a sheet.
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: AppTheme.accent,
-                  foregroundColor: AppTheme.background,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),
@@ -199,12 +197,12 @@ class _TreatManagementSheetState extends ConsumerState<_TreatManagementSheet> {
                         });
                       },
                 icon: _isClearing
-                    ? const SizedBox(
+                    ? SizedBox(
                         width: 18,
                         height: 18,
                         child: CircularProgressIndicator(
                           strokeWidth: 2,
-                          color: AppTheme.textPrimary,
+                          color: w.ink,
                         ),
                       )
                     : const Icon(Icons.build_circle_outlined),
@@ -213,8 +211,8 @@ class _TreatManagementSheetState extends ConsumerState<_TreatManagementSheet> {
                   style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                 ),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: AppTheme.warning,
-                  foregroundColor: AppTheme.background,
+                  backgroundColor: w.surfaceSunken,
+                  foregroundColor: w.ink,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),
@@ -257,8 +255,8 @@ class _TreatManagementSheetState extends ConsumerState<_TreatManagementSheet> {
                     }
                   },
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: AppTheme.surfaceLighter,
-                    foregroundColor: AppTheme.textPrimary,
+                    backgroundColor: w.surfaceSunken,
+                    foregroundColor: w.ink,
                     padding: const EdgeInsets.symmetric(
                       horizontal: 20,
                       vertical: 14,

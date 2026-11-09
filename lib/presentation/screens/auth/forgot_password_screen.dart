@@ -223,6 +223,8 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
   }
 
   Widget _buildCodeStage(AuthState authState) {
+    final w = context.wimz;
+    final cs = Theme.of(context).colorScheme;
     return Form(
       key: _codeFormKey,
       child: Column(
@@ -233,22 +235,22 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
               padding:
                   const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
               margin: const EdgeInsets.only(bottom: 16),
+              // Informational banner: a flat brand card.
               decoration: BoxDecoration(
-                color: AppTheme.primary.withValues(alpha: 0.10),
+                color: w.surfaceRaised,
                 borderRadius: BorderRadius.circular(10),
-                border: Border.all(
-                    color: AppTheme.primary.withValues(alpha: 0.35)),
+                border: Border.all(color: w.line),
               ),
               child: Row(
                 children: [
-                  const Icon(Icons.mark_email_read_outlined,
-                      color: AppTheme.primary, size: 20),
+                  Icon(Icons.mark_email_read_outlined,
+                      color: cs.onSurface, size: 20),
                   const SizedBox(width: 10),
                   Expanded(
                     child: Text(
                       context.l10n.forgotCodeSentBanner,
-                      style: const TextStyle(
-                          color: AppTheme.primary, fontSize: 13),
+                      style: TextStyle(
+                          color: cs.onSurface, fontSize: 13),
                     ),
                   ),
                 ],
@@ -375,19 +377,20 @@ class _ErrorBox extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: AppTheme.error.withValues(alpha: 0.1),
+        color: cs.error.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(8),
       ),
       child: Row(
         children: [
-          const Icon(Icons.error_outline, color: AppTheme.error, size: 20),
+          Icon(Icons.error_outline, color: cs.error, size: 20),
           const SizedBox(width: 8),
           Expanded(
             child: Text(message,
-                style: const TextStyle(color: AppTheme.error)),
+                style: TextStyle(color: cs.error)),
           ),
         ],
       ),

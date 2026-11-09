@@ -57,7 +57,7 @@ class _ControllerPairingScreenState
       final msg = next.errorMessage;
       if (msg != null && msg != prev?.errorMessage) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(msg), backgroundColor: AppTheme.error),
+          SnackBar(content: Text(msg)),
         );
         notifier.clearMessages();
       }
@@ -125,14 +125,14 @@ class _DebugStrip extends StatelessWidget {
     final s = state;
     return Container(
       width: double.infinity,
-      color: AppTheme.surfaceLight,
+      color: context.wimz.surfaceRaised,
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       child: Text(
         'build $kControllerBuild · ${connected ? 'connected' : 'NOT connected'} · '
         'phase ${s.phase.name} · events ${s.eventsReceived}'
         '${s.lastEventType != null ? ' · last ${s.lastEventType} (${s.lastEventSource})' : ''}',
-        style: const TextStyle(
-          color: AppTheme.textSecondary,
+        style: TextStyle(
+          color: context.wimz.inkMuted,
           fontSize: 11,
           fontFamily: 'monospace',
         ),
@@ -169,7 +169,7 @@ class _ReadyBody extends ConsumerWidget {
                 ),
                 const SizedBox(width: 12),
                 Text(state.progressMessage!,
-                    style: const TextStyle(color: AppTheme.textSecondary)),
+                    style: TextStyle(color: context.wimz.inkMuted)),
               ],
             ),
           ),
@@ -183,7 +183,7 @@ class _ReadyBody extends ConsumerWidget {
             padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
             child: Text(
               l.controllerPairingNoSaved,
-              style: const TextStyle(color: AppTheme.textTertiary, fontSize: 13),
+              style: TextStyle(color: context.wimz.inkMuted, fontSize: 13),
             ),
           )
         else
@@ -205,7 +205,7 @@ class _ReadyBody extends ConsumerWidget {
             padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
             child: Text(
               ControllerKind.generic.localizedPairingHint(context.l10n),
-              style: const TextStyle(color: AppTheme.textTertiary, fontSize: 13),
+              style: TextStyle(color: context.wimz.inkMuted, fontSize: 13),
             ),
           ),
         ...snapshot.discovered.map((c) => _DiscoveredTile(
@@ -232,10 +232,12 @@ class _ReadyBody extends ConsumerWidget {
           TextButton(
               onPressed: () => Navigator.pop(ctx, false),
               child: Text(l.cancel)),
-          TextButton(
+          TextButton.icon(
             onPressed: () => Navigator.pop(ctx, true),
-            child: Text(l.controllerPairingForget,
-                style: const TextStyle(color: Colors.red)),
+            icon: Icon(Icons.delete_outline,
+                size: 18, color: Theme.of(ctx).colorScheme.error),
+            label: Text(l.controllerPairingForget,
+                style: TextStyle(color: Theme.of(ctx).colorScheme.error)),
           ),
         ],
       ),
@@ -253,16 +255,17 @@ class _ActiveCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = controller;
     final connected = c?.connected == true;
-    final color = connected ? AppTheme.connected : AppTheme.disconnected;
+    final color = WimzStatus.connection(context,
+        isConnected: connected, isConnecting: false);
     final l = context.l10n;
 
     return Container(
       margin: const EdgeInsets.fromLTRB(16, 16, 16, 8),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppTheme.surfaceLight,
+        color: context.wimz.surfaceRaised,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: color.withValues(alpha: 0.4)),
+        border: Border.all(color: context.wimz.line),
       ),
       child: Row(
         children: [
@@ -276,10 +279,10 @@ class _ActiveCard extends StatelessWidget {
                   connected
                       ? (c?.name ?? l.controllerPairingController)
                       : l.controllerPairingNoneConnected,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.w600,
-                    color: AppTheme.textPrimary,
+                    color: context.wimz.ink,
                   ),
                 ),
                 const SizedBox(height: 4),
@@ -298,21 +301,23 @@ class _ActiveCard extends StatelessWidget {
                     ),
                     if (connected && c?.trusted == true) ...[
                       const SizedBox(width: 10),
-                      const Icon(Icons.verified_user,
-                          size: 14, color: AppTheme.primary),
+                      Icon(Icons.verified_user,
+                          size: 14,
+                          color: Theme.of(context).colorScheme.primary),
                       const SizedBox(width: 2),
                       Text(l.controllerPairingTrusted,
-                          style: const TextStyle(
-                              color: AppTheme.primary, fontSize: 12)),
+                          style: TextStyle(
+                              color: Theme.of(context).colorScheme.primary,
+                              fontSize: 12)),
                     ],
                     if (connected && c?.battery != null) ...[
                       const SizedBox(width: 10),
-                      const Icon(Icons.battery_full,
-                          size: 14, color: AppTheme.textSecondary),
+                      Icon(Icons.battery_full,
+                          size: 14, color: context.wimz.inkMuted),
                       const SizedBox(width: 2),
                       Text('${c!.battery}%',
-                          style: const TextStyle(
-                              color: AppTheme.textSecondary, fontSize: 12)),
+                          style: TextStyle(
+                              color: context.wimz.inkMuted, fontSize: 12)),
                     ],
                   ],
                 ),
@@ -349,13 +354,15 @@ class _KnownTile extends StatelessWidget {
         ListTile(
           leading: Icon(
             Icons.sports_esports,
-            color: c.connected ? AppTheme.connected : AppTheme.textTertiary,
+            color: WimzStatus.connection(context,
+                isConnected: c.connected, isConnecting: false),
           ),
           title: Text(c.name),
           subtitle: Text(
             c.connected ? l.connected : l.controllerPairingSavedNotConnected,
             style: TextStyle(
-              color: c.connected ? AppTheme.connected : AppTheme.textTertiary,
+              color: WimzStatus.connection(context,
+                  isConnected: c.connected, isConnecting: false),
               fontSize: 12,
             ),
           ),
@@ -389,8 +396,8 @@ class _KnownTile extends StatelessWidget {
               Expanded(
                 child: Text(
                   l.controllerPairingAutoReconnect,
-                  style: const TextStyle(
-                      color: AppTheme.textSecondary, fontSize: 13),
+                  style: TextStyle(
+                      color: context.wimz.inkMuted, fontSize: 13),
                 ),
               ),
               Switch(
@@ -423,11 +430,12 @@ class _DiscoveredTile extends StatelessWidget {
         ? controller.address
         : '$label · ${controller.address}';
     return ListTile(
-      leading: const Icon(Icons.bluetooth_searching, color: AppTheme.primary),
+      leading: Icon(Icons.bluetooth_searching,
+          color: Theme.of(context).colorScheme.primary),
       title: Text(controller.name),
       subtitle: Text(
         subtitle,
-        style: const TextStyle(color: AppTheme.textTertiary, fontSize: 11),
+        style: TextStyle(color: context.wimz.inkMuted, fontSize: 11),
       ),
       trailing: busy
           ? const SizedBox(
@@ -481,8 +489,8 @@ class _SectionHeader extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
       child: Text(
         title.toUpperCase(),
-        style: const TextStyle(
-          color: AppTheme.primary,
+        style: TextStyle(
+          color: Theme.of(context).colorScheme.primary,
           fontSize: 12,
           fontWeight: FontWeight.w700,
           letterSpacing: 1.2,
@@ -518,21 +526,21 @@ class _CenteredHint extends StatelessWidget {
             if (showSpinner)
               const CircularProgressIndicator()
             else
-              Icon(icon, size: 56, color: AppTheme.textTertiary),
+              Icon(icon, size: 56, color: context.wimz.inkMuted),
             const SizedBox(height: 20),
             Text(
               title,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.w600,
-                color: AppTheme.textPrimary,
+                color: context.wimz.ink,
               ),
             ),
             const SizedBox(height: 8),
             Text(
               body,
               textAlign: TextAlign.center,
-              style: const TextStyle(color: AppTheme.textSecondary),
+              style: TextStyle(color: context.wimz.inkMuted),
             ),
             if (action != null) ...[
               const SizedBox(height: 20),

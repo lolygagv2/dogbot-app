@@ -18,18 +18,20 @@ class DraftActionRow extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final entry = ref.watch(missionDraftProvider(draftId));
     final l = context.l10n;
+    final w = context.wimz;
+    final cs = Theme.of(context).colorScheme;
     if (entry == null) {
       // Draft predates this app session and the relay list didn't have it —
       // nothing to act on.
-      return _chip(l.draftStatusExpired, AppTheme.textTertiary);
+      return _chip(l.draftStatusExpired, w.inkMuted);
     }
     switch (entry.status) {
       case DraftStatus.approved:
-        return _chip(l.draftStatusApproved, AppTheme.accent);
+        return _chip(l.draftStatusApproved, w.ink);
       case DraftStatus.declined:
-        return _chip(l.draftStatusDeclined, AppTheme.textTertiary);
+        return _chip(l.draftStatusDeclined, w.inkMuted);
       case DraftStatus.expired:
-        return _chip(l.draftStatusExpired, AppTheme.textTertiary);
+        return _chip(l.draftStatusExpired, w.inkMuted);
       case DraftStatus.pending:
         break;
     }
@@ -43,7 +45,7 @@ class DraftActionRow extends ConsumerWidget {
             padding: const EdgeInsets.only(top: 4),
             child: Text(
               d.summary!,
-              style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary),
+              style: TextStyle(fontSize: 12, color: w.inkMuted),
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
             ),
@@ -53,7 +55,7 @@ class DraftActionRow extends ConsumerWidget {
             padding: const EdgeInsets.only(top: 2),
             child: Text(
               detail,
-              style: const TextStyle(fontSize: 11, color: AppTheme.textTertiary),
+              style: TextStyle(fontSize: 11, color: w.inkMuted),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
             ),
@@ -63,24 +65,24 @@ class DraftActionRow extends ConsumerWidget {
             padding: const EdgeInsets.only(top: 2),
             child: Text(
               d.steps.take(3).join(' → '),
-              style: const TextStyle(fontSize: 11, color: AppTheme.textTertiary),
+              style: TextStyle(fontSize: 11, color: w.inkMuted),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
             ),
           ),
-        for (final w in d.warnings.take(2))
+        for (final warning in d.warnings.take(2))
           Padding(
             padding: const EdgeInsets.only(top: 2),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Icon(Icons.warning_amber_rounded,
-                    size: 13, color: AppTheme.warning),
+                Icon(Icons.warning_amber_rounded,
+                    size: 13, color: w.inkMuted),
                 const SizedBox(width: 4),
                 Expanded(
                   child: Text(
-                    w,
-                    style: const TextStyle(fontSize: 11, color: AppTheme.warning),
+                    warning,
+                    style: TextStyle(fontSize: 11, color: w.inkMuted),
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                   ),
@@ -94,8 +96,8 @@ class DraftActionRow extends ConsumerWidget {
             Expanded(
               child: FilledButton.icon(
                 style: FilledButton.styleFrom(
-                  backgroundColor: AppTheme.accent,
-                  foregroundColor: Colors.black,
+                  backgroundColor: cs.primary,
+                  foregroundColor: cs.onPrimary,
                   visualDensity: VisualDensity.compact,
                   padding: const EdgeInsets.symmetric(horizontal: 10),
                 ),
@@ -112,7 +114,7 @@ class DraftActionRow extends ConsumerWidget {
             Expanded(
               child: OutlinedButton.icon(
                 style: OutlinedButton.styleFrom(
-                  foregroundColor: AppTheme.textSecondary,
+                  foregroundColor: w.inkMuted,
                   visualDensity: VisualDensity.compact,
                   padding: const EdgeInsets.symmetric(horizontal: 10),
                 ),
@@ -138,9 +140,18 @@ class DraftActionRow extends ConsumerWidget {
         if (entry.error != null)
           Padding(
             padding: const EdgeInsets.only(top: 4),
-            child: Text(
-              entry.error!,
-              style: const TextStyle(fontSize: 11, color: AppTheme.warning),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Icon(Icons.error_outline, size: 13, color: cs.error),
+                const SizedBox(width: 4),
+                Expanded(
+                  child: Text(
+                    entry.error!,
+                    style: TextStyle(fontSize: 11, color: cs.error),
+                  ),
+                ),
+              ],
             ),
           ),
       ],
@@ -176,9 +187,9 @@ class DraftActionRow extends ConsumerWidget {
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
           decoration: BoxDecoration(
-            color: color.withOpacity(0.15),
+            color: color.withValues(alpha: 0.15),
             borderRadius: BorderRadius.circular(10),
-            border: Border.all(color: color.withOpacity(0.5)),
+            border: Border.all(color: color.withValues(alpha: 0.5)),
           ),
           child: Text(
             text,

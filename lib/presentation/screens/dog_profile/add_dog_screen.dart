@@ -13,6 +13,7 @@ import 'package:uuid/uuid.dart';
 import '../../../data/models/dog_profile.dart';
 import '../../../domain/providers/dog_profiles_provider.dart';
 import '../../../l10n/l10n.dart';
+import '../../theme/app_theme.dart';
 import '../../widgets/aruco_marker_view.dart';
 
 /// Add Dog screen with stepper flow
@@ -92,7 +93,10 @@ class _AddDogScreenState extends ConsumerState<AddDogScreen> {
             padding: const EdgeInsets.only(top: 16),
             child: Row(
               children: [
+                // The screen's ONE gold element: the final "Save Dog" CTA
+                // (Continue on earlier steps stays the quiet primary).
                 FilledButton(
+                  style: isLastStep ? WimzTheme.goldButtonStyle(context) : null,
                   onPressed: details.onStepContinue,
                   child: Text(isLastStep ? context.l10n.addDogSaveDog : context.l10n.addDogContinue),
                 ),
@@ -237,10 +241,10 @@ class _AddDogScreenState extends ConsumerState<AddDogScreen> {
                       width: 24,
                       height: 24,
                       decoration: BoxDecoration(
-                        color: _getColorPreview(color),
+                        color: _getColorPreview(context.wimz, color),
                         shape: BoxShape.circle,
                         border: Border.all(
-                          color: Colors.grey.shade400,
+                          color: context.wimz.lineStrong,
                           width: 1,
                         ),
                       ),
@@ -373,7 +377,7 @@ class _AddDogScreenState extends ConsumerState<AddDogScreen> {
           context.l10n.addDogArucoAutoPicked,
           style: TextStyle(
             fontSize: 14,
-            color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+            color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
           ),
         ),
         const SizedBox(height: 16),
@@ -420,7 +424,7 @@ class _AddDogScreenState extends ConsumerState<AddDogScreen> {
                   context.l10n.addDogArucoSkipHint,
                   style: TextStyle(
                     fontSize: 13,
-                    color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+                    color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
                   ),
                 ),
               ),
@@ -483,18 +487,20 @@ class _AddDogScreenState extends ConsumerState<AddDogScreen> {
     );
   }
 
-  Color _getColorPreview(DogColor color) {
+  /// Coat swatch from the brand tokens; the enum label is always shown
+  /// next to the swatch, so colour never carries the choice alone.
+  Color _getColorPreview(WimzColors w, DogColor color) {
     switch (color) {
       case DogColor.black:
-        return const Color(0xFF333333);
+        return w.brandInk;
       case DogColor.yellow:
-        return const Color(0xFFD4A574);
+        return w.goldDeep;
       case DogColor.brown:
-        return const Color(0xFF8B4513);
+        return w.inkMuted;
       case DogColor.white:
-        return const Color(0xFFF5F5F5);
+        return w.brandWhite;
       case DogColor.mixed:
-        return const Color(0xFF888888);
+        return w.lineStrong;
     }
   }
 
@@ -523,8 +529,11 @@ class _AddDogScreenState extends ConsumerState<AddDogScreen> {
             ),
             if (_photoPath != null)
               ListTile(
-                leading: const Icon(Icons.delete, color: Colors.red),
-                title: Text(context.l10n.dogPhotoRemovePhoto, style: const TextStyle(color: Colors.red)),
+                leading: Icon(Icons.delete,
+                    color: Theme.of(context).colorScheme.error),
+                title: Text(context.l10n.dogPhotoRemovePhoto,
+                    style: TextStyle(
+                        color: Theme.of(context).colorScheme.error)),
                 onTap: () {
                   Navigator.pop(context);
                   setState(() => _photoPath = null);
@@ -622,10 +631,22 @@ class _AddDogScreenState extends ConsumerState<AddDogScreen> {
 
     if (!added) {
       if (mounted) {
+        final cs = Theme.of(context).colorScheme;
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(context.l10n.addDogDuplicateName(name)),
-            backgroundColor: Colors.red,
+            content: Row(
+              children: [
+                Icon(Icons.error_outline, size: 18, color: cs.onError),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    context.l10n.addDogDuplicateName(name),
+                    style: TextStyle(color: cs.onError),
+                  ),
+                ),
+              ],
+            ),
+            backgroundColor: cs.error,
           ),
         );
       }

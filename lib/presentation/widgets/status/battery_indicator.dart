@@ -1,5 +1,9 @@
 import 'package:flutter/material.dart';
 
+import '../../theme/app_theme.dart';
+
+/// Battery chip: icon + percentage always; colour via [WimzStatus.battery]
+/// (ink / gold-deep when low / error when critical).
 class BatteryIndicator extends StatelessWidget {
   final double level;
 
@@ -7,11 +11,7 @@ class BatteryIndicator extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = level > 50
-        ? Colors.green
-        : level > 20
-            ? Colors.orange
-            : Colors.red;
+    final color = WimzStatus.battery(context, level);
 
     return Row(
       mainAxisSize: MainAxisSize.min,

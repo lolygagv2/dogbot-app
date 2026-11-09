@@ -23,6 +23,7 @@ class AttachmentThumb extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (!hasMedia) return const SizedBox.shrink();
+    final w = context.wimz;
     return GestureDetector(
       onTap: () => showAttachmentViewer(context,
           imageUrl: imageUrl, clipUrl: clipUrl),
@@ -38,22 +39,22 @@ class AttachmentThumb extends StatelessWidget {
                 Image.network(
                   imageUrl!,
                   fit: BoxFit.cover,
-                  errorBuilder: (_, __, ___) => _placeholder(),
+                  errorBuilder: (_, __, ___) => _placeholder(context),
                   loadingBuilder: (c, child, p) =>
-                      p == null ? child : _placeholder(),
+                      p == null ? child : _placeholder(context),
                 )
               else
-                _placeholder(),
+                _placeholder(context),
               if (clipUrl != null)
                 Center(
                   child: Container(
                     decoration: BoxDecoration(
-                      color: Colors.black54,
+                      color: w.scrim(0.54),
                       shape: BoxShape.circle,
                     ),
                     padding: const EdgeInsets.all(4),
-                    child: const Icon(Icons.play_arrow,
-                        color: Colors.white, size: 18),
+                    child: Icon(Icons.play_arrow,
+                        color: w.onVideo, size: 18),
                   ),
                 ),
             ],
@@ -63,11 +64,11 @@ class AttachmentThumb extends StatelessWidget {
     );
   }
 
-  Widget _placeholder() => Container(
-        color: AppTheme.surfaceLighter,
+  Widget _placeholder(BuildContext context) => Container(
+        color: context.wimz.surfaceSunken,
         child: Icon(
           clipUrl != null ? Icons.videocam : Icons.image,
-          color: AppTheme.textTertiary,
+          color: context.wimz.inkMuted,
           size: 20,
         ),
       );
@@ -78,11 +79,12 @@ Future<void> showAttachmentViewer(
   String? imageUrl,
   String? clipUrl,
 }) {
+  // Always a dark ground (photo / clip viewer): on-video tokens throughout.
   return showDialog(
     context: context,
-    barrierColor: Colors.black87,
+    barrierColor: context.wimz.scrim(0.87),
     builder: (ctx) => Dialog.fullscreen(
-      backgroundColor: Colors.black,
+      backgroundColor: ctx.wimz.brandInk,
       child: SafeArea(
         child: Stack(
           children: [
@@ -96,7 +98,7 @@ Future<void> showAttachmentViewer(
                           fit: BoxFit.contain,
                           errorBuilder: (_, __, ___) => Text(
                             ctx.l10n.attachmentOpenFailed,
-                            style: const TextStyle(color: AppTheme.textSecondary),
+                            style: TextStyle(color: ctx.wimz.onVideo),
                           ),
                         ),
                       ),
@@ -106,7 +108,7 @@ Future<void> showAttachmentViewer(
               top: 8,
               right: 8,
               child: IconButton(
-                icon: const Icon(Icons.close, color: Colors.white),
+                icon: Icon(Icons.close, color: ctx.wimz.onVideo),
                 onPressed: () => Navigator.of(ctx).pop(),
               ),
             ),
@@ -156,7 +158,7 @@ class _ClipPlayerState extends State<_ClipPlayer> {
       return Center(
         child: Text(
           context.l10n.attachmentOpenFailed,
-          style: const TextStyle(color: AppTheme.textSecondary),
+          style: TextStyle(color: context.wimz.onVideo),
         ),
       );
     }

@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../theme/app_theme.dart';
+
 class LoadingOverlay extends StatelessWidget {
   final bool isLoading;
   final Widget child;
@@ -20,7 +22,7 @@ class LoadingOverlay extends StatelessWidget {
         if (isLoading)
           AbsorbPointer(
             child: Container(
-            color: Colors.black54,
+            color: context.wimz.scrim(0.54),
             child: Center(
               child: Card(
                 child: Padding(

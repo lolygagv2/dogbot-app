@@ -105,6 +105,8 @@ class _DogHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final w = context.wimz;
+    final cs = Theme.of(context).colorScheme;
     return Column(
       children: [
         // Photo avatar — tapping opens the edit screen, which owns the
@@ -116,11 +118,10 @@ class _DogHeader extends StatelessWidget {
             height: 100,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              color: AppTheme.surfaceLight,
-              border: Border.all(color: AppTheme.primary, width: 3),
-              boxShadow: AppTheme.glowShadow(AppTheme.primary, blur: 15),
+              color: w.surfaceRaised,
+              border: Border.all(color: cs.primary, width: 3),
             ),
-            child: _buildPhoto(),
+            child: _buildPhoto(context),
           ),
         ),
         const SizedBox(height: 12),
@@ -128,10 +129,10 @@ class _DogHeader extends StatelessWidget {
         // Name
         Text(
           profile.name,
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 24,
             fontWeight: FontWeight.bold,
-            color: AppTheme.textPrimary,
+            color: cs.onSurface,
           ),
         ),
         const SizedBox(height: 4),
@@ -141,7 +142,7 @@ class _DogHeader extends StatelessWidget {
           _buildSubtitle(context),
           style: TextStyle(
             fontSize: 14,
-            color: AppTheme.textSecondary,
+            color: w.inkMuted,
           ),
         ),
         // Relay 2026-11-07: placeholder dog created when a robot was paired
@@ -150,8 +151,8 @@ class _DogHeader extends StatelessWidget {
           const SizedBox(height: 10),
           FilledButton.icon(
             style: FilledButton.styleFrom(
-              backgroundColor: AppTheme.primary,
-              foregroundColor: Colors.black,
+              backgroundColor: cs.primary,
+              foregroundColor: cs.onPrimary,
               visualDensity: VisualDensity.compact,
             ),
             onPressed: () => context.push('/dog/${profile.id}/edit'),
@@ -163,7 +164,7 @@ class _DogHeader extends StatelessWidget {
     );
   }
 
-  Widget _buildPhoto() {
+  Widget _buildPhoto(BuildContext context) {
     // Try local photo first, then URL
     if (profile.localPhotoPath != null) {
       final file = File(profile.localPhotoPath!);
@@ -176,7 +177,7 @@ class _DogHeader extends StatelessWidget {
             height: 100,
             // Build 32: Use photoVersion as key to force cache refresh
             key: ValueKey('photo_${profile.id}_${profile.photoVersion}'),
-            errorBuilder: (_, __, ___) => _buildPlaceholder(),
+            errorBuilder: (_, __, ___) => _buildPlaceholder(context),
           ),
         );
       }
@@ -187,25 +188,26 @@ class _DogHeader extends StatelessWidget {
           profile.photoUrl!,
           fit: BoxFit.cover,
           key: ValueKey('photo_url_${profile.id}_${profile.photoVersion}'),
-          errorBuilder: (_, __, ___) => _buildPlaceholder(),
+          errorBuilder: (_, __, ___) => _buildPlaceholder(context),
         ),
       );
     }
-    return _buildPlaceholder();
+    return _buildPlaceholder(context);
   }
 
-  Widget _buildPlaceholder() {
+  Widget _buildPlaceholder(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
     return Column(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        Icon(Icons.pets, size: 40, color: AppTheme.primary),
+        Icon(Icons.pets, size: 40, color: cs.primary),
         const SizedBox(height: 4),
         Text(
           profile.name.substring(0, 1).toUpperCase(),
           style: TextStyle(
             fontSize: 20,
             fontWeight: FontWeight.bold,
-            color: AppTheme.primary,
+            color: cs.primary,
           ),
         ),
       ],
@@ -235,13 +237,17 @@ class _LaunchMissionButton extends ConsumerWidget {
     final activeMission = missionsState.activeMission;
     final hasMission = profile.lastMissionId != null;
     final hasActive = activeMission != null;
+    final w = context.wimz;
+    final cs = Theme.of(context).colorScheme;
+    final isLive = hasMission || hasActive;
+    // Live = solid primary fill (was a gradient + glow); idle = flat card.
+    final fg = isLive ? cs.onPrimary : w.inkMuted;
 
     return Container(
       decoration: BoxDecoration(
-        gradient: (hasMission || hasActive) ? AppTheme.primaryGradient : null,
-        color: (hasMission || hasActive) ? null : AppTheme.surfaceLight,
+        color: isLive ? cs.primary : w.surfaceRaised,
         borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
-        boxShadow: (hasMission || hasActive) ? AppTheme.glowShadow(AppTheme.primary, blur: 10) : null,
+        border: isLive ? null : Border.all(color: w.line),
       ),
       child: Material(
         color: Colors.transparent,
@@ -271,9 +277,7 @@ class _LaunchMissionButton extends ConsumerWidget {
                 Icon(
                   hasActive ? Icons.play_circle : Icons.play_circle_filled,
                   size: 40,
-                  color: (hasMission || hasActive)
-                      ? AppTheme.background
-                      : AppTheme.textTertiary,
+                  color: fg,
                 ),
                 const SizedBox(width: 16),
                 Expanded(
@@ -290,9 +294,7 @@ class _LaunchMissionButton extends ConsumerWidget {
                           fontSize: 14,
                           fontWeight: FontWeight.w700,
                           letterSpacing: 1,
-                          color: (hasMission || hasActive)
-                              ? AppTheme.background
-                              : AppTheme.textTertiary,
+                          color: fg,
                         ),
                       ),
                       if (hasActive) ...[
@@ -301,7 +303,7 @@ class _LaunchMissionButton extends ConsumerWidget {
                           activeMission.localizedName(context.l10n),
                           style: TextStyle(
                             fontSize: 12,
-                            color: AppTheme.background.withOpacity(0.8),
+                            color: cs.onPrimary.withValues(alpha: 0.8),
                           ),
                         ),
                       ],
@@ -310,9 +312,7 @@ class _LaunchMissionButton extends ConsumerWidget {
                 ),
                 Icon(
                   Icons.chevron_right,
-                  color: (hasMission || hasActive)
-                      ? AppTheme.background
-                      : AppTheme.textTertiary,
+                  color: fg,
                 ),
               ],
             ),
@@ -339,12 +339,13 @@ class _StatCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final w = context.wimz;
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 8),
       decoration: BoxDecoration(
-        color: AppTheme.surfaceLight,
+        color: w.surfaceRaised,
         borderRadius: BorderRadius.circular(AppTheme.radiusSmall),
-        border: Border.all(color: AppTheme.glassBorder),
+        border: Border.all(color: w.line),
       ),
       child: Column(
         children: [
@@ -355,7 +356,7 @@ class _StatCard extends StatelessWidget {
             style: TextStyle(
               fontSize: 20,
               fontWeight: FontWeight.bold,
-              color: AppTheme.textPrimary,
+              color: w.ink,
             ),
           ),
           const SizedBox(height: 4),
@@ -363,7 +364,7 @@ class _StatCard extends StatelessWidget {
             label,
             style: TextStyle(
               fontSize: 11,
-              color: AppTheme.textTertiary,
+              color: w.inkMuted,
             ),
           ),
         ],
@@ -382,6 +383,8 @@ class _MetricsDashboard extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final analytics = ref.watch(dogAnalyticsProvider(dogId));
     final notifier = ref.read(dogAnalyticsProvider(dogId).notifier);
+    final w = context.wimz;
+    final cs = Theme.of(context).colorScheme;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -394,15 +397,15 @@ class _MetricsDashboard extends ConsumerWidget {
               style: TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.w600,
-                color: AppTheme.textPrimary,
+                color: cs.onSurface,
               ),
             ),
             // Range toggle
             Container(
               decoration: BoxDecoration(
-                color: AppTheme.surfaceLight,
+                color: w.surfaceRaised,
                 borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: AppTheme.glassBorder),
+                border: Border.all(color: w.line),
               ),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
@@ -436,7 +439,7 @@ class _MetricsDashboard extends ConsumerWidget {
                 value: analytics.treatCount.toString(),
                 label: context.l10n.dogProfileStatTreats,
                 icon: Icons.cookie,
-                color: AppTheme.accent,
+                color: w.ink,
               ),
             ),
             const SizedBox(width: 8),
@@ -445,7 +448,7 @@ class _MetricsDashboard extends ConsumerWidget {
                 value: analytics.detectionCount.toString(),
                 label: context.l10n.dogProfileStatDetections,
                 icon: Icons.visibility,
-                color: AppTheme.primary,
+                color: w.ink,
               ),
             ),
             const SizedBox(width: 8),
@@ -454,7 +457,7 @@ class _MetricsDashboard extends ConsumerWidget {
                 value: '${analytics.missionsSucceeded}/${analytics.missionsAttempted}',
                 label: context.l10n.dogProfileStatMissions,
                 icon: Icons.flag,
-                color: Colors.green,
+                color: w.ink,
               ),
             ),
           ],
@@ -469,7 +472,7 @@ class _MetricsDashboard extends ConsumerWidget {
                     : '--',
                 label: context.l10n.dogProfileStatSuccess,
                 icon: Icons.check_circle,
-                color: Colors.teal,
+                color: w.ink,
               ),
             ),
             const SizedBox(width: 8),
@@ -478,7 +481,7 @@ class _MetricsDashboard extends ConsumerWidget {
                 value: context.l10n.dogProfileActiveMinutes(analytics.activeMinutes),
                 label: context.l10n.dogProfileStatActive,
                 icon: Icons.timer,
-                color: Colors.deepPurple,
+                color: w.ink,
               ),
             ),
             const SizedBox(width: 8),
@@ -487,7 +490,7 @@ class _MetricsDashboard extends ConsumerWidget {
                 value: analytics.coachRewards.toString(),
                 label: context.l10n.dogProfileStatCoach,
                 icon: Icons.school,
-                color: Colors.orange,
+                color: w.ink,
               ),
             ),
           ],
@@ -503,7 +506,7 @@ class _MetricsDashboard extends ConsumerWidget {
             icon: const Icon(Icons.bar_chart, size: 18),
             label: Text(context.l10n.dogProfileViewDashboard),
             style: TextButton.styleFrom(
-              foregroundColor: AppTheme.primary,
+              foregroundColor: cs.primary,
             ),
           ),
         ),
@@ -526,12 +529,13 @@ class _RangeChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
     return GestureDetector(
       onTap: onTap,
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
         decoration: BoxDecoration(
-          color: isSelected ? AppTheme.primary : Colors.transparent,
+          color: isSelected ? cs.primary : Colors.transparent,
           borderRadius: BorderRadius.circular(16),
         ),
         child: Text(
@@ -539,7 +543,7 @@ class _RangeChip extends StatelessWidget {
           style: TextStyle(
             fontSize: 12,
             fontWeight: FontWeight.w600,
-            color: isSelected ? AppTheme.background : AppTheme.textSecondary,
+            color: isSelected ? cs.onPrimary : context.wimz.inkMuted,
           ),
         ),
       ),
@@ -563,7 +567,7 @@ class _QuickActionsGrid extends StatelessWidget {
           style: TextStyle(
             fontSize: 16,
             fontWeight: FontWeight.w600,
-            color: AppTheme.textPrimary,
+            color: Theme.of(context).colorScheme.onSurface,
           ),
         ),
         const SizedBox(height: 12),
@@ -617,8 +621,10 @@ class _ActionButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final w = context.wimz;
+    final cs = Theme.of(context).colorScheme;
     return Material(
-      color: AppTheme.surfaceLight,
+      color: w.surfaceRaised,
       borderRadius: BorderRadius.circular(AppTheme.radiusSmall),
       child: InkWell(
         onTap: onTap,
@@ -626,19 +632,19 @@ class _ActionButton extends StatelessWidget {
         child: Container(
           padding: const EdgeInsets.symmetric(vertical: 16),
           decoration: BoxDecoration(
-            border: Border.all(color: AppTheme.glassBorder),
+            border: Border.all(color: w.line),
             borderRadius: BorderRadius.circular(AppTheme.radiusSmall),
           ),
           child: Column(
             children: [
-              Icon(icon, color: AppTheme.primary, size: 28),
+              Icon(icon, color: cs.primary, size: 28),
               const SizedBox(height: 8),
               Text(
                 label,
                 style: TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.w500,
-                  color: AppTheme.textSecondary,
+                  color: w.inkMuted,
                 ),
               ),
             ],
@@ -662,6 +668,8 @@ class _RecentActivity extends ConsumerWidget {
         .where((n) => n.dogId == dogId)
         .take(5)
         .toList();
+    final w = context.wimz;
+    final cs = Theme.of(context).colorScheme;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -674,7 +682,7 @@ class _RecentActivity extends ConsumerWidget {
               style: TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.w600,
-                color: AppTheme.textPrimary,
+                color: cs.onSurface,
               ),
             ),
             TextButton(
@@ -692,22 +700,23 @@ class _RecentActivity extends ConsumerWidget {
           Container(
             padding: const EdgeInsets.all(24),
             decoration: BoxDecoration(
-              color: AppTheme.surfaceLight,
+              color: w.surfaceRaised,
               borderRadius: BorderRadius.circular(AppTheme.radiusSmall),
+              border: Border.all(color: w.line),
             ),
             child: Center(
               child: Text(
                 context.l10n.dogProfileNoRecentActivity,
-                style: TextStyle(color: AppTheme.textTertiary),
+                style: TextStyle(color: w.inkMuted),
               ),
             ),
           )
         else
           Container(
             decoration: BoxDecoration(
-              color: AppTheme.surfaceLight,
+              color: w.surfaceRaised,
               borderRadius: BorderRadius.circular(AppTheme.radiusSmall),
-              border: Border.all(color: AppTheme.glassBorder),
+              border: Border.all(color: w.line),
             ),
             child: Column(
               children: dogNotifications.map((notification) {
@@ -736,6 +745,8 @@ class _ActivityItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final w = context.wimz;
+    final cs = Theme.of(context).colorScheme;
     return Column(
       children: [
         Padding(
@@ -747,7 +758,7 @@ class _ActivityItem extends StatelessWidget {
                 height: 8,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: AppTheme.primary,
+                  color: cs.primary,
                 ),
               ),
               const SizedBox(width: 12),
@@ -756,7 +767,7 @@ class _ActivityItem extends StatelessWidget {
                   '${notification.title}${notification.subtitle != null ? ' - ${notification.subtitle}' : ''}',
                   style: TextStyle(
                     fontSize: 13,
-                    color: AppTheme.textSecondary,
+                    color: w.inkMuted,
                   ),
                 ),
               ),
@@ -764,7 +775,7 @@ class _ActivityItem extends StatelessWidget {
                 _formatRelativeTime(context, notification.timestamp),
                 style: TextStyle(
                   fontSize: 12,
-                  color: AppTheme.textTertiary,
+                  color: w.inkMuted,
                 ),
               ),
             ],
@@ -774,7 +785,7 @@ class _ActivityItem extends StatelessWidget {
           Divider(
             height: 1,
             indent: 36,
-            color: AppTheme.glassBorder,
+            color: w.line,
           ),
       ],
     );
@@ -831,6 +842,7 @@ class DogsListScreen extends ConsumerWidget {
   }
 
   Widget _buildEmptyState(BuildContext context) {
+    final w = context.wimz;
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -838,13 +850,13 @@ class DogsListScreen extends ConsumerWidget {
           Icon(
             Icons.pets,
             size: 64,
-            color: AppTheme.textTertiary,
+            color: w.inkMuted,
           ),
           const SizedBox(height: 16),
           Text(
             context.l10n.dogsListEmpty,
             style: TextStyle(
-              color: AppTheme.textSecondary,
+              color: w.inkMuted,
               fontSize: 16,
             ),
           ),
@@ -872,6 +884,8 @@ class _DogListTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final w = context.wimz;
+    final cs = Theme.of(context).colorScheme;
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
       child: InkWell(
@@ -887,10 +901,10 @@ class _DogListTile extends StatelessWidget {
                 height: 56,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: AppTheme.surfaceLighter,
-                  border: Border.all(color: AppTheme.primary, width: 2),
+                  color: w.surfaceSunken,
+                  border: Border.all(color: cs.primary, width: 2),
                 ),
-                child: _buildPhoto(),
+                child: _buildPhoto(context),
               ),
               const SizedBox(width: 16),
 
@@ -901,10 +915,10 @@ class _DogListTile extends StatelessWidget {
                   children: [
                     Text(
                       profile.name,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.w600,
-                        color: AppTheme.textPrimary,
+                        color: cs.onSurface,
                       ),
                     ),
                     const SizedBox(height: 4),
@@ -915,8 +929,8 @@ class _DogListTile extends StatelessWidget {
                       style: TextStyle(
                         fontSize: 13,
                         color: profile.isPlaceholder
-                            ? AppTheme.primary
-                            : AppTheme.textSecondary,
+                            ? cs.primary
+                            : w.inkMuted,
                         fontWeight: profile.isPlaceholder
                             ? FontWeight.w600
                             : FontWeight.normal,
@@ -929,7 +943,7 @@ class _DogListTile extends StatelessWidget {
               // Chevron
               Icon(
                 Icons.chevron_right,
-                color: AppTheme.textTertiary,
+                color: w.inkMuted,
               ),
             ],
           ),
@@ -938,7 +952,7 @@ class _DogListTile extends StatelessWidget {
     );
   }
 
-  Widget _buildPhoto() {
+  Widget _buildPhoto(BuildContext context) {
     // Try local photo first, then URL
     if (profile.localPhotoPath != null) {
       final file = File(profile.localPhotoPath!);
@@ -951,7 +965,7 @@ class _DogListTile extends StatelessWidget {
             height: 56,
             // Build 32: Use photoVersion as key to force cache refresh
             key: ValueKey('list_photo_${profile.id}_${profile.photoVersion}'),
-            errorBuilder: (_, __, ___) => _buildAvatar(),
+            errorBuilder: (_, __, ___) => _buildAvatar(context),
           ),
         );
       }
@@ -962,18 +976,18 @@ class _DogListTile extends StatelessWidget {
           profile.photoUrl!,
           fit: BoxFit.cover,
           key: ValueKey('list_photo_url_${profile.id}_${profile.photoVersion}'),
-          errorBuilder: (_, __, ___) => _buildAvatar(),
+          errorBuilder: (_, __, ___) => _buildAvatar(context),
         ),
       );
     }
-    return _buildAvatar();
+    return _buildAvatar(context);
   }
 
-  Widget _buildAvatar() {
+  Widget _buildAvatar(BuildContext context) {
     return Center(
       child: Icon(
         Icons.pets,
-        color: AppTheme.primary,
+        color: Theme.of(context).colorScheme.primary,
         size: 28,
       ),
     );

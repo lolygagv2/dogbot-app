@@ -33,6 +33,8 @@ class TodayCard extends ConsumerWidget {
     final local = ref.watch(dogDailySummaryProvider(dogId));
     final isLocalMode = ref.watch(settingsProvider).localModeEnabled;
     final l = context.l10n;
+    final w = context.wimz;
+    final cs = Theme.of(context).colorScheme;
     final s = state.summary;
     final usingLocal = s == null;
 
@@ -54,35 +56,30 @@ class TodayCard extends ConsumerWidget {
 
     return Container(
       padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: AppTheme.surface,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppTheme.primary.withOpacity(0.35)),
-      ),
+      decoration: WimzTheme.cardDecoration(context, radius: 12),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
         children: [
           Row(
             children: [
-              const Icon(Icons.today, color: AppTheme.primary, size: 18),
+              Icon(Icons.today, color: cs.primary, size: 18),
               const SizedBox(width: 6),
               Expanded(
                 child: Text(
                   dogName != null
                       ? '${l.todayCardTitle} · $dogName'
                       : l.todayCardTitle,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontWeight: FontWeight.bold,
-                    color: AppTheme.textPrimary,
+                    color: cs.onSurface,
                   ),
                   overflow: TextOverflow.ellipsis,
                 ),
               ),
               Text(
                 dateLabel,
-                style: const TextStyle(
-                    fontSize: 11, color: AppTheme.textTertiary),
+                style: TextStyle(fontSize: 11, color: w.inkMuted),
               ),
               const SizedBox(width: 4),
               state.loading
@@ -95,8 +92,7 @@ class TodayCard extends ConsumerWidget {
                       visualDensity: VisualDensity.compact,
                       padding: EdgeInsets.zero,
                       constraints: const BoxConstraints(),
-                      icon: const Icon(Icons.refresh,
-                          size: 18, color: AppTheme.primary),
+                      icon: Icon(Icons.refresh, size: 18, color: cs.primary),
                       onPressed: () => ref
                           .read(dailySummaryProvider(dogId).notifier)
                           .load(refresh: true),
@@ -110,7 +106,7 @@ class TodayCard extends ConsumerWidget {
               style: TextStyle(
                 fontSize: compact ? 14 : 15,
                 fontWeight: FontWeight.w600,
-                color: AppTheme.textPrimary,
+                color: cs.onSurface,
               ),
               maxLines: compact ? 2 : 3,
               overflow: TextOverflow.ellipsis,
@@ -119,7 +115,7 @@ class TodayCard extends ConsumerWidget {
           const SizedBox(height: 10),
           Row(
             children: [
-              _Stat(l.todayStatBarks, '${stats.barks}', Colors.orange),
+              _Stat(l.todayStatBarks, '${stats.barks}', w.ink),
               // Relay brief 2026-11-09 §4: totals.treat_cap null = no daily
               // limit → label says "Unlimited" (never 0 or blank). A locally
               // built summary has no cap info, so it keeps the plain label.
@@ -130,23 +126,23 @@ class TodayCard extends ConsumerWidget {
                 stats.treatCap != null
                     ? '${stats.treats}/${stats.treatCap}'
                     : '${stats.treats}',
-                AppTheme.accent,
+                w.ink,
               ),
               _Stat(l.todayStatGuardian, '${stats.guardianInterventions}',
-                  Colors.purple),
+                  w.ink),
               if (stats.settleMedianS != null)
                 _Stat(l.todayStatSettle, _fmtSeconds(stats.settleMedianS!),
-                    AppTheme.primary)
+                    w.ink)
               else if (s != null && stats.quietMinutes > 0)
                 _Stat(l.todayStatQuiet, _fmtSeconds(stats.quietMinutes * 60),
-                    AppTheme.primary)
+                    w.ink)
               else
                 _Stat(
                   l.todayStatCoaching,
                   stats.coachingAttempts > 0
                       ? '${stats.coachingCompleted}/${stats.coachingAttempts}'
                       : '${stats.sits}',
-                  AppTheme.primary,
+                  w.ink,
                 ),
             ],
           ),
@@ -155,17 +151,17 @@ class TodayCard extends ConsumerWidget {
             Row(
               children: [
                 _Stat(l.todayStatPacing, _fmtSeconds(stats.pacingSeconds),
-                    AppTheme.textSecondary, small: true),
+                    w.inkMuted, small: true),
                 _Stat(l.todayStatMusic, _fmtSeconds(stats.musicSeconds),
-                    AppTheme.textSecondary, small: true),
+                    w.inkMuted, small: true),
                 _Stat(l.todayStatAlone, _fmtSeconds(stats.aloneSeconds),
-                    AppTheme.textSecondary, small: true),
+                    w.inkMuted, small: true),
                 _Stat(
                   l.todayStatMissions,
                   stats.missionRuns > 0
                       ? '${stats.missionsSuccess}/${stats.missionRuns}'
                       : '0',
-                  AppTheme.textSecondary,
+                  w.inkMuted,
                   small: true,
                 ),
               ],
@@ -179,8 +175,8 @@ class TodayCard extends ConsumerWidget {
             const SizedBox(height: 10),
             Text(
               l.todayEpisodes.toUpperCase(),
-              style: const TextStyle(
-                  fontSize: 10, letterSpacing: 0.5, color: AppTheme.textTertiary),
+              style: TextStyle(
+                  fontSize: 10, letterSpacing: 0.5, color: w.inkMuted),
             ),
             const SizedBox(height: 4),
             for (final e in s.episodes.take(3)) _EpisodeRow(e, locale),
@@ -189,8 +185,8 @@ class TodayCard extends ConsumerWidget {
             const SizedBox(height: 10),
             Text(
               l.todayHighlights.toUpperCase(),
-              style: const TextStyle(
-                  fontSize: 10, letterSpacing: 0.5, color: AppTheme.textTertiary),
+              style: TextStyle(
+                  fontSize: 10, letterSpacing: 0.5, color: w.inkMuted),
             ),
             const SizedBox(height: 4),
             for (final h in s.highlights.take(3))
@@ -204,15 +200,13 @@ class TodayCard extends ConsumerWidget {
                         padding: const EdgeInsets.only(right: 8),
                         child: Text(
                           _fmtHighlightTime(h, locale),
-                          style: const TextStyle(
-                              fontSize: 12, color: AppTheme.textTertiary),
+                          style: TextStyle(fontSize: 12, color: w.inkMuted),
                         ),
                       ),
                     Expanded(
                       child: Text(
                         h.text,
-                        style: const TextStyle(
-                            fontSize: 12, color: AppTheme.textSecondary),
+                        style: TextStyle(fontSize: 12, color: w.inkMuted),
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                       ),
@@ -223,20 +217,28 @@ class TodayCard extends ConsumerWidget {
           ],
           if (usingLocal) ...[
             const SizedBox(height: 6),
-            Text(
-              state.error != null
-                  ? l.todayCardError
-                  : state.loading
-                      ? l.loading
-                      : (state.notFound && !isLocalMode)
-                          ? l.todayCardEmptyRelay
-                          : l.todayCardLocalCounts,
-              style: TextStyle(
-                fontSize: 11,
-                color: state.error != null
-                    ? AppTheme.warning
-                    : AppTheme.textTertiary,
-              ),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Fetch error: same muted ink as the other captions, plus a
+                // warning icon so the state is not carried by colour alone.
+                if (state.error != null) ...[
+                  Icon(Icons.warning_amber, size: 13, color: w.inkMuted),
+                  const SizedBox(width: 4),
+                ],
+                Expanded(
+                  child: Text(
+                    state.error != null
+                        ? l.todayCardError
+                        : state.loading
+                            ? l.loading
+                            : (state.notFound && !isLocalMode)
+                                ? l.todayCardEmptyRelay
+                                : l.todayCardLocalCounts,
+                    style: TextStyle(fontSize: 11, color: w.inkMuted),
+                  ),
+                ),
+              ],
             ),
           ],
         ],
@@ -265,15 +267,19 @@ class _EpisodeRow extends StatelessWidget {
   final String locale;
   const _EpisodeRow(this.e, this.locale);
 
-  static Color _severityColor(String? s) => switch (s) {
-        'high' => AppTheme.error,
-        'med' || 'medium' => Colors.orange,
-        _ => AppTheme.textTertiary,
+  /// High = error (with a warning icon beside the dot), medium = ink,
+  /// low / unknown = ink-muted.
+  static Color _severityColor(BuildContext context, String? s) => switch (s) {
+        'high' => Theme.of(context).colorScheme.error,
+        'med' || 'medium' => context.wimz.ink,
+        _ => context.wimz.inkMuted,
       };
 
   @override
   Widget build(BuildContext context) {
     final l = context.l10n;
+    final w = context.wimz;
+    final isHigh = e.severity == 'high';
     final time = e.ts != null ? DateFormat.jm(locale).format(e.ts!.toLocal()) : '';
     final settled = e.settleS != null
         ? ' · ${l.todayEpisodeSettled(TodayCard._fmtSeconds(e.settleS!))}'
@@ -288,26 +294,31 @@ class _EpisodeRow extends StatelessWidget {
             margin: const EdgeInsets.only(right: 8),
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              color: _severityColor(e.severity),
+              color: _severityColor(context, e.severity),
             ),
           ),
+          if (isHigh)
+            Padding(
+              padding: const EdgeInsets.only(right: 4),
+              child: Icon(Icons.warning_amber,
+                  size: 12, color: _severityColor(context, e.severity)),
+            ),
           if (time.isNotEmpty)
             Padding(
               padding: const EdgeInsets.only(right: 8),
               child: Text(time,
-                  style: const TextStyle(
-                      fontSize: 12, color: AppTheme.textTertiary)),
+                  style: TextStyle(fontSize: 12, color: w.inkMuted)),
             ),
           Expanded(
             child: Text(
               '${l.todayEpisodeLine(e.barkCount, TodayCard._fmtSeconds(e.durationS))}$settled',
-              style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary),
+              style: TextStyle(fontSize: 12, color: w.inkMuted),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
             ),
           ),
           if (e.imageUrl != null)
-            const Icon(Icons.photo_outlined, size: 14, color: AppTheme.textTertiary),
+            Icon(Icons.photo_outlined, size: 14, color: w.inkMuted),
         ],
       ),
     );
@@ -322,22 +333,23 @@ class _PlanBlock extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l = context.l10n;
+    final w = context.wimz;
+    final cs = Theme.of(context).colorScheme;
     final source = AiProvider.fromWire(plan.source)?.displayName ??
         plan.source;
     return Container(
       padding: const EdgeInsets.all(8),
       decoration: BoxDecoration(
-        color: AppTheme.secondary.withOpacity(0.08),
+        color: w.surfaceSunken,
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: AppTheme.secondary.withOpacity(0.3)),
+        border: Border.all(color: w.line),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              const Icon(Icons.auto_awesome,
-                  size: 14, color: AppTheme.secondary),
+              Icon(Icons.auto_awesome, size: 14, color: cs.onSurface),
               const SizedBox(width: 4),
               Expanded(
                 child: Text(
@@ -345,10 +357,10 @@ class _PlanBlock extends StatelessWidget {
                       (source != null
                           ? l.todayPlanBy(source)
                           : l.todayPlanTitle),
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.w600,
-                    color: AppTheme.secondary,
+                    color: cs.onSurface,
                   ),
                   overflow: TextOverflow.ellipsis,
                 ),
@@ -360,8 +372,7 @@ class _PlanBlock extends StatelessWidget {
               padding: const EdgeInsets.only(top: 2, left: 2),
               child: Text(
                 '• $item',
-                style: const TextStyle(
-                    fontSize: 12, color: AppTheme.textSecondary),
+                style: TextStyle(fontSize: 12, color: w.inkMuted),
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
               ),
@@ -394,7 +405,7 @@ class _Stat extends StatelessWidget {
           ),
           Text(
             label,
-            style: const TextStyle(fontSize: 10, color: AppTheme.textTertiary),
+            style: TextStyle(fontSize: 10, color: context.wimz.inkMuted),
             overflow: TextOverflow.ellipsis,
           ),
         ],

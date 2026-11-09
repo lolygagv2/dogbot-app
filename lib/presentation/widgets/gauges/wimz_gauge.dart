@@ -30,7 +30,8 @@ class WimzGauge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final gaugeColor = color ?? _getColorForValue(value);
+    final w = context.wimz;
+    final gaugeColor = color ?? _getColorForValue(context, value);
 
     return SizedBox(
       width: size,
@@ -48,7 +49,7 @@ class WimzGauge extends StatelessWidget {
             axisLineStyle: AxisLineStyle(
               thickness: 0.12,
               thicknessUnit: GaugeSizeUnit.factor,
-              color: AppTheme.surfaceLighter,
+              color: w.surfaceSunken,
               cornerStyle: CornerStyle.bothCurve,
             ),
             pointers: [
@@ -61,7 +62,7 @@ class WimzGauge extends StatelessWidget {
                 cornerStyle: CornerStyle.bothCurve,
                 gradient: SweepGradient(
                   colors: [
-                    gaugeColor.withOpacity(0.6),
+                    gaugeColor.withValues(alpha: 0.6),
                     gaugeColor,
                   ],
                 ),
@@ -77,7 +78,7 @@ class WimzGauge extends StatelessWidget {
                   knobStyle: KnobStyle(
                     knobRadius: 0.08,
                     color: gaugeColor,
-                    borderColor: AppTheme.surface,
+                    borderColor: w.surface,
                     borderWidth: 0.02,
                     sizeUnit: GaugeSizeUnit.factor,
                   ),
@@ -96,12 +97,6 @@ class WimzGauge extends StatelessWidget {
                         fontWeight: FontWeight.bold,
                         color: gaugeColor,
                         fontFamily: 'SpaceMono',
-                        shadows: AppTheme.glowShadow(gaugeColor, blur: 10)
-                            .map((s) => Shadow(
-                                  color: s.color,
-                                  blurRadius: s.blurRadius,
-                                ))
-                            .toList(),
                       ),
                     ),
                     if (unit != null)
@@ -109,7 +104,7 @@ class WimzGauge extends StatelessWidget {
                         unit!,
                         style: TextStyle(
                           fontSize: size * 0.1,
-                          color: AppTheme.textTertiary,
+                          color: w.inkMuted,
                         ),
                       ),
                   ],
@@ -123,7 +118,7 @@ class WimzGauge extends StatelessWidget {
                   label.toUpperCase(),
                   style: TextStyle(
                     fontSize: size * 0.09,
-                    color: AppTheme.textTertiary,
+                    color: w.inkMuted,
                     letterSpacing: 1,
                     fontWeight: FontWeight.w500,
                   ),
@@ -138,11 +133,15 @@ class WimzGauge extends StatelessWidget {
     );
   }
 
-  Color _getColorForValue(double val) {
+  /// Healthy = ink, getting low = gold-deep, critical = error — the same
+  /// three steps as [WimzStatus.battery]. The gauge always prints the value
+  /// and its label, so the arc colour never stands alone.
+  Color _getColorForValue(BuildContext context, double val) {
+    final w = context.wimz;
     final percent = (val - min) / (max - min);
-    if (percent > 0.6) return AppTheme.accent;
-    if (percent > 0.3) return AppTheme.warning;
-    return AppTheme.error;
+    if (percent > 0.6) return w.ink;
+    if (percent > 0.3) return w.inkMuted;
+    return Theme.of(context).colorScheme.error;
   }
 }
 
@@ -178,7 +177,7 @@ class BatteryGauge extends StatelessWidget {
             bottom: size * 0.15,
             child: Icon(
               Icons.bolt,
-              color: AppTheme.warning,
+              color: context.wimz.inkMuted,
               size: size * 0.15,
             ),
           ),
@@ -234,9 +233,11 @@ class _SingleSpeedGauge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final w = context.wimz;
     final isForward = value >= 0;
     final absValue = value.abs() * 100;
-    final color = isForward ? AppTheme.accent : AppTheme.error;
+    // Direction is shown by the arrow icon; reverse is not an error.
+    final color = isForward ? w.ink : w.inkMuted;
 
     return SizedBox(
       width: size,
@@ -254,7 +255,7 @@ class _SingleSpeedGauge extends StatelessWidget {
             axisLineStyle: AxisLineStyle(
               thickness: 0.15,
               thicknessUnit: GaugeSizeUnit.factor,
-              color: AppTheme.surfaceLighter,
+              color: w.surfaceSunken,
               cornerStyle: CornerStyle.bothCurve,
             ),
             pointers: [
@@ -281,7 +282,7 @@ class _SingleSpeedGauge extends StatelessWidget {
                       style: TextStyle(
                         fontSize: size * 0.15,
                         fontWeight: FontWeight.bold,
-                        color: AppTheme.textSecondary,
+                        color: w.inkMuted,
                       ),
                     ),
                   ],

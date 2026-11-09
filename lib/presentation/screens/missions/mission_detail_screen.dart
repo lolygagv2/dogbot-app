@@ -29,6 +29,8 @@ class MissionDetailScreen extends ConsumerWidget {
     final isThisActive = missionsState.activeMissionId == missionId;
     final hasOtherActive = missionsState.hasActiveMission && !isThisActive;
     final isStarting = isThisActive && missionsState.currentProgress?.status == 'starting';
+    final w = context.wimz;
+    final cs = Theme.of(context).colorScheme;
 
     // Navigate to drive only when robot confirms mission started (not optimistically)
     ref.listen<MissionsState>(missionsProvider, (prev, next) {
@@ -49,8 +51,16 @@ class MissionDetailScreen extends ConsumerWidget {
         ScaffoldMessenger.of(context).hideCurrentSnackBar();
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(next.error!),
-            backgroundColor: AppTheme.error,
+            content: Row(
+              children: [
+                Icon(Icons.error_outline, color: cs.onError, size: 18),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(next.error!, style: TextStyle(color: cs.onError)),
+                ),
+              ],
+            ),
+            backgroundColor: cs.error,
             behavior: SnackBarBehavior.floating,
             duration: const Duration(seconds: 5),
           ),
@@ -74,18 +84,18 @@ class MissionDetailScreen extends ConsumerWidget {
                 height: 80,
                 decoration: BoxDecoration(
                   color: isThisActive
-                      ? Colors.green.withOpacity(0.2)
-                      : AppTheme.surfaceLight,
+                      ? w.surfaceSunken
+                      : w.surfaceRaised,
                   borderRadius: BorderRadius.circular(20),
                   border: Border.all(
-                    color: isThisActive ? Colors.green : AppTheme.glassBorder,
+                    color: isThisActive ? cs.primary : w.line,
                     width: 2,
                   ),
                 ),
                 child: Icon(
                   _getMissionIcon(mission.targetBehavior),
                   size: 40,
-                  color: isThisActive ? Colors.green : AppTheme.primary,
+                  color: isThisActive ? cs.primary : cs.onSurface,
                 ),
               ),
             ),
@@ -93,10 +103,10 @@ class MissionDetailScreen extends ConsumerWidget {
             Center(
               child: Text(
                 mission.localizedName(context.l10n),
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 22,
                   fontWeight: FontWeight.bold,
-                  color: AppTheme.textPrimary,
+                  color: cs.onSurface,
                 ),
               ),
             ),
@@ -108,7 +118,7 @@ class MissionDetailScreen extends ConsumerWidget {
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     fontSize: 14,
-                    color: AppTheme.textSecondary,
+                    color: cs.onSurfaceVariant,
                   ),
                 ),
               ),
@@ -140,9 +150,9 @@ class MissionDetailScreen extends ConsumerWidget {
                           borderRadius: BorderRadius.circular(4),
                           child: LinearProgressIndicator(
                             value: missionsState.activeProgress,
-                            backgroundColor: AppTheme.glassBorder,
+                            backgroundColor: w.surfaceSunken,
                             valueColor: AlwaysStoppedAnimation(
-                              _statusColor(missionsState.activeStatus),
+                              _statusColor(context, missionsState.activeStatus),
                             ),
                             minHeight: 8,
                           ),
@@ -153,11 +163,11 @@ class MissionDetailScreen extends ConsumerWidget {
                           children: [
                             Text(
                               context.l10n.missionsPercentComplete((missionsState.activeProgress * 100).toInt()),
-                              style: TextStyle(color: AppTheme.textSecondary, fontSize: 13),
+                              style: TextStyle(color: cs.onSurfaceVariant, fontSize: 13),
                             ),
                             Text(
                               context.l10n.missionDetailTreatsGiven(missionsState.activeRewards, mission.dailyLimit),
-                              style: TextStyle(color: AppTheme.textSecondary, fontSize: 13),
+                              style: TextStyle(color: cs.onSurfaceVariant, fontSize: 13),
                             ),
                           ],
                         ),
@@ -171,16 +181,16 @@ class MissionDetailScreen extends ConsumerWidget {
                                 Container(
                                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                                   decoration: BoxDecoration(
-                                    color: _statusColor(missionsState.activeStatus).withOpacity(0.2),
+                                    color: _statusColor(context, missionsState.activeStatus).withValues(alpha: 0.2),
                                     borderRadius: BorderRadius.circular(8),
                                     border: Border.all(
-                                      color: _statusColor(missionsState.activeStatus).withOpacity(0.5),
+                                      color: _statusColor(context, missionsState.activeStatus).withValues(alpha: 0.5),
                                     ),
                                   ),
                                   child: Text(
                                     missionsState.currentProgress!.localizedStatus(context.l10n),
                                     style: TextStyle(
-                                      color: _statusColor(missionsState.activeStatus),
+                                      color: _statusColor(context, missionsState.activeStatus),
                                       fontSize: 12,
                                       fontWeight: FontWeight.w600,
                                     ),
@@ -191,7 +201,7 @@ class MissionDetailScreen extends ConsumerWidget {
                                 Text(
                                   behaviorDisplayName(context.l10n, missionsState.activeTrick),
                                   style: TextStyle(
-                                    color: AppTheme.textSecondary,
+                                    color: cs.onSurfaceVariant,
                                     fontSize: 12,
                                   ),
                                 ),
@@ -204,7 +214,7 @@ class MissionDetailScreen extends ConsumerWidget {
                           Text(
                             missionsState.currentProgress!.localizedStage(context.l10n)!,
                             style: TextStyle(
-                              color: AppTheme.textSecondary,
+                              color: cs.onSurfaceVariant,
                               fontSize: 12,
                             ),
                           ),
@@ -247,8 +257,10 @@ class MissionDetailScreen extends ConsumerWidget {
                 },
                 icon: const Icon(Icons.stop),
                 label: Text(context.l10n.missionDetailStopMission),
+                // Destructive: stops the running mission (stop icon + label).
                 style: FilledButton.styleFrom(
-                  backgroundColor: Colors.red,
+                  backgroundColor: cs.error,
+                  foregroundColor: cs.onError,
                   padding: const EdgeInsets.symmetric(vertical: 16),
                 ),
               )
@@ -262,9 +274,9 @@ class MissionDetailScreen extends ConsumerWidget {
                         // when robot confirms mission started
                       },
                 icon: isStarting
-                    ? const SizedBox(
+                    ? SizedBox(
                         width: 20, height: 20,
-                        child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                        child: CircularProgressIndicator(strokeWidth: 2, color: w.inkOnGold),
                       )
                     : const Icon(Icons.play_arrow),
                 label: Text(
@@ -276,9 +288,11 @@ class MissionDetailScreen extends ConsumerWidget {
                               ? context.l10n.missionDetailStarting
                               : context.l10n.missionDetailStartMission,
                 ),
-                style: FilledButton.styleFrom(
-                  backgroundColor: Colors.green,
-                  padding: const EdgeInsets.symmetric(vertical: 16),
+                // This screen's ONE gold element: the Start Mission hero CTA.
+                style: WimzTheme.goldButtonStyle(context).copyWith(
+                  padding: const WidgetStatePropertyAll(
+                    EdgeInsets.symmetric(vertical: 16),
+                  ),
                 ),
               ),
             const SizedBox(height: 16),
@@ -288,24 +302,27 @@ class MissionDetailScreen extends ConsumerWidget {
     );
   }
 
-  Color _statusColor(MissionStatus status) {
+  /// Status → ink / ink-muted / signal only. The status word is always
+  /// printed in the chip, so colour never carries it alone.
+  Color _statusColor(BuildContext context, MissionStatus status) {
+    final w = context.wimz;
     switch (status) {
       case MissionStatus.watching:
-        return Colors.lightBlue;
+        return w.signal; // live: robot is watching the dog
       case MissionStatus.success:
       case MissionStatus.completed:
-        return Colors.green;
+        return w.ink;
       case MissionStatus.failed:
-        return Colors.orange;
+        return w.inkMuted;
       case MissionStatus.waitingForDog:
-        return Colors.amber;
+        return w.inkMuted;
       case MissionStatus.greeting:
       case MissionStatus.command:
-        return Colors.cyan;
+        return w.ink;
       case MissionStatus.retry:
-        return Colors.deepOrange;
+        return w.inkMuted;
       default:
-        return Colors.green;
+        return w.ink;
     }
   }
 
@@ -334,11 +351,7 @@ class _DetailSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      decoration: BoxDecoration(
-        color: AppTheme.surfaceLight,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppTheme.glassBorder),
-      ),
+      decoration: WimzTheme.cardDecoration(context),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -349,7 +362,7 @@ class _DetailSection extends StatelessWidget {
               style: TextStyle(
                 fontSize: 14,
                 fontWeight: FontWeight.w600,
-                color: AppTheme.textSecondary,
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
               ),
             ),
           ),
@@ -379,15 +392,15 @@ class _DetailRow extends StatelessWidget {
             label,
             style: TextStyle(
               fontSize: 14,
-              color: AppTheme.textSecondary,
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
             ),
           ),
           Text(
             value,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 14,
               fontWeight: FontWeight.w600,
-              color: AppTheme.textPrimary,
+              color: Theme.of(context).colorScheme.onSurface,
             ),
           ),
         ],
@@ -416,7 +429,7 @@ class _BulletPoint extends StatelessWidget {
               height: 6,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: AppTheme.primary,
+                color: Theme.of(context).colorScheme.primary,
               ),
             ),
           ),
@@ -426,7 +439,7 @@ class _BulletPoint extends StatelessWidget {
               text,
               style: TextStyle(
                 fontSize: 13,
-                color: AppTheme.textSecondary,
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
               ),
             ),
           ),

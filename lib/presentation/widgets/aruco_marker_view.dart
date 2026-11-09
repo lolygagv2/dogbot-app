@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show rootBundle;
 
 import '../../l10n/l10n.dart';
+import '../theme/app_theme.dart';
 
 /// Renders a DICT_4X4_1000 ArUco marker from bundled PNG assets.
 ///
@@ -29,9 +30,11 @@ class ArucoMarkerView extends StatelessWidget {
     return Container(
       width: size,
       height: size,
+      // The marker itself must stay literally white-on-black for the
+      // robot's camera, so these are the brand constants, not theme inks.
       decoration: BoxDecoration(
-        color: Colors.white,
-        border: Border.all(color: Colors.black, width: 1),
+        color: context.wimz.brandWhite,
+        border: Border.all(color: context.wimz.brandInk, width: 1),
       ),
       child: Image.asset(
         _assetPath,
@@ -67,17 +70,17 @@ class _Placeholder extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final w = context.wimz;
     return Container(
       width: size,
       height: size,
-      color: Colors.grey.shade200,
+      color: w.surfaceRaised,
       alignment: Alignment.center,
       padding: const EdgeInsets.all(12),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.qr_code_2,
-              size: size * 0.3, color: Colors.grey.shade500),
+          Icon(Icons.qr_code_2, size: size * 0.3, color: w.inkMuted),
           const SizedBox(height: 8),
           Text(
             context.l10n.arucoIdLabel(markerId),
@@ -90,7 +93,7 @@ class _Placeholder extends StatelessWidget {
           Text(
             context.l10n.arucoBundleMissing,
             textAlign: TextAlign.center,
-            style: TextStyle(fontSize: 10, color: Colors.grey.shade700),
+            style: TextStyle(fontSize: 10, color: w.inkMuted),
           ),
         ],
       ),

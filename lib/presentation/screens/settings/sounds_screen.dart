@@ -35,7 +35,6 @@ class _SoundsScreenState extends ConsumerState<SoundsScreen> {
       ..hideCurrentSnackBar()
       ..showSnackBar(SnackBar(
         content: Text(text),
-        backgroundColor: error ? Colors.red : Colors.green,
         behavior: SnackBarBehavior.floating,
       ));
   }
@@ -108,14 +107,24 @@ class _SoundsScreenState extends ConsumerState<SoundsScreen> {
             padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
             child: Text(
               state.fromServer ? l.soundsCatalogFromRobot : l.soundsCatalogDefault,
-              style: const TextStyle(fontSize: 11, color: AppTheme.textTertiary),
+              style: TextStyle(fontSize: 11, color: context.wimz.inkMuted),
             ),
           ),
           if (state.error != null)
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 4, 16, 0),
-              child: Text(state.error!,
-                  style: const TextStyle(fontSize: 12, color: AppTheme.warning)),
+              child: Row(
+                children: [
+                  Icon(Icons.warning_amber,
+                      size: 14, color: context.wimz.inkMuted),
+                  const SizedBox(width: 4),
+                  Expanded(
+                    child: Text(state.error!,
+                        style: TextStyle(
+                            fontSize: 12, color: context.wimz.inkMuted)),
+                  ),
+                ],
+              ),
             ),
           Expanded(
             child: ListView(
@@ -191,24 +200,25 @@ class _SoundRow extends StatelessWidget {
       contentPadding: const EdgeInsets.only(left: 16, right: 8),
       leading: Icon(
         slot.custom ? Icons.graphic_eq : Icons.music_note_outlined,
-        color: slot.custom ? AppTheme.accent : AppTheme.textTertiary,
+        color: slot.custom ? context.wimz.ink : context.wimz.inkMuted,
         size: 20,
       ),
       title: Text(_label(),
-          style: const TextStyle(fontSize: 14, color: AppTheme.textPrimary)),
+          style: TextStyle(fontSize: 14, color: context.wimz.ink)),
       subtitle: Row(
         children: [
           Text(slot.id,
-              style: const TextStyle(
+              style: TextStyle(
                   fontSize: 11,
                   fontFamily: 'monospace',
-                  color: AppTheme.textTertiary)),
+                  color: context.wimz.inkMuted)),
           const SizedBox(width: 8),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
             decoration: BoxDecoration(
-              color: (slot.custom ? AppTheme.accent : AppTheme.textTertiary)
-                  .withOpacity(0.15),
+              color: slot.custom
+                  ? context.wimz.surfaceSunken
+                  : context.wimz.surfaceRaised,
               borderRadius: BorderRadius.circular(8),
             ),
             child: Text(
@@ -216,7 +226,7 @@ class _SoundRow extends StatelessWidget {
               style: TextStyle(
                 fontSize: 9,
                 fontWeight: FontWeight.w600,
-                color: slot.custom ? AppTheme.accent : AppTheme.textTertiary,
+                color: slot.custom ? context.wimz.ink : context.wimz.inkMuted,
               ),
             ),
           ),
@@ -244,14 +254,14 @@ class _SoundRow extends StatelessWidget {
                   IconButton(
                     tooltip: l.soundsRestoreOne,
                     icon: const Icon(Icons.restore, size: 20),
-                    color: AppTheme.textSecondary,
+                    color: context.wimz.inkMuted,
                     visualDensity: VisualDensity.compact,
                     onPressed: disabled ? null : onRestore,
                   ),
                 TextButton.icon(
                   style: TextButton.styleFrom(
                     visualDensity: VisualDensity.compact,
-                    foregroundColor: AppTheme.primary,
+                    foregroundColor: Theme.of(context).colorScheme.primary,
                   ),
                   onPressed: disabled ? null : onReplace,
                   icon: const Icon(Icons.upload_file, size: 16),
