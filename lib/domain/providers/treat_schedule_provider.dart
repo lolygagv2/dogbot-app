@@ -117,8 +117,10 @@ class TreatScheduleState {
       );
 }
 
-/// Relay-shared daily treat limit for the selected dog — GET
-/// `/api/dogs/{dog}/settings/treat_schedule` (brief 2026-11-09 §3).
+/// Relay-shared daily treat limit — GET
+/// `/api/dogs/{dog}/settings/treat_schedule` (brief 2026-11-09 §3). The
+/// relay keeps every owned dog's row identical (follow-up 2026-11-09), so
+/// the selected dog's row is read only because the route needs a dog id.
 ///
 /// Writes still go over the WebSocket `mission_config` message (§1: the
 /// relay reads it and fans the value out to every owned dog), so this

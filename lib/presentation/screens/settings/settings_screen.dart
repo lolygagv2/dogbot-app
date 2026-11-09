@@ -908,7 +908,6 @@ class _DailyLimitTileState extends ConsumerState<_DailyLimitTile> {
   Widget build(BuildContext context) {
     final settings = ref.watch(settingsProvider);
     final remote = ref.watch(treatScheduleProvider);
-    final dog = ref.watch(selectedDogProvider);
     final l = context.l10n;
     final isLocal = settings.localModeEnabled;
 
@@ -921,10 +920,10 @@ class _DailyLimitTileState extends ConsumerState<_DailyLimitTile> {
       hint = l.loading;
     } else if (remote.loaded && remote.changedElsewhere) {
       hint = l.settingsDailyLimitChangedBy(_actorLabel(l, remote.updatedBy));
-    } else if (dog != null) {
-      hint = l.settingsDailyLimitSharedHint(dog.name);
     } else {
-      hint = '';
+      // Relay 2026-11-09 follow-up: every owned dog always carries the same
+      // treat_schedule, so reading the selected dog's row is enough.
+      hint = l.settingsDailyLimitSharedHint;
     }
 
     final tile = Column(

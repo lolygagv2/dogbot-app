@@ -25,7 +25,9 @@ selected dog on: Settings open, selected-dog change, ~1.5 s after our own `missi
 toggle = `value.daily_cap_enabled`, slider = `value.daily_cap`. The value is copied into the
 phone's local settings (no send), so local storage can no longer be stale.
 The tile also shows the hint "Changed by the voice assistant / a connected AI assistant / the
-robot" when `updated_by` isn't the app, and "Showing {dog}'s limit" otherwise.
+robot" when `updated_by` isn't the app, and "Applies to all your dogs" otherwise (relay
+follow-up 2026-11-09: all dogs always match, so one dog's row is enough — the dog-specific
+wording was dropped in B180).
 404 on the key = "relay has no treat_schedule" → the tile silently keeps local values.
 
 Request: please confirm the `updated_by` vocabulary. The app treats `app*` / `user*` / `owner*`
@@ -45,8 +47,8 @@ Handled under the existing `alert` type. `data.kind == "treat_limit_raised"` →
 - foreground arrival: no navigation, just the re-read.
 Other `data.type` pushes with no `kind` now open the Activity tab on tap (previously taps did
 nothing app-side). Please keep `kind` + `dog_id` in `data`; `actor` is logged in diagnostics.
-Note: the app shows the SELECTED dog's limit; it does not switch dogs on tap (switching sends
-`select_dog` to the robot, which changes autonomous voice playback — too big a side effect).
+Note: the app does not switch dogs on tap — moot now that all dogs share one value and the
+multi-dog push text no longer names a dog.
 
 ## 6. Hourly limit — no action ✅
 `max_per_hour` is parsed and preserved (`TreatSchedule.toJson` keeps the full value for any

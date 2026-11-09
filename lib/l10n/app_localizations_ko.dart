@@ -4241,9 +4241,8 @@ class AppLocalizationsKo extends AppLocalizations {
   String get demoReplayStatusDone => '완료';
 
   @override
-  String settingsDailyLimitSharedHint(String dog) {
-    return '로봇, Claude, 음성 비서와 공유됩니다. $dog의 제한을 표시 중.';
-  }
+  String get settingsDailyLimitSharedHint =>
+      '로봇, Claude, 음성 비서와 공유됩니다. 모든 반려견에게 적용됩니다.';
 
   @override
   String settingsDailyLimitChangedBy(String actor) {

@@ -7727,8 +7727,8 @@ abstract class AppLocalizations {
   /// No description provided for @settingsDailyLimitSharedHint.
   ///
   /// In en, this message translates to:
-  /// **'Shared with the robot, Claude and the voice assistant. Showing {dog}\'s limit.'**
-  String settingsDailyLimitSharedHint(String dog);
+  /// **'Shared with the robot, Claude and the voice assistant. Applies to all your dogs.'**
+  String get settingsDailyLimitSharedHint;
 
   /// No description provided for @settingsDailyLimitChangedBy.
   ///

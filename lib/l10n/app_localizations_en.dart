@@ -4388,9 +4388,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get demoReplayStatusDone => 'Done';
 
   @override
-  String settingsDailyLimitSharedHint(String dog) {
-    return 'Shared with the robot, Claude and the voice assistant. Showing $dog\'s limit.';
-  }
+  String get settingsDailyLimitSharedHint =>
+      'Shared with the robot, Claude and the voice assistant. Applies to all your dogs.';
 
   @override
   String settingsDailyLimitChangedBy(String actor) {
