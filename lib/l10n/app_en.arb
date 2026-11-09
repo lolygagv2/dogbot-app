@@ -2565,5 +2565,9 @@
   "treatRefusedRate": "Too many treats in a row — try again in a minute.",
   "treatRefusedWindowClosed": "Treats are paused right now (outside the allowed treat window).",
   "treatRefusedGeneric": "Treat refused: {reason}",
-  "@treatRefusedGeneric": {"placeholders": {"reason": {"type": "String"}}}
+  "@treatRefusedGeneric": {"placeholders": {"reason": {"type": "String"}}},
+  "homeModeChip": "Mode: {mode}",
+  "@homeModeChip": {"placeholders": {"mode": {"type": "String"}}},
+  "homeModeSheetTitle": "MODE",
+  "homeAiShort": "AI"
 }

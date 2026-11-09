@@ -4285,4 +4285,15 @@ class AppLocalizationsKo extends AppLocalizations {
   String treatRefusedGeneric(String reason) {
     return '간식 거부됨: $reason';
   }
+
+  @override
+  String homeModeChip(String mode) {
+    return '모드: $mode';
+  }
+
+  @override
+  String get homeModeSheetTitle => '모드';
+
+  @override
+  String get homeAiShort => 'AI';
 }

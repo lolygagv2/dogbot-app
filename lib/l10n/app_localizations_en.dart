@@ -4435,4 +4435,15 @@ class AppLocalizationsEn extends AppLocalizations {
   String treatRefusedGeneric(String reason) {
     return 'Treat refused: $reason';
   }
+
+  @override
+  String homeModeChip(String mode) {
+    return 'Mode: $mode';
+  }
+
+  @override
+  String get homeModeSheetTitle => 'MODE';
+
+  @override
+  String get homeAiShort => 'AI';
 }

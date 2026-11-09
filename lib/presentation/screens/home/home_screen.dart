@@ -131,9 +131,9 @@ class HomeScreen extends ConsumerWidget {
               ),
 
               // Mode row — ALWAYS visible so user can always exit any mode
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                child: const _ModeAndDriveRow(),
+              const Padding(
+                padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                child: _ModeRow(),
               ),
               // AI voice status / last exchange (collapsed when idle)
               const AskWimzBanner(),
@@ -336,10 +336,24 @@ class _UnknownDogBannerState extends ConsumerState<_UnknownDogBanner> {
 }
 
 /// Mode buttons + Drive button row (replaces video overlay dropdown)
-class _ModeAndDriveRow extends ConsumerWidget {
-  const _ModeAndDriveRow();
+/// Home mode bar (Build 178): `[ Mode: Idle ▾ ] [ EXIT ] [ AI ]`.
+///
+/// Replaces the three fixed segments + DRIVE that overflowed on large
+/// phones. The chip opens a bottom sheet titled MODE listing Idle, Silent
+/// Guardian, Coach, Mission and Manual; picking one loads it. While any
+/// non-idle mode is active a red EXIT appears beside the chip and returns
+/// to Idle (the default) — same semantics as the old red Idle segment.
+/// Drive is reached via Manual (the drive screen enters manual mode itself).
+class _ModeRow extends ConsumerWidget {
+  const _ModeRow();
 
-  static const _portraitModes = [RobotMode.idle, RobotMode.silentGuardian, RobotMode.coach];
+  static const _modes = [
+    RobotMode.idle,
+    RobotMode.silentGuardian,
+    RobotMode.coach,
+    RobotMode.mission,
+    RobotMode.manual,
+  ];
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -348,6 +362,7 @@ class _ModeAndDriveRow extends ConsumerWidget {
     final isChanging = modeState.isSwitching;
     final isLocked = modeState.isModeLocked;
     final unreadCount = ref.watch(unreadEventCountProvider);
+    final l = context.l10n;
 
     // Show error snackbar when mode change fails
     ref.listen<String?>(modeErrorProvider, (previous, error) {
@@ -360,7 +375,7 @@ class _ModeAndDriveRow extends ConsumerWidget {
             behavior: SnackBarBehavior.floating,
             duration: const Duration(seconds: 5),
             action: SnackBarAction(
-              label: context.l10n.homeDismiss,
+              label: l.homeDismiss,
               textColor: Colors.white,
               onPressed: () {
                 ref.read(modeStateProvider.notifier).clearError();
@@ -372,149 +387,195 @@ class _ModeAndDriveRow extends ConsumerWidget {
       }
     });
 
+    final shownMode = isChanging ? (modeState.pendingMode ?? displayMode) : displayMode;
+    final color = _getModeColor(shownMode);
+    final showExit = displayMode != RobotMode.idle || (isChanging && shownMode != RobotMode.idle);
+    final showBadge = displayMode == RobotMode.silentGuardian && unreadCount > 0;
+
     return Row(
       children: [
-        // Mode buttons (segmented style)
+        // Mode chip — "Mode: Idle ▾"
         Expanded(
-          child: Container(
-            height: 42,
-            decoration: BoxDecoration(
-              color: AppTheme.surfaceLight,
+          child: Material(
+            color: AppTheme.surfaceLight,
+            borderRadius: BorderRadius.circular(10),
+            child: InkWell(
               borderRadius: BorderRadius.circular(10),
-            ),
-            child: Row(
-              children: _portraitModes.map((mode) {
-                final isSelected = displayMode == mode;
-                final isPending = isChanging && modeState.pendingMode == mode;
-                final color = _getModeColor(mode);
-                final showBadge = mode == RobotMode.silentGuardian && unreadCount > 0;
-
-                // When in a non-idle mode, Idle button shows as red "EXIT"
-                final isExitButton = mode == RobotMode.idle && displayMode != RobotMode.idle;
-                final buttonColor = isExitButton
-                    ? Colors.red
-                    : (isSelected ? color : Colors.transparent);
-                final buttonLabel = isExitButton ? context.l10n.homeExit : _getModeShortLabel(context, mode);
-                final buttonIcon = isExitButton ? Icons.stop_circle : _getModeIcon(mode);
-
-                return Expanded(
-                  child: GestureDetector(
-                    onTap: isLocked
-                        ? null
-                        : () {
-                            ref.read(modeStateProvider.notifier).setMode(mode, source: 'dropdown');
-                            if (mode == RobotMode.coach) {
-                              context.push('/coach');
-                            }
-                          },
-                    child: AnimatedContainer(
-                      duration: const Duration(milliseconds: 200),
-                      margin: const EdgeInsets.all(3),
-                      decoration: BoxDecoration(
-                        color: isExitButton
-                            ? buttonColor.withOpacity(0.85)
-                            : (isSelected ? buttonColor.withOpacity(0.9) : buttonColor),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Stack(
-                        clipBehavior: Clip.none,
-                        alignment: Alignment.center,
-                        children: [
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              if (isPending)
-                                const SizedBox(
-                                  width: 14,
-                                  height: 14,
-                                  child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-                                )
-                              else if (isLocked && isSelected)
-                                Icon(Icons.lock, size: 14, color: isSelected ? Colors.white70 : Colors.white38)
-                              else
-                                Icon(
-                                  buttonIcon,
-                                  size: 16,
-                                  color: (isSelected || isExitButton) ? Colors.white : Colors.white54,
-                                ),
-                              const SizedBox(width: 4),
-                              Flexible(
-                                child: Text(
-                                  buttonLabel,
-                                  style: TextStyle(
-                                    color: (isSelected || isExitButton) ? Colors.white : Colors.white54,
-                                    fontWeight: (isSelected || isExitButton) ? FontWeight.bold : FontWeight.normal,
-                                    fontSize: 11,
-                                  ),
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              ),
-                            ],
-                          ),
-                          // Event count badge for guardian
-                          if (showBadge)
-                            Positioned(
-                              top: -4,
-                              right: -2,
-                              child: Container(
-                                padding: const EdgeInsets.all(3),
-                                decoration: const BoxDecoration(
-                                  color: Colors.red,
-                                  shape: BoxShape.circle,
-                                ),
-                                constraints: const BoxConstraints(minWidth: 16, minHeight: 16),
-                                child: Text(
-                                  unreadCount > 99 ? '99+' : unreadCount.toString(),
-                                  style: const TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.bold),
-                                  textAlign: TextAlign.center,
-                                ),
-                              ),
-                            ),
-                        ],
+              onTap: () => _openModeSheet(context, ref),
+              child: Container(
+                constraints: const BoxConstraints(minHeight: 42),
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(
+                    color: shownMode == RobotMode.idle
+                        ? AppTheme.glassBorder
+                        : color.withOpacity(0.8),
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    if (isChanging)
+                      const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                      )
+                    else if (isLocked)
+                      Icon(Icons.lock, size: 16, color: color)
+                    else
+                      Icon(_getModeIcon(shownMode), size: 18, color: color),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        l.homeModeChip(shownMode.localizedLabel(l)),
+                        style: TextStyle(
+                          color: shownMode == RobotMode.idle ? AppTheme.textSecondary : Colors.white,
+                          fontWeight: shownMode == RobotMode.idle ? FontWeight.normal : FontWeight.bold,
+                          fontSize: 14,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
                     ),
-                  ),
-                );
-              }).toList(),
-            ),
-          ),
-        ),
-        const SizedBox(width: 8),
-        // "AI voice": hold to speak a command to WIM-Z; the robot answers
-        // back (relay voice agent). Lives here so it's reachable in EVERY
-        // mode — the quick-actions Talk button below is the 5-s sound bite
-        // for the dog and disappears in Silent Guardian.
-        HoldToTalkButton(size: 42, label: context.l10n.talkCardTitle),
-        const SizedBox(width: 8),
-        // Drive button (compact)
-        SizedBox(
-          height: 42,
-          child: ElevatedButton.icon(
-            onPressed: () => context.push('/drive'),
-            icon: const Icon(Icons.gamepad, size: 18),
-            label: Text(context.l10n.driveLabel,
-              style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, letterSpacing: 1),
-            ),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppTheme.primary,
-              foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(10),
+                    if (showBadge) ...[
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: Colors.red,
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Text(
+                          unreadCount > 99 ? '99+' : unreadCount.toString(),
+                          style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                    ],
+                    const Icon(Icons.arrow_drop_down, color: AppTheme.textSecondary),
+                  ],
+                ),
               ),
             ),
           ),
         ),
+        // EXIT — only while a non-idle mode is active. Returns to Idle.
+        if (showExit) ...[
+          const SizedBox(width: 8),
+          SizedBox(
+            height: 42,
+            child: ElevatedButton.icon(
+              onPressed: isLocked
+                  ? null
+                  : () => ref
+                      .read(modeStateProvider.notifier)
+                      .setMode(RobotMode.idle, source: 'dropdown'),
+              icon: const Icon(Icons.stop_circle, size: 18),
+              label: Text(
+                l.homeExit,
+                style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, letterSpacing: 1),
+              ),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.red,
+                foregroundColor: Colors.white,
+                disabledBackgroundColor: Colors.red.withOpacity(0.4),
+                disabledForegroundColor: Colors.white70,
+                padding: const EdgeInsets.symmetric(horizontal: 14),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              ),
+            ),
+          ),
+        ],
+        const SizedBox(width: 8),
+        // "AI": hold to speak a command to WIM-Z; the robot answers back
+        // (relay voice agent). Lives here so it's reachable in EVERY mode —
+        // the quick-actions Talk button below is the 5-s sound bite for the
+        // dog and disappears in Silent Guardian.
+        HoldToTalkButton(size: 42, label: l.homeAiShort),
       ],
     );
   }
 
-  static String _getModeShortLabel(BuildContext context, RobotMode mode) {
+  /// Bottom sheet: non-clickable MODE title + one row per mode.
+  Future<void> _openModeSheet(BuildContext context, WidgetRef ref) async {
+    final modeState = ref.read(modeStateProvider);
+    final picked = await showModalBottomSheet<RobotMode>(
+      context: context,
+      backgroundColor: AppTheme.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (ctx) {
+        final l = ctx.l10n;
+        final current = modeState.currentMode;
+        return SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
+                child: Row(
+                  children: [
+                    Text(
+                      l.homeModeSheetTitle,
+                      style: const TextStyle(
+                        color: AppTheme.textSecondary,
+                        fontSize: 13,
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: 2,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              for (final mode in _modes)
+                ListTile(
+                  leading: Icon(_getModeIcon(mode), color: _getModeColor(mode)),
+                  title: Text(
+                    mode.localizedLabel(l),
+                    style: TextStyle(
+                      fontWeight: mode == current ? FontWeight.bold : FontWeight.normal,
+                      color: Colors.white,
+                    ),
+                  ),
+                  trailing: mode == current
+                      ? Icon(Icons.check, color: _getModeColor(mode))
+                      : null,
+                  selected: mode == current,
+                  selectedTileColor: _getModeColor(mode).withOpacity(0.12),
+                  onTap: () => Navigator.pop(ctx, mode),
+                ),
+              const SizedBox(height: 8),
+            ],
+          ),
+        );
+      },
+    );
+    if (picked == null || !context.mounted) return;
+    _select(context, ref, picked);
+  }
+
+  void _select(BuildContext context, WidgetRef ref, RobotMode mode) {
+    final notifier = ref.read(modeStateProvider.notifier);
     switch (mode) {
-      case RobotMode.idle: return context.l10n.homeModeIdle;
-      case RobotMode.silentGuardian: return context.l10n.homeModeGuard;
-      case RobotMode.coach: return context.l10n.homeModeCoach;
-      default: return mode.localizedLabel(context.l10n);
+      case RobotMode.manual:
+        // The drive screen enters manual mode itself and restores the
+        // previous portrait mode on exit (Build 146) — don't double-send.
+        context.push('/drive');
+        return;
+      case RobotMode.mission:
+        // Missions are started per-mission from the Missions screen
+        // (start_mission); the robot enters mission mode from there.
+        context.go('/missions');
+        return;
+      case RobotMode.coach:
+        notifier.setMode(mode, source: 'dropdown');
+        context.push('/coach');
+        return;
+      case RobotMode.idle:
+      case RobotMode.silentGuardian:
+        notifier.setMode(mode, source: 'dropdown');
+        return;
     }
   }
 

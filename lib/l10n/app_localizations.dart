@@ -7795,6 +7795,24 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Treat refused: {reason}'**
   String treatRefusedGeneric(String reason);
+
+  /// No description provided for @homeModeChip.
+  ///
+  /// In en, this message translates to:
+  /// **'Mode: {mode}'**
+  String homeModeChip(String mode);
+
+  /// No description provided for @homeModeSheetTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'MODE'**
+  String get homeModeSheetTitle;
+
+  /// No description provided for @homeAiShort.
+  ///
+  /// In en, this message translates to:
+  /// **'AI'**
+  String get homeAiShort;
 }
 
 class _AppLocalizationsDelegate
