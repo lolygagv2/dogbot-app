@@ -93,6 +93,16 @@ class WsEvent {
     final dataField = json['data'];
     if (dataField is Map) {
       eventData = Map<String, dynamic>.from(dataField);
+      // command_result correlates by top-level command_id; when the sender
+      // also nests a `data` object those envelope fields would be discarded
+      // here and the reply could never be matched to its request.
+      if (messageType == 'command_result') {
+        for (final k in const [
+          'command', 'command_id', 'success', 'result', 'error', 'error_code',
+        ]) {
+          if (json.containsKey(k)) eventData.putIfAbsent(k, () => json[k]);
+        }
+      }
     } else {
       // Use entire message as data (excluding type/event fields)
       eventData = Map<String, dynamic>.from(json)
@@ -1117,6 +1127,32 @@ class WebSocketClient {
       'data': data ?? {},
       'timestamp': DateTime.now().millisecondsSinceEpoch,
     });
+  }
+
+  /// Send a command that the robot answers with a `command_result` carrying
+  /// the same `command_id` (top-level, sibling of `command`). Same frame on
+  /// the relay socket and /ws/local. Returns false when it could not be put
+  /// on the wire (socket down / no target robot) so the caller can fail fast
+  /// instead of waiting out its timeout.
+  bool sendCommandWithId(
+    String command,
+    String commandId, [
+    Map<String, dynamic>? data,
+  ]) {
+    if (_targetDeviceId == null || _state != WsConnectionState.connected) {
+      connTrace('ws-cmd-id-unsent',
+          '$command target=$_targetDeviceId state=${_state.name}');
+      return false;
+    }
+    send({
+      'type': 'command',
+      'device_id': _targetDeviceId,
+      'command': command,
+      'command_id': commandId,
+      'data': data ?? {},
+      'timestamp': DateTime.now().millisecondsSinceEpoch,
+    });
+    return true;
   }
 
   /// Send motor command

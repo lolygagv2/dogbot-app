@@ -36,6 +36,8 @@ import 'presentation/screens/settings/controller_pairing_screen.dart';
 import 'presentation/screens/settings/connection_diagnostics_screen.dart';
 import 'presentation/screens/settings/connected_ai_screen.dart';
 import 'presentation/screens/settings/sounds_screen.dart';
+import 'presentation/screens/settings/smart_plug_detail_screen.dart';
+import 'presentation/screens/settings/smart_plug_setup_screen.dart';
 import 'presentation/screens/audio/song_upload_screen.dart';
 import 'presentation/screens/demo/demo_view_screen.dart';
 import 'presentation/screens/dev/ui_previews.dart';
@@ -289,6 +291,20 @@ GoRouter _buildRouter(WidgetRef ref, Listenable refreshListenable) => GoRouter(
               GoRoute(
                 path: 'sounds',
                 builder: (context, state) => const SoundsScreen(),
+              ),
+              // Calming diffuser plug (Settings → Silent Guardian).
+              GoRoute(
+                path: 'smart-plug',
+                builder: (context, state) => const SmartPlugDetailScreen(),
+              ),
+              GoRoute(
+                path: 'smart-plug/setup',
+                builder: (context, state) {
+                  final extra = state.extra;
+                  return SmartPlugSetupScreen(
+                    fromDetail: extra is Map && extra['fromDetail'] == true,
+                  );
+                },
               ),
             ],
           ),

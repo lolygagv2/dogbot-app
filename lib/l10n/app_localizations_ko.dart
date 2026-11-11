@@ -4298,4 +4298,113 @@ class AppLocalizationsKo extends AppLocalizations {
 
   @override
   String get todayStatTreatsUnlimited => '간식 · 무제한';
+
+  @override
+  String get smartPlugTitle => '진정 디퓨저 플러그';
+
+  @override
+  String get smartPlugSetupTitle => '디퓨저 플러그 설정';
+
+  @override
+  String get smartPlugNotSetUp => '설정 안 됨';
+
+  @override
+  String get smartPlugChecking => '확인 중…';
+
+  @override
+  String smartPlugRowState(String alias, String state) {
+    return '$alias · $state';
+  }
+
+  @override
+  String get smartPlugUnavailableShort => '사용할 수 없음';
+
+  @override
+  String get smartPlugIntro =>
+      'Adaptil 디퓨저를 TP-Link Kasa 스마트 플러그에 꽂고, Kasa 앱에서 플러그를 설정한 다음, WIM-Z와 같은 WiFi에 연결되어 있는지 확인하세요.';
+
+  @override
+  String get smartPlugScanning => 'Kasa 플러그를 찾는 중…';
+
+  @override
+  String get smartPlugNoneFound => '로봇의 WiFi에서 Kasa 플러그를 찾지 못했습니다.';
+
+  @override
+  String get smartPlugRescan => '다시 검색';
+
+  @override
+  String get smartPlugCurrent => '현재 플러그';
+
+  @override
+  String get smartPlugErrNotFound => '해당 플러그가 더 이상 응답하지 않습니다. 다시 검색하세요.';
+
+  @override
+  String get smartPlugErrInvalidValue => 'WIM-Z가 해당 설정을 받아들이지 않았습니다.';
+
+  @override
+  String get smartPlugErrMissingDevice => '먼저 플러그를 선택하세요.';
+
+  @override
+  String get smartPlugErrSaveFailed => 'WIM-Z가 저장하지 못했습니다. 다시 시도하세요.';
+
+  @override
+  String get smartPlugErrGeneric => '로봇에 연결할 수 없습니다';
+
+  @override
+  String get smartPlugSwitch => '디퓨저';
+
+  @override
+  String get smartPlugStaysOn => '직접 끌 때까지 켜져 있습니다.';
+
+  @override
+  String smartPlugRobotOwned(String time) {
+    return '사일런트 가디언이 켰습니다 - $time 후 꺼집니다';
+  }
+
+  @override
+  String get smartPlugUnavailable => '플러그를 사용할 수 없음 (뽑혀 있거나 범위를 벗어남)';
+
+  @override
+  String get smartPlugTurnOnAt => '켜지는 단계';
+
+  @override
+  String smartPlugLevel(int level) {
+    return '레벨 $level';
+  }
+
+  @override
+  String get smartPlugTurnOffAfter => '자동 꺼짐';
+
+  @override
+  String smartPlugMinutes(int minutes) {
+    return '$minutes분';
+  }
+
+  @override
+  String smartPlugHours(int hours) {
+    return '$hours시간';
+  }
+
+  @override
+  String smartPlugHoursMinutes(int hours, int minutes) {
+    return '$hours시간 $minutes분';
+  }
+
+  @override
+  String get smartPlugChange => '플러그 변경';
+
+  @override
+  String get smartPlugRemove => '플러그 제거';
+
+  @override
+  String get smartPlugRemoveConfirmTitle => '이 플러그를 제거할까요?';
+
+  @override
+  String smartPlugRemoveConfirmBody(String alias) {
+    return 'WIM-Z가 더 이상 $alias을(를) 제어하지 않습니다. 플러그 자체는 지금 상태 그대로 유지됩니다.';
+  }
+
+  @override
+  String get smartPlugHelp =>
+      '디퓨저가 이미 켜져 있으면 WIM-Z는 그대로 둡니다. WIM-Z는 직접 켠 디퓨저만 끕니다.';
 }

@@ -7819,6 +7819,192 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Treats · Unlimited'**
   String get todayStatTreatsUnlimited;
+
+  /// No description provided for @smartPlugTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Calming diffuser plug'**
+  String get smartPlugTitle;
+
+  /// No description provided for @smartPlugSetupTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Set up diffuser plug'**
+  String get smartPlugSetupTitle;
+
+  /// No description provided for @smartPlugNotSetUp.
+  ///
+  /// In en, this message translates to:
+  /// **'Not set up'**
+  String get smartPlugNotSetUp;
+
+  /// No description provided for @smartPlugChecking.
+  ///
+  /// In en, this message translates to:
+  /// **'Checking…'**
+  String get smartPlugChecking;
+
+  /// No description provided for @smartPlugRowState.
+  ///
+  /// In en, this message translates to:
+  /// **'{alias} · {state}'**
+  String smartPlugRowState(String alias, String state);
+
+  /// No description provided for @smartPlugUnavailableShort.
+  ///
+  /// In en, this message translates to:
+  /// **'Not available'**
+  String get smartPlugUnavailableShort;
+
+  /// No description provided for @smartPlugIntro.
+  ///
+  /// In en, this message translates to:
+  /// **'Plug your Adaptil diffuser into a TP-Link Kasa smart plug, set the plug up in the Kasa app, and make sure it is on the same WiFi as your WIM-Z.'**
+  String get smartPlugIntro;
+
+  /// No description provided for @smartPlugScanning.
+  ///
+  /// In en, this message translates to:
+  /// **'Looking for Kasa plugs…'**
+  String get smartPlugScanning;
+
+  /// No description provided for @smartPlugNoneFound.
+  ///
+  /// In en, this message translates to:
+  /// **'No Kasa plugs found on your robot\'s WiFi.'**
+  String get smartPlugNoneFound;
+
+  /// No description provided for @smartPlugRescan.
+  ///
+  /// In en, this message translates to:
+  /// **'Rescan'**
+  String get smartPlugRescan;
+
+  /// No description provided for @smartPlugCurrent.
+  ///
+  /// In en, this message translates to:
+  /// **'Current'**
+  String get smartPlugCurrent;
+
+  /// No description provided for @smartPlugErrNotFound.
+  ///
+  /// In en, this message translates to:
+  /// **'That plug is no longer answering. Rescan.'**
+  String get smartPlugErrNotFound;
+
+  /// No description provided for @smartPlugErrInvalidValue.
+  ///
+  /// In en, this message translates to:
+  /// **'WIM-Z didn\'t accept that setting.'**
+  String get smartPlugErrInvalidValue;
+
+  /// No description provided for @smartPlugErrMissingDevice.
+  ///
+  /// In en, this message translates to:
+  /// **'Pick a plug first.'**
+  String get smartPlugErrMissingDevice;
+
+  /// No description provided for @smartPlugErrSaveFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'WIM-Z couldn\'t save that. Try again.'**
+  String get smartPlugErrSaveFailed;
+
+  /// No description provided for @smartPlugErrGeneric.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t reach the robot'**
+  String get smartPlugErrGeneric;
+
+  /// No description provided for @smartPlugSwitch.
+  ///
+  /// In en, this message translates to:
+  /// **'Diffuser'**
+  String get smartPlugSwitch;
+
+  /// No description provided for @smartPlugStaysOn.
+  ///
+  /// In en, this message translates to:
+  /// **'Stays on until you turn it off.'**
+  String get smartPlugStaysOn;
+
+  /// No description provided for @smartPlugRobotOwned.
+  ///
+  /// In en, this message translates to:
+  /// **'Turned on by Silent Guardian - turns off in {time}'**
+  String smartPlugRobotOwned(String time);
+
+  /// No description provided for @smartPlugUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Plug not available (unplugged or out of range)'**
+  String get smartPlugUnavailable;
+
+  /// No description provided for @smartPlugTurnOnAt.
+  ///
+  /// In en, this message translates to:
+  /// **'Turn on at'**
+  String get smartPlugTurnOnAt;
+
+  /// No description provided for @smartPlugLevel.
+  ///
+  /// In en, this message translates to:
+  /// **'Level {level}'**
+  String smartPlugLevel(int level);
+
+  /// No description provided for @smartPlugTurnOffAfter.
+  ///
+  /// In en, this message translates to:
+  /// **'Turn off after'**
+  String get smartPlugTurnOffAfter;
+
+  /// No description provided for @smartPlugMinutes.
+  ///
+  /// In en, this message translates to:
+  /// **'{minutes} min'**
+  String smartPlugMinutes(int minutes);
+
+  /// No description provided for @smartPlugHours.
+  ///
+  /// In en, this message translates to:
+  /// **'{hours} h'**
+  String smartPlugHours(int hours);
+
+  /// No description provided for @smartPlugHoursMinutes.
+  ///
+  /// In en, this message translates to:
+  /// **'{hours} h {minutes} min'**
+  String smartPlugHoursMinutes(int hours, int minutes);
+
+  /// No description provided for @smartPlugChange.
+  ///
+  /// In en, this message translates to:
+  /// **'Change plug'**
+  String get smartPlugChange;
+
+  /// No description provided for @smartPlugRemove.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove plug'**
+  String get smartPlugRemove;
+
+  /// No description provided for @smartPlugRemoveConfirmTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove this plug?'**
+  String get smartPlugRemoveConfirmTitle;
+
+  /// No description provided for @smartPlugRemoveConfirmBody.
+  ///
+  /// In en, this message translates to:
+  /// **'WIM-Z will stop switching {alias}. The plug itself stays as it is now.'**
+  String smartPlugRemoveConfirmBody(String alias);
+
+  /// No description provided for @smartPlugHelp.
+  ///
+  /// In en, this message translates to:
+  /// **'If the diffuser is already on, WIM-Z leaves it on. WIM-Z only turns off a diffuser it turned on itself.'**
+  String get smartPlugHelp;
 }
 
 class _AppLocalizationsDelegate

@@ -696,3 +696,36 @@ extension MissionScheduleL10n on MissionSchedule {
     }
   }
 }
+
+// ---------------------------------------------------------------------------
+// Calming diffuser plug (smart_plug command)
+// ---------------------------------------------------------------------------
+
+/// User-facing line for a `smart_plug` error code. Unknown codes (and
+/// app-side no-reply) fall back to the generic "Couldn't reach the robot".
+String smartPlugErrorLabel(AppLocalizations l, String? code) {
+  switch (code) {
+    case 'plug_unreachable':
+      return l.smartPlugUnavailable;
+    case 'plug_not_found':
+      return l.smartPlugErrNotFound;
+    case 'invalid_value':
+      return l.smartPlugErrInvalidValue;
+    case 'missing_device_id':
+      return l.smartPlugErrMissingDevice;
+    case 'save_failed':
+      return l.smartPlugErrSaveFailed;
+    default:
+      return l.smartPlugErrGeneric;
+  }
+}
+
+/// Minutes as "30 min" / "2 h" / "1 h 45 min".
+String smartPlugDurationLabel(AppLocalizations l, int minutes) {
+  final m = minutes < 1 ? 1 : minutes;
+  final h = m ~/ 60;
+  final rem = m % 60;
+  if (h == 0) return l.smartPlugMinutes(rem);
+  if (rem == 0) return l.smartPlugHours(h);
+  return l.smartPlugHoursMinutes(h, rem);
+}

@@ -25,6 +25,7 @@ import '../../theme/app_theme.dart';
 import '../../widgets/night_mode/night_vision_settings_section.dart';
 import '../../widgets/status/local_ap_banner.dart';
 import '../../widgets/silent_guardian/intervention_level_section.dart';
+import '../../widgets/silent_guardian/smart_plug_tile.dart';
 import '../../../core/services/push_routes.dart';
 import '../../../domain/providers/treat_schedule_provider.dart';
 
@@ -274,6 +275,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           // row; start/end pickers unfold beneath it when on. Cloud only.
           if (!isLocalMode) const _QuietHoursTile(),
           const InterventionLevelSection(),
+          const SmartPlugTile(),
           const Divider(),
 
           _SectionHeader(l.settingsSectionTraining),

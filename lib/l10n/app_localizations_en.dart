@@ -4448,4 +4448,115 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get todayStatTreatsUnlimited => 'Treats · Unlimited';
+
+  @override
+  String get smartPlugTitle => 'Calming diffuser plug';
+
+  @override
+  String get smartPlugSetupTitle => 'Set up diffuser plug';
+
+  @override
+  String get smartPlugNotSetUp => 'Not set up';
+
+  @override
+  String get smartPlugChecking => 'Checking…';
+
+  @override
+  String smartPlugRowState(String alias, String state) {
+    return '$alias · $state';
+  }
+
+  @override
+  String get smartPlugUnavailableShort => 'Not available';
+
+  @override
+  String get smartPlugIntro =>
+      'Plug your Adaptil diffuser into a TP-Link Kasa smart plug, set the plug up in the Kasa app, and make sure it is on the same WiFi as your WIM-Z.';
+
+  @override
+  String get smartPlugScanning => 'Looking for Kasa plugs…';
+
+  @override
+  String get smartPlugNoneFound => 'No Kasa plugs found on your robot\'s WiFi.';
+
+  @override
+  String get smartPlugRescan => 'Rescan';
+
+  @override
+  String get smartPlugCurrent => 'Current';
+
+  @override
+  String get smartPlugErrNotFound =>
+      'That plug is no longer answering. Rescan.';
+
+  @override
+  String get smartPlugErrInvalidValue => 'WIM-Z didn\'t accept that setting.';
+
+  @override
+  String get smartPlugErrMissingDevice => 'Pick a plug first.';
+
+  @override
+  String get smartPlugErrSaveFailed => 'WIM-Z couldn\'t save that. Try again.';
+
+  @override
+  String get smartPlugErrGeneric => 'Couldn\'t reach the robot';
+
+  @override
+  String get smartPlugSwitch => 'Diffuser';
+
+  @override
+  String get smartPlugStaysOn => 'Stays on until you turn it off.';
+
+  @override
+  String smartPlugRobotOwned(String time) {
+    return 'Turned on by Silent Guardian - turns off in $time';
+  }
+
+  @override
+  String get smartPlugUnavailable =>
+      'Plug not available (unplugged or out of range)';
+
+  @override
+  String get smartPlugTurnOnAt => 'Turn on at';
+
+  @override
+  String smartPlugLevel(int level) {
+    return 'Level $level';
+  }
+
+  @override
+  String get smartPlugTurnOffAfter => 'Turn off after';
+
+  @override
+  String smartPlugMinutes(int minutes) {
+    return '$minutes min';
+  }
+
+  @override
+  String smartPlugHours(int hours) {
+    return '$hours h';
+  }
+
+  @override
+  String smartPlugHoursMinutes(int hours, int minutes) {
+    return '$hours h $minutes min';
+  }
+
+  @override
+  String get smartPlugChange => 'Change plug';
+
+  @override
+  String get smartPlugRemove => 'Remove plug';
+
+  @override
+  String get smartPlugRemoveConfirmTitle => 'Remove this plug?';
+
+  @override
+  String smartPlugRemoveConfirmBody(String alias) {
+    return 'WIM-Z will stop switching $alias. The plug itself stays as it is now.';
+  }
+
+  @override
+  String get smartPlugHelp =>
+      'If the diffuser is already on, WIM-Z leaves it on. WIM-Z only turns off a diffuser it turned on itself.';
 }
