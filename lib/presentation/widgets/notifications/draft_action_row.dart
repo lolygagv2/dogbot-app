@@ -158,16 +158,13 @@ class DraftActionRow extends ConsumerWidget {
     );
   }
 
-  /// "recall · Starts after you leave · 2 min · 1 treats"
+  /// "recall · Daily 09:00 · 2 min · 1 treats"
   static String? _detailLine(MissionDraft d, AppLocalizations l) {
     final parts = <String>[];
     if (d.missionType != null && d.missionType != d.title) {
       parts.add(d.missionType!);
     }
     switch (d.triggerKind) {
-      case 'departure':
-        parts.add(l.draftTriggerDeparture);
-        break;
       case 'schedule':
         parts.add(l.draftTriggerSchedule(d.triggerTime ?? '--:--'));
         break;

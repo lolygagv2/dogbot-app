@@ -3998,9 +3998,6 @@ class AppLocalizationsKo extends AppLocalizations {
   String get draftActorVoiceAgent => 'WIM-Z 음성 에이전트';
 
   @override
-  String get draftTriggerDeparture => '외출 후 시작';
-
-  @override
   String draftTriggerSchedule(String time) {
     return '매일 $time';
   }
@@ -4023,7 +4020,7 @@ class AppLocalizationsKo extends AppLocalizations {
   String get todayStatMusic => '음악';
 
   @override
-  String get todayStatAlone => '혼자';
+  String get todayStatOnGuard => '가디언 시간';
 
   @override
   String get todayStatMissions => '미션';
@@ -4224,6 +4221,40 @@ class AppLocalizationsKo extends AppLocalizations {
 
   @override
   String get demoReset => '초기화';
+
+  @override
+  String demoTarget(String dog, String robot) {
+    return '대상: $dog · $robot';
+  }
+
+  @override
+  String get demoNoRobotOnline => '온라인 로봇 없음';
+
+  @override
+  String demoResultLine(String seed, String dog, String date, String count) {
+    return '$seed · $dog · $date · 이벤트 $count개 반영됨';
+  }
+
+  @override
+  String demoResultRecap(
+      String seed, String dog, String date, String count, String landedDate) {
+    return '$seed · $dog · $date · 요약: $landedDate에 이벤트 $count개';
+  }
+
+  @override
+  String demoResultRemoved(String count) {
+    return '이벤트 $count개 삭제됨';
+  }
+
+  @override
+  String demoReplayOtherDog(String dog) {
+    return '$dog에서 리플레이 실행 중';
+  }
+
+  @override
+  String demoWrongTarget(String got, String wanted) {
+    return '릴레이가 $wanted이(가) 아닌 $got에 대해 응답했습니다';
+  }
 
   @override
   String get demoReplayIdle => '불러온 리플레이 없음';

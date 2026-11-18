@@ -194,7 +194,7 @@ enum DraftActorKind { connector, agent, app, unknown }
 /// ```
 /// {draft_id, dog_id, actor, status?, created_at, decided_at?, mission_id?,
 ///  warnings:[..], note?, draft:{id,type,name,enabled,
-///  trigger:{kind schedule|departure|manual, time, delay_s, cooldown_s, days[]},
+///  trigger:{kind schedule|manual, time, delay_s, cooldown_s, days[]},
 ///  duration_s, reward_treats, goal}}
 /// ```
 /// Decided via `PUT …/missions/drafts/{draft_id}` {decision}. The B165 flat
@@ -220,7 +220,7 @@ class MissionDraft {
   // Relay mission definition
   final String? missionType;
   final String? missionId; // draft.id (becomes the mission id on approve)
-  final String triggerKind; // schedule | departure | manual
+  final String triggerKind; // schedule | manual (departure rejected by the relay since 2026-11-18)
   final String? triggerTime; // HH:MM for schedule
   final int? delayS;
   final List<String> days;

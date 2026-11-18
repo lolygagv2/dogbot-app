@@ -561,6 +561,7 @@ class WebSocketClient {
           msgType == 'event' ||
           msgType == 'replay_jump' ||
           msgType == 'replay_reset' ||
+          msgType == 'replay_landed' ||
           msgType == 'settings_updated' ||
           msgType == 'sound_updated' ||
           (msgType == 'sg_summary' && json['action'] == 'status_pull');

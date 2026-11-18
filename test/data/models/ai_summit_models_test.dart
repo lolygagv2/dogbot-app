@@ -19,8 +19,6 @@ void main() {
           'intervention': 4,
           'settle': 2,
           'pacing': 1,
-          'departure': 1,
-          'arrival': 1,
           'treat': 5,
           'music': 2,
           'mission_run': 2,
@@ -31,7 +29,8 @@ void main() {
           'music_s': 1800,
           'treats': 5,
           'treat_cap': 10,
-          'alone_s': 14400,
+          'sg_s': 14400,
+          'coach_s': 600,
           'interventions_by_kind': {'sound': 3, 'treat': 1},
           'missions_success': 1,
           'missions_fail': 1,
@@ -56,7 +55,7 @@ void main() {
       expect(s.stats.treatCap, 10);
       expect(s.stats.guardianInterventions, 4);
       expect(s.stats.settleMedianS, 75);
-      expect(s.stats.aloneSeconds, 14400);
+      expect(s.stats.guardSeconds, 14400);
       expect(s.stats.interventionsByKind['sound'], 3);
       expect(s.stats.missionRuns, 2);
       expect(s.stats.coachingSuccessRate, closeTo(0.5, 1e-9));
@@ -120,7 +119,7 @@ void main() {
         'type': 'recall',
         'name': 'Evening recall',
         'enabled': true,
-        'trigger': {'kind': 'departure', 'delay_s': 300, 'cooldown_s': 7200},
+        'trigger': {'kind': 'manual', 'delay_s': 300, 'cooldown_s': 7200},
         'duration_s': 120,
         'reward_treats': 1,
         'goal': 'Come when called while alone',
@@ -136,7 +135,7 @@ void main() {
       expect(d.missionId, 'm_recall');
       expect(d.title, 'Evening recall');
       expect(d.missionType, 'recall');
-      expect(d.triggerKind, 'departure');
+      expect(d.triggerKind, 'manual');
       expect(d.delayS, 300);
       expect(d.durationS, 120);
       expect(d.rewardTreats, 1);

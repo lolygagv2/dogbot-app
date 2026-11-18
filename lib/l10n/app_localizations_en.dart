@@ -4141,9 +4141,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get draftActorVoiceAgent => 'WIM-Z voice agent';
 
   @override
-  String get draftTriggerDeparture => 'Starts after you leave';
-
-  @override
   String draftTriggerSchedule(String time) {
     return 'Daily at $time';
   }
@@ -4166,7 +4163,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get todayStatMusic => 'Music';
 
   @override
-  String get todayStatAlone => 'Alone';
+  String get todayStatOnGuard => 'Time on guard';
 
   @override
   String get todayStatMissions => 'Missions';
@@ -4371,6 +4368,40 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get demoReset => 'Reset';
+
+  @override
+  String demoTarget(String dog, String robot) {
+    return 'Target: $dog · $robot';
+  }
+
+  @override
+  String get demoNoRobotOnline => 'no robot online';
+
+  @override
+  String demoResultLine(String seed, String dog, String date, String count) {
+    return '$seed · $dog · $date · $count events landed';
+  }
+
+  @override
+  String demoResultRecap(
+      String seed, String dog, String date, String count, String landedDate) {
+    return '$seed · $dog · $date · recap: $count events on $landedDate';
+  }
+
+  @override
+  String demoResultRemoved(String count) {
+    return '$count events removed';
+  }
+
+  @override
+  String demoReplayOtherDog(String dog) {
+    return 'Replay running on $dog';
+  }
+
+  @override
+  String demoWrongTarget(String got, String wanted) {
+    return 'Relay answered for $got, not $wanted';
+  }
 
   @override
   String get demoReplayIdle => 'No replay loaded';

@@ -7316,12 +7316,6 @@ abstract class AppLocalizations {
   /// **'WIM-Z voice agent'**
   String get draftActorVoiceAgent;
 
-  /// No description provided for @draftTriggerDeparture.
-  ///
-  /// In en, this message translates to:
-  /// **'Starts after you leave'**
-  String get draftTriggerDeparture;
-
   /// No description provided for @draftTriggerSchedule.
   ///
   /// In en, this message translates to:
@@ -7358,11 +7352,11 @@ abstract class AppLocalizations {
   /// **'Music'**
   String get todayStatMusic;
 
-  /// No description provided for @todayStatAlone.
+  /// No description provided for @todayStatOnGuard.
   ///
   /// In en, this message translates to:
-  /// **'Alone'**
-  String get todayStatAlone;
+  /// **'Time on guard'**
+  String get todayStatOnGuard;
 
   /// No description provided for @todayStatMissions.
   ///
@@ -7693,6 +7687,49 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Reset'**
   String get demoReset;
+
+  /// No description provided for @demoTarget.
+  ///
+  /// In en, this message translates to:
+  /// **'Target: {dog} · {robot}'**
+  String demoTarget(String dog, String robot);
+
+  /// No description provided for @demoNoRobotOnline.
+  ///
+  /// In en, this message translates to:
+  /// **'no robot online'**
+  String get demoNoRobotOnline;
+
+  /// No description provided for @demoResultLine.
+  ///
+  /// In en, this message translates to:
+  /// **'{seed} · {dog} · {date} · {count} events landed'**
+  String demoResultLine(String seed, String dog, String date, String count);
+
+  /// No description provided for @demoResultRecap.
+  ///
+  /// In en, this message translates to:
+  /// **'{seed} · {dog} · {date} · recap: {count} events on {landedDate}'**
+  String demoResultRecap(
+      String seed, String dog, String date, String count, String landedDate);
+
+  /// No description provided for @demoResultRemoved.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} events removed'**
+  String demoResultRemoved(String count);
+
+  /// No description provided for @demoReplayOtherDog.
+  ///
+  /// In en, this message translates to:
+  /// **'Replay running on {dog}'**
+  String demoReplayOtherDog(String dog);
+
+  /// No description provided for @demoWrongTarget.
+  ///
+  /// In en, this message translates to:
+  /// **'Relay answered for {got}, not {wanted}'**
+  String demoWrongTarget(String got, String wanted);
 
   /// No description provided for @demoReplayIdle.
   ///

@@ -5,13 +5,16 @@ import '../../core/utils/time_utils.dart';
 /// Wire shape (relay `event_store.py`, brief 2026-11-06):
 /// ```
 /// {dog_id, date, tz, event_count,
-///  counts:{bark_episode,intervention,settle,pacing,departure,arrival,treat,music,mission_run},
-///  totals:{bark_s,pacing_s,music_s,treats,treat_cap,alone_s,interventions_by_kind{},
+///  counts:{bark_episode,intervention,settle,pacing,treat,music,mission_run},
+///  totals:{bark_s,pacing_s,music_s,sg_s,coach_s,treats,treat_cap,interventions_by_kind{},
 ///          missions_success,missions_fail},
 ///  time_to_settle:{n,unresolved,median_s,mean_s,min_s,max_s},
 ///  top_episodes:[{event_id,ts,duration_s,bark_count,severity,settle_s,interventions[],image_url}],
 ///  first_event_ts,last_event_ts}
 /// ```
+/// Relay 2026-11-18: `totals.alone_s` and `counts.departure/arrival` are
+/// gone; `totals.sg_s` (seconds in Silent Guardian) is shown as
+/// "Time on guard".
 /// The B165 draft shape (`stats{}` / `headline` / `highlights` / `plan`) is
 /// still accepted so a robot serving the path locally may use either. Every
 /// field is optional on the wire; parsing is lenient.
@@ -126,15 +129,13 @@ class DailyStats {
   final int guardianInterventions; // counts.intervention
   final int settles;
   final int pacingCount;
-  final int departures;
-  final int arrivals;
   final int musicPlays;
   final int missionRuns;
   // Relay totals (seconds)
   final int barkSeconds;
   final int pacingSeconds;
   final int musicSeconds;
-  final int aloneSeconds;
+  final int guardSeconds; // totals.sg_s
   final int missionsSuccess;
   final int missionsFail;
   final Map<String, int> interventionsByKind;
@@ -156,14 +157,12 @@ class DailyStats {
     this.guardianInterventions = 0,
     this.settles = 0,
     this.pacingCount = 0,
-    this.departures = 0,
-    this.arrivals = 0,
     this.musicPlays = 0,
     this.missionRuns = 0,
     this.barkSeconds = 0,
     this.pacingSeconds = 0,
     this.musicSeconds = 0,
-    this.aloneSeconds = 0,
+    this.guardSeconds = 0,
     this.missionsSuccess = 0,
     this.missionsFail = 0,
     this.interventionsByKind = const {},
@@ -200,14 +199,12 @@ class DailyStats {
       guardianInterventions: _i(counts['intervention']),
       settles: _i(counts['settle']),
       pacingCount: _i(counts['pacing']),
-      departures: _i(counts['departure']),
-      arrivals: _i(counts['arrival']),
       musicPlays: _i(counts['music']),
       missionRuns: _i(counts['mission_run']),
       barkSeconds: _i(totals['bark_s']),
       pacingSeconds: _i(totals['pacing_s']),
       musicSeconds: _i(totals['music_s']),
-      aloneSeconds: _i(totals['alone_s']),
+      guardSeconds: _i(totals['sg_s']),
       missionsSuccess: success,
       missionsFail: fail,
       interventionsByKind: byKind,
@@ -238,7 +235,6 @@ class DailyStats {
       pacingCount == 0 &&
       musicPlays == 0 &&
       missionRuns == 0 &&
-      departures == 0 &&
       sits == 0 &&
       coachingAttempts == 0 &&
       quietMinutes == 0;

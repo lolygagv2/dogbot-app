@@ -10,8 +10,10 @@ final replayAdminApiProvider = Provider<ReplayAdminApi>((ref) {
   return ReplayAdminApi(ref.watch(dioClientProvider));
 });
 
-/// Thrown when the relay answers 403 `admin_only` (or 404: replay router not
-/// deployed) — the caller hides the demo controls.
+/// Thrown by the state probe (`GET /admin/replay`) only, when the relay
+/// answers 403 `admin_only` (or 404: replay router not deployed) — the caller
+/// hides the demo controls. Button calls never throw this: their failures
+/// are [ReplayCallError]s shown on the panel.
 class ReplayNotAdmin implements Exception {
   final int? status;
   const ReplayNotAdmin(this.status);
@@ -20,6 +22,41 @@ class ReplayNotAdmin implements Exception {
 }
 
 /// Snapshot of the relay replayer (`GET /admin/replay`, replayer.state()).
+/// A failed replay/status call, with what the panel shows: the call, the
+/// HTTP status (null = no response) and the relay's error text.
+class ReplayCallError implements Exception {
+  final String call; // "POST /admin/replay/load"
+  final int? status;
+  final String text;
+
+  /// 409 `replay_other_dog`: the dog whose replay is loaded instead.
+  final String? loadedDogId;
+  const ReplayCallError(this.call, this.status, this.text, {this.loadedDogId});
+
+  ReplayCallError withText(String t) =>
+      ReplayCallError(call, status, t, loadedDogId: loadedDogId);
+
+  /// "POST /admin/replay/load → HTTP 404 · seed_not_found"
+  String get display =>
+      '$call → ${status != null ? 'HTTP $status' : 'no response'}'
+      '${text.isEmpty ? '' : ' · $text'}';
+  @override
+  String toString() => display;
+}
+
+/// Who a replay call is aimed at: the dog selected in the app and the robot
+/// that is online (null = none online; the field is then omitted).
+class ReplayTarget {
+  final String dogId;
+  final String? deviceId;
+  const ReplayTarget({required this.dogId, this.deviceId});
+
+  Map<String, dynamic> get fields => {
+        'dog_id': dogId,
+        if (deviceId != null) 'device_id': deviceId,
+      };
+}
+
 class ReplayState {
   final String status; // idle | loaded | running | paused | done
   final String? seed; // file name, e.g. demo_good_day.json
@@ -32,6 +69,20 @@ class ReplayState {
   final int cursor;
   final int total;
   final int emitted;
+
+  /// Events THIS call wrote (`landed`; relay reply 2026-11-18): load good
+  /// day = the recap written onto [landedDate] (yesterday), bad day = 0,
+  /// jump = what the jump wrote. Null on responses that don't carry it.
+  /// [emitted] is the running total, never a per-call count.
+  final int? landed;
+  final String? landedDate;
+
+  /// Events taken back (backward jump) or deleted (reset).
+  final int? removed;
+
+  /// `GET /admin/replay?dog_id=` while ANOTHER dog's replay is loaded:
+  /// status is idle for our dog and this names the dog that has it.
+  final String? busyWithDogId;
 
   /// Virtual clock as the relay sent it (ISO 8601 with the dog-tz offset).
   final String? virtualTimeRaw;
@@ -49,6 +100,10 @@ class ReplayState {
     this.cursor = 0,
     this.total = 0,
     this.emitted = 0,
+    this.landed,
+    this.landedDate,
+    this.removed,
+    this.busyWithDogId,
     this.virtualTimeRaw,
     this.nextEvent,
   });
@@ -91,6 +146,11 @@ class ReplayState {
       cursor: i(j['cursor']),
       total: i(j['total']),
       emitted: i(j['emitted']),
+      landed: j['landed'] is num ? (j['landed'] as num).toInt() : null,
+      landedDate: str(j['landed_date']),
+      removed: j['removed'] is num ? (j['removed'] as num).toInt() : null,
+      busyWithDogId:
+          j['busy_with'] is Map ? str((j['busy_with'] as Map)['dog_id']) : null,
       virtualTimeRaw: str(j['virtual_time']),
       nextEvent: str(j['next_event']),
     );
@@ -102,15 +162,16 @@ class DogReplayStatus {
   final bool replayActive;
   final bool robotOnline;
   final String? mode;
+  final String? deviceId;
 
-  /// Present only if the live relay adds a virtual clock to the status body
-  /// (not in the 2026-11-06 brief); the panel falls back to the replayer's
-  /// own `virtual_time` when null.
+  /// Status `virtual_time` (relay 2026-11-18): null unless THIS dog's replay
+  /// is loaded.
   final String? virtualTimeRaw;
   const DogReplayStatus({
     required this.replayActive,
     this.robotOnline = false,
     this.mode,
+    this.deviceId,
     this.virtualTimeRaw,
   });
 }
@@ -118,6 +179,10 @@ class DogReplayStatus {
 /// Admin-only demo replayer controls (relay brief 2026-11-06 "Demo tooling",
 /// router `replay.py`). Every call carries the user JWT; the relay treats the
 /// token as admin only when the account email is in its admin list.
+///
+/// Every call also carries the [ReplayTarget] (selected dog + online robot)
+/// and is traced as `replay-http` with its full URL, body and HTTP status
+/// (Settings → Connection Diagnostics).
 class ReplayAdminApi {
   final Dio _dio;
   ReplayAdminApi(this._dio);
@@ -132,74 +197,83 @@ class ReplayAdminApi {
     return const ReplayState();
   }
 
-  Never _throw(DioException e, String op) {
+  /// Status + relay error text for a failed call; traces it too.
+  ReplayCallError _error(DioException e, String method, String path,
+      Object? body) {
     final code = e.response?.statusCode;
-    if (code == 403 || code == 404) {
-      connTrace('replay-$op', 'not admin / not deployed ($code)');
-      throw ReplayNotAdmin(code);
+    var text = relayErrorMessage(e);
+    if (code != null && text == 'HTTP $code') {
+      // No relay error envelope: show the raw body (proxy / HTML error).
+      final raw = e.response?.data?.toString().trim() ?? '';
+      text = raw.length > 160 ? '${raw.substring(0, 160)}…' : raw;
+    } else if (code == null) {
+      text = '${e.type.name}${e.message != null ? ' ${e.message}' : ''}';
     }
-    final msg = relayErrorMessage(e);
-    connTrace('replay-$op-error', 'status=$code $msg');
-    throw Exception(msg);
+    connTrace('replay-http',
+        '$method ${e.requestOptions.uri} body=${body ?? '-'} -> ${code ?? 'no response'} $text');
+    final detail = e.response?.data is Map ? (e.response!.data as Map)['detail'] : null;
+    return ReplayCallError('$method $path', code, text,
+        loadedDogId:
+            detail is Map ? detail['loaded_dog_id']?.toString() : null);
   }
 
-  Future<ReplayState> getState(String token) async {
+  Future<ReplayState> getState(String token, {ReplayTarget? target}) async {
     try {
-      final r = await _dio.get(ApiEndpoints.adminReplay, options: _auth(token));
+      final r = await _dio.get(ApiEndpoints.adminReplay,
+          queryParameters: target?.fields, options: _auth(token));
       return _parse(r.data);
     } on DioException catch (e) {
-      _throw(e, 'state');
+      final code = e.response?.statusCode;
+      final err = _error(e, 'GET', ApiEndpoints.adminReplay, null);
+      if (code == 403 || code == 404) throw ReplayNotAdmin(code);
+      throw err;
     }
   }
 
-  Future<ReplayState> _post(String token, String path, String op,
-      [Map<String, dynamic>? body]) async {
+  Future<ReplayState> _post(String token, String path, ReplayTarget target,
+      [Map<String, dynamic> extra = const {}]) async {
+    final body = {...extra, ...target.fields};
     try {
       final r = await _dio.post(path, data: body, options: _auth(token));
       final st = _parse(r.data);
-      connTrace('replay-$op',
-          'status=${st.status} seed=${st.seed} cursor=${st.cursor}/${st.total} vt=${st.virtualTimeRaw}');
+      connTrace('replay-http',
+          'POST ${r.requestOptions.uri} body=$body -> ${r.statusCode} '
+              'status=${st.status} seed=${st.seed} dog=${st.dogId} device=${st.deviceId} '
+              'date=${st.date} cursor=${st.cursor}/${st.total} emitted=${st.emitted} '
+              'landed=${st.landed} landed_date=${st.landedDate} removed=${st.removed} vt=${st.virtualTimeRaw}');
       return st;
     } on DioException catch (e) {
-      _throw(e, op);
+      throw _error(e, 'POST', path, body);
     }
   }
 
-  /// Loads a seed file for the demo dog (relay default `demo_dog` /
-  /// `demo_robot`, today in the seed's timezone).
-  Future<ReplayState> load(String token, String seed,
-          {String? dogId, String? date}) =>
-      _post(token, ApiEndpoints.adminReplayLoad, 'load', {
-        'seed': seed,
-        if (dogId != null) 'dog_id': dogId,
-        if (date != null) 'date': date,
-      });
+  /// Loads a seed for [target]. No `date` is sent: the relay places the seed
+  /// (good day = recap written onto yesterday + replay as today; bad day =
+  /// replay as today) and reports `date` / `landed` / `landed_date`.
+  Future<ReplayState> load(String token, String seed, ReplayTarget target) =>
+      _post(token, ApiEndpoints.adminReplayLoad, target, {'seed': seed});
 
-  Future<ReplayState> start(String token, {double? speed}) => _post(
-      token,
-      ApiEndpoints.adminReplayStart,
-      'start',
-      speed != null ? {'speed': speed} : null);
+  Future<ReplayState> start(String token, ReplayTarget target,
+          {double? speed}) =>
+      _post(token, ApiEndpoints.adminReplayStart, target,
+          {if (speed != null) 'speed': speed});
 
-  Future<ReplayState> pause(String token) =>
-      _post(token, ApiEndpoints.adminReplayPause, 'pause');
-
-  Future<ReplayState> setSpeed(String token, double speed) =>
-      _post(token, ApiEndpoints.adminReplaySpeed, 'speed', {'speed': speed});
+  Future<ReplayState> pause(String token, ReplayTarget target) =>
+      _post(token, ApiEndpoints.adminReplayPause, target);
 
   /// [to] is "HH:MM" in the seed's timezone.
-  Future<ReplayState> jumpTo(String token, String to) =>
-      _post(token, ApiEndpoints.adminReplayJump, 'jump', {'to': to});
+  Future<ReplayState> jumpTo(String token, String to, ReplayTarget target) =>
+      _post(token, ApiEndpoints.adminReplayJump, target, {'to': to});
 
-  /// Stops the replayer and deletes the demo dog's replayed data.
-  Future<ReplayState> reset(String token) =>
-      _post(token, ApiEndpoints.adminReplayReset, 'reset');
+  /// Stops the replayer and deletes the target dog's replayed data.
+  Future<ReplayState> reset(String token, ReplayTarget target) =>
+      _post(token, ApiEndpoints.adminReplayReset, target);
 
   /// Replay flag (and any virtual clock) from the dog status endpoint.
   Future<DogReplayStatus> getDogStatus(String token, String dogId) async {
+    final path = ApiEndpoints.dogStatus(dogId);
     try {
-      final r =
-          await _dio.get(ApiEndpoints.dogStatus(dogId), options: _auth(token));
+      final r = await _dio.get(path, options: _auth(token));
       final d = r.data;
       if (d is Map) {
         final vt = d['virtual_time'] ??
@@ -209,15 +283,13 @@ class ReplayAdminApi {
           replayActive: d['replay_active'] == true,
           robotOnline: d['robot_online'] == true,
           mode: d['mode']?.toString(),
+          deviceId: d['device_id']?.toString(),
           virtualTimeRaw: vt?.toString(),
         );
       }
       return const DogReplayStatus(replayActive: false);
     } on DioException catch (e) {
-      final msg = relayErrorMessage(e);
-      connTrace('replay-status-error',
-          'dog=$dogId status=${e.response?.statusCode} $msg');
-      throw Exception(msg);
+      throw _error(e, 'GET', path, null);
     }
   }
 }

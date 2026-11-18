@@ -135,12 +135,17 @@ class ApiEndpoints {
   /// timezone, speed, cursor, total, emitted, virtual_time, next_event}.
   static const String adminReplay = '/admin/replay';
   static const String adminReplaySeeds = '/admin/replay/seeds';
-  static const String adminReplayLoad = '/admin/replay/load'; // {seed, dog_id?, device_id?, date?}
-  static const String adminReplayStart = '/admin/replay/start'; // {speed?}
-  static const String adminReplayPause = '/admin/replay/pause';
-  static const String adminReplaySpeed = '/admin/replay/speed'; // {speed}
-  static const String adminReplayJump = '/admin/replay/jump'; // {to: "HH:MM"} | {offset_s}
-  static const String adminReplayReset = '/admin/replay/reset';
+  // B184 (relay reply 2026-11-18): dog_id is REQUIRED on every call (422
+  // without), device_id optional and used by load only. No `date` is sent —
+  // the relay places date-relative seeds. One replay at a time: start/pause/
+  // jump for a dog that isn't loaded → 409 replay_other_dog {loaded_dog_id};
+  // GET ?dog_id= answers idle + busy_with {dog_id,status,seed} instead.
+  // load → landed, landed_date, date; jump → landed, removed; reset → removed.
+  static const String adminReplayLoad = '/admin/replay/load'; // {seed, dog_id, device_id}
+  static const String adminReplayStart = '/admin/replay/start'; // {speed?, dog_id, device_id}
+  static const String adminReplayPause = '/admin/replay/pause'; // {dog_id, device_id}
+  static const String adminReplayJump = '/admin/replay/jump'; // {to: "HH:MM", dog_id, device_id}
+  static const String adminReplayReset = '/admin/replay/reset'; // {dog_id, device_id}
   static String soundFile(String dogId, String soundId) =>
       '/api/sounds/file/$dogId/$soundId';
 

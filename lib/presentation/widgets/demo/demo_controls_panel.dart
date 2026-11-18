@@ -1,16 +1,17 @@
-import 'dart:async';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
 import '../../../domain/providers/demo_replay_provider.dart';
+import '../../../domain/providers/dog_profiles_provider.dart';
 import '../../../l10n/l10n.dart';
 import '../../theme/app_theme.dart';
 
 /// Admin-only strip at the bottom of the demo view: replayer buttons plus
-/// `replay_active` (status endpoint) and the virtual clock. Renders nothing
-/// unless the relay has confirmed this account is an admin.
+/// `replay_active` and the virtual clock for the SELECTED dog. Everything
+/// shown is the relay's last answer — nothing is advanced locally — and a
+/// failed call shows its HTTP status and error text. Renders nothing unless
+/// the relay has confirmed this account is an admin.
 class DemoControlsPanel extends ConsumerStatefulWidget {
   const DemoControlsPanel({super.key});
 
@@ -19,37 +20,18 @@ class DemoControlsPanel extends ConsumerStatefulWidget {
 }
 
 class _DemoControlsPanelState extends ConsumerState<DemoControlsPanel> {
-  Timer? _tick;
-
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) ref.read(demoReplayProvider.notifier).attach();
     });
-    // Advance the displayed virtual clock between polls.
-    _tick = Timer.periodic(const Duration(seconds: 1), (_) {
-      if (mounted && ref.read(demoReplayProvider).replay.isRunning) {
-        setState(() {});
-      }
-    });
   }
 
   @override
   void dispose() {
-    _tick?.cancel();
     ref.read(demoReplayProvider.notifier).detach();
     super.dispose();
-  }
-
-  /// Snapshot clock + elapsed wall time × speed while the replayer runs.
-  DateTime? _clock(DemoReplayState s) {
-    final base = s.virtualWallTime;
-    if (base == null) return null;
-    if (!s.replay.isRunning) return base;
-    final elapsed = DateTime.now().difference(s.snapshotAt);
-    return base.add(Duration(
-        milliseconds: (elapsed.inMilliseconds * s.replay.speed).round()));
   }
 
   @override
@@ -58,8 +40,11 @@ class _DemoControlsPanelState extends ConsumerState<DemoControlsPanel> {
     if (s.isAdmin != true) return const SizedBox.shrink();
     final l = context.l10n;
     final n = ref.read(demoReplayProvider.notifier);
-    final loaded = s.replay.isLoaded;
-    final clock = _clock(s);
+    final dog = ref.watch(selectedDogProvider);
+    final robot = ref.watch(onlineRobotDeviceIdProvider);
+    // Start / pause / jump act on a replay loaded for the selected dog.
+    final loaded = s.replayIsFor(dog?.id);
+    final clock = s.virtualWallTimeFor(dog?.id);
     final locale = Localizations.localeOf(context).toString();
     final clockText =
         clock == null ? '––:––:––' : DateFormat.Hms(locale).format(clock);
@@ -116,7 +101,7 @@ class _DemoControlsPanelState extends ConsumerState<DemoControlsPanel> {
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
-                  _detail(l, s),
+                  _detail(l, s, loaded),
                   style: TextStyle(
                       fontSize: 10, color: w.inkMuted),
                   maxLines: 1,
@@ -189,38 +174,43 @@ class _DemoControlsPanelState extends ConsumerState<DemoControlsPanel> {
               ),
             ],
           ),
-          if (s.error != null) ...[
-            const SizedBox(height: 6),
-            Row(
-              children: [
-                Icon(Icons.error_outline,
-                    size: 12, color: cs.error),
-                const SizedBox(width: 4),
-                Expanded(
-                  child: Text(
-                    s.error!,
-                    style: TextStyle(fontSize: 11, color: cs.error),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-                InkWell(
-                  onTap: n.clearError,
-                  child: Icon(Icons.close,
-                      size: 14, color: w.inkMuted),
-                ),
-              ],
+          const SizedBox(height: 6),
+          Text(
+            dog == null
+                ? l.demoNoDog
+                : l.demoTarget(dog.name, robot ?? l.demoNoRobotOnline),
+            style: TextStyle(fontSize: 11, color: w.inkMuted),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+          if (s.result != null) ...[
+            const SizedBox(height: 4),
+            Text(
+              _resultLine(l, s.result!),
+              style: TextStyle(
+                  fontSize: 11, fontWeight: FontWeight.w600, color: w.ink),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
             ),
           ],
+          if (s.error != null)
+            _ErrorLine(text: s.error!, onClose: n.clearError),
+          if (s.pollError != null) _ErrorLine(text: s.pollError!),
         ],
       ),
     );
   }
 
-  /// "running · Bezik good day · 12/24 · 120×" style summary.
-  String _detail(AppLocalizations l, DemoReplayState s) {
+  /// "running · Bezik good day · 12/24 · 120×" for the selected dog's
+  /// replay; "Replayer is on <dog>" when the relay is driving another dog.
+  String _detail(AppLocalizations l, DemoReplayState s, bool forSelected) {
     final r = s.replay;
-    if (r.isIdle) return l.demoReplayIdle;
+    final other = s.otherReplayDog(ref.watch(selectedDogProvider)?.id);
+    if (other != null) {
+      return l.demoReplayOtherDog(
+          ref.watch(dogProfileProvider(other))?.name ?? other);
+    }
+    if (r.isIdle || !forSelected) return l.demoReplayIdle;
     final speed = r.speed == r.speed.roundToDouble()
         ? '${r.speed.round()}×'
         : '${r.speed.toStringAsFixed(1)}×';
@@ -229,8 +219,23 @@ class _DemoControlsPanelState extends ConsumerState<DemoControlsPanel> {
       if (r.name != null) r.name!,
       '${r.cursor}/${r.total}',
       speed,
-      if (r.dogId != null) r.dogId!,
+      if (r.date != null) r.date!,
     ].join(' · ');
+  }
+
+  /// Seed · dog · replay date · what this call wrote, all from the relay's
+  /// response. Good day adds the recap written onto yesterday.
+  String _resultLine(AppLocalizations l, ReplayResult r) {
+    final dog = ref.watch(dogProfileProvider(r.dogId))?.name ?? r.dogId;
+    final removed = (r.removed ?? 0) > 0 || r.seed == null
+        ? l.demoResultRemoved(r.removed?.toString() ?? '–')
+        : null;
+    if (r.seed == null) return '$dog · $removed';
+    final landed = r.landed?.toString() ?? '–';
+    final line = r.landedDate != null
+        ? l.demoResultRecap(r.seed!, dog, r.date ?? '–', landed, r.landedDate!)
+        : l.demoResultLine(r.seed!, dog, r.date ?? '–', landed);
+    return removed == null ? line : '$line · $removed';
   }
 
   String _statusLabel(AppLocalizations l, String status) => switch (status) {
@@ -240,6 +245,39 @@ class _DemoControlsPanelState extends ConsumerState<DemoControlsPanel> {
         'done' => l.demoReplayStatusDone,
         _ => status,
       };
+}
+
+class _ErrorLine extends StatelessWidget {
+  final String text;
+  final VoidCallback? onClose;
+  const _ErrorLine({required this.text, this.onClose});
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return Padding(
+      padding: const EdgeInsets.only(top: 6),
+      child: Row(
+        children: [
+          Icon(Icons.error_outline, size: 12, color: cs.error),
+          const SizedBox(width: 4),
+          Expanded(
+            child: Text(
+              text,
+              style: TextStyle(fontSize: 11, color: cs.error),
+              maxLines: 3,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+          if (onClose != null)
+            InkWell(
+              onTap: onClose,
+              child: Icon(Icons.close, size: 14, color: context.wimz.inkMuted),
+            ),
+        ],
+      ),
+    );
+  }
 }
 
 class _Chip extends StatelessWidget {

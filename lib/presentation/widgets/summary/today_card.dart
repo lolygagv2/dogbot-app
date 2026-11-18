@@ -51,7 +51,7 @@ class TodayCard extends ConsumerWidget {
     final hasRelayTotals = s != null &&
         (stats.pacingSeconds > 0 ||
             stats.musicSeconds > 0 ||
-            stats.aloneSeconds > 0 ||
+            stats.guardSeconds > 0 ||
             stats.missionRuns > 0);
 
     return Container(
@@ -154,7 +154,7 @@ class TodayCard extends ConsumerWidget {
                     w.inkMuted, small: true),
                 _Stat(l.todayStatMusic, _fmtSeconds(stats.musicSeconds),
                     w.inkMuted, small: true),
-                _Stat(l.todayStatAlone, _fmtSeconds(stats.aloneSeconds),
+                _Stat(l.todayStatOnGuard, _fmtSeconds(stats.guardSeconds),
                     w.inkMuted, small: true),
                 _Stat(
                   l.todayStatMissions,
