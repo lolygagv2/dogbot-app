@@ -263,10 +263,20 @@ class DemoReplayNotifier extends StateNotifier<DemoReplayState> {
     } on ReplayNotAdmin {
       if (!mounted) return;
       state = state.copyWith(isAdmin: false);
-    } catch (e) {
-      // Network blip: don't show controls to an account we can't vouch for.
+    } on ReplayCallError catch (e) {
       if (!mounted) return;
-      state = state.copyWith(isAdmin: false);
+      if (e.status != null && e.status != 401) {
+        // The relay answered past its admin check (e.g. 422: no dog selected
+        // yet, dog_id is required): this IS an admin — show the panel with
+        // the error instead of hiding the controls.
+        state = state.copyWith(isAdmin: true, pollError: e.display);
+        if (_attached > 0) _startPolling();
+      }
+      // No response (network blip) / 401: verdict stays open, so the next
+      // attach re-probes; controls stay hidden meanwhile.
+    } catch (e) {
+      if (!mounted) return;
+      connTrace('replay-probe-error', '$e');
     }
   }
 

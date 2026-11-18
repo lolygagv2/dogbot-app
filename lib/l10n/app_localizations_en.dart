@@ -4404,6 +4404,14 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get demoPhoneNotificationsOff =>
+      'Phone notifications are off for WIM-Z — no push will arrive. Turn them on in the phone\'s Settings.';
+
+  @override
+  String get demoAppPushOff =>
+      'Lock-screen notifications are switched off in Notification Preferences — the relay will send no pushes.';
+
+  @override
   String get demoReplayIdle => 'No replay loaded';
 
   @override

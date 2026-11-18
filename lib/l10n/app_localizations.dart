@@ -7731,6 +7731,18 @@ abstract class AppLocalizations {
   /// **'Relay answered for {got}, not {wanted}'**
   String demoWrongTarget(String got, String wanted);
 
+  /// No description provided for @demoPhoneNotificationsOff.
+  ///
+  /// In en, this message translates to:
+  /// **'Phone notifications are off for WIM-Z — no push will arrive. Turn them on in the phone\'s Settings.'**
+  String get demoPhoneNotificationsOff;
+
+  /// No description provided for @demoAppPushOff.
+  ///
+  /// In en, this message translates to:
+  /// **'Lock-screen notifications are switched off in Notification Preferences — the relay will send no pushes.'**
+  String get demoAppPushOff;
+
   /// No description provided for @demoReplayIdle.
   ///
   /// In en, this message translates to:

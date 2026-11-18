@@ -29,6 +29,7 @@ import 'presentation/screens/missions/missions_screen.dart';
 import 'presentation/screens/missions/mission_detail_screen.dart';
 import 'presentation/screens/programs/program_detail_screen.dart';
 import 'presentation/screens/coach/coach_screen.dart';
+import 'presentation/widgets/notifications/push_banner_host.dart';
 import 'presentation/screens/history/history_screen.dart';
 import 'presentation/screens/settings/settings_screen.dart';
 import 'presentation/screens/settings/device_pairing_screen.dart';
@@ -955,7 +956,8 @@ class _WimzAppState extends ConsumerState<WimzApp> with WidgetsBindingObserver {
               maxScaleFactor: kMaxTextScale,
             ),
           ),
-          child: child ?? const SizedBox.shrink(),
+          // Foreground pushes banner over every route (demo view included).
+          child: PushBannerHost(child: child ?? const SizedBox.shrink()),
         );
       },
     );

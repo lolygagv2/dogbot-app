@@ -10,6 +10,7 @@ import '../../core/utils/conn_trace.dart';
 import '../../data/datasources/robot_api.dart';
 import '../../data/models/notification_event.dart';
 import 'auth_provider.dart';
+import 'foreground_push_provider.dart';
 import 'settings_provider.dart';
 import 'treat_schedule_provider.dart';
 
@@ -150,9 +151,22 @@ class PushSync {
     _refreshForPush(m.data);
   }
 
-  /// Foreground arrival: no navigation, but refresh what the push is about.
+  /// Foreground arrival: the OS shows nothing, so raise the in-app banner
+  /// (with the push's still / clip), and refresh what the push is about.
   void _onForeground(RemoteMessage m) {
-    connTrace('push-foreground', 'kind=${m.data['kind']} type=${m.data['type']}');
+    final n = m.notification;
+    final banner = ForegroundPush.fromParts(
+      title: n?.title,
+      body: n?.body,
+      notificationImage: n?.android?.imageUrl ?? n?.apple?.imageUrl,
+      data: m.data,
+    );
+    connTrace('push-foreground',
+        'kind=${m.data['kind']} type=${m.data['type']} event=${m.data['event_id']} '
+            'image=${banner?.imageUrl != null} clip=${banner?.clipUrl != null} banner=${banner != null}');
+    if (banner != null) {
+      _ref.read(foregroundPushProvider.notifier).state = banner;
+    }
     _refreshForPush(m.data);
   }
 

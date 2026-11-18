@@ -2,8 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
+import '../../../core/services/push_service.dart';
+
 import '../../../domain/providers/demo_replay_provider.dart';
 import '../../../domain/providers/dog_profiles_provider.dart';
+import '../../../domain/providers/settings_provider.dart';
 import '../../../l10n/l10n.dart';
 import '../../theme/app_theme.dart';
 
@@ -19,17 +22,37 @@ class DemoControlsPanel extends ConsumerStatefulWidget {
   ConsumerState<DemoControlsPanel> createState() => _DemoControlsPanelState();
 }
 
-class _DemoControlsPanelState extends ConsumerState<DemoControlsPanel> {
+class _DemoControlsPanelState extends ConsumerState<DemoControlsPanel>
+    with WidgetsBindingObserver {
+  /// Phone-level notification permission for the app (null = unknown).
+  bool? _phoneNotifications;
+
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) ref.read(demoReplayProvider.notifier).attach();
     });
+    _checkNotifications();
+  }
+
+  /// Re-read on return from the phone's Settings app.
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) _checkNotifications();
+  }
+
+  Future<void> _checkNotifications() async {
+    final allowed = await PushService.instance.notificationsAllowed();
+    if (mounted && allowed != _phoneNotifications) {
+      setState(() => _phoneNotifications = allowed);
+    }
   }
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     ref.read(demoReplayProvider.notifier).detach();
     super.dispose();
   }
@@ -193,6 +216,11 @@ class _DemoControlsPanelState extends ConsumerState<DemoControlsPanel> {
               overflow: TextOverflow.ellipsis,
             ),
           ],
+          if (_phoneNotifications == false)
+            _ErrorLine(text: l.demoPhoneNotificationsOff)
+          else if (!ref.watch(
+              settingsProvider.select((x) => x.notificationsEnabled)))
+            _ErrorLine(text: l.demoAppPushOff),
           if (s.error != null)
             _ErrorLine(text: s.error!, onClose: n.clearError),
           if (s.pollError != null) _ErrorLine(text: s.pollError!),

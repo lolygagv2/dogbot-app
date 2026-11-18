@@ -4257,6 +4257,13 @@ class AppLocalizationsKo extends AppLocalizations {
   }
 
   @override
+  String get demoPhoneNotificationsOff =>
+      '휴대폰에서 WIM-Z 알림이 꺼져 있어 푸시가 도착하지 않습니다. 휴대폰 설정에서 켜 주세요.';
+
+  @override
+  String get demoAppPushOff => '알림 환경설정에서 잠금 화면 알림이 꺼져 있어 릴레이가 푸시를 보내지 않습니다.';
+
+  @override
   String get demoReplayIdle => '불러온 리플레이 없음';
 
   @override

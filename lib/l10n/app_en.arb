@@ -2556,6 +2556,8 @@
   "@demoReplayOtherDog": {"placeholders": {"dog": {"type": "String"}}},
   "demoWrongTarget": "Relay answered for {got}, not {wanted}",
   "@demoWrongTarget": {"placeholders": {"got": {"type": "String"}, "wanted": {"type": "String"}}},
+  "demoPhoneNotificationsOff": "Phone notifications are off for WIM-Z — no push will arrive. Turn them on in the phone's Settings.",
+  "demoAppPushOff": "Lock-screen notifications are switched off in Notification Preferences — the relay will send no pushes.",
   "demoReplayIdle": "No replay loaded",
   "demoReplayStatusLoaded": "Loaded",
   "demoReplayStatusRunning": "Running",

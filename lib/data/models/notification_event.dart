@@ -83,6 +83,9 @@ class NotificationEvent with _$NotificationEvent {
 /// Set by DioClient.setBaseUrl; falls back to the production API host.
 String attachmentBaseUrl = 'https://api.wimzai.com';
 
+/// Absolute URL for a relay-relative attachment path (null for empty).
+String? absolutizeAttachmentUrl(dynamic raw) => _absolutize(raw);
+
 String? _absolutize(dynamic raw) {
   final s = raw?.toString();
   if (s == null || s.isEmpty) return null;

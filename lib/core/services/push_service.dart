@@ -43,6 +43,28 @@ class PushService {
     }
   }
 
+  /// Whether the phone allows notifications for this app right now
+  /// (iOS authorization / Android 13+ permission and the app-level toggle).
+  /// Null when push isn't initialised or the status can't be read.
+  Future<bool?> notificationsAllowed() async {
+    if (!_initialized) return null;
+    try {
+      final s = await FirebaseMessaging.instance.getNotificationSettings();
+      switch (s.authorizationStatus) {
+        case AuthorizationStatus.authorized:
+        case AuthorizationStatus.provisional:
+          return true;
+        case AuthorizationStatus.denied:
+          return false;
+        case AuthorizationStatus.notDetermined:
+          return null;
+      }
+    } catch (e) {
+      connTrace('push-settings-error', '$e');
+      return null;
+    }
+  }
+
   /// Current FCM device token, or null when unavailable.
   Future<String?> getToken() async {
     if (!_initialized) return null;
