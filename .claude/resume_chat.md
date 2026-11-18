@@ -1,5 +1,54 @@
 # WIM-Z Resume Chat Log
 
+## Session: 2026-11-18 — Build 184 (demo controls target the selected dog; relay brief 2026-11-18)
+**Goal:** Demo controls panel showed "replay_active: Yes" / clock ~07:00 on 2026-11-17 while
+nothing landed on Bezik or Elsa.
+**Status:** Committed + pushed (`cdfd5bb`, B184). 124 tests green. Device pass pending — no
+Android build has succeeded since (see toolchain notes below).
+
+- **Cause:** no `/admin/replay` call sent `dog_id`/`device_id`, so the relay used `demo_dog` /
+  `demo_robot`; the chip polled `demo_dog`'s status. `demo_dog` was named "Bezik" and name-merged
+  in the app, so it was invisible. Relay confirmed all calls returned 200 against `demo_dog`.
+- `replay_admin_api.dart`: `ReplayTarget{dogId, deviceId}` on every call (GET as query); every
+  call traced as `replay-http` (URL, body, status); `ReplayCallError` (call, status, relay text,
+  `loadedDogId`); only the GET probe maps 403/404 to "not admin" (a 404 on a button used to hide
+  the panel); parses `landed`, `landed_date`, `removed`, `busy_with`.
+- `demo_replay_provider.dart`: `onlineRobotDeviceIdProvider`; target read at call time from
+  `selectedDogProvider`; selected-dog change clears + re-reads; status poll is for the selected
+  dog (2 s, no local clock extrapolation); `error` vs `pollError`; `ReplayResult`; Today card
+  refresh after load/jump/reset and on WS `replay_landed` (added to the WS allowlist).
+- `demo_controls_panel.dart`: target line, result line (good day = "recap: N events on
+  <yesterday>"), "Replay running on <dog>", error lines with HTTP status.
+- Relay brief 2026-11-18 A–D: Today card "Alone" (`totals.alone_s`, removed) → "Time on guard"
+  (`totals.sg_s`); dropped `counts.departure/arrival`; removed the `departure` mission-draft
+  trigger label. `music_plan` (new shape) and notify rules have no app UI — nothing to change.
+- Contract: `.claude/APP_ASK_TO_RELAY_2026-11-18_replay.md` +
+  `.claude/RELAY_REPLY_TO_APP_2026-11-18_replay.md`. Replay never commands the robot (intended).
+- Tests: `test/data/datasources/replay_admin_api_test.dart` (new).
+
+**Next:** on B184 tap each demo button once for Bezik, read `replay-http` in Settings →
+Connection Diagnostics; confirm good-day recap line + Today card. `music_plan` settings UI is
+still unbuilt (new trigger shape in the relay brief).
+
+**Android toolchain (B185–B187, pushed, none built locally — no Android SDK on the desktop):**
+Codemagic has no `codemagic.yaml`; its workflow uses Flutter channel stable, which moved to
+3.50.0 (Dart 3.14) and rejects Gradle < 9.3.1, AGP < 9.1.1, Kotlin < 2.4.10 (read from the
+3.50.0 `DependencyVersionChecker.kt`).
+- B185 `8b48c93`: Gradle wrapper 8.14 → 9.3.1.
+- B186 `39fdee7`: AGP 8.11.1 → 9.1.1, Kotlin 2.2.20 → 2.4.10, google-services 4.3.15 → 4.4.4
+  (my pick, not required by Flutter), `android.newDsl=false` / `android.builtInKotlin=false`,
+  `kotlin { compilerOptions }`, `minSdk = flutter.minSdkVersion` (21 → 24). Result on Codemagic:
+  toolchain checks + Dart compile passed; failed at `:file_picker:checkReleaseAarMetadata`
+  (plugin on android-34, needs 36).
+- B187 `de8f05e`: root `android/build.gradle.kts` raises every plugin module to compileSdk 36
+  in `afterEvaluate` (reflective `compileSdkVersion(36)`; 8 pinned plugins hard-code 34/35).
+  Codemagic result not known yet. Fallback if it keeps failing: pin Flutter in the Codemagic
+  workflow settings (desktop is on 3.38.7).
+- Builds are started by hand in Codemagic; a push does not queue one.
+
+**Not from this session (left untouched):** modified `.claude/hooks/protect-files.sh`, deleted
+`wimz-app-theme/*`, untracked briefs/icons/archive files.
+
 ## Session: 2026-11-09 — Build 177 (relay-synced daily treat limit)
 **Goal:** Relay brief 2026-11-09 "Treat limit is now synced through the relay": the relay now
 reads the app's `mission_config` message and saves `treat_schedule` for every owned dog.
