@@ -3702,6 +3702,17 @@ class AppLocalizationsKo extends AppLocalizations {
   String get attachmentOpenFailed => '미디어를 불러오지 못했습니다';
 
   @override
+  String get attachmentPhotoExpired => '사진이 만료되었습니다';
+
+  @override
+  String get attachmentClipGone => '클립을 더 이상 볼 수 없습니다';
+
+  @override
+  String notifSettledAfter(int minutes) {
+    return '$minutes분 후 진정됨';
+  }
+
+  @override
   String get todayCardTitle => '오늘';
 
   @override

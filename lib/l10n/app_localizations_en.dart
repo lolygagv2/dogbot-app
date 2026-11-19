@@ -3834,6 +3834,17 @@ class AppLocalizationsEn extends AppLocalizations {
   String get attachmentOpenFailed => 'Couldn\'t load media';
 
   @override
+  String get attachmentPhotoExpired => 'Photo expired';
+
+  @override
+  String get attachmentClipGone => 'Clip no longer available';
+
+  @override
+  String notifSettledAfter(int minutes) {
+    return 'Settled after $minutes min';
+  }
+
+  @override
   String get todayCardTitle => 'Today';
 
   @override

@@ -17,6 +17,7 @@ import 'domain/providers/network_state_provider.dart';
 import 'domain/providers/notifications_provider.dart';
 import 'domain/providers/settings_provider.dart';
 import 'domain/providers/video_transport_provider.dart';
+import 'domain/providers/foreground_push_provider.dart';
 import 'domain/providers/push_provider.dart';
 import 'domain/providers/voice_commands_provider.dart';
 import 'domain/providers/webrtc_provider.dart';
@@ -29,6 +30,7 @@ import 'presentation/screens/missions/missions_screen.dart';
 import 'presentation/screens/missions/mission_detail_screen.dart';
 import 'presentation/screens/programs/program_detail_screen.dart';
 import 'presentation/screens/coach/coach_screen.dart';
+import 'presentation/widgets/notifications/attachment_thumb.dart';
 import 'presentation/widgets/notifications/push_banner_host.dart';
 import 'presentation/screens/history/history_screen.dart';
 import 'presentation/screens/settings/settings_screen.dart';
@@ -845,7 +847,31 @@ class _WimzAppState extends ConsumerState<WimzApp> with WidgetsBindingObserver {
       if (!mounted) return;
       connTrace('push-nav', target);
       _router.go(target);
+      final media = ref.read(pushOpenMediaProvider);
+      if (media != null) {
+        ref.read(pushOpenMediaProvider.notifier).state = null;
+        // After the route change has built.
+        Future.delayed(const Duration(milliseconds: 400), () {
+          if (mounted) _openPushMedia(media);
+        });
+      }
     });
+  }
+
+  /// Full-screen viewer (a dialog, not a route) for a push's still / clip.
+  void _openPushMedia(ForegroundPush push) {
+    final ctx = _rootNavigatorKey.currentContext;
+    if (ctx == null || !push.hasMedia) return;
+    final token = ref.read(authProvider).token;
+    connTrace('push-open-media',
+        'event=${push.eventId} image=${push.imageUrl != null} clip=${push.clipUrl != null}');
+    showAttachmentViewer(
+      ctx,
+      imageUrl: push.imageUrl,
+      clipUrl: push.clipUrl,
+      authedImageUrl: token == null ? null : push.photoUrl,
+      imageHeaders: token == null ? null : {'Authorization': 'Bearer $token'},
+    );
   }
 
   @override
@@ -957,7 +983,10 @@ class _WimzAppState extends ConsumerState<WimzApp> with WidgetsBindingObserver {
             ),
           ),
           // Foreground pushes banner over every route (demo view included).
-          child: PushBannerHost(child: child ?? const SizedBox.shrink()),
+          child: PushBannerHost(
+            onOpen: _openPushMedia,
+            child: child ?? const SizedBox.shrink(),
+          ),
         );
       },
     );

@@ -2267,6 +2267,16 @@
   "draftStatusDeclined": "거절됨",
   "draftStatusExpired": "만료됨",
   "attachmentOpenFailed": "미디어를 불러오지 못했습니다",
+  "attachmentPhotoExpired": "사진이 만료되었습니다",
+  "attachmentClipGone": "클립을 더 이상 볼 수 없습니다",
+  "notifSettledAfter": "{minutes}분 후 진정됨",
+  "@notifSettledAfter": {
+    "placeholders": {
+      "minutes": {
+        "type": "int"
+      }
+    }
+  },
   "todayCardTitle": "오늘",
   "todayCardLocalCounts": "이 휴대폰의 활동 기록 기준",
   "todayCardError": "요약 서비스에 연결할 수 없습니다",

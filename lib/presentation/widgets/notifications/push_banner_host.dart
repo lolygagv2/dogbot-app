@@ -10,10 +10,14 @@ import '../../theme/app_theme.dart';
 /// Shows foreground pushes as a banner above EVERY route (installed in the
 /// MaterialApp builder, so it also covers full-screen routes like the demo
 /// view). Carries the push's still, or the first frame of its clip.
-/// Tap or the close button dismisses; it never navigates.
+/// Tapping a banner with a still / clip opens it in the viewer ([onOpen], a
+/// dialog); otherwise tap or the close button dismisses. It never navigates.
 class PushBannerHost extends ConsumerStatefulWidget {
   final Widget child;
-  const PushBannerHost({super.key, required this.child});
+
+  /// Opens the push's still / clip full screen. Null = tap only dismisses.
+  final void Function(ForegroundPush push)? onOpen;
+  const PushBannerHost({super.key, required this.child, this.onOpen});
 
   static const showFor = Duration(seconds: 8);
 
@@ -68,6 +72,10 @@ class _PushBannerHostState extends ConsumerState<PushBannerHost> {
                       key: ValueKey(push.receivedAt),
                       push: push,
                       onDismiss: _dismiss,
+                      onTap: () {
+                        _dismiss();
+                        if (push.hasMedia) widget.onOpen?.call(push);
+                      },
                     ),
             ),
           ),
@@ -80,7 +88,12 @@ class _PushBannerHostState extends ConsumerState<PushBannerHost> {
 class _Banner extends StatelessWidget {
   final ForegroundPush push;
   final VoidCallback onDismiss;
-  const _Banner({super.key, required this.push, required this.onDismiss});
+  final VoidCallback onTap;
+  const _Banner(
+      {super.key,
+      required this.push,
+      required this.onDismiss,
+      required this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -98,7 +111,7 @@ class _Banner extends StatelessWidget {
             borderRadius: BorderRadius.circular(14),
             clipBehavior: Clip.antiAlias,
             child: InkWell(
-              onTap: onDismiss,
+              onTap: onTap,
               child: Container(
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(14),

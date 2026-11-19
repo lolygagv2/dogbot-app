@@ -6782,6 +6782,24 @@ abstract class AppLocalizations {
   /// **'Couldn\'t load media'**
   String get attachmentOpenFailed;
 
+  /// No description provided for @attachmentPhotoExpired.
+  ///
+  /// In en, this message translates to:
+  /// **'Photo expired'**
+  String get attachmentPhotoExpired;
+
+  /// No description provided for @attachmentClipGone.
+  ///
+  /// In en, this message translates to:
+  /// **'Clip no longer available'**
+  String get attachmentClipGone;
+
+  /// No description provided for @notifSettledAfter.
+  ///
+  /// In en, this message translates to:
+  /// **'Settled after {minutes} min'**
+  String notifSettledAfter(int minutes);
+
   /// No description provided for @todayCardTitle.
   ///
   /// In en, this message translates to:

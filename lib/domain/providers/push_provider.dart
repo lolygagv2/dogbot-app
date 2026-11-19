@@ -147,6 +147,15 @@ class PushSync {
     final route = pushRouteFor(m.data);
     connTrace('push-tap', 'kind=${m.data['kind']} type=${m.data['type']} → $route');
     if (route == null) return;
+    // Media push: open its still / clip once the Events tab is up.
+    final media = ForegroundPush.fromParts(
+      title: m.notification?.title ?? m.data['type']?.toString(),
+      body: m.notification?.body,
+      data: m.data,
+    );
+    if (media != null && media.hasMedia) {
+      _ref.read(pushOpenMediaProvider.notifier).state = media;
+    }
     _ref.read(pushNavigationTargetProvider.notifier).state = route;
     _refreshForPush(m.data);
   }

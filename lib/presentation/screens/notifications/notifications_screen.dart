@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 
 import '../../../data/models/notification_event.dart';
 import '../../../domain/providers/analytics_provider.dart';
+import '../../../domain/providers/auth_provider.dart';
 import '../../../domain/providers/dog_profiles_provider.dart';
 import '../../../domain/providers/notifications_provider.dart';
 import '../../../l10n/l10n.dart';
@@ -331,7 +332,7 @@ enum _DayGroup {
 }
 
 /// Individual notification tile widget
-class _NotificationTile extends StatelessWidget {
+class _NotificationTile extends ConsumerWidget {
   final NotificationEvent event;
   final VoidCallback? onTap;
 
@@ -341,7 +342,8 @@ class _NotificationTile extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final token = ref.watch(authProvider.select((a) => a.token));
     final w = context.wimz;
     final icon = _getIcon(event.type);
     final color = _getColor(context, event.type);
@@ -417,7 +419,15 @@ class _NotificationTile extends StatelessWidget {
               if (event.imageUrl != null || event.clipUrl != null) ...[
                 const SizedBox(width: 8),
                 AttachmentThumb(
-                    imageUrl: event.imageUrl, clipUrl: event.clipUrl),
+                  imageUrl: event.imageUrl,
+                  clipUrl: event.clipUrl,
+                  authedImageUrl: token == null
+                      ? null
+                      : event.metadata?[kFeedPhotoUrlKey]?.toString(),
+                  imageHeaders: token == null
+                      ? null
+                      : {'Authorization': 'Bearer $token'},
+                ),
               ],
 
               // Unread indicator

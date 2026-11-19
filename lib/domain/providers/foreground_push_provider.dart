@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../data/models/notification_event.dart' show absolutizeAttachmentUrl;
+import '../../data/models/notification_event.dart'
+    show absolutizeAttachmentUrl, eventPhotoUrl;
 
 /// A relay push that arrived while the app was in the foreground, shown as
 /// an in-app banner (the OS shows none in that state).
@@ -14,7 +15,15 @@ class ForegroundPush {
   final String? imageUrl;
   final String? clipUrl;
   final String? eventId;
+  final String? dogId;
   final DateTime receivedAt;
+
+  bool get hasMedia => imageUrl != null || clipUrl != null;
+
+  /// Authenticated still endpoint for the push's event (null when the push
+  /// has no still or names no event).
+  String? get photoUrl =>
+      imageUrl == null ? null : eventPhotoUrl(dogId, eventId);
 
   ForegroundPush({
     required this.title,
@@ -22,6 +31,7 @@ class ForegroundPush {
     this.imageUrl,
     this.clipUrl,
     this.eventId,
+    this.dogId,
     DateTime? receivedAt,
   }) : receivedAt = receivedAt ?? DateTime.now();
 
@@ -38,6 +48,7 @@ class ForegroundPush {
     final b = (body ?? data['body']?.toString() ?? '').trim();
     if (t.isEmpty && b.isEmpty) return null;
     final event = data['event_id']?.toString();
+    final dog = data['dog_id']?.toString();
     return ForegroundPush(
       title: t,
       body: b,
@@ -45,6 +56,7 @@ class ForegroundPush {
           absolutizeAttachmentUrl(notificationImage),
       clipUrl: absolutizeAttachmentUrl(data['clip_url']),
       eventId: (event == null || event.isEmpty) ? null : event,
+      dogId: (dog == null || dog.isEmpty) ? null : dog,
     );
   }
 }
@@ -52,3 +64,8 @@ class ForegroundPush {
 /// The banner currently on screen (null = none). Set by PushSync on a
 /// foreground push; cleared by the banner on timeout / dismissal.
 final foregroundPushProvider = StateProvider<ForegroundPush?>((ref) => null);
+
+/// A tapped push (background / cold start) whose still / clip should open
+/// in the viewer once the app has routed to the Events tab. Consumed by the
+/// app shell.
+final pushOpenMediaProvider = StateProvider<ForegroundPush?>((ref) => null);

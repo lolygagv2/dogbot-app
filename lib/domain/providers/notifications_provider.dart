@@ -75,22 +75,34 @@ String feedEventKey(NotificationEvent n) {
 NotificationEvent withEventMedia(
     NotificationEvent n, EventMedia m, AppLocalizations l) {
   var out = n;
-  if (m.hasMedia && (n.imageUrl == null || n.clipUrl == null)) {
+  if (m.hasMedia) {
+    final photo = m.photoUrlFor(n.dogId);
     out = out.copyWith(
       imageUrl: n.imageUrl ?? m.imageUrl,
       clipUrl: n.clipUrl ?? m.clipUrl,
+      // The tile loads the still from the authenticated photo endpoint
+      // first (kFeedPhotoUrlKey) and falls back to the direct URL.
+      metadata: photo == null
+          ? n.metadata
+          : {...?n.metadata, kFeedPhotoUrlKey: photo},
     );
   }
   if (m.isQuietCheck) {
+    // A quiet check-in is not a settle after barking. Never "0 min".
     out = out.copyWith(
       type: NotificationEventType.happy,
       title: l.notifQuietCheckIn,
-      subtitle:
-          m.quietMin != null ? l.notifQuietFor(m.quietMin!) : out.subtitle,
+      subtitle: (m.quietMin ?? 0) > 0 ? l.notifQuietFor(m.quietMin!) : null,
     );
+  } else if (m.type == 'settle' && (m.settleS ?? 0) > 0) {
+    out = out.copyWith(
+        subtitle: l.notifSettledAfter((m.settleS! / 60).ceil()));
   }
   return out;
 }
+
+/// Feed row metadata key: absolute URL of the event's authenticated still.
+const kFeedPhotoUrlKey = 'photo_url';
 
 class NotificationsNotifier extends StateNotifier<List<NotificationEvent>> {
   final Ref _ref;
@@ -764,11 +776,12 @@ class NotificationsNotifier extends StateNotifier<List<NotificationEvent>> {
 
   /// Caches the media of [records] and joins it onto rows already in the
   /// feed. Returns how many records carried a still or clip.
-  int _rememberEventMedia(Iterable<Map<String, dynamic>> records) {
+  int _rememberEventMedia(Iterable<Map<String, dynamic>> records,
+      {String? dogId}) {
     var withMedia = 0;
     final fresh = <String>{};
     for (final r in records) {
-      final m = EventMedia.fromEvent(r);
+      final m = EventMedia.fromEvent(r, dogId: dogId);
       if (m == null || !m.isUseful) continue;
       if (m.hasMedia) withMedia++;
       _eventMedia[m.eventId] = m;
@@ -799,7 +812,7 @@ class NotificationsNotifier extends StateNotifier<List<NotificationEvent>> {
       final rows =
           await api.getDogEvents(token: token, dogId: dogId, since: since);
       if (!mounted) return;
-      final withMedia = _rememberEventMedia(rows);
+      final withMedia = _rememberEventMedia(rows, dogId: dogId);
       connTrace('events-media',
           'dog=$dogId records=${rows.length} withMedia=$withMedia');
     }

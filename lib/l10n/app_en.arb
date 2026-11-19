@@ -2295,6 +2295,16 @@
   "draftStatusDeclined": "Declined",
   "draftStatusExpired": "Expired",
   "attachmentOpenFailed": "Couldn't load media",
+  "attachmentPhotoExpired": "Photo expired",
+  "attachmentClipGone": "Clip no longer available",
+  "notifSettledAfter": "Settled after {minutes} min",
+  "@notifSettledAfter": {
+    "placeholders": {
+      "minutes": {
+        "type": "int"
+      }
+    }
+  },
   "todayCardTitle": "Today",
   "todayCardLocalCounts": "Counts from this phone's activity feed",
   "todayCardError": "Couldn't reach the summary service",

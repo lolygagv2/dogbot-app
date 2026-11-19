@@ -86,6 +86,16 @@ String attachmentBaseUrl = 'https://api.wimzai.com';
 /// Absolute URL for a relay-relative attachment path (null for empty).
 String? absolutizeAttachmentUrl(dynamic raw) => _absolutize(raw);
 
+/// `GET /api/dogs/{dog}/events/{event}/photo` (user JWT) — the still of one
+/// event record. Null without both ids.
+String? eventPhotoUrl(String? dogId, String? eventId) {
+  if (dogId == null || dogId.isEmpty || eventId == null || eventId.isEmpty) {
+    return null;
+  }
+  return _absolutize('/api/dogs/${Uri.encodeComponent(dogId)}'
+      '/events/${Uri.encodeComponent(eventId)}/photo');
+}
+
 String? _absolutize(dynamic raw) {
   final s = raw?.toString();
   if (s == null || s.isEmpty) return null;
