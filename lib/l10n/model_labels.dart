@@ -77,6 +77,10 @@ String robotModeIdLabel(AppLocalizations l, String mode) {
       return l.modelRobotModeCoach;
     case 'mission':
       return l.modelRobotModeMission;
+    case 'sleep':
+    case 'sleeping':
+    case 'asleep':
+      return l.modelRobotModeSleep;
     case 'docking':
       return l.modelRobotModeDocking;
     default:

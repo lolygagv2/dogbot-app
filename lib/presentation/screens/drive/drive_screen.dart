@@ -1139,6 +1139,7 @@ class _LandscapeModeSelector extends ConsumerWidget {
       case RobotMode.silentGuardian: return w.ink;
       case RobotMode.coach: return w.ink;
       case RobotMode.mission: return w.ink;
+      case RobotMode.sleep: return w.inkMuted;
     }
   }
 
@@ -1149,6 +1150,7 @@ class _LandscapeModeSelector extends ConsumerWidget {
       case RobotMode.silentGuardian: return Icons.visibility;
       case RobotMode.coach: return Icons.school;
       case RobotMode.mission: return Icons.flag;
+      case RobotMode.sleep: return Icons.bedtime;
     }
   }
 }

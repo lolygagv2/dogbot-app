@@ -2407,6 +2407,18 @@ class AppLocalizationsEn extends AppLocalizations {
   String get homeExit => 'EXIT';
 
   @override
+  String get modelRobotModeSleep => 'Asleep';
+
+  @override
+  String get homeSleep => 'Sleep';
+
+  @override
+  String get homeWake => 'WAKE';
+
+  @override
+  String get homeAsleepBanner => 'WIM-Z is asleep. Tap Wake to bring it back.';
+
+  @override
   String get homeModeIdle => 'Idle';
 
   @override
@@ -4136,6 +4148,63 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get demoSgIdle => 'Guardian not running';
+
+  @override
+  String demoSgBarkDown(int pct) {
+    return 'Barking down $pct% vs last week';
+  }
+
+  @override
+  String demoSgBarkUp(int pct) {
+    return 'Barking up $pct% vs last week';
+  }
+
+  @override
+  String get demoSgBarkSame => 'Barking level with last week';
+
+  @override
+  String get demoSgBarkNoBaseline => 'No barking recorded last week to compare';
+
+  @override
+  String get demoSgLive => 'On guard now';
+
+  @override
+  String demoSgReplay(String status) {
+    return 'Replay · $status';
+  }
+
+  @override
+  String get demoSgNoData => 'No guardian activity for this day';
+
+  @override
+  String get demoSgBarkEpisodes => 'Bark episodes';
+
+  @override
+  String get demoSgMedianSettle => 'Median settle';
+
+  @override
+  String get demoSgLongestSettle => 'Longest settle';
+
+  @override
+  String get demoSgKindSound => 'Sound';
+
+  @override
+  String get demoSgKindVoice => 'Voice';
+
+  @override
+  String get demoSgKindTreat => 'Treat';
+
+  @override
+  String get demoSgKindApproach => 'Approach';
+
+  @override
+  String get demoSgKindMusic => 'Music';
+
+  @override
+  String get demoSgKindUltrasonic => 'Ultrasonic';
+
+  @override
+  String get demoSgKindSmartPlug => 'Diffuser';
 
   @override
   String get aiErrNoDog => 'Select a dog first';

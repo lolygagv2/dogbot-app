@@ -99,4 +99,53 @@ void main() {
     await pump();
     expect(container.read(modeStateProvider).currentMode, RobotMode.idle);
   });
+
+  test('robot-reported sleep shows Asleep even over a user selection; '
+      'an explicit mode_changed wakes it', () async {
+    container.read(connectionProvider.notifier).enableDemoMode();
+    final notifier = container.read(modeStateProvider.notifier);
+    await notifier.setMode(RobotMode.silentGuardian, source: 'test');
+    client.debugHandleMessage(
+        jsonEncode({'type': 'mode_changed', 'mode': 'silent_guardian'}));
+    await pump();
+    expect(container.read(modeStateProvider).currentMode,
+        RobotMode.silentGuardian);
+
+    // Robot falls asleep by itself: a status echo is enough.
+    client.debugHandleMessage(
+        jsonEncode({'type': 'status_update', 'mode': 'sleep'}));
+    await pump();
+    expect(container.read(robotAsleepProvider), isTrue);
+
+    // ...and reports waking.
+    client.debugHandleMessage(
+        jsonEncode({'type': 'mode_changed', 'mode': 'idle'}));
+    await pump();
+    expect(container.read(modeStateProvider).currentMode, RobotMode.idle);
+    expect(container.read(robotAsleepProvider), isFalse);
+  });
+
+  test('Sleep control: stale idle echoes do not wake a requested sleep',
+      () async {
+    container.read(connectionProvider.notifier).enableDemoMode();
+    final notifier = container.read(modeStateProvider.notifier);
+    await notifier.setMode(RobotMode.sleep, source: 'sleep_button');
+    expect(container.read(modeStateProvider).pendingMode, RobotMode.sleep);
+    client.debugHandleMessage(
+        jsonEncode({'type': 'mode_changed', 'mode': 'sleep'}));
+    await pump();
+    expect(container.read(robotAsleepProvider), isTrue);
+
+    client.debugHandleMessage(
+        jsonEncode({'type': 'status_update', 'mode': 'idle'}));
+    await pump();
+    expect(container.read(robotAsleepProvider), isTrue);
+
+    // Wake button → idle, confirmed by the robot.
+    await notifier.setMode(RobotMode.idle, source: 'wake_button');
+    client.debugHandleMessage(
+        jsonEncode({'type': 'mode_changed', 'mode': 'idle'}));
+    await pump();
+    expect(container.read(robotAsleepProvider), isFalse);
+  });
 }

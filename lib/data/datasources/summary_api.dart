@@ -69,4 +69,30 @@ class SummaryApi {
       return DailySummaryResult(error: '$e');
     }
   }
+
+  /// Bark seconds (`totals.bark_s`) of the week containing [date]
+  /// (YYYY-MM-DD). Null when the relay could not be read.
+  Future<int?> getWeekBarkSeconds({
+    required String dogId,
+    required String date,
+    required String token,
+  }) async {
+    try {
+      final response = await _dio.get(
+        ApiEndpoints.weeklySummary(dogId, date),
+        options: Options(
+          headers: {'Authorization': 'Bearer $token'},
+          receiveTimeout: const Duration(seconds: 20),
+        ),
+      );
+      final data = response.data;
+      final totals = data is Map ? data['totals'] : null;
+      final v = totals is Map ? totals['bark_s'] : null;
+      connTrace('summary-week', 'dog=$dogId week-of=$date bark_s=$v');
+      return v is num ? v.toInt() : null;
+    } catch (e) {
+      connTrace('summary-week-error', 'dog=$dogId week-of=$date $e');
+      return null;
+    }
+  }
 }

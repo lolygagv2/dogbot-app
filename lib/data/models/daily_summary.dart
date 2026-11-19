@@ -141,6 +141,7 @@ class DailyStats {
   final Map<String, int> interventionsByKind;
   // Relay time_to_settle
   final int? settleMedianS;
+  final int? settleMaxS; // longest time to settle
   final int settleN;
   final int settleUnresolved;
   // Draft-shape (B165) fields, kept for a locally served summary
@@ -167,6 +168,7 @@ class DailyStats {
     this.missionsFail = 0,
     this.interventionsByKind = const {},
     this.settleMedianS,
+    this.settleMaxS,
     this.settleN = 0,
     this.settleUnresolved = 0,
     this.sits = 0,
@@ -209,6 +211,7 @@ class DailyStats {
       missionsFail: fail,
       interventionsByKind: byKind,
       settleMedianS: _in(settle['median_s']),
+      settleMaxS: _in(settle['max_s']),
       settleN: _i(settle['n']),
       settleUnresolved: _i(settle['unresolved']),
       // Missions double as "coaching" on the card when the draft fields are absent.
@@ -310,5 +313,29 @@ class DailyPlan {
       title: (title == null || title.isEmpty) ? null : title,
       items: items,
     );
+  }
+}
+
+/// Barking this week against last week, as seconds of barking per day so a
+/// part-finished week compares fairly with a whole one.
+class BarkWeekCompare {
+  final int thisWeekS;
+  final int lastWeekS;
+
+  /// Days of the current week so far (Monday = 1 … Sunday = 7).
+  final int daysThisWeek;
+  const BarkWeekCompare({
+    required this.thisWeekS,
+    required this.lastWeekS,
+    required this.daysThisWeek,
+  });
+
+  /// Percent change in barking per day (negative = less barking). Null when
+  /// last week has no barking to compare against.
+  double? get pctChange {
+    if (lastWeekS <= 0 || daysThisWeek <= 0) return null;
+    final now = thisWeekS / daysThisWeek;
+    final before = lastWeekS / 7;
+    return (now - before) / before * 100;
   }
 }

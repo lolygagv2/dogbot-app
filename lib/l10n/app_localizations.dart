@@ -4280,6 +4280,30 @@ abstract class AppLocalizations {
   /// **'EXIT'**
   String get homeExit;
 
+  /// No description provided for @modelRobotModeSleep.
+  ///
+  /// In en, this message translates to:
+  /// **'Asleep'**
+  String get modelRobotModeSleep;
+
+  /// No description provided for @homeSleep.
+  ///
+  /// In en, this message translates to:
+  /// **'Sleep'**
+  String get homeSleep;
+
+  /// No description provided for @homeWake.
+  ///
+  /// In en, this message translates to:
+  /// **'WAKE'**
+  String get homeWake;
+
+  /// No description provided for @homeAsleepBanner.
+  ///
+  /// In en, this message translates to:
+  /// **'WIM-Z is asleep. Tap Wake to bring it back.'**
+  String get homeAsleepBanner;
+
   /// No description provided for @homeModeIdle.
   ///
   /// In en, this message translates to:
@@ -7309,6 +7333,108 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Guardian not running'**
   String get demoSgIdle;
+
+  /// No description provided for @demoSgBarkDown.
+  ///
+  /// In en, this message translates to:
+  /// **'Barking down {pct}% vs last week'**
+  String demoSgBarkDown(int pct);
+
+  /// No description provided for @demoSgBarkUp.
+  ///
+  /// In en, this message translates to:
+  /// **'Barking up {pct}% vs last week'**
+  String demoSgBarkUp(int pct);
+
+  /// No description provided for @demoSgBarkSame.
+  ///
+  /// In en, this message translates to:
+  /// **'Barking level with last week'**
+  String get demoSgBarkSame;
+
+  /// No description provided for @demoSgBarkNoBaseline.
+  ///
+  /// In en, this message translates to:
+  /// **'No barking recorded last week to compare'**
+  String get demoSgBarkNoBaseline;
+
+  /// No description provided for @demoSgLive.
+  ///
+  /// In en, this message translates to:
+  /// **'On guard now'**
+  String get demoSgLive;
+
+  /// No description provided for @demoSgReplay.
+  ///
+  /// In en, this message translates to:
+  /// **'Replay · {status}'**
+  String demoSgReplay(String status);
+
+  /// No description provided for @demoSgNoData.
+  ///
+  /// In en, this message translates to:
+  /// **'No guardian activity for this day'**
+  String get demoSgNoData;
+
+  /// No description provided for @demoSgBarkEpisodes.
+  ///
+  /// In en, this message translates to:
+  /// **'Bark episodes'**
+  String get demoSgBarkEpisodes;
+
+  /// No description provided for @demoSgMedianSettle.
+  ///
+  /// In en, this message translates to:
+  /// **'Median settle'**
+  String get demoSgMedianSettle;
+
+  /// No description provided for @demoSgLongestSettle.
+  ///
+  /// In en, this message translates to:
+  /// **'Longest settle'**
+  String get demoSgLongestSettle;
+
+  /// No description provided for @demoSgKindSound.
+  ///
+  /// In en, this message translates to:
+  /// **'Sound'**
+  String get demoSgKindSound;
+
+  /// No description provided for @demoSgKindVoice.
+  ///
+  /// In en, this message translates to:
+  /// **'Voice'**
+  String get demoSgKindVoice;
+
+  /// No description provided for @demoSgKindTreat.
+  ///
+  /// In en, this message translates to:
+  /// **'Treat'**
+  String get demoSgKindTreat;
+
+  /// No description provided for @demoSgKindApproach.
+  ///
+  /// In en, this message translates to:
+  /// **'Approach'**
+  String get demoSgKindApproach;
+
+  /// No description provided for @demoSgKindMusic.
+  ///
+  /// In en, this message translates to:
+  /// **'Music'**
+  String get demoSgKindMusic;
+
+  /// No description provided for @demoSgKindUltrasonic.
+  ///
+  /// In en, this message translates to:
+  /// **'Ultrasonic'**
+  String get demoSgKindUltrasonic;
+
+  /// No description provided for @demoSgKindSmartPlug.
+  ///
+  /// In en, this message translates to:
+  /// **'Diffuser'**
+  String get demoSgKindSmartPlug;
 
   /// No description provided for @aiErrNoDog.
   ///

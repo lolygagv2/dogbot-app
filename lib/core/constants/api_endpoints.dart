@@ -99,6 +99,11 @@ class ApiEndpoints {
   static String dailySummary(String dogId, String date) =>
       '/summary/$dogId/$date';
 
+  /// Weekly roll-up (same shape as the daily one) for the Monday–Sunday
+  /// week containing [date] (YYYY-MM-DD); the current week is partial.
+  static String weeklySummary(String dogId, String date) =>
+      '/summary/$dogId/week/$date';
+
   /// Last known robot status + treats_today/treat_cap + quiet_hours.
   static String dogStatus(String dogId) => '/api/dogs/$dogId/status';
 

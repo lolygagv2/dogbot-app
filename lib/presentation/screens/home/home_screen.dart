@@ -136,6 +136,8 @@ class HomeScreen extends ConsumerWidget {
                 padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                 child: _ModeRow(),
               ),
+              // Robot reports mode sleep
+              if (ref.watch(robotAsleepProvider)) const _AsleepBanner(),
               // AI voice status / last exchange (collapsed when idle)
               const AskWimzBanner(),
 
@@ -343,6 +345,38 @@ class _UnknownDogBannerState extends ConsumerState<_UnknownDogBanner> {
   }
 }
 
+/// Shown under the mode row while the robot reports mode `sleep`.
+class _AsleepBanner extends StatelessWidget {
+  const _AsleepBanner();
+
+  @override
+  Widget build(BuildContext context) {
+    final w = context.wimz;
+    return Container(
+      margin: const EdgeInsets.fromLTRB(12, 0, 12, 6),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: w.surfaceSunken,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: w.line),
+      ),
+      child: Row(
+        children: [
+          Icon(Icons.bedtime, size: 18, color: w.ink),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              context.l10n.homeAsleepBanner,
+              style: TextStyle(
+                  color: w.ink, fontSize: 13, fontWeight: FontWeight.w600),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 /// Mode buttons + Drive button row (replaces video overlay dropdown)
 /// Home mode bar (Build 178): `[ Mode: Idle ▾ ] [ EXIT ] [ AI ]`.
 ///
@@ -405,7 +439,11 @@ class _ModeRow extends ConsumerWidget {
 
     final shownMode = isChanging ? (modeState.pendingMode ?? displayMode) : displayMode;
     final color = _getModeColor(context, shownMode);
-    final showExit = displayMode != RobotMode.idle || (isChanging && shownMode != RobotMode.idle);
+    final asleep = shownMode == RobotMode.sleep;
+    // Asleep has its own way out (WAKE), so EXIT is for the active modes.
+    final showExit = !asleep &&
+        (displayMode != RobotMode.idle ||
+            (isChanging && shownMode != RobotMode.idle));
     final showBadge = displayMode == RobotMode.silentGuardian && unreadCount > 0;
 
     return Row(
@@ -506,6 +544,63 @@ class _ModeRow extends ConsumerWidget {
           ),
         ],
         const SizedBox(width: 8),
+        // Sleep / Wake. Asleep: a labelled WAKE button (set_mode idle).
+        // Awake: a compact moon button (set_mode sleep).
+        if (asleep)
+          SizedBox(
+            height: 42,
+            child: ElevatedButton.icon(
+              onPressed: isChanging
+                  ? null
+                  : () => ref
+                      .read(modeStateProvider.notifier)
+                      .setMode(RobotMode.idle, source: 'wake_button'),
+              icon: const Icon(Icons.wb_sunny_outlined, size: 18),
+              label: Text(
+                l.homeWake,
+                style: const TextStyle(
+                    fontSize: 13, fontWeight: FontWeight.bold, letterSpacing: 1),
+              ),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: cs.primary,
+                foregroundColor: cs.onPrimary,
+                padding: const EdgeInsets.symmetric(horizontal: 14),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10)),
+              ),
+            ),
+          )
+        else
+          SizedBox(
+            width: 42,
+            height: 42,
+            child: Material(
+              color: w.surfaceRaised,
+              borderRadius: BorderRadius.circular(10),
+              child: Tooltip(
+                message: l.homeSleep,
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(10),
+                  onTap: (isLocked || isChanging)
+                      ? null
+                      : () => ref
+                          .read(modeStateProvider.notifier)
+                          .setMode(RobotMode.sleep, source: 'sleep_button'),
+                  child: Container(
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: w.line),
+                    ),
+                    child: Icon(Icons.bedtime_outlined,
+                        size: 20,
+                        color: (isLocked || isChanging) ? w.inkMuted : w.ink,
+                        semanticLabel: l.homeSleep),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        const SizedBox(width: 8),
         // "AI": hold to speak a command to WIM-Z; the robot answers back
         // (relay voice agent). Lives here so it's reachable in EVERY mode —
         // the quick-actions Talk button below is the 5-s sound bite for the
@@ -594,6 +689,7 @@ class _ModeRow extends ConsumerWidget {
         return;
       case RobotMode.idle:
       case RobotMode.silentGuardian:
+      case RobotMode.sleep:
         notifier.setMode(mode, source: 'dropdown');
         return;
     }
@@ -605,6 +701,7 @@ class _ModeRow extends ConsumerWidget {
     final w = context.wimz;
     switch (mode) {
       case RobotMode.idle:
+      case RobotMode.sleep:
         return w.inkMuted;
       case RobotMode.manual:
       case RobotMode.silentGuardian:
@@ -621,6 +718,7 @@ class _ModeRow extends ConsumerWidget {
       case RobotMode.silentGuardian: return Icons.visibility;
       case RobotMode.coach: return Icons.school;
       case RobotMode.mission: return Icons.flag;
+      case RobotMode.sleep: return Icons.bedtime;
     }
   }
 }

@@ -404,8 +404,12 @@ class DemoReplayNotifier extends StateNotifier<DemoReplayState> {
   /// Load / jump / reset rewrite the dog's day: recompute the Today card
   /// roll-up and re-pull the Guardian pane for the targeted dog.
   void _refreshFeeds(String dogId) {
-    unawaited(
-        _ref.read(dailySummaryProvider(dogId).notifier).load(refresh: true));
+    // Pin the roll-up to the replay's day while this dog's replay is
+    // loaded; after a reset it goes back to the relay's "today".
+    _ref.read(dailySummaryProvider(dogId).notifier).forgetPastWeeks();
+    unawaited(_ref.read(dailySummaryProvider(dogId).notifier).load(
+        isoDate: state.replayIsFor(dogId) ? state.replay.date : null,
+        refresh: true));
     _ref.read(sgSummaryProvider.notifier).pull();
     // Events tab: pull the rows the replay just wrote, with their media.
     unawaited(_ref.read(notificationsProvider.notifier).hydrateFromRelay());

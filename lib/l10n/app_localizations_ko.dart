@@ -2332,6 +2332,18 @@ class AppLocalizationsKo extends AppLocalizations {
   String get homeExit => '종료';
 
   @override
+  String get modelRobotModeSleep => '절전 중';
+
+  @override
+  String get homeSleep => '절전';
+
+  @override
+  String get homeWake => '깨우기';
+
+  @override
+  String get homeAsleepBanner => 'WIM-Z가 절전 중입니다. 깨우기를 눌러 다시 시작하세요.';
+
+  @override
   String get homeModeIdle => '대기';
 
   @override
@@ -3993,6 +4005,63 @@ class AppLocalizationsKo extends AppLocalizations {
 
   @override
   String get demoSgIdle => '가디언 미실행';
+
+  @override
+  String demoSgBarkDown(int pct) {
+    return '지난주 대비 짖음 $pct% 감소';
+  }
+
+  @override
+  String demoSgBarkUp(int pct) {
+    return '지난주 대비 짖음 $pct% 증가';
+  }
+
+  @override
+  String get demoSgBarkSame => '짖음이 지난주와 비슷함';
+
+  @override
+  String get demoSgBarkNoBaseline => '비교할 지난주 짖음 기록이 없습니다';
+
+  @override
+  String get demoSgLive => '지금 가디언 작동 중';
+
+  @override
+  String demoSgReplay(String status) {
+    return '리플레이 · $status';
+  }
+
+  @override
+  String get demoSgNoData => '이 날짜에는 가디언 활동이 없습니다';
+
+  @override
+  String get demoSgBarkEpisodes => '짖음 에피소드';
+
+  @override
+  String get demoSgMedianSettle => '진정 중앙값';
+
+  @override
+  String get demoSgLongestSettle => '최장 진정 시간';
+
+  @override
+  String get demoSgKindSound => '소리';
+
+  @override
+  String get demoSgKindVoice => '음성';
+
+  @override
+  String get demoSgKindTreat => '간식';
+
+  @override
+  String get demoSgKindApproach => '접근';
+
+  @override
+  String get demoSgKindMusic => '음악';
+
+  @override
+  String get demoSgKindUltrasonic => '초음파';
+
+  @override
+  String get demoSgKindSmartPlug => '디퓨저';
 
   @override
   String get aiErrNoDog => '먼저 강아지를 선택하세요';

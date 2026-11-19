@@ -15,7 +15,11 @@ enum RobotMode {
   manual('manual', 'Manual'),
   silentGuardian('silent_guardian', 'Silent Guardian'),
   coach('coach', 'Coach'),
-  mission('mission', 'Mission');
+  mission('mission', 'Mission'),
+
+  /// Robot is asleep (low-power, not watching). Entered with the Sleep
+  /// control (`set_mode sleep`) or by the robot itself; Wake = `set_mode idle`.
+  sleep('sleep', 'Asleep');
 
   final String value;
   final String label;
@@ -25,6 +29,8 @@ enum RobotMode {
   static const _aliases = {
     'guardian': RobotMode.silentGuardian,
     'training': RobotMode.coach,
+    'sleeping': RobotMode.sleep,
+    'asleep': RobotMode.sleep,
   };
 
   static RobotMode fromString(String value) {
@@ -100,6 +106,9 @@ class ModeState {
       previousPortraitMode: previousPortraitMode ?? this.previousPortraitMode,
     );
   }
+
+  /// The robot reports mode `sleep`.
+  bool get isAsleep => currentMode == RobotMode.sleep;
 
   /// True if a mission is currently active
   bool get isMissionActive => activeMissionId != null;
@@ -179,9 +188,26 @@ class ModeStateNotifier extends StateNotifier<ModeState> {
 
   /// Returns true if the incoming mode should be BLOCKED.
   /// When user has selected a mode, ONLY that mode (or mission locks) pass.
-  bool _shouldBlockExternalMode(RobotMode incomingMode, {bool isLocked = false}) {
+  bool _shouldBlockExternalMode(RobotMode incomingMode,
+      {bool isLocked = false, bool explicit = false}) {
     // Mission locks are always authoritative — robot is running a mission
     if (isLocked) return false;
+
+    // Sleep is the robot's own state: a `sleep` report is always shown (it
+    // may fall asleep by itself or from another client), and so is the
+    // report that it woke — unless the user asked for sleep here and the
+    // report is only a status echo (those can be stale; an explicit
+    // mode_changed is not).
+    if (incomingMode == RobotMode.sleep) {
+      if (_userSelectedMode != RobotMode.sleep) _userSelectedMode = null;
+      return false;
+    }
+    if (state.currentMode == RobotMode.sleep &&
+        !state.isChanging &&
+        (explicit || _userSelectedMode != RobotMode.sleep)) {
+      if (_userSelectedMode == RobotMode.sleep) _userSelectedMode = null;
+      return false;
+    }
 
     // No user selection active — allow everything (initial state, pre-first-click)
     if (_userSelectedMode == null) return false;
@@ -293,7 +319,10 @@ class ModeStateNotifier extends StateNotifier<ModeState> {
     if (confirmedMode == null) return; // Don't default to idle for unrecognized strings
 
     // Sovereign guard
-    if (_shouldBlockExternalMode(confirmedMode, isLocked: locked)) return;
+    if (_shouldBlockExternalMode(confirmedMode,
+        isLocked: locked, explicit: true)) {
+      return;
+    }
 
     _cancelTimeout();
 
@@ -339,7 +368,17 @@ class ModeStateNotifier extends StateNotifier<ModeState> {
           clearError: true,
         );
       }
-      // Non-matching modes are blocked by the guard above
+      else if (confirmedMode == RobotMode.sleep) {
+        // The robot fell asleep while another change was pending.
+        _logModeChange(state.currentMode, confirmedMode, 'ws_sleep');
+        _cancelTimeout();
+        state = state.copyWith(
+          currentMode: confirmedMode,
+          isChanging: false,
+          clearPending: true,
+        );
+      }
+      // Other non-matching modes are blocked by the guard above
     } else if (!state.isChanging) {
       // Not waiting for confirmation — update if different
       // (only reachable if _userSelectedMode is null or matches)
@@ -607,3 +646,8 @@ class ModeControl {
     _ref.read(modeStateProvider.notifier).setManualMode(source: source);
   }
 }
+
+/// True while the robot reports mode `sleep` (main screen + demo view).
+final robotAsleepProvider = Provider<bool>((ref) {
+  return ref.watch(modeStateProvider).isAsleep;
+});

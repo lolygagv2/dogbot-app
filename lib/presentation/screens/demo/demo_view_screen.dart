@@ -5,13 +5,14 @@ import 'package:intl/intl.dart';
 import '../../../data/models/ai_connection.dart';
 import '../../../domain/providers/agent_transcript_provider.dart';
 import '../../../domain/providers/dog_profiles_provider.dart';
-import '../../../domain/providers/sg_summary_provider.dart';
+import '../../../domain/providers/mode_provider.dart';
 import '../../../l10n/l10n.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/demo/demo_controls_panel.dart';
+import '../../widgets/demo/demo_guardian_panel.dart';
 import '../../widgets/summary/today_card.dart';
 
-/// Demo view for screen mirroring: Today card · Silent Guardian summary ·
+/// Demo view for screen mirroring: Today card · Silent Guardian day summary ·
 /// live agent transcript. Three fixed panes (side by side in landscape,
 /// stacked in portrait); only the transcript scrolls, and it auto-follows.
 /// Admin accounts also get a replayer control strip along the bottom
@@ -24,18 +25,6 @@ class DemoViewScreen extends ConsumerStatefulWidget {
 }
 
 class _DemoViewScreenState extends ConsumerState<DemoViewScreen> {
-  @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) return;
-      final sg = ref.read(sgSummaryProvider);
-      if (sg.summary == null && !sg.pulling) {
-        ref.read(sgSummaryProvider.notifier).pull();
-      }
-    });
-  }
-
   @override
   Widget build(BuildContext context) {
     final l = context.l10n;
@@ -67,6 +56,32 @@ class _DemoViewScreenState extends ConsumerState<DemoViewScreen> {
                   if (dog != null)
                     Text(dog.name,
                         style: TextStyle(color: w.inkMuted)),
+                  if (ref.watch(robotAsleepProvider)) ...[
+                    const SizedBox(width: 10),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: w.surfaceSunken,
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: w.line),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.bedtime, size: 13, color: w.ink),
+                          const SizedBox(width: 4),
+                          Text(
+                            l.modelRobotModeSleep,
+                            style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                                color: w.ink),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
                   const Spacer(),
                   IconButton(
                     icon: Icon(Icons.close, color: w.inkMuted),
@@ -92,7 +107,9 @@ class _DemoViewScreenState extends ConsumerState<DemoViewScreen> {
                         title: l.demoPanelGuardian,
                         icon: Icons.shield_outlined,
                         color: cs.onSurface,
-                        child: const _SgPanel(),
+                        child: dog == null
+                            ? _Empty(l.demoNoDog)
+                            : DemoGuardianPanel(dogId: dog.id),
                       ),
                       _Pane(
                         title: l.demoPanelTranscript,
@@ -193,171 +210,6 @@ class _Empty extends StatelessWidget {
             textAlign: TextAlign.center,
             style: TextStyle(color: context.wimz.inkMuted, fontSize: 13)),
       );
-}
-
-/// Compact Silent Guardian summary: headline, 4 stats, bark-type bar.
-class _SgPanel extends ConsumerWidget {
-  const _SgPanel();
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final state = ref.watch(sgSummaryProvider);
-    final s = state.summary;
-    final l = context.l10n;
-    final w = context.wimz;
-    final cs = Theme.of(context).colorScheme;
-    if (s == null) {
-      return _Empty(state.pulling
-          ? l.loading
-          : (state.error ?? l.demoSgIdle));
-    }
-    final types = s.barkTypePercentages.entries.where((e) => e.value > 0).toList()
-      ..sort((a, b) => b.value.compareTo(a.value));
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        if (s.headline != null)
-          Text(
-            s.headline!,
-            style: TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
-                color: w.ink),
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-          ),
-        if (s.currentAction != null)
-          Text(
-            s.currentAction!,
-            style: TextStyle(fontSize: 11, color: w.inkMuted),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-          ),
-        const SizedBox(height: 8),
-        Row(
-          children: [
-            _Stat(l.sgStatBarks, '${s.totalBarks}'),
-            _Stat(l.sgStatTreats, '${s.treatsDispensed}'),
-            _Stat(l.sgStatInterventions, '${s.interventionsTriggered}'),
-            _Stat(
-              l.sgStatLevel,
-              s.escalationLevel?.toString() ?? '–',
-              color: (s.escalationLevel ?? 0) >= 4 ? cs.error : null,
-              icon: (s.escalationLevel ?? 0) >= 4 ? Icons.warning_amber : null,
-            ),
-            _Trend(trend: s.trend),
-          ],
-        ),
-        if (types.isNotEmpty) ...[
-          const SizedBox(height: 8),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(3),
-            child: SizedBox(
-              height: 6,
-              child: Row(
-                children: [
-                  for (final e in types)
-                    Expanded(
-                      flex: (e.value * 10).round().clamp(1, 1000),
-                      child: Container(
-                          color: WimzStatus.barkType(context, e.key)),
-                    ),
-                ],
-              ),
-            ),
-          ),
-          const SizedBox(height: 4),
-          Wrap(
-            spacing: 8,
-            children: [
-              for (final e in types.take(4))
-                Text(
-                  '${e.key} ${e.value.toStringAsFixed(0)}%',
-                  style: TextStyle(
-                      fontSize: 10,
-                      color: WimzStatus.barkType(context, e.key)),
-                ),
-            ],
-          ),
-        ],
-        if (s.panicActive) ...[
-          const SizedBox(height: 6),
-          Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(Icons.crisis_alert, size: 12, color: cs.error),
-              const SizedBox(width: 4),
-              Text(l.sgPanicActive,
-                  style: TextStyle(
-                      fontSize: 11, fontWeight: FontWeight.bold, color: cs.error)),
-            ],
-          ),
-        ],
-      ],
-    );
-  }
-}
-
-class _Stat extends StatelessWidget {
-  final String label;
-  final String value;
-  final Color? color;
-
-  /// Optional mark drawn before [value] so a coloured stat never relies on
-  /// colour alone.
-  final IconData? icon;
-  const _Stat(this.label, this.value, {this.color, this.icon});
-  @override
-  Widget build(BuildContext context) {
-    final w = context.wimz;
-    final valueColor = color ?? w.ink;
-    return Expanded(
-      child: Column(
-        children: [
-          Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              if (icon != null) ...[
-                Icon(icon, size: 14, color: valueColor),
-                const SizedBox(width: 2),
-              ],
-              Text(value,
-                  style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                      color: valueColor)),
-            ],
-          ),
-          Text(label,
-              style: TextStyle(fontSize: 9, color: w.inkMuted),
-              overflow: TextOverflow.ellipsis),
-        ],
-      ),
-    );
-  }
-}
-
-class _Trend extends StatelessWidget {
-  final String? trend;
-  const _Trend({required this.trend});
-  @override
-  Widget build(BuildContext context) {
-    final w = context.wimz;
-    final (icon, color) = switch (trend) {
-      'improving' => (Icons.trending_down, w.ink),
-      'worsening' => (Icons.trending_up, Theme.of(context).colorScheme.error),
-      _ => (Icons.trending_flat, w.inkMuted),
-    };
-    return Expanded(
-      child: Column(
-        children: [
-          Icon(icon, size: 18, color: color),
-          Text(context.l10n.sgStatTrend,
-              style: TextStyle(fontSize: 9, color: w.inkMuted)),
-        ],
-      ),
-    );
-  }
 }
 
 /// Agent transcript — newest at the bottom, auto-scrolls as lines arrive.
