@@ -2711,6 +2711,17 @@ class AppLocalizationsKo extends AppLocalizations {
   String get notifIntervention => '개입';
 
   @override
+  String get notifSettled => '진정됨';
+
+  @override
+  String get notifQuietCheckIn => '조용함 확인';
+
+  @override
+  String notifQuietFor(int minutes) {
+    return '$minutes분 동안 조용함';
+  }
+
+  @override
   String notifGuardianReason(String reason) {
     return '가디언: $reason';
   }

@@ -10,6 +10,7 @@ import '../../core/services/local_connection_service.dart';
 import '../../core/services/notification_service.dart';
 import '../../data/datasources/robot_api.dart';
 import '../../data/models/ai_connection.dart';
+import '../../data/models/event_media.dart';
 import '../../data/models/notification_event.dart';
 import '../../l10n/l10n.dart';
 import 'auth_provider.dart';
@@ -62,12 +63,45 @@ String? rawBarkType(Map<String, dynamic> data) {
   return label;
 }
 
+/// The relay event id a feed row stands for: the activity mirror stores it in
+/// the payload (`event_id`) and reuses it as the row id.
+String feedEventKey(NotificationEvent n) {
+  final k = n.metadata?['event_id']?.toString();
+  return (k == null || k.isEmpty) ? n.id : k;
+}
+
+/// Joins a relay event record's still / clip (and quiet check-in detail)
+/// onto its feed row. URLs the row already has win.
+NotificationEvent withEventMedia(
+    NotificationEvent n, EventMedia m, AppLocalizations l) {
+  var out = n;
+  if (m.hasMedia && (n.imageUrl == null || n.clipUrl == null)) {
+    out = out.copyWith(
+      imageUrl: n.imageUrl ?? m.imageUrl,
+      clipUrl: n.clipUrl ?? m.clipUrl,
+    );
+  }
+  if (m.isQuietCheck) {
+    out = out.copyWith(
+      type: NotificationEventType.happy,
+      title: l.notifQuietCheckIn,
+      subtitle:
+          m.quietMin != null ? l.notifQuietFor(m.quietMin!) : out.subtitle,
+    );
+  }
+  return out;
+}
+
 class NotificationsNotifier extends StateNotifier<List<NotificationEvent>> {
   final Ref _ref;
 
   /// Localized strings for titles/subtitles (no BuildContext here).
   AppLocalizations get _l => _ref.read(l10nProvider);
   StreamSubscription? _wsSubscription;
+
+  /// Still / clip per relay event id, from the event records (REST + live
+  /// `event` frames). Joined onto feed rows — see [EventMedia].
+  final Map<String, EventMedia> _eventMedia = {};
 
   NotificationsNotifier(this._ref) : super(const []) {
     // Listen for WebSocket events to add real notifications
@@ -118,6 +152,13 @@ class NotificationsNotifier extends StateNotifier<List<NotificationEvent>> {
       // Build 125: the robot now attributes barks to a dog (dog_id/dog_name) —
       // carry dog_id through so per-dog stats count it.
       case 'event':
+        // Relay event record ({type: event, event: {...}}): not a feed row
+        // (the activity mirror is), but it carries the still / clip.
+        final record = event.data['event'];
+        if (record is Map) {
+          _rememberEventMedia([record.cast<String, dynamic>()]);
+          break;
+        }
         final eventType = event.data['event_type'] as String?;
         if (eventType == 'barking') {
           notification = NotificationEvent(
@@ -495,6 +536,17 @@ class NotificationsNotifier extends StateNotifier<List<NotificationEvent>> {
 
     if (_isGuardianLifecycle(action)) return null;
 
+    if (action == 'settled') {
+      return NotificationEvent(
+        id: eventId ?? eventTime.millisecondsSinceEpoch.toString(),
+        type: NotificationEventType.happy,
+        timestamp: eventTime,
+        title: _l.notifSettled,
+        dogId: data['dog_id'] as String?,
+        metadata: _attributionMeta(data),
+      );
+    }
+
     final reason = data['reason'] as String? ??
         data['details'] as String? ??
         data['message'] as String?;
@@ -577,6 +629,9 @@ class NotificationsNotifier extends StateNotifier<List<NotificationEvent>> {
     // Relies on the relay sharing a stable id across both sources; WS-vs-WS
     // dupes are already dropped by the seq watermark in WebSocketClient.
     if (state.any((n) => n.id == notification.id)) return;
+
+    final media = _eventMedia[feedEventKey(notification)];
+    if (media != null) notification = withEventMedia(notification, media, _l);
 
     state = [notification, ...state];
     if (state.length > 100) {
@@ -688,7 +743,13 @@ class NotificationsNotifier extends StateNotifier<List<NotificationEvent>> {
         ...hydrated.where((n) => !existingIds.contains(n.id)),
       ]..sort((a, b) => b.timestamp.compareTo(a.timestamp));
 
-      state = merged.take(200).toList();
+      state = [
+        for (final n in merged.take(200))
+          _eventMedia[feedEventKey(n)] == null
+              ? n
+              : withEventMedia(n, _eventMedia[feedEventKey(n)]!, _l),
+      ];
+      unawaited(_hydrateEventMedia(token, since));
       connTrace(
           'activity-hydrate-done',
           'fetched=${eventsJson.length} kept=${hydrated.length} '
@@ -698,6 +759,49 @@ class NotificationsNotifier extends StateNotifier<List<NotificationEvent>> {
           'feed=${state.length}');
     } catch (e) {
       connTrace('activity-hydrate-error', '$e');
+    }
+  }
+
+  /// Caches the media of [records] and joins it onto rows already in the
+  /// feed. Returns how many records carried a still or clip.
+  int _rememberEventMedia(Iterable<Map<String, dynamic>> records) {
+    var withMedia = 0;
+    final fresh = <String>{};
+    for (final r in records) {
+      final m = EventMedia.fromEvent(r);
+      if (m == null || !m.isUseful) continue;
+      if (m.hasMedia) withMedia++;
+      _eventMedia[m.eventId] = m;
+      fresh.add(m.eventId);
+    }
+    if (fresh.isNotEmpty && state.any((n) => fresh.contains(feedEventKey(n)))) {
+      state = [
+        for (final n in state)
+          fresh.contains(feedEventKey(n))
+              ? withEventMedia(n, _eventMedia[feedEventKey(n)]!, _l)
+              : n,
+      ];
+    }
+    return withMedia;
+  }
+
+  /// Pulls the event records of every dog in the feed (and every known dog)
+  /// for their stills / clips. The activity rows only carry a still for bark
+  /// episodes; settle / quiet check-in and the rest get theirs here.
+  Future<void> _hydrateEventMedia(String token, DateTime since) async {
+    final dogIds = <String>{
+      for (final d in _ref.read(dogProfilesProvider)) d.id,
+      for (final n in state)
+        if (n.dogId != null && n.dogId!.isNotEmpty) n.dogId!,
+    };
+    final api = _ref.read(robotApiProvider);
+    for (final dogId in dogIds) {
+      final rows =
+          await api.getDogEvents(token: token, dogId: dogId, since: since);
+      if (!mounted) return;
+      final withMedia = _rememberEventMedia(rows);
+      connTrace('events-media',
+          'dog=$dogId records=${rows.length} withMedia=$withMedia');
     }
   }
 
@@ -782,6 +886,13 @@ class NotificationsNotifier extends StateNotifier<List<NotificationEvent>> {
         final action = _normalizeGuardianAction(
             (payload['action'] ?? event['action']) as String?);
         if (_isGuardianLifecycle(action)) return null;
+        if (action == 'settled') {
+          // Relay `settle` record: the dog calmed down (or, joined in from
+          // the event record, a quiet check-in) — not an alert.
+          mapped = NotificationEventType.happy;
+          title = _l.notifSettled;
+          break;
+        }
         mapped = NotificationEventType.alert;
         title = _l.notifGuardianAlert;
         subtitle = payload['reason'] as String? ??

@@ -160,6 +160,11 @@ class ApiEndpoints {
   static String dogMedia(String dogId, String filename) =>
       '/api/dogs/$dogId/media/$filename';
 
+  /// Event records, newest first: `{dog_id, events:[{event_id, type, ts,
+  /// duration_s, source, device_id, data{… image_url, clip_url}}], count}`.
+  /// Query: since / until (ISO), type (comma list), limit (≤500).
+  static String dogEvents(String dogId) => '/api/dogs/$dogId/events';
+
   static String eventPhoto(String dogId, String eventId) =>
       '/api/dogs/$dogId/events/$eventId/photo';
 }

@@ -105,9 +105,11 @@ class WsEvent {
       }
     } else {
       // Use entire message as data (excluding type/event fields)
-      eventData = Map<String, dynamic>.from(json)
-        ..remove('type')
-        ..remove('event');
+      // A relay event-record frame is {type: 'event', event: {...}}: there
+      // `event` is the record itself (kept); otherwise it is the legacy
+      // name of the type field (dropped).
+      eventData = Map<String, dynamic>.from(json)..remove('type');
+      if (eventData['event'] is! Map) eventData.remove('event');
     }
 
     return WsEvent(

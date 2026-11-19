@@ -256,6 +256,36 @@ class RobotApi {
 
   // ============ Activity API (A3) ============
 
+  /// Event records for one dog (`GET /api/dogs/{dog}/events`), newest first.
+  /// These carry each event's still / clip URL in `data`. Returns [] on error.
+  Future<List<Map<String, dynamic>>> getDogEvents({
+    required String token,
+    required String dogId,
+    DateTime? since,
+    int limit = 500,
+  }) async {
+    try {
+      final response = await _dio.get(
+        ApiEndpoints.dogEvents(dogId),
+        queryParameters: {
+          'limit': limit,
+          if (since != null) 'since': since.toUtc().toIso8601String(),
+        },
+        options: Options(headers: {'Authorization': 'Bearer $token'}),
+      );
+      final data = response.data;
+      final rows = data is Map ? data['events'] : null;
+      if (rows is! List) return const [];
+      return [
+        for (final r in rows)
+          if (r is Map) r.cast<String, dynamic>(),
+      ];
+    } catch (e) {
+      connTrace('events-get-error', 'dog=$dogId $e');
+      return const [];
+    }
+  }
+
   /// A3: Fetch activity events. dogId optional (omit for all dogs).
   /// Returns {events: [...], next_cursor: str?} or {} on error.
   Future<Map<String, dynamic>> getActivity({

@@ -90,7 +90,7 @@ Future<void> showAttachmentViewer(
           children: [
             Positioned.fill(
               child: clipUrl != null
-                  ? _ClipPlayer(url: clipUrl)
+                  ? _ClipPlayer(url: clipUrl, posterUrl: imageUrl)
                   : InteractiveViewer(
                       child: Center(
                         child: Image.network(
@@ -121,7 +121,11 @@ Future<void> showAttachmentViewer(
 
 class _ClipPlayer extends StatefulWidget {
   final String url;
-  const _ClipPlayer({required this.url});
+
+  /// The event's still, shown until the mp4 has its first frame (and behind
+  /// the failure text if it never loads).
+  final String? posterUrl;
+  const _ClipPlayer({required this.url, this.posterUrl});
 
   @override
   State<_ClipPlayer> createState() => _ClipPlayerState();
@@ -154,16 +158,35 @@ class _ClipPlayerState extends State<_ClipPlayer> {
 
   @override
   Widget build(BuildContext context) {
-    if (_failed) {
-      return Center(
-        child: Text(
-          context.l10n.attachmentOpenFailed,
-          style: TextStyle(color: context.wimz.onVideo),
-        ),
+    if (_failed || !_ready) {
+      final w = context.wimz;
+      return Stack(
+        fit: StackFit.expand,
+        children: [
+          if (widget.posterUrl != null)
+            Image.network(
+              widget.posterUrl!,
+              fit: BoxFit.contain,
+              errorBuilder: (_, __, ___) => const SizedBox.shrink(),
+            ),
+          Center(
+            child: _failed
+                ? Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: w.scrim(0.54),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Text(
+                      context.l10n.attachmentOpenFailed,
+                      style: TextStyle(color: w.onVideo),
+                    ),
+                  )
+                : const CircularProgressIndicator(),
+          ),
+        ],
       );
-    }
-    if (!_ready) {
-      return const Center(child: CircularProgressIndicator());
     }
     return GestureDetector(
       onTap: () => setState(() {

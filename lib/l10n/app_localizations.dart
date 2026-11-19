@@ -4964,6 +4964,24 @@ abstract class AppLocalizations {
   /// **'Intervention'**
   String get notifIntervention;
 
+  /// No description provided for @notifSettled.
+  ///
+  /// In en, this message translates to:
+  /// **'Settled'**
+  String get notifSettled;
+
+  /// No description provided for @notifQuietCheckIn.
+  ///
+  /// In en, this message translates to:
+  /// **'Quiet check-in'**
+  String get notifQuietCheckIn;
+
+  /// No description provided for @notifQuietFor.
+  ///
+  /// In en, this message translates to:
+  /// **'Quiet for {minutes} min'**
+  String notifQuietFor(int minutes);
+
   /// No description provided for @notifGuardianReason.
   ///
   /// In en, this message translates to:

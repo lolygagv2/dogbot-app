@@ -2807,6 +2807,17 @@ class AppLocalizationsEn extends AppLocalizations {
   String get notifIntervention => 'Intervention';
 
   @override
+  String get notifSettled => 'Settled';
+
+  @override
+  String get notifQuietCheckIn => 'Quiet check-in';
+
+  @override
+  String notifQuietFor(int minutes) {
+    return 'Quiet for $minutes min';
+  }
+
+  @override
   String notifGuardianReason(String reason) {
     return 'Guardian: $reason';
   }

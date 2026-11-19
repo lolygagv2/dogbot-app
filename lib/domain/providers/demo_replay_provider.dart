@@ -12,6 +12,7 @@ import 'device_provider.dart';
 import 'dog_profiles_provider.dart';
 import 'l10n_provider.dart';
 import 'paired_devices_provider.dart';
+import 'notifications_provider.dart';
 import 'sg_summary_provider.dart';
 
 /// Seed files shipped in the relay's `seeds/` directory.
@@ -406,6 +407,8 @@ class DemoReplayNotifier extends StateNotifier<DemoReplayState> {
     unawaited(
         _ref.read(dailySummaryProvider(dogId).notifier).load(refresh: true));
     _ref.read(sgSummaryProvider.notifier).pull();
+    // Events tab: pull the rows the replay just wrote, with their media.
+    unawaited(_ref.read(notificationsProvider.notifier).hydrateFromRelay());
   }
 
   Future<bool> loadGoodDay() => _run(
