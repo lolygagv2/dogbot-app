@@ -7211,26 +7211,14 @@ abstract class AppLocalizations {
   /// No description provided for @songUploadTitle.
   ///
   /// In en, this message translates to:
-  /// **'Upload song'**
+  /// **'Upload custom song or sound via mp3'**
   String get songUploadTitle;
 
   /// No description provided for @settingsSongUploadSubtitle.
   ///
   /// In en, this message translates to:
-  /// **'Send a public-domain recording to the robot'**
+  /// **'Send your own song or sound to the robot'**
   String get settingsSongUploadSubtitle;
-
-  /// No description provided for @songUploadPdNotice.
-  ///
-  /// In en, this message translates to:
-  /// **'Only upload recordings you have the right to use — public domain or your own.'**
-  String get songUploadPdNotice;
-
-  /// No description provided for @songUploadPdCheckbox.
-  ///
-  /// In en, this message translates to:
-  /// **'This recording is public domain or mine'**
-  String get songUploadPdCheckbox;
 
   /// No description provided for @songUploadChoose.
   ///

@@ -4078,18 +4078,11 @@ class AppLocalizationsEn extends AppLocalizations {
   String get soundGroupMusic => 'Music classes';
 
   @override
-  String get songUploadTitle => 'Upload song';
+  String get songUploadTitle => 'Upload custom song or sound via mp3';
 
   @override
   String get settingsSongUploadSubtitle =>
-      'Send a public-domain recording to the robot';
-
-  @override
-  String get songUploadPdNotice =>
-      'Only upload recordings you have the right to use — public domain or your own.';
-
-  @override
-  String get songUploadPdCheckbox => 'This recording is public domain or mine';
+      'Send your own song or sound to the robot';
 
   @override
   String get songUploadChoose => 'Choose song';

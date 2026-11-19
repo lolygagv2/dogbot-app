@@ -3938,16 +3938,10 @@ class AppLocalizationsKo extends AppLocalizations {
   String get soundGroupMusic => '음악 클래스';
 
   @override
-  String get songUploadTitle => '노래 업로드';
+  String get songUploadTitle => 'MP3로 나만의 노래 또는 소리 업로드';
 
   @override
-  String get settingsSongUploadSubtitle => '퍼블릭 도메인 녹음을 로봇으로 전송';
-
-  @override
-  String get songUploadPdNotice => '사용 권한이 있는 녹음(퍼블릭 도메인 또는 직접 만든 것)만 업로드하세요.';
-
-  @override
-  String get songUploadPdCheckbox => '이 녹음은 퍼블릭 도메인이거나 내 것입니다';
+  String get settingsSongUploadSubtitle => '나만의 노래나 소리를 로봇으로 전송';
 
   @override
   String get songUploadChoose => '노래 선택';

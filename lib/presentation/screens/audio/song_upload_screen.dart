@@ -17,8 +17,8 @@ import '../../../domain/providers/settings_provider.dart';
 import '../../../l10n/l10n.dart';
 import '../../theme/app_theme.dart';
 
-/// Song upload (phone → robot). Public-domain / own recordings only — the
-/// checkbox is the attestation. Cloud: HTTP multipart via the relay
+/// Custom song / sound upload (phone → robot). Cloud: HTTP multipart via the
+/// relay
 /// (/api/music/upload). Local-AP: base64 over the robot WS (upload_song).
 class SongUploadScreen extends ConsumerStatefulWidget {
   const SongUploadScreen({super.key});
@@ -39,7 +39,6 @@ class _SongUploadScreenState extends ConsumerState<SongUploadScreen> {
     return words[0].toUpperCase() + words.substring(1);
   }
 
-  bool _attested = false;
   bool _uploading = false;
   double _progress = 0;
   String? _currentName;
@@ -161,27 +160,9 @@ class _SongUploadScreenState extends ConsumerState<SongUploadScreen> {
               Icon(Icons.library_music,
                   size: 64, color: Theme.of(context).colorScheme.primary),
               const SizedBox(height: 16),
-              Text(
-                l.songUploadPdNotice,
-                textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 14, color: context.wimz.inkMuted),
-              ),
-              const SizedBox(height: 12),
-              CheckboxListTile(
-                value: _attested,
-                onChanged: _uploading
-                    ? null
-                    : (v) => setState(() => _attested = v ?? false),
-                controlAffinity: ListTileControlAffinity.leading,
-                activeColor: Theme.of(context).colorScheme.primary,
-                contentPadding: EdgeInsets.zero,
-                title: Text(l.songUploadPdCheckbox,
-                    style: const TextStyle(fontSize: 14)),
-              ),
-              const SizedBox(height: 8),
               FilledButton.icon(
                 style: WimzTheme.goldButtonStyle(context),
-                onPressed: (!_attested || _uploading) ? null : _pickAndUpload,
+                onPressed: _uploading ? null : _pickAndUpload,
                 icon: const Icon(Icons.upload_file),
                 label: Text(_uploading && _currentName != null
                     ? l.songUploadUploading(_currentName!)
