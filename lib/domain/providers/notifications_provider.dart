@@ -422,12 +422,12 @@ class NotificationsNotifier extends StateNotifier<List<NotificationEvent>> {
   String? _missionDogId(Map<String, dynamic> data) =>
       data['dog_id'] as String? ?? _ref.read(missionsProvider).activeDogId;
 
-  /// Build 140: attribution provenance. The robot ALWAYS assigns a dog now
-  /// (sole profile → that dog; multi-dog → last identified/commanded dog) and
-  /// marks HOW via id_method ('qr'/'vision'/'owner_selected'/'sole_dog'/
-  /// 'last_dog'). Keep it on the notification so a fallback guess stays
-  /// distinguishable from a real identification — per-dog stats count both
-  /// today, but a future UI badge / correction pass needs the difference.
+  /// Attribution provenance (ROBOT-STATE v2 section 3). The robot marks
+  /// HOW a dog was attributed via id_method, first match wins: 'explicit'
+  /// (the command named the dog) / 'qr' (marker read) / 'session' /
+  /// 'owner_selected' / 'sole_dog' / 'none' (dog_id null). Keep it on the
+  /// notification so a fallback stays distinguishable from a real
+  /// identification. Old rows keep whatever they were written with.
   Map<String, dynamic>? _attributionMeta(Map<String, dynamic> data) {
     final idMethod = data['id_method'] as String?;
     final dogName = data['dog_name'] as String?;

@@ -157,22 +157,27 @@ class ReplayState {
   }
 }
 
-/// `GET /api/dogs/{dog}/status` — only the replay-related fields.
+/// `GET /api/dogs/{dog}/status` — the `replay` object plus the real robot's
+/// mode / online flag.
 class DogReplayStatus {
   final bool replayActive;
   final bool robotOnline;
   final String? mode;
   final String? deviceId;
 
-  /// Status `virtual_time` (relay 2026-11-18): null unless THIS dog's replay
-  /// is loaded.
+  /// Status `replay.virtual_time`: null unless THIS dog's replay is loaded.
   final String? virtualTimeRaw;
+
+  /// Status `replay.virtual_mode`: the replay's mode (one of the five) or
+  /// null. Never the real robot's mode — that is [mode].
+  final String? virtualMode;
   const DogReplayStatus({
     required this.replayActive,
     this.robotOnline = false,
     this.mode,
     this.deviceId,
     this.virtualTimeRaw,
+    this.virtualMode,
   });
 }
 
@@ -276,15 +281,18 @@ class ReplayAdminApi {
       final r = await _dio.get(path, options: _auth(token));
       final d = r.data;
       if (d is Map) {
-        final vt = d['virtual_time'] ??
-            d['replay_virtual_time'] ??
-            (d['replay'] is Map ? (d['replay'] as Map)['virtual_time'] : null);
+        // ROBOT-STATE v2 section 8: replay data appears ONLY under
+        // "replay": {active, virtual_mode, virtual_time, date}. `mode`
+        // always describes the real robot.
+        final replay = d['replay'];
+        final vt = replay is Map ? replay['virtual_time'] : null;
         return DogReplayStatus(
-          replayActive: d['replay_active'] == true,
+          replayActive: replay is Map && replay['active'] == true,
           robotOnline: d['robot_online'] == true,
           mode: d['mode']?.toString(),
           deviceId: d['device_id']?.toString(),
           virtualTimeRaw: vt?.toString(),
+          virtualMode: replay is Map ? replay['virtual_mode']?.toString() : null,
         );
       }
       return const DogReplayStatus(replayActive: false);

@@ -485,6 +485,30 @@ class MainShell extends ConsumerWidget {
       });
     });
 
+    // A command the robot refused as "expired" (reached it too late).
+    ref.listen(commandExpiredProvider, (previous, next) {
+      next.whenData((command) {
+        if (!context.mounted) return;
+        connTrace('cmd-expired', command);
+        ScaffoldMessenger.of(context).hideCurrentSnackBar();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                Icon(Icons.warning_amber_rounded,
+                    color: Theme.of(context).colorScheme.onInverseSurface,
+                    size: 20),
+                const SizedBox(width: 8),
+                Expanded(child: Text(context.l10n.cmdErrRobotBusy)),
+              ],
+            ),
+            behavior: SnackBarBehavior.floating,
+            duration: const Duration(seconds: 4),
+          ),
+        );
+      });
+    });
+
     // Branch index is owned by the shell itself; no path parsing needed.
     final currentIndex = navigationShell.currentIndex;
 

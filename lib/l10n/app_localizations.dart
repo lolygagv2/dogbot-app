@@ -5438,6 +5438,66 @@ abstract class AppLocalizations {
   /// **'Cannot change mode while mission is active'**
   String get modeErrMissionActive;
 
+  /// No description provided for @modeErrRobotOffline.
+  ///
+  /// In en, this message translates to:
+  /// **'Robot is offline'**
+  String get modeErrRobotOffline;
+
+  /// No description provided for @dogSelectWillApply.
+  ///
+  /// In en, this message translates to:
+  /// **'Will apply when the robot reconnects'**
+  String get dogSelectWillApply;
+
+  /// No description provided for @dogSelectOfflineNote.
+  ///
+  /// In en, this message translates to:
+  /// **'Offline selection. It carries over when the robot reconnects.'**
+  String get dogSelectOfflineNote;
+
+  /// No description provided for @cmdErrRobotBusy.
+  ///
+  /// In en, this message translates to:
+  /// **'Robot was busy. Try again.'**
+  String get cmdErrRobotBusy;
+
+  /// No description provided for @dogSelectNone.
+  ///
+  /// In en, this message translates to:
+  /// **'No dog selected'**
+  String get dogSelectNone;
+
+  /// No description provided for @dogSelectFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not select the dog — try again'**
+  String get dogSelectFailed;
+
+  /// No description provided for @modeErrRobotTimeout.
+  ///
+  /// In en, this message translates to:
+  /// **'WIM-Z did not answer. Nothing changed — try again.'**
+  String get modeErrRobotTimeout;
+
+  /// No description provided for @modeErrNoAnswer.
+  ///
+  /// In en, this message translates to:
+  /// **'No answer from WIM-Z yet — checking its status…'**
+  String get modeErrNoAnswer;
+
+  /// No description provided for @modeErrInvalidMode.
+  ///
+  /// In en, this message translates to:
+  /// **'WIM-Z does not know that mode'**
+  String get modeErrInvalidMode;
+
+  /// No description provided for @modeErrCommandFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'WIM-Z refused: {error}'**
+  String modeErrCommandFailed(String error);
+
   /// No description provided for @videoErrRobotRecordFailed.
   ///
   /// In en, this message translates to:

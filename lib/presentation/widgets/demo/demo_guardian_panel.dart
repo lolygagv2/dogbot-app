@@ -161,15 +161,20 @@ class _StatusLine extends ConsumerWidget {
       };
       final clock = replay.virtualWallTimeFor(dogId);
       icon = replay.replay.isRunning ? Icons.play_circle_fill : Icons.history;
-      text = clock == null
-          ? l.demoSgReplay(status)
-          : '${l.demoSgReplay(status)} · '
-              '${l.demoVirtualClock(DateFormat.Hm().format(clock))}';
+      // replay.virtual_mode: the replay's mode, never the real robot's.
+      final vMode =
+          replay.statusDogId == dogId ? replay.statusVirtualMode : null;
+      text = [
+        l.demoSgReplay(status),
+        if (vMode != null) robotModeIdLabel(l, vMode),
+        if (clock != null)
+          l.demoVirtualClock(DateFormat.Hm().format(clock)),
+      ].join(' · ');
       color = cs.primary;
     } else {
       final mode = ref.watch(displayModeProvider);
       final onGuard = mode == RobotMode.silentGuardian;
-      if (mode == RobotMode.sleep) {
+      if (ref.watch(robotAsleepProvider)) {
         icon = Icons.bedtime;
         text = l.modelRobotModeSleep;
         color = w.ink;

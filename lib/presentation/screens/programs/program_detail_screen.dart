@@ -5,7 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../../data/models/mission.dart';
 import '../../../data/models/program.dart';
 import '../../../domain/providers/connection_provider.dart';
-import '../../../domain/providers/dog_profiles_provider.dart';
+import '../../../domain/providers/robot_state_provider.dart';
 import '../../../domain/providers/missions_provider.dart';
 import '../../../domain/providers/programs_provider.dart';
 import '../../../l10n/l10n.dart';
@@ -22,7 +22,9 @@ class ProgramDetailScreen extends ConsumerWidget {
     final programsState = ref.watch(programsProvider);
     final missionsState = ref.watch(missionsProvider);
     final isConnected = ref.watch(isRobotOnlineProvider);
-    final selectedDog = ref.watch(selectedDogProvider);
+    // "Start with <dog>" names the SELECTED dog (robot_state), not the
+    // dog whose data is on screen.
+    final selectedDog = ref.watch(shownSelectedDogProvider);
 
     if (program == null) {
       return Scaffold(

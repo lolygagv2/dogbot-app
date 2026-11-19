@@ -109,7 +109,7 @@ class _DriveScreenState extends ConsumerState<DriveScreen> {
       ref.read(missionsProvider.notifier).stopMission();
       ref.read(modeStateProvider.notifier).setMode(
             RobotMode.idle,
-            source: 'mission_end',
+            reason: 'mission_end',
           );
     } else if (modeState.currentMode == RobotMode.manual) {
       // Build 146: restore ONLY from manual — the mode this screen itself
@@ -1020,7 +1020,7 @@ class _ActiveMissionBanner extends ConsumerWidget {
               ref.read(missionsProvider.notifier).stopMission();
               ref.read(modeStateProvider.notifier).setMode(
                 RobotMode.idle,
-                source: 'mission_end',
+                reason: 'mission_end',
               );
               context.pop();
             },
@@ -1066,7 +1066,7 @@ class _LandscapeModeSelector extends ConsumerWidget {
     return PopupMenuButton<RobotMode>(
       onSelected: (mode) {
         if (mode == currentMode) return;
-        ref.read(modeStateProvider.notifier).setMode(mode, source: 'landscape_selector');
+        ref.read(modeStateProvider.notifier).setMode(mode, reason: 'landscape_selector');
       },
       offset: const Offset(0, 36),
       child: Container(
@@ -1139,7 +1139,6 @@ class _LandscapeModeSelector extends ConsumerWidget {
       case RobotMode.silentGuardian: return w.ink;
       case RobotMode.coach: return w.ink;
       case RobotMode.mission: return w.ink;
-      case RobotMode.sleep: return w.inkMuted;
     }
   }
 
@@ -1150,7 +1149,6 @@ class _LandscapeModeSelector extends ConsumerWidget {
       case RobotMode.silentGuardian: return Icons.visibility;
       case RobotMode.coach: return Icons.school;
       case RobotMode.mission: return Icons.flag;
-      case RobotMode.sleep: return Icons.bedtime;
     }
   }
 }

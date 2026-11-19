@@ -11,7 +11,7 @@ import '../../../l10n/l10n.dart';
 import '../../theme/app_theme.dart';
 
 /// Admin-only strip at the bottom of the demo view: replayer buttons plus
-/// `replay_active` and the virtual clock for the SELECTED dog. Everything
+/// `replay.active` and the virtual clock for the SELECTED dog. Everything
 /// shown is the relay's last answer — nothing is advanced locally — and a
 /// failed call shows its HTTP status and error text. Renders nothing unless
 /// the relay has confirmed this account is an admin.

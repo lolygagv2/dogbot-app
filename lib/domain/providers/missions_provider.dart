@@ -618,13 +618,14 @@ class MissionsNotifier extends StateNotifier<MissionsState> {
         }
         break;
 
-      // Build 41: Accept mode_changed to mission mode as confirmation
-      case 'mode_changed':
+      // Build 41: accept the robot entering mission mode as confirmation
+      // (ROBOT-STATE v2: read from the relay's robot_state record).
+      case 'robot_state':
         final mode = event.data['mode'] as String?;
         if (mode == 'mission' && state.currentProgress?.status == 'starting') {
           // Robot confirmed mission mode - cancel verification timer
           _startVerificationTimer?.cancel();
-          print('Missions: mode_changed to mission - treating as started');
+          print('Missions: robot_state mode=mission - treating as started');
 
           // Update progress to indicate mission is running
           final missionId = state.activeMissionId ?? 'unknown';

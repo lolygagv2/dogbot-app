@@ -104,6 +104,15 @@ class ApiEndpoints {
   static String weeklySummary(String dogId, String date) =>
       '/summary/$dogId/week/$date';
 
+  /// ROBOT-STATE v2 H1: GET -> the relay's state record for one robot
+  /// (same object as the WS `robot_state` frame).
+  static String deviceState(String deviceId) => '/api/devices/$deviceId/state';
+
+  /// ROBOT-STATE v2 H2: POST {"dog_id": "<uuid or null>"} -> 200 with the
+  /// state record.
+  static String deviceSelectedDog(String deviceId) =>
+      '/api/devices/$deviceId/selected_dog';
+
   /// Last known robot status + treats_today/treat_cap + quiet_hours.
   static String dogStatus(String dogId) => '/api/dogs/$dogId/status';
 

@@ -134,8 +134,7 @@ class WebRTCNotifier extends StateNotifier<WebRTCConnectionState> {
 
   void _setupSleepListener() {
     _ref.listen<ModeState>(modeStateProvider, (prev, next) {
-      final asleep = next.currentMode == RobotMode.sleep ||
-          next.pendingMode == RobotMode.sleep;
+      final asleep = next.asleep || next.pendingAsleep == true;
       if (asleep == _robotAsleep) return;
       _robotAsleep = asleep;
       connTrace('webrtc-sleep', asleep ? 'asleep: video held' : 'awake');

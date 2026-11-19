@@ -316,6 +316,19 @@ final treatRefusalProvider = StreamProvider<TreatRefusal>((ref) {
       .cast<TreatRefusal>();
 });
 
+/// A `command_result` refused with reason "expired": the shell shows
+/// "Robot was busy. Try again." wherever the command was sent from.
+/// set_mode / set_sleep are left to the mode selector, which shows the
+/// same text itself.
+final commandExpiredProvider = StreamProvider<String>((ref) {
+  return ref
+      .read(websocketClientProvider)
+      .eventStream
+      .where((e) => e.isExpiredCommandResult)
+      .map((e) => e.data['command']?.toString() ?? '')
+      .where((cmd) => cmd != 'set_mode' && cmd != 'set_sleep');
+});
+
 /// Provider for treat dispenser actions with debouncing
 final treatControlProvider = Provider<TreatControl>((ref) {
   return TreatControl(ref);

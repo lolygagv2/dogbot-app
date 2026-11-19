@@ -11,6 +11,7 @@ import '../../../domain/providers/dog_profiles_provider.dart';
 import '../../../domain/providers/guardian_events_provider.dart';
 import '../../../domain/providers/missions_provider.dart';
 import '../../../domain/providers/mode_provider.dart';
+import '../../../domain/providers/robot_state_provider.dart';
 import '../../../domain/providers/telemetry_provider.dart';
 import '../../../l10n/l10n.dart';
 import '../../widgets/video/smart_video_view.dart';
@@ -401,7 +402,7 @@ class _ModeRow extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final modeState = ref.watch(modeStateProvider);
     final displayMode = modeState.currentMode;
-    final isChanging = modeState.isSwitching;
+    final isChanging = modeState.isSwitching || modeState.isSleepChanging;
     final isLocked = modeState.isModeLocked;
     final unreadCount = ref.watch(unreadEventCountProvider);
     final l = context.l10n;
@@ -437,9 +438,11 @@ class _ModeRow extends ConsumerWidget {
       }
     });
 
-    final shownMode = isChanging ? (modeState.pendingMode ?? displayMode) : displayMode;
-    final color = _getModeColor(context, shownMode);
-    final asleep = shownMode == RobotMode.sleep;
+    final shownMode = modeState.isSwitching ? (modeState.pendingMode ?? displayMode) : displayMode;
+    // Sleep is not a mode (ROBOT-STATE v2): an asleep robot is in "idle"
+    // with asleep = true; the chip then says Asleep.
+    final asleep = modeState.pendingAsleep ?? modeState.asleep;
+    final color = asleep ? w.inkMuted : _getModeColor(context, shownMode);
     // Asleep has its own way out (WAKE), so EXIT is for the active modes.
     final showExit = !asleep &&
         (displayMode != RobotMode.idle ||
@@ -478,11 +481,11 @@ class _ModeRow extends ConsumerWidget {
                     else if (isLocked)
                       Icon(Icons.lock, size: 16, color: color)
                     else
-                      Icon(_getModeIcon(shownMode), size: 18, color: color),
+                      Icon(asleep ? Icons.bedtime : _getModeIcon(shownMode), size: 18, color: color),
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
-                        l.homeModeChip(shownMode.localizedLabel(l)),
+                        l.homeModeChip(asleep ? l.modelRobotModeSleep : shownMode.localizedLabel(l)),
                         style: TextStyle(
                           color: shownMode == RobotMode.idle ? w.inkMuted : w.ink,
                           fontWeight: shownMode == RobotMode.idle ? FontWeight.normal : FontWeight.bold,
@@ -524,7 +527,7 @@ class _ModeRow extends ConsumerWidget {
                   ? null
                   : () => ref
                       .read(modeStateProvider.notifier)
-                      .setMode(RobotMode.idle, source: 'dropdown'),
+                      .setMode(RobotMode.idle, reason: 'dropdown'),
               icon: const Icon(Icons.stop_circle, size: 18),
               label: Text(
                 l.homeExit,
@@ -544,8 +547,8 @@ class _ModeRow extends ConsumerWidget {
           ),
         ],
         const SizedBox(width: 8),
-        // Sleep / Wake. Asleep: a labelled WAKE button (set_mode idle).
-        // Awake: a compact moon button (set_mode sleep).
+        // Sleep / Wake. Asleep: a labelled WAKE button (set_sleep false).
+        // Awake: a compact moon button (set_sleep true).
         if (asleep)
           SizedBox(
             height: 42,
@@ -554,7 +557,7 @@ class _ModeRow extends ConsumerWidget {
                   ? null
                   : () => ref
                       .read(modeStateProvider.notifier)
-                      .setMode(RobotMode.idle, source: 'wake_button'),
+                      .setSleep(false, reason: 'wake_button'),
               icon: const Icon(Icons.wb_sunny_outlined, size: 18),
               label: Text(
                 l.homeWake,
@@ -585,7 +588,7 @@ class _ModeRow extends ConsumerWidget {
                       ? null
                       : () => ref
                           .read(modeStateProvider.notifier)
-                          .setMode(RobotMode.sleep, source: 'sleep_button'),
+                          .setSleep(true, reason: 'sleep_button'),
                   child: Container(
                     decoration: BoxDecoration(
                       borderRadius: BorderRadius.circular(10),
@@ -684,13 +687,12 @@ class _ModeRow extends ConsumerWidget {
         context.go('/missions');
         return;
       case RobotMode.coach:
-        notifier.setMode(mode, source: 'dropdown');
+        notifier.setMode(mode, reason: 'dropdown');
         context.push('/coach');
         return;
       case RobotMode.idle:
       case RobotMode.silentGuardian:
-      case RobotMode.sleep:
-        notifier.setMode(mode, source: 'dropdown');
+        notifier.setMode(mode, reason: 'dropdown');
         return;
     }
   }
@@ -701,7 +703,6 @@ class _ModeRow extends ConsumerWidget {
     final w = context.wimz;
     switch (mode) {
       case RobotMode.idle:
-      case RobotMode.sleep:
         return w.inkMuted;
       case RobotMode.manual:
       case RobotMode.silentGuardian:
@@ -718,7 +719,6 @@ class _ModeRow extends ConsumerWidget {
       case RobotMode.silentGuardian: return Icons.visibility;
       case RobotMode.coach: return Icons.school;
       case RobotMode.mission: return Icons.flag;
-      case RobotMode.sleep: return Icons.bedtime;
     }
   }
 }
@@ -768,7 +768,10 @@ class _DogSelector extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final selectedDog = ref.watch(selectedDogProvider);
+    // What the picker shows as selected: robot_state.selected_dog_id when
+    // a relay record exists (null = "No dog selected"), never the last
+    // dog whose data the per-dog screens still show.
+    final selectedDog = ref.watch(shownSelectedDogProvider);
     final allDogs = ref.watch(dogProfilesProvider);
 
     return Padding(
@@ -783,7 +786,10 @@ class _DogSelector extends ConsumerWidget {
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              _DogAvatar(profile: selectedDog, size: 36),
+              _DogSelectionAvatar(
+                profile: selectedDog,
+                noneSelected: selectedDog == null && allDogs.isNotEmpty,
+              ),
               const SizedBox(width: 4),
               if (allDogs.length > 1)
                 Icon(
@@ -834,6 +840,15 @@ class _DogSelector extends ConsumerWidget {
               ),
             ),
             const Divider(height: 1),
+            if (current == null)
+              ListTile(
+                dense: true,
+                leading: Icon(Icons.pets_outlined, color: context.wimz.inkMuted),
+                title: Text(
+                  context.l10n.dogSelectNone,
+                  style: TextStyle(color: context.wimz.inkMuted),
+                ),
+              ),
             ...dogs.map((dog) => ListTile(
                   leading: _DogAvatar(profile: dog, size: 44),
                   title: Text(dog.name),
@@ -853,10 +868,98 @@ class _DogSelector extends ConsumerWidget {
                     Navigator.pop(context);
                   },
                 )),
+            // ROBOT-STATE v2: the relay holds the selection until the
+            // robot has confirmed it.
+            Consumer(builder: (context, ref, _) {
+              Widget note(IconData icon, String text) => Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+                    child: Row(
+                      children: [
+                        Icon(icon, size: 16, color: context.wimz.inkMuted),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            text,
+                            style: TextStyle(
+                                fontSize: 13, color: context.wimz.inkMuted),
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+              // Local / AP (no relay): the selection is the app's own.
+              if (ref.watch(isLocalRobotLinkProvider)) {
+                return note(Icons.wifi_off, context.l10n.dogSelectOfflineNote);
+              }
+              final rs = ref.watch(robotStateProvider);
+              if (rs == null ||
+                  rs.selectedDogId == null ||
+                  rs.selectedDogApplied) {
+                return const SizedBox.shrink();
+              }
+              return note(Icons.schedule, context.l10n.dogSelectWillApply);
+            }),
             const SizedBox(height: 8),
           ],
         ),
       ),
+    );
+  }
+}
+
+/// The header's selected-dog avatar. While the selector's H2 is on its
+/// way it shows a spinner (pending); a failed H2 shows an error, and a
+/// selection the robot has not confirmed yet says it will apply later.
+class _DogSelectionAvatar extends ConsumerWidget {
+  final DogProfile? profile;
+
+  /// Dogs exist but none is the selected dog ("No dog selected").
+  final bool noneSelected;
+  const _DogSelectionAvatar({required this.profile, this.noneSelected = false});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final status = ref.watch(dogSelectionStatusProvider);
+    final cs = Theme.of(context).colorScheme;
+
+    void toast(String text, {bool error = false}) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(SnackBar(
+          content: Text(text,
+              style: TextStyle(color: error ? cs.onError : null)),
+          backgroundColor: error ? cs.error : null,
+          behavior: SnackBarBehavior.floating,
+        ));
+    }
+
+    ref.listen<DogSelectionStatus>(dogSelectionStatusProvider, (prev, next) {
+      if (next.failedAt != null && next.failedAt != prev?.failedAt) {
+        toast(context.l10n.dogSelectFailed, error: true);
+      } else if (prev?.isPending == true && !next.isPending) {
+        final rs = ref.read(robotStateProvider);
+        if (rs != null && rs.selectedDogId != null && !rs.selectedDogApplied) {
+          toast(context.l10n.dogSelectWillApply);
+        }
+      }
+    });
+
+    return Stack(
+      alignment: Alignment.center,
+      children: [
+        Opacity(
+          opacity: status.isPending ? 0.4 : 1,
+          child: _DogAvatar(
+              profile: profile, size: 36, noneSelected: noneSelected),
+        ),
+        if (status.isPending)
+          SizedBox(
+            width: 18,
+            height: 18,
+            child: CircularProgressIndicator(strokeWidth: 2, color: cs.primary),
+          ),
+      ],
     );
   }
 }
@@ -866,7 +969,11 @@ class _DogAvatar extends StatelessWidget {
   final DogProfile? profile;
   final double size;
 
-  const _DogAvatar({required this.profile, required this.size});
+  /// No dog is selected (as opposed to "no dogs yet", which offers Add).
+  final bool noneSelected;
+
+  const _DogAvatar(
+      {required this.profile, required this.size, this.noneSelected = false});
 
   @override
   Widget build(BuildContext context) {
@@ -878,10 +985,16 @@ class _DogAvatar extends StatelessWidget {
       decoration: BoxDecoration(
         shape: BoxShape.circle,
         color: w.surfaceRaised,
-        border: Border.all(color: cs.primary, width: 2),
+        border: Border.all(
+            color: noneSelected ? w.line : cs.primary, width: 2),
       ),
       child: profile == null
-          ? Icon(Icons.add, color: cs.primary, size: size * 0.5)
+          ? (noneSelected
+              ? Icon(Icons.pets_outlined,
+                  color: w.inkMuted,
+                  size: size * 0.5,
+                  semanticLabel: context.l10n.dogSelectNone)
+              : Icon(Icons.add, color: cs.primary, size: size * 0.5))
           : _buildPhoto(context),
     );
   }

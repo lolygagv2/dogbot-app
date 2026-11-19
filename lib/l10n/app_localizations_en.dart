@@ -3071,6 +3071,41 @@ class AppLocalizationsEn extends AppLocalizations {
       'Cannot change mode while mission is active';
 
   @override
+  String get modeErrRobotOffline => 'Robot is offline';
+
+  @override
+  String get dogSelectWillApply => 'Will apply when the robot reconnects';
+
+  @override
+  String get dogSelectOfflineNote =>
+      'Offline selection. It carries over when the robot reconnects.';
+
+  @override
+  String get cmdErrRobotBusy => 'Robot was busy. Try again.';
+
+  @override
+  String get dogSelectNone => 'No dog selected';
+
+  @override
+  String get dogSelectFailed => 'Could not select the dog — try again';
+
+  @override
+  String get modeErrRobotTimeout =>
+      'WIM-Z did not answer. Nothing changed — try again.';
+
+  @override
+  String get modeErrNoAnswer =>
+      'No answer from WIM-Z yet — checking its status…';
+
+  @override
+  String get modeErrInvalidMode => 'WIM-Z does not know that mode';
+
+  @override
+  String modeErrCommandFailed(String error) {
+    return 'WIM-Z refused: $error';
+  }
+
+  @override
   String get videoErrRobotRecordFailed => 'Robot could not record the video';
 
   @override

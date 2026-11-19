@@ -67,12 +67,15 @@ class DemoReplayState {
   final bool? isAdmin;
   final ReplayState replay;
 
-  /// `replay_active` from the status endpoint for [statusDogId]
+  /// `replay.active` from the status endpoint for [statusDogId]
   /// (null = not fetched, or the fetch failed).
   final bool? replayActive;
 
   /// Virtual clock from the status endpoint when the relay sends one there.
   final String? statusVirtualTimeRaw;
+
+  /// `replay.virtual_mode` from the same status answer.
+  final String? statusVirtualMode;
   final String? statusDogId;
   final bool busy;
 
@@ -89,6 +92,7 @@ class DemoReplayState {
     this.replay = const ReplayState(),
     this.replayActive,
     this.statusVirtualTimeRaw,
+    this.statusVirtualMode,
     this.statusDogId,
     this.busy = false,
     this.error,
@@ -103,6 +107,7 @@ class DemoReplayState {
     ReplayState? replay,
     Object? replayActive = _keep,
     Object? statusVirtualTimeRaw = _keep,
+    Object? statusVirtualMode = _keep,
     Object? statusDogId = _keep,
     bool? busy,
     Object? error = _keep,
@@ -118,6 +123,9 @@ class DemoReplayState {
         statusVirtualTimeRaw: identical(statusVirtualTimeRaw, _keep)
             ? this.statusVirtualTimeRaw
             : statusVirtualTimeRaw as String?,
+        statusVirtualMode: identical(statusVirtualMode, _keep)
+            ? this.statusVirtualMode
+            : statusVirtualMode as String?,
         statusDogId: identical(statusDogId, _keep)
             ? this.statusDogId
             : statusDogId as String?,
@@ -199,6 +207,7 @@ class DemoReplayNotifier extends StateNotifier<DemoReplayState> {
       state = state.copyWith(
           replayActive: null,
           statusVirtualTimeRaw: null,
+          statusVirtualMode: null,
           statusDogId: null,
           error: null,
           pollError: null,
@@ -304,12 +313,13 @@ class DemoReplayNotifier extends StateNotifier<DemoReplayState> {
     }
   }
 
-  /// `replay_active` for the selected dog, straight from its status endpoint.
+  /// `replay.active` for the selected dog, straight from its status endpoint.
   Future<void> _pullStatus(String token) async {
     final dogId = _ref.read(selectedDogProvider)?.id;
     if (dogId == null) {
       state = state.copyWith(
-          replayActive: null, statusDogId: null, statusVirtualTimeRaw: null);
+          replayActive: null, statusDogId: null, statusVirtualTimeRaw: null,
+          statusVirtualMode: null);
       return;
     }
     try {
@@ -319,6 +329,7 @@ class DemoReplayNotifier extends StateNotifier<DemoReplayState> {
         replayActive: s.replayActive,
         statusDogId: dogId,
         statusVirtualTimeRaw: s.virtualTimeRaw,
+        statusVirtualMode: s.virtualMode,
       );
     } catch (e) {
       if (!mounted) return;
@@ -326,6 +337,7 @@ class DemoReplayNotifier extends StateNotifier<DemoReplayState> {
         replayActive: null,
         statusDogId: dogId,
         statusVirtualTimeRaw: null,
+        statusVirtualMode: null,
         pollError: e is ReplayCallError ? e.display : '$e',
       );
     }

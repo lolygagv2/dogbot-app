@@ -2965,6 +2965,39 @@ class AppLocalizationsKo extends AppLocalizations {
   String get modeErrMissionActive => '미션 진행 중에는 모드를 변경할 수 없습니다';
 
   @override
+  String get modeErrRobotOffline => '로봇이 오프라인입니다';
+
+  @override
+  String get dogSelectWillApply => '로봇이 다시 연결되면 적용됩니다';
+
+  @override
+  String get dogSelectOfflineNote => '오프라인 선택입니다. 로봇이 다시 연결되면 그대로 적용됩니다.';
+
+  @override
+  String get cmdErrRobotBusy => '로봇이 작업 중이었습니다. 다시 시도해 주세요.';
+
+  @override
+  String get dogSelectNone => '선택된 반려견이 없습니다';
+
+  @override
+  String get dogSelectFailed => '강아지를 선택하지 못했습니다 — 다시 시도해 주세요';
+
+  @override
+  String get modeErrRobotTimeout =>
+      'WIM-Z가 응답하지 않았습니다. 변경된 것이 없습니다 — 다시 시도해 주세요.';
+
+  @override
+  String get modeErrNoAnswer => 'WIM-Z의 응답이 아직 없습니다 — 상태를 확인하는 중…';
+
+  @override
+  String get modeErrInvalidMode => 'WIM-Z가 알 수 없는 모드입니다';
+
+  @override
+  String modeErrCommandFailed(String error) {
+    return 'WIM-Z가 거부했습니다: $error';
+  }
+
+  @override
   String get videoErrRobotRecordFailed => '로봇이 영상을 녹화하지 못했습니다';
 
   @override

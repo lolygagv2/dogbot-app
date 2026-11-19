@@ -15,6 +15,7 @@ import '../../theme/wimz_colors.dart';
 import 'auth_provider.dart';
 import 'connection_provider.dart';
 import 'notifications_provider.dart';
+import 'robot_state_provider.dart';
 import 'settings_provider.dart';
 
 // Build 32: Dogs scoped by user email to fix security issue (Issue 6)
@@ -39,7 +40,24 @@ final selectedDogProvider =
   final localMode = ref.watch(settingsProvider).localModeEnabled;
   final userEmail = ref.watch(authProvider).email;
   final scope = localMode ? 'local' : (userEmail ?? 'anonymous');
-  return SelectedDogNotifier(profiles, scope: scope);
+  return SelectedDogNotifier(
+    profiles,
+    scope: scope,
+    // ROBOT-STATE v2: with a relay the dog selector calls H2 only and
+    // the selected dog follows the relay's record.
+    selectViaRelay: (dog) =>
+        ref.read(robotStateProvider.notifier).selectDogViaRelay(dog.id),
+    // Local-AP (no relay) is unchanged: tell the robot directly.
+    onLocalSelected: (dog) {
+      if (!ref.read(robotStateProvider.notifier).isLocalMode) return;
+      try {
+        WebSocketClient.instance.sendCommand('select_dog', {
+          'dog_id': dog.id,
+          'dog_name': dog.name,
+        });
+      } catch (_) {/* not connected — re-sent on the next local connect */}
+    },
+  );
 });
 
 /// Provider for a specific dog by ID
@@ -383,10 +401,13 @@ class DogProfilesNotifier extends StateNotifier<List<DogProfile>> {
         print('  - ${p['name']} (aruco=${p['aruco_id'] ?? 'none'}, color=${p['color']})');
       }
 
-      // Build 91 (C3 app-side): re-assert the currently-selected dog so the
-      // robot's "active dog" cache survives reconnects / app restarts.
+      // ROBOT-STATE v2: through the relay the selected dog is the relay's
+      // stored `selected_dog_id` — the relay re-sends it on the robot's
+      // connect, the app sends nothing. Local-AP (no relay) is unchanged:
+      // re-assert the selection so the robot's cache survives reconnects.
       final selected = _ref.read(selectedDogProvider);
-      if (selected != null) {
+      if (selected != null &&
+          _ref.read(robotStateProvider.notifier).isLocalMode) {
         ws.sendCommand('select_dog', {
           'dog_id': selected.id,
           'dog_name': selected.name,
@@ -563,8 +584,19 @@ class SelectedDogNotifier extends StateNotifier<DogProfile?> {
   SharedPreferences? _prefs;
   final String _scope;
 
-  SelectedDogNotifier(this._profiles, {required String scope})
-      : _scope = scope,
+  /// H2 for a user's pick. Null result = no relay record applies (local
+  /// mode / signed out / no robot): select locally instead.
+  final Future<bool?> Function(DogProfile dog)? selectViaRelay;
+
+  /// Called after a LOCAL selection (not one that went through the relay).
+  final void Function(DogProfile dog)? onLocalSelected;
+
+  SelectedDogNotifier(
+    this._profiles, {
+    required String scope,
+    this.selectViaRelay,
+    this.onLocalSelected,
+  })  : _scope = scope,
         super(null) {
     _loadSelectedDog();
   }
@@ -590,21 +622,28 @@ class SelectedDogNotifier extends StateNotifier<DogProfile?> {
     state = null;
   }
 
+  /// The user picked [dog]. With a relay: H2, and the selection changes
+  /// only when the relay's record comes back (pending meanwhile, see
+  /// dogSelectionStatusProvider). Otherwise: selected locally at once.
   Future<void> selectDog(DogProfile dog) async {
+    final viaRelay = await selectViaRelay?.call(dog);
+    if (viaRelay != null) return; // true: record applied; false: unchanged
+    if (!mounted) return;
     state = dog;
+    onLocalSelected?.call(dog);
+    await _persist(dog);
+  }
+
+  /// Take the relay's `selected_dog_id` as this app's selection without
+  /// sending it back.
+  Future<void> adopt(DogProfile dog) async {
+    state = dog;
+    await _persist(dog);
+  }
+
+  Future<void> _persist(DogProfile dog) async {
     _prefs ??= await SharedPreferences.getInstance();
-    final key = _selectedDogKeyForScope(_scope);
-    await _prefs?.setString(key, dog.id);
-    // Build 91 (C3 app-side): tell the robot which dog is now "active"
-    // so autonomous voice playback (coach rewards, Silent Guardian, Xbox
-    // controller buttons) uses this dog's per-dog voice files when no
-    // ArUco is visible to identify the dog directly.
-    try {
-      WebSocketClient.instance.sendCommand('select_dog', {
-        'dog_id': dog.id,
-        'dog_name': dog.name,
-      });
-    } catch (_) {/* WS not connected — robot will pick this up on next connect */}
+    await _prefs?.setString(_selectedDogKeyForScope(_scope), dog.id);
   }
 }
 

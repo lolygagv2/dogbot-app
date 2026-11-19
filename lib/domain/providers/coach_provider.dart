@@ -116,6 +116,25 @@ class CoachNotifier extends StateNotifier<CoachState> {
     _listenToWebSocket();
   }
 
+  /// The robot's mode as reported by `robot_state` / a set_mode result:
+  /// coach activates the session UI, any other mode tears it down.
+  void _onRobotMode(String? newMode) {
+    if (newMode == 'coach' && !state.isActive) {
+      connTrace('coach-evt', 'robot_state mode=coach — activating');
+      _activeTrickTimer?.cancel();
+      state = state.copyWith(
+        isActive: true,
+        rewardsGiven: 0,
+        clearError: true,
+        clearActiveTrick: true,
+      );
+    } else if (newMode != null && newMode != 'coach' && state.isActive) {
+      connTrace('coach-evt', 'robot_state mode=$newMode — deactivating');
+      _activeTrickTimer?.cancel();
+      state = state.copyWith(isActive: false, clearActiveTrick: true);
+    }
+  }
+
   void _listenToWebSocket() {
     final ws = _ref.read(websocketClientProvider);
     _wsSubscription = ws.eventStream.listen(_onWsEvent);
@@ -175,33 +194,32 @@ class CoachNotifier extends StateNotifier<CoachState> {
         );
         break;
 
-      case 'mode_changed':
+      case 'robot_state':
+        // ROBOT-STATE v2: the relay's state record carries the mode (the
+        // legacy mode-change broadcast is gone).
         // Build 93: Unified teardown — coach mode exit is observed via
-        // mode_changed (away from 'coach') rather than the deprecated
+        // a mode change (away from 'coach') rather than the deprecated
         // coach_stopped event. Robot's mode-change handler is the single
         // source of truth for coach teardown.
         //
-        // Build 145: mode_changed INTO coach also activates. Entering coach
+        // Build 145: a change INTO coach also activates. Entering coach
         // from the drive screen's mode selector only sends set_mode — nothing
         // called startCoaching(), so isActive stayed false until a
         // coaching_started event arrived. On surfaces where that event never
         // lands (local-AP socket) the trick chips were permanently inert:
         // onTap gated on isActive, so taps produced no highlight, no
         // snackbar, nothing.
-        final newMode = event.data['mode']?.toString();
-        if (newMode == 'coach' && !state.isActive) {
-          connTrace('coach-evt', 'mode_changed:coach — activating');
-          _activeTrickTimer?.cancel();
-          state = state.copyWith(
-            isActive: true,
-            rewardsGiven: 0,
-            clearError: true,
-            clearActiveTrick: true,
-          );
-        } else if (newMode != null && newMode != 'coach' && state.isActive) {
-          connTrace('coach-evt', 'mode_changed:$newMode — deactivating');
-          _activeTrickTimer?.cancel();
-          state = state.copyWith(isActive: false, clearActiveTrick: true);
+        _onRobotMode(event.data['mode']?.toString());
+        break;
+
+      case 'command_result':
+        // The robot's answer to a set_mode (C1) names the mode it is now
+        // in — the only mode confirmation on the local-AP socket, which
+        // has no relay state record.
+        if (event.data['command'] == 'set_mode' &&
+            event.data['success'] == true) {
+          final result = event.data['result'];
+          if (result is Map) _onRobotMode(result['mode']?.toString());
         }
         break;
 
@@ -222,7 +240,7 @@ class CoachNotifier extends StateNotifier<CoachState> {
         connTrace('coach-evt', 'coach_progress stage=$stage trick=$progressTrick');
         if (progressTrick != null && progressTrick.isNotEmpty) {
           // A progress tick proves the engine is live — activate if a
-          // coaching_started / mode_changed was missed (belt and braces for
+          // coaching_started / the mode change was missed (belt and braces for
           // the local-AP event gaps). Watching-stage ticks repeat at ~2Hz:
           // re-arm the failsafe every tick, but only emit a new state when
           // something actually changed so listeners don't rebuild at 2Hz.
@@ -276,7 +294,7 @@ class CoachNotifier extends StateNotifier<CoachState> {
   /// silently discarded by the robot — behaviors are robot-side configuration
   /// (DEFAULT_TRICKS in coaching_engine.py) and dog identity comes from ArUco
   /// vision. To pin a specific dog or trick for the session, send
-  /// `force_dog` / `force_trick` separately after the `mode_changed: coach`
+  /// `force_dog` / `force_trick` separately after the change to mode `coach`
   /// event lands. The `behaviors` arg here is purely a local UI hint —
   /// populates the watching-for chip wall, doesn't change robot behavior.
   Future<void> startCoaching({List<String>? behaviors}) async {
@@ -299,10 +317,10 @@ class CoachNotifier extends StateNotifier<CoachState> {
   /// stuck running on the robot. Routing through set_mode hits the robot's
   /// mode-change handler (the single source of truth for coach teardown via
   /// engine.stop()) and avoids the FSM-override race that stop_coach didn't
-  /// participate in. Local isActive flips optimistically; the mode_changed
+  /// participate in. Local isActive flips optimistically; the mode change
   /// event arriving back from the robot also flips it as a safety net.
   void stopCoaching() {
-    _ref.read(modeStateProvider.notifier).setMode(RobotMode.idle, source: 'coach_exit');
+    _ref.read(modeStateProvider.notifier).setMode(RobotMode.idle, reason: 'coach_exit');
     _rewardClearTimer?.cancel();
     _activeTrickTimer?.cancel();
     state = state.copyWith(isActive: false, clearActiveTrick: true);

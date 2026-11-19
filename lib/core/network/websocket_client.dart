@@ -127,6 +127,20 @@ class WsEvent {
     );
   }
 
+  /// True for a `command_result` the robot refused with reason "expired"
+  /// (the command reached it too late to run). The reason may sit in
+  /// `reason`, `error` or `code`, top-level or inside `result`.
+  bool get isExpiredCommandResult {
+    if (type != 'command_result' || data['success'] != false) return false;
+    bool expired(dynamic v) => v?.toString().toLowerCase() == 'expired';
+    final result = data['result'];
+    for (final k in const ['reason', 'error', 'code']) {
+      if (expired(data[k])) return true;
+      if (result is Map && expired(result[k])) return true;
+    }
+    return false;
+  }
+
   /// Lenient int parse: accepts int, num (e.g. 8548.0), or numeric string.
   /// Never throws — returns null for anything unparseable.
   static int? _asInt(dynamic v) {
@@ -560,6 +574,8 @@ class WebSocketClient {
           msgType == 'agent_message' ||
           msgType == 'ai_connection_changed' ||
           msgType == 'command_result' ||
+          // ROBOT-STATE v2: live state record, never feed history.
+          msgType == 'robot_state' ||
           msgType == 'event' ||
           msgType == 'replay_jump' ||
           msgType == 'replay_reset' ||
@@ -789,12 +805,14 @@ class WebSocketClient {
           _eventController.add(missionEvent);
           break;
 
-        // Mode changed event (Build 31) - includes locked state
-        case 'mode_changed':
+        // ROBOT-STATE v2 (E2): the relay's state record for one robot,
+        // pushed on every change and on connect. The relay fans every
+        // owned robot's record; only the target robot's is used.
+        case 'robot_state':
           if (!_isFromTargetDevice(json)) break;
-          print('WS: Received mode_changed: $json');
-          final modeChangedEvent = WsEvent.fromJson(json);
-          _eventController.add(modeChangedEvent);
+          connTrace('ws-robot-state',
+              'v=${json['state_version']} mode=${json['mode']} asleep=${json['asleep']} online=${json['robot_online']}');
+          _eventController.add(WsEvent.fromJson(json));
           break;
 
         // Build 146: robot-authoritative state on (re)connect. /ws/local sends
@@ -1123,13 +1141,19 @@ class WebSocketClient {
       print('WebSocket: Cannot send command - no target device set');
       return;
     }
-    send({
+    final frame = <String, dynamic>{
       'type': 'command',
       'device_id': _targetDeviceId,
       'command': command,
       'data': data ?? {},
       'timestamp': DateTime.now().millisecondsSinceEpoch,
-    });
+    };
+    final sink = debugCommandSink;
+    if (sink != null) {
+      sink(frame);
+      return;
+    }
+    send(frame);
   }
 
   /// Send a command that the robot answers with a `command_result` carrying
@@ -1142,19 +1166,25 @@ class WebSocketClient {
     String commandId, [
     Map<String, dynamic>? data,
   ]) {
-    if (_targetDeviceId == null || _state != WsConnectionState.connected) {
-      connTrace('ws-cmd-id-unsent',
-          '$command target=$_targetDeviceId state=${_state.name}');
-      return false;
-    }
-    send({
+    final frame = <String, dynamic>{
       'type': 'command',
       'device_id': _targetDeviceId,
       'command': command,
       'command_id': commandId,
       'data': data ?? {},
       'timestamp': DateTime.now().millisecondsSinceEpoch,
-    });
+    };
+    final sink = debugCommandSink;
+    if (sink != null) {
+      sink(frame);
+      return true;
+    }
+    if (_targetDeviceId == null || _state != WsConnectionState.connected) {
+      connTrace('ws-cmd-id-unsent',
+          '$command target=$_targetDeviceId state=${_state.name}');
+      return false;
+    }
+    send(frame);
     return true;
   }
 
@@ -1168,13 +1198,34 @@ class WebSocketClient {
     sendCommand('emergency_stop');
   }
 
-  /// Send mode change command (v1.3: includes source and timestamp)
-  /// Format: {"type": "command", "device_id": "<id>", "command": "set_mode", "data": {"mode": "<mode>", "source": "<source>", "timestamp": "ISO8601"}}
-  void sendModeCommand(String mode, {String source = 'dropdown'}) {
-    sendCommand('set_mode', {
+  /// ROBOT-STATE v2 C1 — set_mode. `mode` is one of the five contract
+  /// values; `dog_id` null means "use the selected dog". The relay sets
+  /// `source` itself: the app sends `reason`, never `source`. Answered by
+  /// a `command_result` with the same [commandId]. Returns false when the
+  /// frame could not be put on the wire.
+  bool sendModeCommand(
+    String mode, {
+    required String commandId,
+    String? dogId,
+    String? reason,
+  }) {
+    return sendCommandWithId('set_mode', commandId, {
       'mode': mode,
-      'source': source,
+      'dog_id': dogId,
+      'reason': reason,
       'timestamp': DateTime.now().toUtc().toIso8601String(),
+    });
+  }
+
+  /// ROBOT-STATE v2 C3 — set_sleep. Sleep is not a mode.
+  bool sendSleepCommand(
+    bool asleep, {
+    required String commandId,
+    String? reason,
+  }) {
+    return sendCommandWithId('set_sleep', commandId, {
+      'asleep': asleep,
+      'reason': reason,
     });
   }
 
@@ -1625,6 +1676,11 @@ class WebSocketClient {
   @visibleForTesting
   void debugHandleMessage(String raw) => _onMessage(raw);
 
+  /// When set, [sendCommand] / [sendCommandWithId] hand their frame here instead of the
+  /// socket (tests assert the exact wire shape).
+  @visibleForTesting
+  void Function(Map<String, dynamic> frame)? debugCommandSink;
+
   /// Force the in-memory replay watermark, bypassing the prefs load.
   @visibleForTesting
   void debugSetWatermark(int seq, {String? deviceId}) {
@@ -1638,6 +1694,7 @@ class WebSocketClient {
   /// Reset the singleton's routing state between tests.
   @visibleForTesting
   void debugResetForTest() {
+    debugCommandSink = null;
     _watermarkPersistTimer?.cancel();
     _watermarkPersistTimer = null;
     _lastSeenSeq = 0;

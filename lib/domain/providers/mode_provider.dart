@@ -1,62 +1,51 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart' show visibleForTesting;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+import 'package:uuid/uuid.dart';
 
 import '../../core/network/websocket_client.dart';
 import '../../core/utils/conn_trace.dart';
+import '../../data/models/robot_state.dart';
+import 'robot_state_provider.dart';
 import 'connection_provider.dart';
 import 'telemetry_provider.dart';
 import '../../l10n/l10n.dart';
 import 'l10n_provider.dart';
 
-/// Available robot modes
+/// Robot modes — exactly the five values of ROBOT-STATE v2 `mode`.
+/// Sleep is NOT a mode: it is the separate `asleep` flag ([ModeState.asleep],
+/// `set_sleep`). No aliases: any other string is not a mode.
 enum RobotMode {
   idle('idle', 'Idle'),
   manual('manual', 'Manual'),
   silentGuardian('silent_guardian', 'Silent Guardian'),
   coach('coach', 'Coach'),
-  mission('mission', 'Mission'),
-
-  /// Robot is asleep (low-power, not watching). Entered with the Sleep
-  /// control (`set_mode sleep`) or by the robot itself; Wake = `set_mode idle`.
-  sleep('sleep', 'Asleep');
+  mission('mission', 'Mission');
 
   final String value;
   final String label;
   const RobotMode(this.value, this.label);
 
-  /// Robot sends different names than the app uses internally.
-  static const _aliases = {
-    'guardian': RobotMode.silentGuardian,
-    'training': RobotMode.coach,
-    'sleeping': RobotMode.sleep,
-    'asleep': RobotMode.sleep,
-  };
-
-  static RobotMode fromString(String value) {
-    final lower = value.toLowerCase();
-    return _aliases[lower] ??
-        RobotMode.values.firstWhere(
-          (mode) => mode.value == lower,
-          orElse: () => RobotMode.idle,
-        );
-  }
+  static RobotMode fromString(String value) =>
+      tryFromString(value) ?? RobotMode.idle;
 
   /// Returns null instead of defaulting to idle for unrecognized strings.
   /// Use this for external data where an unrecognized mode should be ignored.
   static RobotMode? tryFromString(String? value) {
     if (value == null || value.isEmpty) return null;
-    final lower = value.toLowerCase();
-    if (_aliases.containsKey(lower)) return _aliases[lower];
     for (final mode in RobotMode.values) {
-      if (mode.value == lower) return mode;
+      if (mode.value == value) return mode;
     }
-    print('APP_MODE: WARNING unrecognized mode string: "$value"');
+    connTrace('mode-unrecognized', value);
     return null;
   }
 }
 
-/// Mode state with optimistic update support
+/// Mode + sleep state. Under ROBOT-STATE v2 the relay's `robot_state`
+/// record is the authority; a pending value is only shown while the
+/// app's own command is waiting for its `command_result`.
 class ModeState {
   final RobotMode currentMode;
   final RobotMode? pendingMode;      // Mode we're waiting for confirmation
@@ -68,6 +57,12 @@ class ModeState {
   final bool isModeLocked;           // True when mission is active (mode can't change)
   final RobotMode previousPortraitMode; // v1.3: Stored when entering landscape/mission
 
+  /// `robot_state.asleep`. Not a mode: an asleep robot's mode is "idle".
+  final bool asleep;
+
+  /// The value a `set_sleep` in flight asked for; null when none is.
+  final bool? pendingAsleep;
+
   const ModeState({
     this.currentMode = RobotMode.idle,
     this.pendingMode,
@@ -78,6 +73,8 @@ class ModeState {
     this.activeMissionName,
     this.isModeLocked = false,
     this.previousPortraitMode = RobotMode.idle,
+    this.asleep = false,
+    this.pendingAsleep,
   });
 
   ModeState copyWith({
@@ -90,9 +87,12 @@ class ModeState {
     String? activeMissionName,
     bool? isModeLocked,
     RobotMode? previousPortraitMode,
+    bool? asleep,
+    bool? pendingAsleep,
     bool clearPending = false,
     bool clearError = false,
     bool clearMission = false,
+    bool clearPendingAsleep = false,
   }) {
     return ModeState(
       currentMode: currentMode ?? this.currentMode,
@@ -104,11 +104,17 @@ class ModeState {
       activeMissionName: clearMission ? null : (activeMissionName ?? this.activeMissionName),
       isModeLocked: isModeLocked ?? this.isModeLocked,
       previousPortraitMode: previousPortraitMode ?? this.previousPortraitMode,
+      asleep: asleep ?? this.asleep,
+      pendingAsleep:
+          clearPendingAsleep ? null : (pendingAsleep ?? this.pendingAsleep),
     );
   }
 
-  /// The robot reports mode `sleep`.
-  bool get isAsleep => currentMode == RobotMode.sleep;
+  /// The robot is asleep (`robot_state.asleep`).
+  bool get isAsleep => asleep;
+
+  /// True while a `set_sleep` is waiting for its result.
+  bool get isSleepChanging => pendingAsleep != null;
 
   /// True if a mission is currently active
   bool get isMissionActive => activeMissionId != null;
@@ -129,103 +135,125 @@ class ModeState {
   }
 }
 
-/// Provider for mode state with optimistic updates
+/// Provider for mode state
 final modeStateProvider =
     StateNotifierProvider<ModeStateNotifier, ModeState>((ref) {
   return ModeStateNotifier(ref);
 });
 
-/// Mode state notifier - handles optimistic updates and confirmations
+/// Mode state notifier.
 ///
-/// Build 50v2: User mode selection is SOVEREIGN. Once the user clicks a mode,
-/// no external event (battery, status_update, telemetry sync, mode_changed)
-/// can override it. Only the user clicking a different mode or a mission lock
-/// can change the displayed mode.
+/// ROBOT-STATE v2: the relay's `robot_state` record (E2/H1, via
+/// [robotStateProvider]) decides mode, asleep and the mission lock. The
+/// app's own commands — `set_mode` (C1) and `set_sleep` (C3) — carry a
+/// command_id and are settled by their `command_result`: nothing is
+/// assumed on silence, and a refusal ("robot_offline", "robot_timeout",
+/// "invalid_mode") is shown and dropped. Nothing is queued or retried.
 ///
-/// WHY: The robot's telemetry endpoint and battery events report stale
-/// mode:idle because relay_client.py uses state.set_mode() instead of
-/// mode_fsm.set_mode_override(). Until that robot-side bug is fixed, the
-/// app cannot trust ANY external mode data. The robot IS in the correct
-/// mode (visible on video overlay), but reports idle in telemetry/events.
-///
-/// Previous approaches (Builds 36-50) tried timed cooldowns (5s, 8s, 15s)
-/// but the robot sends stale data indefinitely, so any timer eventually
-/// expires and the mode reverts. The only correct fix: don't let external
-/// events override user mode selections. Period.
+/// On the local-AP socket there is no relay record. There the mode comes
+/// from the robot's `connected` / `initial_status` sync, the command
+/// results, and — guarded by the user's last selection (Build 50v2, the
+/// robot's status echoes can be stale) — status/telemetry frames.
 class ModeStateNotifier extends StateNotifier<ModeState> {
   final Ref _ref;
 
   AppLocalizations get _l => _ref.read(l10nProvider);
+  final _uuid = const Uuid();
   Timer? _timeoutTimer;
+  Timer? _sleepTimeoutTimer;
   Timer? _errorDismissTimer;
   StreamSubscription? _wsSubscription;
 
+  /// How long a tap shows pending: 10000 ms (Morgan, 2026-11-19 — not
+  /// the brief's 5000: a phone on weak Wi-Fi can take longer than 5 s
+  /// for the round trip). Past it the selector reverts and shows an
+  /// error, so the status is never frozen; a state record that arrives
+  /// later is still rendered.
   static const Duration _confirmationTimeout = Duration(seconds: 10);
 
-  /// The mode the user explicitly selected. While set, ALL external mode
-  /// updates that don't match this mode are rejected. Cleared only when:
-  /// - User clicks a different mode (replaced with new selection)
-  /// - Mission starts (mission overrides user selection)
-  /// - Provider is disposed (reconnect/restart)
+  /// Mode shown before the set_mode in flight (to undo a local-AP
+  /// assumption if the robot's late answer is a refusal).
+  RobotMode? _modeBeforeCommand;
+
+  /// command_id of the set_mode / set_sleep waiting for its result.
+  String? _modeCommandId;
+  String? _sleepCommandId;
+
+  /// True when the app talks to the robot through the relay. Then mode,
+  /// asleep and the mission lock are rendered ONLY from `robot_state`
+  /// (E2/H1); a command_result merely ends the pending state. On the
+  /// local-AP socket (no relay record) the pre-v2 sources still apply.
+  bool get _cloud => !_ref.read(robotStateProvider.notifier).isLocalMode;
+
+  /// `state_version` when the set_mode / set_sleep in flight was sent:
+  /// pending ends as soon as the record's version passes it.
+  int _versionAtModeTap = 0;
+  int _versionAtSleepTap = 0;
+  int _lastStateVersion = 0;
+
+  /// Local-AP guard (Build 50v2): the mode the user explicitly selected.
+  /// While set, status/telemetry echoes that don't match are rejected.
   RobotMode? _userSelectedMode;
 
   ModeStateNotifier(this._ref) : super(const ModeState()) {
     _listenToModeEvents();
     _getInitialMode();
+    _ref.listen<RobotState?>(robotStateProvider, (prev, next) {
+      if (next != null) _applyRobotState(next);
+    }, fireImmediately: true);
   }
-
-  // ─────────────────────────────────────────────────────────────────────────
-  // STRUCTURED MODE LOGGING
-  // ─────────────────────────────────────────────────────────────────────────
 
   void _logModeChange(RobotMode oldMode, RobotMode newMode, String source) {
-    print('APP_MODE: ${oldMode.value} -> ${newMode.value} | source=$source');
+    if (oldMode == newMode) return;
+    connTrace('mode', '${oldMode.value} -> ${newMode.value} | $source');
   }
 
   // ─────────────────────────────────────────────────────────────────────────
-  // BUILD 50v2: SOVEREIGN USER MODE GUARD
+  // ROBOT-STATE v2 — the authority
   // ─────────────────────────────────────────────────────────────────────────
 
-  /// Returns true if the incoming mode should be BLOCKED.
-  /// When user has selected a mode, ONLY that mode (or mission locks) pass.
-  bool _shouldBlockExternalMode(RobotMode incomingMode,
-      {bool isLocked = false, bool explicit = false}) {
-    // Mission locks are always authoritative — robot is running a mission
-    if (isLocked) return false;
+  void _applyRobotState(RobotState rs) {
+    _userSelectedMode = null;
+    _lastStateVersion = rs.stateVersion;
+    final mode = RobotMode.tryFromString(rs.mode) ?? state.currentMode;
+    _logModeChange(state.currentMode, mode, 'robot_state v${rs.stateVersion}');
 
-    // Sleep is the robot's own state: a `sleep` report is always shown (it
-    // may fall asleep by itself or from another client), and so is the
-    // report that it woke — unless the user asked for sleep here and the
-    // report is only a status echo (those can be stale; an explicit
-    // mode_changed is not).
-    if (incomingMode == RobotMode.sleep) {
-      if (_userSelectedMode != RobotMode.sleep) _userSelectedMode = null;
-      return false;
-    }
-    if (state.currentMode == RobotMode.sleep &&
-        !state.isChanging &&
-        (explicit || _userSelectedMode != RobotMode.sleep)) {
-      if (_userSelectedMode == RobotMode.sleep) _userSelectedMode = null;
-      return false;
-    }
+    // Pending ends when state_version has increased since the tap.
+    final confirmsPending =
+        state.isChanging && rs.stateVersion > _versionAtModeTap;
+    if (confirmsPending) _cancelTimeout();
+    final confirmsSleep =
+        state.pendingAsleep != null && rs.stateVersion > _versionAtSleepTap;
+    if (confirmsSleep) _sleepTimeoutTimer?.cancel();
 
-    // No user selection active — allow everything (initial state, pre-first-click)
+    final locked = mode == RobotMode.mission;
+    state = state.copyWith(
+      currentMode: mode,
+      asleep: rs.asleep,
+      isModeLocked: locked,
+      // Mission name/id are dropped when the robot leaves mission mode.
+      clearMission: !locked && state.currentMode == RobotMode.mission,
+      isChanging: confirmsPending ? false : null,
+      clearPending: confirmsPending,
+      clearError: confirmsPending || confirmsSleep,
+      clearPendingAsleep: confirmsSleep,
+    );
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // LOCAL-AP GUARD (no relay record)
+  // ─────────────────────────────────────────────────────────────────────────
+
+  /// Returns true if a status/telemetry echo should be BLOCKED.
+  bool _shouldBlockExternalMode(RobotMode incomingMode) {
     if (_userSelectedMode == null) return false;
-
-    // Incoming mode matches user selection — allow (confirms the change)
     if (incomingMode == _userSelectedMode) return false;
-
-    // Block: stale external data trying to override user's mode choice
-    print('Mode: BLOCKED ${incomingMode.value} (user selected: ${_userSelectedMode!.value})');
     return true;
   }
 
-  // ─────────────────────────────────────────────────────────────────────────
-  // INITIALIZATION
-  // ─────────────────────────────────────────────────────────────────────────
-
   /// Get initial mode from telemetry (only on startup, before user interacts)
   void _getInitialMode() {
+    if (_cloud) return;
     final telemetry = _ref.read(telemetryProvider);
     if (telemetry.mode.isNotEmpty) {
       final initialMode = RobotMode.tryFromString(telemetry.mode);
@@ -240,24 +268,23 @@ class ModeStateNotifier extends StateNotifier<ModeState> {
   // WEBSOCKET EVENT HANDLERS
   // ─────────────────────────────────────────────────────────────────────────
 
-  /// Listen to WebSocket events for mode confirmations
   void _listenToModeEvents() {
     final ws = _ref.read(websocketClientProvider);
     _wsSubscription = ws.eventStream.listen((event) {
-      if (event.type == 'mode') {
-        final mode = event.data['mode'] as String?;
-        if (mode != null) {
-          _handleModeConfirmation(mode);
+      if (event.type == 'command_result') {
+        final id = event.data['command_id']?.toString();
+        if (id == null) return;
+        if (id == _modeCommandId) {
+          _onModeResult(event.data, expired: event.isExpiredCommandResult);
+        } else if (id == _sleepCommandId) {
+          _onSleepResult(event.data, expired: event.isExpiredCommandResult);
         }
-      } else if (event.type == 'mode_changed') {
-        _handleModeChangedEvent(event.data);
-      } else if (event.type == 'status_update' ||
-                 event.type == 'battery' ||
-                 event.type == 'telemetry') {
+      } else if (event.type == 'mode' ||
+          event.type == 'status_update' ||
+          event.type == 'battery' ||
+          event.type == 'telemetry') {
         final mode = event.data['mode'] as String?;
-        if (mode != null) {
-          _handleModeConfirmation(mode);
-        }
+        if (mode != null) _handleModeEcho(mode);
       } else if (event.type == 'mission_progress') {
         // Build 146: replayed (buffered) mission events are history, not live
         // state — a stale mission_progress from the store-and-forward buffer
@@ -266,12 +293,13 @@ class ModeStateNotifier extends StateNotifier<ModeState> {
       } else if (event.type == 'mission_complete' || event.type == 'mission_stopped') {
         if (!event.buffered) _handleMissionEnded();
       } else if (event.type == 'connected' || event.type == 'initial_status') {
-        _handleAuthoritativeSync(event);
-      } else if ((event.type == 'error' || event.type == 'webrtc_error') &&
+        if (!_cloud) _handleAuthoritativeSync(event);
+      } else if (!_cloud &&
+          (event.type == 'error' || event.type == 'webrtc_error') &&
           _saysRobotAsleep(event.data)) {
         // The robot declined something because it is asleep.
-        connTrace('mode-robot-asleep', '${event.type}');
-        _handleModeConfirmation(RobotMode.sleep.value);
+        connTrace('mode-robot-asleep', event.type);
+        if (!state.asleep) state = state.copyWith(asleep: true);
       }
     });
   }
@@ -285,13 +313,116 @@ class ModeStateNotifier extends StateNotifier<ModeState> {
     return false;
   }
 
+  /// `command_result` of our set_mode (C1): result {mode, session_dog_id}.
+  void _onModeResult(Map<String, dynamic> data, {bool expired = false}) {
+    _cancelTimeout();
+    _modeCommandId = null;
+    final success = data['success'] == true;
+    final result = data['result'];
+    final error = data['error']?.toString();
+    connTrace('mode-result',
+        'success=$success error=$error result=$result ms=${data['duration_ms']}');
+    if (!success) {
+      // Undo a mode taken on silence (local-AP) — the robot refused it.
+      final before = _modeBeforeCommand;
+      if (!_cloud && before != null && !state.isChanging) {
+        state = state.copyWith(currentMode: before);
+      }
+      _failModeChange(_errorText(error, expired: expired));
+      return;
+    }
+    final mode = RobotMode.tryFromString(
+            result is Map ? result['mode']?.toString() : null) ??
+        state.pendingMode ??
+        state.currentMode;
+    if (_cloud) {
+      // The result only ends pending; the mode shown is the record's.
+      state = state.copyWith(
+          isChanging: false, clearPending: true, clearError: true);
+      if (_lastStateVersion <= _versionAtModeTap) {
+        unawaited(_ref.read(robotStateProvider.notifier).refresh());
+      }
+      return;
+    }
+    _logModeChange(state.currentMode, mode, 'command_result');
+    state = state.copyWith(
+      currentMode: mode,
+      isChanging: false,
+      clearPending: true,
+      clearError: true,
+      isModeLocked: mode == RobotMode.mission,
+    );
+  }
+
+  /// `command_result` of our set_sleep (C3): result {asleep, mode}.
+  void _onSleepResult(Map<String, dynamic> data, {bool expired = false}) {
+    _sleepTimeoutTimer?.cancel();
+    _sleepCommandId = null;
+    final success = data['success'] == true;
+    final result = data['result'];
+    final error = data['error']?.toString();
+    connTrace('sleep-result',
+        'success=$success error=$error result=$result ms=${data['duration_ms']}');
+    if (!success) {
+      state = state.copyWith(
+        clearPendingAsleep: true,
+        error: _errorText(error, expired: expired),
+        errorTime: DateTime.now(),
+      );
+      _scheduleErrorDismiss();
+      return;
+    }
+    if (_cloud) {
+      state = state.copyWith(clearPendingAsleep: true, clearError: true);
+      if (_lastStateVersion <= _versionAtSleepTap) {
+        unawaited(_ref.read(robotStateProvider.notifier).refresh());
+      }
+      return;
+    }
+    final asleep = (result is Map && result['asleep'] is bool)
+        ? result['asleep'] as bool
+        : (state.pendingAsleep ?? state.asleep);
+    final mode = RobotMode.tryFromString(
+        result is Map ? result['mode']?.toString() : null);
+    state = state.copyWith(
+      asleep: asleep,
+      currentMode: mode,
+      clearPendingAsleep: true,
+      clearError: true,
+    );
+  }
+
+  /// The contract's exact refusal strings, in the user's language.
+  String _errorText(String? error, {bool expired = false}) {
+    if (expired) return _l.cmdErrRobotBusy;
+    switch (error) {
+      case 'expired':
+        return _l.cmdErrRobotBusy;
+      case 'robot_offline':
+        return _l.modeErrRobotOffline;
+      case 'robot_timeout':
+        return _l.modeErrRobotTimeout;
+      case 'invalid_mode':
+        return _l.modeErrInvalidMode;
+      default:
+        return _l.modeErrCommandFailed(error ?? '?');
+    }
+  }
+
+  void _failModeChange(String message) {
+    _userSelectedMode = null;
+    state = state.copyWith(
+      isChanging: false,
+      clearPending: true,
+      error: message,
+      errorTime: DateTime.now(),
+    );
+    _scheduleErrorDismiss();
+  }
+
   /// Build 146: robot-authoritative mode sync on (re)connect. /ws/local sends
   /// `connected` (current_mode) and `initial_status` (data.system_state) on
-  /// every connect. The app adopts the robot's mode — clearing any stale
-  /// sovereign selection — and sends NOTHING. This is the fix for the
-  /// set_mode-stomping bug (robot journal 2026-07-26): the app used to keep
-  /// its cached UI mode and re-assert it via navigation-triggered sends,
-  /// killing coach mode out from under the user in local mode.
+  /// every connect. The app adopts the robot's mode and sends NOTHING.
   void _handleAuthoritativeSync(WsEvent event) {
     final rawState = event.type == 'connected'
         ? event.data['current_mode']
@@ -307,6 +438,7 @@ class ModeStateNotifier extends StateNotifier<ModeState> {
     connTrace('mode-robot-sync', '${event.type} mode=$modeValue '
         '(was=${state.currentMode.value} userSel=${_userSelectedMode?.value})');
     _cancelTimeout();
+    _modeCommandId = null;
     _userSelectedMode = null;
     if (mode != state.currentMode || state.isChanging) {
       _logModeChange(state.currentMode, mode, 'robot_sync_${event.type}');
@@ -319,87 +451,17 @@ class ModeStateNotifier extends StateNotifier<ModeState> {
     }
   }
 
-  /// Handle mode_changed events (explicit mode change broadcasts from robot)
-  void _handleModeChangedEvent(Map<String, dynamic> data) {
-    final mode = data['mode'] as String?;
-    final locked = data['locked'] as bool? ?? false;
-    final lockReason = data['lock_reason'] as String?;
-
-    print('Mode: mode_changed event - mode=$mode, locked=$locked, reason=$lockReason');
-
+  /// A mode carried by a status / battery / telemetry / mode frame. Only
+  /// used until a `robot_state` record exists (i.e. on the local-AP
+  /// socket), and never to settle a command — the command_result does that.
+  void _handleModeEcho(String modeValue) {
+    if (_cloud || state.isChanging) return;
+    final mode = RobotMode.tryFromString(modeValue);
     if (mode == null) return;
-
-    final confirmedMode = RobotMode.tryFromString(mode);
-    if (confirmedMode == null) return; // Don't default to idle for unrecognized strings
-
-    // Sovereign guard
-    if (_shouldBlockExternalMode(confirmedMode,
-        isLocked: locked, explicit: true)) {
-      return;
-    }
-
-    _cancelTimeout();
-
-    // Extract mission name from lock reason if available
-    String? missionName;
-    if (locked && lockReason != null && lockReason.contains(':')) {
-      missionName = lockReason.split(':').last.trim();
-    }
-
-    if (state.isChanging && state.pendingMode == confirmedMode) {
-      _logModeChange(state.currentMode, confirmedMode, 'ws_confirmed');
-    } else {
-      _logModeChange(state.currentMode, confirmedMode, 'ws_mode_changed');
-    }
-
-    state = state.copyWith(
-      currentMode: confirmedMode,
-      isChanging: false,
-      clearPending: true,
-      clearError: true,
-      isModeLocked: locked,
-      activeMissionName: locked ? missionName : null,
-    );
-  }
-
-  /// Handle mode confirmation from status_update/battery/telemetry/mode events
-  void _handleModeConfirmation(String modeValue) {
-    final confirmedMode = RobotMode.tryFromString(modeValue);
-    if (confirmedMode == null) return; // Don't default to idle for unrecognized strings
-
-    // Sovereign guard
-    if (_shouldBlockExternalMode(confirmedMode)) return;
-
-    if (state.isChanging && state.pendingMode != null) {
-      if (confirmedMode == state.pendingMode) {
-        // Confirmed our pending mode
-        _logModeChange(state.currentMode, confirmedMode, 'ws_confirmed');
-        _cancelTimeout();
-        state = state.copyWith(
-          currentMode: confirmedMode,
-          isChanging: false,
-          clearPending: true,
-          clearError: true,
-        );
-      }
-      else if (confirmedMode == RobotMode.sleep) {
-        // The robot fell asleep while another change was pending.
-        _logModeChange(state.currentMode, confirmedMode, 'ws_sleep');
-        _cancelTimeout();
-        state = state.copyWith(
-          currentMode: confirmedMode,
-          isChanging: false,
-          clearPending: true,
-        );
-      }
-      // Other non-matching modes are blocked by the guard above
-    } else if (!state.isChanging) {
-      // Not waiting for confirmation — update if different
-      // (only reachable if _userSelectedMode is null or matches)
-      if (confirmedMode != state.currentMode) {
-        _logModeChange(state.currentMode, confirmedMode, 'ws_external');
-        state = state.copyWith(currentMode: confirmedMode);
-      }
+    if (_shouldBlockExternalMode(mode)) return;
+    if (mode != state.currentMode) {
+      _logModeChange(state.currentMode, mode, 'ws_echo');
+      state = state.copyWith(currentMode: mode);
     }
   }
 
@@ -413,13 +475,22 @@ class ModeStateNotifier extends StateNotifier<ModeState> {
     final missionId = data['mission_id']?.toString() ?? data['id']?.toString();
     final missionName = data['mission'] as String? ?? data['mission_name'] as String? ?? missionId;
 
-    print('Mode: mission_progress action=$action, mission=$missionName');
-
+    if (_cloud) {
+      // Through the relay the mode and its lock come from robot_state;
+      // mission events only supply the mission's name for the chip.
+      if (missionId != null &&
+          action != 'completed' &&
+          action != 'stopped' &&
+          state.activeMissionId != missionId) {
+        state = state.copyWith(
+            activeMissionId: missionId, activeMissionName: missionName);
+      }
+      return;
+    }
     switch (action) {
       case 'started':
-        // Mission started — authoritative, overrides user selection
         _logModeChange(state.currentMode, RobotMode.mission, 'mission_started');
-        _userSelectedMode = null; // Clear user selection — mission takes over
+        _userSelectedMode = null; // mission takes over
         state = state.copyWith(
           currentMode: RobotMode.mission,
           activeMissionId: missionId,
@@ -438,7 +509,6 @@ class ModeStateNotifier extends StateNotifier<ModeState> {
         // Only update mission info if already in mission mode
         if (state.currentMode == RobotMode.mission && missionId != null) {
           if (state.activeMissionId != missionId) {
-            print('Mode: Updating mission info for active mission');
             state = state.copyWith(
               activeMissionId: missionId,
               activeMissionName: missionName,
@@ -449,14 +519,10 @@ class ModeStateNotifier extends StateNotifier<ModeState> {
     }
   }
 
-  /// Handle mission ended (completed or stopped)
-  /// Mission ALWAYS exits to idle. Only Drive exit restores previous portrait mode.
-  ///
-  /// Build 146: UI-only. This used to also SEND set_mode:idle — an
-  /// event-triggered, app-originated send (robot brief 2026-07-26 forbids
-  /// implicit set_mode; a buffered replay could even fire it with zero user
-  /// action). The robot exits its own missions; the app just mirrors.
+  /// Handle mission ended (completed or stopped). UI-only (Build 146): the
+  /// robot exits its own missions; the app mirrors and sends nothing.
   void _handleMissionEnded() {
+    if (_cloud) return; // robot_state decides
     _logModeChange(state.currentMode, RobotMode.idle, 'mission_ended');
     _userSelectedMode = RobotMode.idle;
     state = state.copyWith(
@@ -469,23 +535,17 @@ class ModeStateNotifier extends StateNotifier<ModeState> {
   }
 
   // ─────────────────────────────────────────────────────────────────────────
-  // USER-INITIATED MODE CHANGE
+  // USER-INITIATED COMMANDS
   // ─────────────────────────────────────────────────────────────────────────
 
-  /// Set mode with optimistic update (v1.3: includes source context)
-  Future<void> setMode(RobotMode mode, {String source = 'dropdown'}) async {
-    if (!_ref.read(connectionProvider).isConnected) {
-      state = state.copyWith(
-        error: _l.errNotConnectedToRobot,
-        errorTime: DateTime.now(),
-      );
-      _scheduleErrorDismiss();
-      return;
-    }
-
+  /// C1 set_mode. [reason] is the app's context ("dropdown", "drive_enter",
+  /// …) and goes out as `data.reason`; the relay sets `source` itself.
+  /// [dogId] null = the session uses the selected dog (may be none — no
+  /// mode needs a dog).
+  Future<void> setMode(RobotMode mode,
+      {String reason = 'dropdown', String? dogId}) async {
     // Don't change if mode is locked (mission active)
     if (state.isModeLocked && mode != RobotMode.mission) {
-      print('Mode: Cannot change to ${mode.value} - mode locked (mission: ${state.activeMissionName})');
       state = state.copyWith(
         error: _l.modeErrMissionActive,
         errorTime: DateTime.now(),
@@ -495,39 +555,101 @@ class ModeStateNotifier extends StateNotifier<ModeState> {
     }
 
     // Don't change if already in this mode
-    if (state.currentMode == mode && !state.isChanging) {
-      print('Mode: Already in ${mode.value}, skipping');
-      return;
-    }
+    if (state.currentMode == mode && !state.isChanging) return;
 
     _cancelTimeout();
 
-    print('Mode: Setting to ${mode.value} (optimistic, source=$source)');
+    if (_ref.read(connectionProvider).isDemoMode) {
+      state = state.copyWith(
+          currentMode: mode, isChanging: false, clearPending: true, clearError: true);
+      return;
+    }
 
-    // Build 50v2: User selection is sovereign — persists until user clicks different mode
+    final commandId = _uuid.v4();
+    final sent = _ref.read(websocketClientProvider).sendModeCommand(
+          mode.value,
+          commandId: commandId,
+          dogId: dogId,
+          reason: reason,
+        );
+    connTrace('mode-set', '${mode.value} reason=$reason dog=$dogId sent=$sent');
+    if (!sent) {
+      _modeCommandId = null;
+      _failModeChange(_l.errNotConnectedToRobot);
+      return;
+    }
+
+    _modeCommandId = commandId;
+    _versionAtModeTap = _lastStateVersion;
+    _modeBeforeCommand = state.currentMode;
     _userSelectedMode = mode;
-
-    // Optimistic update - immediately show new mode in UI
     state = state.copyWith(
       pendingMode: mode,
       isChanging: true,
       clearError: true,
     );
-
-    // Send command to robot (v1.3: includes source)
-    _ref.read(websocketClientProvider).sendModeCommand(mode.value, source: source);
-
-    // Start confirmation timeout
     _timeoutTimer = Timer(_confirmationTimeout, _onTimeout);
+  }
+
+  /// C3 set_sleep. Sleep is not a mode: asleep forces mode "idle" on the
+  /// robot, waking leaves it "idle".
+  Future<void> setSleep(bool asleep, {String? reason}) async {
+    if (state.pendingAsleep != null) return;
+    if (state.asleep == asleep) return;
+
+    if (_ref.read(connectionProvider).isDemoMode) {
+      state = state.copyWith(
+        asleep: asleep,
+        currentMode: asleep ? RobotMode.idle : null,
+      );
+      return;
+    }
+
+    final commandId = _uuid.v4();
+    final sent = _ref
+        .read(websocketClientProvider)
+        .sendSleepCommand(asleep, commandId: commandId, reason: reason);
+    connTrace('sleep-set', 'asleep=$asleep reason=$reason sent=$sent');
+    if (!sent) {
+      state = state.copyWith(
+        error: _l.errNotConnectedToRobot,
+        errorTime: DateTime.now(),
+      );
+      _scheduleErrorDismiss();
+      return;
+    }
+    _sleepCommandId = commandId;
+    _versionAtSleepTap = _lastStateVersion;
+    state = state.copyWith(pendingAsleep: asleep, clearError: true);
+    _sleepTimeoutTimer?.cancel();
+    _sleepTimeoutTimer = Timer(_confirmationTimeout, () {
+      if (!mounted || state.pendingAsleep == null) return;
+      // _sleepCommandId is kept: a late result still settles it.
+      connTrace('sleep-timeout', 'pending=${state.pendingAsleep}');
+      if (!_cloud) {
+        // No relay record to ask (local-AP): take the command as done.
+        state = state.copyWith(
+            asleep: state.pendingAsleep, clearPendingAsleep: true);
+        return;
+      }
+      state = state.copyWith(
+        clearPendingAsleep: true,
+        error: _l.modeErrNoAnswer,
+        errorTime: DateTime.now(),
+      );
+      _scheduleErrorDismiss();
+      unawaited(_ref.read(robotStateProvider.notifier).refresh());
+    });
   }
 
   /// v1.3: Store current portrait mode before entering landscape/mission
   void storePortraitMode() {
-    // Read the ACTUAL robot mode from telemetry (source of truth),
-    // not state.currentMode which may be stale from a previous user action
-    final telemetryMode = _ref.read(telemetryProvider).mode;
-    final robotMode = RobotMode.tryFromString(telemetryMode);
-    final actual = robotMode ?? state.currentMode; // Fallback to cached if telemetry empty
+    // Without a relay record (local-AP) telemetry is the better witness
+    // of the robot's actual mode than a possibly-stale cached value.
+    final telemetryMode = _cloud
+        ? null
+        : RobotMode.tryFromString(_ref.read(telemetryProvider).mode);
+    final actual = telemetryMode ?? state.currentMode;
 
     // Only store portrait-valid modes
     final toStore = (actual == RobotMode.idle ||
@@ -535,43 +657,47 @@ class ModeStateNotifier extends StateNotifier<ModeState> {
         actual == RobotMode.coach)
         ? actual
         : RobotMode.idle;
-    print('Mode: Storing portrait mode: ${toStore.value} (telemetry=${robotMode?.value ?? "none"}, cached=${state.currentMode.value})');
     state = state.copyWith(previousPortraitMode: toStore);
   }
 
   /// v1.3: Restore previous portrait mode when exiting landscape/mission
-  Future<void> restorePortraitMode({String source = 'drive_exit_restore'}) async {
-    final restoreMode = state.previousPortraitMode;
-    print('Mode: Restoring portrait mode: ${restoreMode.value} (source=$source)');
-    await setMode(restoreMode, source: source);
+  Future<void> restorePortraitMode({String reason = 'drive_exit_restore'}) async {
+    await setMode(state.previousPortraitMode, reason: reason);
   }
 
   // ─────────────────────────────────────────────────────────────────────────
   // TIMEOUT HANDLING
   // ─────────────────────────────────────────────────────────────────────────
 
-  /// Handle timeout — no confirmation received.
-  /// Trust the user's command. The sovereign guard will protect it indefinitely.
+  /// No command_result within [_confirmationTimeout]. The spinner ends —
+  /// the status must never sit frozen — but nothing is re-sent, and
+  /// [_modeCommandId] is kept so a late result still settles the mode.
+  ///
+  /// With a relay record the app asks the relay what the robot is
+  /// actually in (H1) instead of guessing; any later `robot_state` also
+  /// corrects it. Without one (local-AP) there is nobody to ask, so the
+  /// command is taken as done, as before v2.
   void _onTimeout() {
-    if (!state.isChanging) return;
-
-    if (state.pendingMode != null) {
-      _logModeChange(state.currentMode, state.pendingMode!, 'timeout_accepted');
+    if (!mounted || !state.isChanging) return;
+    final pending = state.pendingMode;
+    connTrace('mode-timeout',
+        'pending=${pending?.value} cloud=$_cloud');
+    if (!_cloud && pending != null) {
+      _logModeChange(state.currentMode, pending, 'timeout_accepted');
       state = state.copyWith(
-        currentMode: state.pendingMode!,
+        currentMode: pending,
         isChanging: false,
         clearPending: true,
         clearError: true,
       );
       return;
     }
-
-    // Fallback: no pending mode (shouldn't happen)
-    state = state.copyWith(
-      isChanging: false,
-      clearPending: true,
-    );
+    _failModeChange(_l.modeErrNoAnswer);
+    unawaited(_ref.read(robotStateProvider.notifier).refresh());
   }
+
+  @visibleForTesting
+  void debugFireTimeout() => _onTimeout();
 
   void _cancelTimeout() {
     _timeoutTimer?.cancel();
@@ -588,15 +714,15 @@ class ModeStateNotifier extends StateNotifier<ModeState> {
   }
 
   /// Set mode by string value
-  Future<void> setModeByString(String modeValue, {String source = 'dropdown'}) async {
+  Future<void> setModeByString(String modeValue, {String reason = 'dropdown'}) async {
     final mode = RobotMode.tryFromString(modeValue);
     if (mode == null) return; // Ignore unrecognized mode strings
-    await setMode(mode, source: source);
+    await setMode(mode, reason: reason);
   }
 
-  /// Set to manual mode (v1.3: accepts source)
-  Future<void> setManualMode({String source = 'drive_enter'}) async {
-    await setMode(RobotMode.manual, source: source);
+  /// Set to manual mode
+  Future<void> setManualMode({String reason = 'drive_enter'}) async {
+    await setMode(RobotMode.manual, reason: reason);
   }
 
   /// Clear error manually
@@ -607,6 +733,7 @@ class ModeStateNotifier extends StateNotifier<ModeState> {
   @override
   void dispose() {
     _cancelTimeout();
+    _sleepTimeoutTimer?.cancel();
     _errorDismissTimer?.cancel();
     _wsSubscription?.cancel();
     super.dispose();
@@ -646,22 +773,22 @@ class ModeControl {
   ModeControl(this._ref);
 
   /// Set robot mode
-  void setMode(RobotMode mode, {String source = 'dropdown'}) {
-    _ref.read(modeStateProvider.notifier).setMode(mode, source: source);
+  void setMode(RobotMode mode, {String reason = 'dropdown'}) {
+    _ref.read(modeStateProvider.notifier).setMode(mode, reason: reason);
   }
 
   /// Set mode by string value
-  void setModeByString(String modeValue, {String source = 'dropdown'}) {
-    _ref.read(modeStateProvider.notifier).setModeByString(modeValue, source: source);
+  void setModeByString(String modeValue, {String reason = 'dropdown'}) {
+    _ref.read(modeStateProvider.notifier).setModeByString(modeValue, reason: reason);
   }
 
   /// Set to manual mode (default on connect)
-  void setManualMode({String source = 'drive_enter'}) {
-    _ref.read(modeStateProvider.notifier).setManualMode(source: source);
+  void setManualMode({String reason = 'drive_enter'}) {
+    _ref.read(modeStateProvider.notifier).setManualMode(reason: reason);
   }
 }
 
-/// True while the robot reports mode `sleep` (main screen + demo view).
+/// True while the robot is asleep (`robot_state.asleep`; main screen + demo view).
 final robotAsleepProvider = Provider<bool>((ref) {
   return ref.watch(modeStateProvider).isAsleep;
 });

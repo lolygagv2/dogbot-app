@@ -52,7 +52,7 @@ void main() {
     notifier.forceTrick('speak');
     expect(container.read(coachProvider).activeTrick, 'speak');
     notifier.debugHandleEvent(WsEvent(
-      type: 'mode_changed',
+      type: 'robot_state',
       data: {'mode': 'idle'},
     ));
     s = container.read(coachProvider);
@@ -69,17 +69,17 @@ void main() {
     expect(container.read(coachProvider).activeTrick, isNull);
   });
 
-  test('mode_changed into coach activates without coaching_started', () {
+  test('robot_state mode coach activates without coaching_started', () {
     // Build 145: entering coach via the drive-screen mode selector never
     // called startCoaching(), and on the local-AP socket coaching_started
     // may never arrive — isActive stayed false and every trick tap was
-    // inert. mode_changed:coach must activate on its own.
+    // inert. robot_state with mode coach must activate on its own.
     final container = ProviderContainer();
     addTearDown(container.dispose);
     final notifier = container.read(coachProvider.notifier);
 
     notifier.debugHandleEvent(WsEvent(
-      type: 'mode_changed',
+      type: 'robot_state',
       data: {'mode': 'coach'},
     ));
     final s = container.read(coachProvider);
@@ -93,10 +93,10 @@ void main() {
     expect(notifier.forceTrick('sit'), isTrue);
     expect(container.read(coachProvider).activeTrick, 'sit');
 
-    // Re-hearing mode_changed:coach while already active must NOT wipe the
+    // Re-hearing mode coach while already active must NOT wipe the
     // running session (mode events can repeat).
     notifier.debugHandleEvent(WsEvent(
-      type: 'mode_changed',
+      type: 'robot_state',
       data: {'mode': 'coach'},
     ));
     expect(container.read(coachProvider).activeTrick, 'sit');
