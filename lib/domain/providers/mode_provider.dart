@@ -267,8 +267,22 @@ class ModeStateNotifier extends StateNotifier<ModeState> {
         if (!event.buffered) _handleMissionEnded();
       } else if (event.type == 'connected' || event.type == 'initial_status') {
         _handleAuthoritativeSync(event);
+      } else if ((event.type == 'error' || event.type == 'webrtc_error') &&
+          _saysRobotAsleep(event.data)) {
+        // The robot declined something because it is asleep.
+        connTrace('mode-robot-asleep', '${event.type}');
+        _handleModeConfirmation(RobotMode.sleep.value);
       }
     });
+  }
+
+  static bool _saysRobotAsleep(Map<String, dynamic> data) {
+    for (final k in const ['code', 'error', 'error_code', 'reason', 'message']) {
+      if (data[k]?.toString().toLowerCase().contains('robot_asleep') == true) {
+        return true;
+      }
+    }
+    return false;
   }
 
   /// Build 146: robot-authoritative mode sync on (re)connect. /ws/local sends

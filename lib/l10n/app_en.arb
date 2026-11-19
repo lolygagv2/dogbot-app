@@ -199,6 +199,7 @@
   "videoSavedShare": "Share",
   "webrtcWaitingForConnection": "Waiting for connection...",
   "webrtcTapToConnect": "Tap to connect",
+  "webrtcAsleep": "Asleep — video is off",
   "webrtcConnectingVideo": "Connecting video...",
   "webrtcConnectionFailed": "Video connection failed",
   "webrtcInitializingRenderer": "Initializing renderer...",

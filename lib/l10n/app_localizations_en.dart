@@ -361,6 +361,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get webrtcTapToConnect => 'Tap to connect';
 
   @override
+  String get webrtcAsleep => 'Asleep — video is off';
+
+  @override
   String get webrtcConnectingVideo => 'Connecting video...';
 
   @override

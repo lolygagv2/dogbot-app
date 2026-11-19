@@ -360,6 +360,9 @@ class AppLocalizationsKo extends AppLocalizations {
   String get webrtcTapToConnect => '눌러서 연결';
 
   @override
+  String get webrtcAsleep => '절전 중 — 영상 꺼짐';
+
+  @override
   String get webrtcConnectingVideo => '영상 연결 중...';
 
   @override

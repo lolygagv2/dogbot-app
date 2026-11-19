@@ -9,6 +9,7 @@ import '../../core/network/websocket_client.dart';
 import '../../core/utils/conn_trace.dart';
 import 'connection_provider.dart';
 import 'device_provider.dart';
+import 'mode_provider.dart';
 import 'video_quality_provider.dart';
 import '../../l10n/l10n.dart';
 import 'l10n_provider.dart';
@@ -122,6 +123,44 @@ class WebRTCNotifier extends StateNotifier<WebRTCConnectionState> {
     _loadMutePreference();
     _setupWebSocketListeners();
     _setupDeviceIdListener();
+    _setupSleepListener();
+  }
+
+  /// True while the robot is asleep or the user has just asked it to sleep.
+  /// A sleeping robot closes its video session and declines new ones
+  /// (`robot_asleep`); asking again used to wake it, so while this is set
+  /// the app sends no `webrtc_request` at all and resumes video on wake.
+  bool _robotAsleep = false;
+
+  void _setupSleepListener() {
+    _ref.listen<ModeState>(modeStateProvider, (prev, next) {
+      final asleep = next.currentMode == RobotMode.sleep ||
+          next.pendingMode == RobotMode.sleep;
+      if (asleep == _robotAsleep) return;
+      _robotAsleep = asleep;
+      connTrace('webrtc-sleep', asleep ? 'asleep: video held' : 'awake');
+      if (asleep) {
+        _reconnectTimer?.cancel();
+        _connectTimeoutTimer?.cancel();
+        // Drop our side of the session now (the robot closes its own).
+        // ignore: discarded_futures
+        _closeInternal().whenComplete(() {
+          if (mounted && _robotAsleep) {
+            state = state.copyWith(
+                state: WebRTCState.disconnected, errorMessage: null);
+          }
+        });
+      } else if (_videoRequested && _lastDeviceId != null && !_isPaused) {
+        // Awake again: bring video back once the robot has had a moment.
+        _reconnectAttempts = 0;
+        _reconnectTimer?.cancel();
+        _reconnectTimer = Timer(const Duration(milliseconds: 1500), () {
+          if (!mounted || _robotAsleep || _lastDeviceId == null) return;
+          // ignore: discarded_futures
+          requestVideoStream(_lastDeviceId!);
+        });
+      }
+    }, fireImmediately: true);
   }
 
   /// Load saved mute preference from SharedPreferences
@@ -535,6 +574,13 @@ class WebRTCNotifier extends StateNotifier<WebRTCConnectionState> {
   /// Request video stream from robot
   /// Build 44: Enhanced to prevent video bleeding between devices
   Future<void> requestVideoStream(String deviceId) async {
+    if (_robotAsleep) {
+      // Remember what was wanted; it starts when the robot wakes.
+      connTrace('webrtc-request-skip', 'robot asleep device=$deviceId');
+      _lastDeviceId = deviceId;
+      _videoRequested = true;
+      return;
+    }
     // Build 44: If switching to a DIFFERENT device, always close first
     final switchingDevice = _lastDeviceId != null && _lastDeviceId != deviceId;
 
@@ -1033,6 +1079,10 @@ class WebRTCNotifier extends StateNotifier<WebRTCConnectionState> {
 
   /// Schedule auto-reconnect with exponential backoff
   void _scheduleReconnect() {
+    if (_robotAsleep) {
+      print('WebRTC: Skipping reconnect - robot asleep');
+      return;
+    }
     if (_isPaused && !_isVideoOnlyPause) {
       print('WebRTC: Skipping reconnect - app is fully paused');
       return;

@@ -148,4 +148,15 @@ void main() {
     await pump();
     expect(container.read(robotAsleepProvider), isFalse);
   });
+
+  test('a robot_asleep error is taken as the robot being asleep', () async {
+    container.read(modeStateProvider);
+    client.debugHandleMessage(jsonEncode({
+      'type': 'error',
+      'code': 'robot_asleep',
+      'message': 'video is off while asleep',
+    }));
+    await pump();
+    expect(container.read(robotAsleepProvider), isTrue);
+  });
 }

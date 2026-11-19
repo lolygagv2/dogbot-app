@@ -18,6 +18,7 @@ import 'domain/providers/notifications_provider.dart';
 import 'domain/providers/settings_provider.dart';
 import 'domain/providers/video_transport_provider.dart';
 import 'domain/providers/foreground_push_provider.dart';
+import 'domain/providers/mode_provider.dart';
 import 'domain/providers/push_provider.dart';
 import 'domain/providers/voice_commands_provider.dart';
 import 'domain/providers/webrtc_provider.dart';
@@ -896,7 +897,13 @@ class _WimzAppState extends ConsumerState<WimzApp> with WidgetsBindingObserver {
         // driving. The robot's 500ms motor watchdog is the backstop; this
         // makes the stop immediate (sends a zero over whatever transport is
         // alive, and zeros local state so resume can't pick up at speed).
-        ref.read(motorControlProvider.notifier).emergencyStop();
+        // Not while the robot is asleep with nothing moving: there is
+        // nothing to stop, and an unprompted command is exactly what a
+        // sleeping robot should not get.
+        if (!ref.read(robotAsleepProvider) ||
+            ref.read(motorControlProvider).isMoving) {
+          ref.read(motorControlProvider.notifier).emergencyStop();
+        }
 
         final bgAudio = ref.read(settingsProvider).backgroundAudioEnabled;
         if (bgAudio) {

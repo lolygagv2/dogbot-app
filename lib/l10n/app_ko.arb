@@ -199,6 +199,7 @@
   "videoSavedShare": "공유",
   "webrtcWaitingForConnection": "연결을 기다리는 중...",
   "webrtcTapToConnect": "눌러서 연결",
+  "webrtcAsleep": "절전 중 — 영상 꺼짐",
   "webrtcConnectingVideo": "영상 연결 중...",
   "webrtcConnectionFailed": "영상 연결에 실패했습니다",
   "webrtcInitializingRenderer": "렌더러 초기화 중...",

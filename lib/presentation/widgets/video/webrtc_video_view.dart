@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_webrtc/flutter_webrtc.dart';
 
 import '../../../core/services/local_connection_service.dart';
+import '../../../domain/providers/mode_provider.dart';
 import '../../../domain/providers/connection_provider.dart';
 import '../../../domain/providers/device_provider.dart';
 import '../../../domain/providers/photo_provider.dart';
@@ -105,6 +106,10 @@ class _WebRTCVideoViewState extends ConsumerState<WebRTCVideoView> {
 
     switch (webrtcState.state) {
       case WebRTCState.disconnected:
+        // Asleep: no video and nothing to tap — Wake brings it back.
+        if (ref.watch(robotAsleepProvider)) {
+          return _buildPlaceholder(l.webrtcAsleep, Icons.bedtime, null);
+        }
         // A-BANNER: while the robot isn't reachable, a "Tap to connect" here
         // silently failed (ws.send bails) AND duplicated the MainShell
         // reconnect banner — two tappable connection affordances doing

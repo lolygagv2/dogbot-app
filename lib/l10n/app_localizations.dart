@@ -746,6 +746,12 @@ abstract class AppLocalizations {
   /// **'Tap to connect'**
   String get webrtcTapToConnect;
 
+  /// No description provided for @webrtcAsleep.
+  ///
+  /// In en, this message translates to:
+  /// **'Asleep — video is off'**
+  String get webrtcAsleep;
+
   /// No description provided for @webrtcConnectingVideo.
   ///
   /// In en, this message translates to:
