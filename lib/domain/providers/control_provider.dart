@@ -4,11 +4,14 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/constants/app_constants.dart';
 import '../../core/network/websocket_client.dart';
+import '../../data/models/robot_state.dart';
 import '../../data/models/telemetry.dart';
 import '../../core/utils/conn_trace.dart';
 import 'connection_mode_provider.dart';
 import 'connection_provider.dart';
 import 'dog_profiles_provider.dart';
+import 'mode_provider.dart';
+import 'robot_state_provider.dart';
 import 'settings_provider.dart';
 import 'webrtc_provider.dart';
 import '../../data/models/treat_refusal.dart';
@@ -200,18 +203,61 @@ class ServoControlNotifier extends StateNotifier<ServoState> {
   StreamSubscription<WsConnectionState>? _wsSub;
   WsConnectionState _lastWsState = WsConnectionState.disconnected;
 
+  /// A (re)connect wants the position re-asserted, but it has not been
+  /// sent yet. `servo` is a waking command on the relay, so it must never
+  /// reach a sleeping robot: in relay mode it waits for the first
+  /// `robot_state` after the connect and goes out only when that says
+  /// awake (or later, when the robot is woken).
+  bool _reassertPending = false;
+
   ServoControlNotifier(this._ref) : super(const ServoState()) {
     final ws = _ref.read(websocketClientProvider);
     _lastWsState = ws.state;
     _wsSub = ws.stateStream.listen((next) {
       if (next == WsConnectionState.connected &&
           _lastWsState != WsConnectionState.connected) {
-        // Fire the current app-side position so the robot snaps to it now
-        // (out of the user's way) rather than on the first D-pad tap.
-        ws.sendServoCommand(state.pan, state.tilt);
+        _onConnected();
+      } else if (next != WsConnectionState.connected) {
+        _reassertPending = false;
       }
       _lastWsState = next;
     });
+    _ref.listen<RobotState?>(robotStateProvider, (prev, next) {
+      if (!_reassertPending || next == null || next.asleep) return;
+      _reassert('robot_state awake');
+    });
+  }
+
+  void _onConnected() {
+    if (_ref.read(isLocalRobotLinkProvider)) {
+      // Local link: no relay record. Go by what the app knows.
+      final mode = _ref.read(modeStateProvider);
+      if (mode.asleep || mode.pendingAsleep == true) {
+        connTrace('servo-reassert-skip', 'robot asleep (local)');
+        return;
+      }
+      _reassertPending = true;
+      _reassert('connect (local)');
+      return;
+    }
+    // Relay: the record in memory may predate the time away. Wait for the
+    // one that follows this connect.
+    _reassertPending = true;
+    connTrace('servo-reassert-hold', 'waiting for robot_state');
+  }
+
+  /// Fire the current app-side position so the robot snaps to it now (out
+  /// of the user's way) rather than on the first D-pad tap.
+  void _reassert(String why) {
+    _reassertPending = false;
+    if (_ref.read(modeStateProvider).pendingAsleep == true) {
+      connTrace('servo-reassert-skip', 'sleep in flight');
+      return;
+    }
+    final ws = _ref.read(websocketClientProvider);
+    if (ws.state != WsConnectionState.connected) return;
+    connTrace('servo-reassert', '$why pan=${state.pan} tilt=${state.tilt}');
+    ws.sendServoCommand(state.pan, state.tilt);
   }
 
   /// Set pan/tilt from control input (only sends while dragging)
